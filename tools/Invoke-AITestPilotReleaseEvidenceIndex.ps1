@@ -216,6 +216,7 @@ function Get-DefaultSourceManifestNames {
         "lua-static-analysis-manifest.json",
         "lua-auto-patch-sandbox-manifest.json",
         "production-lua-patch-readiness-manifest.json",
+        "production-lua-patch-evidence-kit-probe-manifest.json",
         "live-model-endpoint-failure-probe-manifest.json",
         "live-model-endpoint-smoke-manifest.json",
         "github-actions-release-workflow-probe-manifest.json",

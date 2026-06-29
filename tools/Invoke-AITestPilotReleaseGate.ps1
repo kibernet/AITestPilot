@@ -170,6 +170,7 @@ else {
     $productionLuaPatchBoundFailureProbeManifest = Read-Manifest "production-lua-patch-bound-failure-probe-manifest.json"
 }
 $productionLuaPatchReadinessManifest = Read-Manifest "production-lua-patch-readiness-manifest.json"
+$productionLuaPatchEvidenceKitProbeManifest = Read-Manifest "production-lua-patch-evidence-kit-probe-manifest.json"
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
@@ -1271,6 +1272,30 @@ if ($null -ne $productionLuaPatchBoundFailureProbeManifest) {
     Test-ListedFiles $productionLuaPatchBoundFailureProbeManifest "production_lua_patch_bound_failure_probe"
 }
 
+if ($null -ne $productionLuaPatchEvidenceKitProbeManifest) {
+    Add-ReleaseCheck "production_lua_patch_evidence_kit_probe" `
+        ($productionLuaPatchEvidenceKitProbeManifest.status -eq "PASS" -and
+            $productionLuaPatchEvidenceKitProbeManifest.schemaVersion -eq "aitestpilot.production_lua_patch_evidence_kit_probe.v1" -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.templateKitGenerated -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.templateOnly -and
+            -not [bool]$productionLuaPatchEvidenceKitProbeManifest.templateEvidenceAccepted -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.acceptedFixtureGenerated -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.acceptedFixtureProbePassed -and
+            $productionLuaPatchEvidenceKitProbeManifest.acceptedFixtureBoundary -eq "contract_fixture_only_not_real_host_project" -and
+            -not [bool]$productionLuaPatchEvidenceKitProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionLuaPatchEvidenceKitProbeManifest.realProductionLuaPatchEvidenceAccepted -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.productionLuaEvidenceDirRequiredForProduction -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.acceptedReadinessReady -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.acceptedReadinessEvidenceAccepted -and
+            [int]$productionLuaPatchEvidenceKitProbeManifest.acceptedReadinessBlockingReasonCount -eq 0 -and
+            [int]$productionLuaPatchEvidenceKitProbeManifest.generatedFileCount -ge 6 -and
+            [int]$productionLuaPatchEvidenceKitProbeManifest.checkCount -eq 4 -and
+            [int]$productionLuaPatchEvidenceKitProbeManifest.failedCheckCount -eq 0) `
+        "Production Lua patch evidence kit probe must generate the host evidence template and prove an isolated accepted fixture satisfies readiness without using fixture evidence in the release pipeline."
+
+    Test-ListedFiles $productionLuaPatchEvidenceKitProbeManifest "production_lua_patch_evidence_kit_probe"
+}
+
 if ($null -ne $liveModelEndpointFailureProbeManifest) {
     Add-ReleaseCheck "live_model_endpoint_failure_probe" `
         ($liveModelEndpointFailureProbeManifest.status -eq "PASS" -and
@@ -1501,6 +1526,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.driverEvidenceAccepted -and
             $releaseRiskPolicyManifest.driverEvidenceStatus -eq $expectedDriverEvidenceStatus -and
             [bool]$releaseRiskPolicyManifest.productionLuaEvidenceAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionLuaEvidenceKitAccepted -and
             $releaseRiskPolicyManifest.productionLuaEvidenceStatus -eq $expectedProductionLuaEvidenceStatus -and
             [bool]$releaseRiskPolicyManifest.liveModelPolicyAccepted -and
             $liveModelStatusAccepted -and
@@ -1548,6 +1574,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "lua-static-analysis-manifest.json",
         "lua-auto-patch-sandbox-manifest.json",
         "production-lua-patch-readiness-manifest.json",
+        "production-lua-patch-evidence-kit-probe-manifest.json",
         "live-model-endpoint-failure-probe-manifest.json",
         "live-model-endpoint-smoke-manifest.json",
         "github-actions-release-workflow-probe-manifest.json",
@@ -1632,6 +1659,7 @@ $sourceManifests = @(
     "lua-static-analysis-manifest.json",
     "lua-auto-patch-sandbox-manifest.json",
     "production-lua-patch-readiness-manifest.json",
+    "production-lua-patch-evidence-kit-probe-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",

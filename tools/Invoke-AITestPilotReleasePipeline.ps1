@@ -6,6 +6,7 @@ param(
     [string]$ArtifactDir,
     [string]$ReleaseGateFailureProbeDir,
     [string]$CursorAgentOutputDir,
+    [string]$ProductionLuaEvidenceDir,
     [string]$CursorAgentModel = "",
     [int]$CursorAgentMaxAttempts = 3,
     [int]$CursorAgentRetryDelaySeconds = 2,
@@ -129,6 +130,7 @@ function Export-PipelineArtifacts {
         evidenceBundleDir = $EvidenceBundleDir
         artifactDir = $artifactPath
         gameReplayDriverType = $GameReplayDriverType
+        productionLuaEvidenceDir = $ProductionLuaEvidenceDir
         stepCount = $steps.Count
         steps = @($steps)
         ciExitCode = $ciExitCode
@@ -333,6 +335,7 @@ try {
     Invoke-PipelineStep "production_lua_patch_readiness" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionLuaPatchReadiness.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `
+            -ProductionLuaEvidenceDir $ProductionLuaEvidenceDir `
             -RequireProductionLuaPatched:$RequireProductionLuaPatched
     }
 
@@ -341,6 +344,11 @@ try {
             & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionLuaPatchBoundFailureProbe.ps1") `
                 -EvidenceBundleDir $EvidenceBundleDir
         }
+    }
+
+    Invoke-PipelineStep "production_lua_patch_evidence_kit_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionLuaPatchEvidenceKitProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
     }
 
     Invoke-PipelineStep "live_model_endpoint_failure_probe" {

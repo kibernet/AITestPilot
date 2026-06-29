@@ -237,7 +237,7 @@ To aggregate the release risk policy for AI exploration, high-risk graph nodes, 
 .\tools\Invoke-AITestPilotReleaseRiskPolicy.ps1
 ```
 
-That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, and `-RequireLiveModelEndpointSmoke`.
+That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries plus the production Lua evidence kit contract; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, `-ProductionLuaEvidenceDir`, and `-RequireLiveModelEndpointSmoke`.
 
 To prove provider-specific CI build, smoke test, and vision evidence checks are wired for GitHub Actions and Azure Pipelines:
 
@@ -253,7 +253,7 @@ To run the full repo-side release gate over the evidence bundle:
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, release risk policy acceptance, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, release risk policy acceptance, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -267,7 +267,7 @@ For CI, run the full pipeline wrapper:
 
 It runs the full chain and exports stable artifacts to `artifacts\ai-testpilot-release\latest`. See `docs\ci-release-pipeline.md`.
 Production CI that must block until real game APIs are wired can run the same wrapper with `-RequireProductionReplayDriverBound`; in that mode the release gate no longer accepts the sample/unbound package-release boundary.
-The repository also includes `.github\workflows\ai-testpilot-release.yml` for a self-hosted Windows Unity GitHub Actions runner and `.azure-pipelines\ai-testpilot-release.yml` for an Azure Pipelines self-hosted Windows Unity pool. Both expose production-bound driver, production Lua patch, live model smoke, and Cursor Agent output controls, run the release pipeline, enforce `pipeline-manifest.json` status, and upload/publish the release evidence artifact. The release pipeline validates those provider workflows through `Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1` and `Invoke-AITestPilotAzurePipelinesWorkflowProbe.ps1`.
+The repository also includes `.github\workflows\ai-testpilot-release.yml` for a self-hosted Windows Unity GitHub Actions runner and `.azure-pipelines\ai-testpilot-release.yml` for an Azure Pipelines self-hosted Windows Unity pool. Both expose production-bound driver, production Lua patch evidence directory, live model smoke, and Cursor Agent output controls, run the release pipeline, enforce `pipeline-manifest.json` status, and upload/publish the release evidence artifact. The release pipeline validates those provider workflows through `Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1` and `Invoke-AITestPilotAzurePipelinesWorkflowProbe.ps1`.
 
 For a real model endpoint, use the generic HTTP/JSON `ModelEndpointDecisionClient` in the core library. It posts the goal, snapshot, previous steps, prior fix hints, allowed action list, and action JSON schema to a configured endpoint, validates the returned action before execution, and can write per-step trace files. See `docs\model-endpoint.md`.
 The Unity package also includes a `ModelEndpointSettings` asset and editor entry under `Tools/Kibernet/AI TestPilot/Create Model Endpoint Settings`; sample-scene validation proves the settings asset, offline request contract, and action parser without calling an external provider.
@@ -323,10 +323,19 @@ That readiness check consumes the Lua static-analysis and auto-patch sandbox evi
 .\tools\Invoke-AITestPilotProductionLuaPatchBoundFailureProbe.ps1
 ```
 
+To generate the host-project evidence template and prove the accepted evidence contract without promoting fixture data as production:
+
+```powershell
+.\tools\New-AITestPilotProductionLuaPatchEvidenceKit.ps1
+.\tools\Invoke-AITestPilotProductionLuaPatchEvidenceKitProbe.ps1
+```
+
+The kit writes `production-lua-patch-evidence.json`, schema guidance, retest and rollback templates. The release pipeline runs the kit probe, which keeps the generated template pending while using an isolated accepted fixture only to prove `Invoke-AITestPilotProductionLuaPatchReadiness.ps1` accepts a complete evidence contract. The probe records `releasePipelineUsesFixture=false` and `realProductionLuaPatchEvidenceAccepted=false`.
+
 Production CI can require real production Lua analysis, patch, validation, retest, and rollback evidence through:
 
 ```powershell
-.\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireProductionLuaPatched
+.\tools\Invoke-AITestPilotReleasePipeline.ps1 -ProductionLuaEvidenceDir "path\to\production-lua-evidence" -RequireProductionLuaPatched
 ```
 
 To prove live endpoint failures are classified before hitting a real provider:
@@ -427,6 +436,7 @@ Implemented now:
 - Core Lua static analyzer plus release-gated Lua static analysis manifest for unguarded field access, global writes, dynamic `require`, unprotected game API calls, safe-fixture checks, and patch-plan evidence.
 - Release-gated Lua auto-patch sandbox evidence proving deterministic fixture patches clear findings without mutating production Lua.
 - Production Lua patch readiness manifest and hard-bound failure probe separating sandbox-proven patches from real production Lua analysis, patch, retest, and rollback evidence.
+- Production Lua patch evidence kit generator plus release-gated contract probe for host-project Lua evidence templates.
 - Sample business replay path covering account setup, login, `enter_scene`, activity reward, and `play_fishing`.
 - Persisted replay profile asset plus JSON export for CI evidence.
 - Replay profile JSON import back into an editable Unity `ActionReplayProfile` asset.

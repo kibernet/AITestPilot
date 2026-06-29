@@ -38,6 +38,7 @@ The pipeline runs:
 - Lua static analysis probe, proving repair-risk rule coverage, safe-fixture behavior, and patch-plan evidence.
 - Lua auto-patch sandbox probe, proving deterministic fixture patches clear findings without mutating production Lua.
 - production Lua patch readiness and hard-bound failure probe, proving real production Lua evidence is required when production Lua patching is enforced.
+- production Lua patch evidence kit probe, generating the host-project evidence template and proving the accepted readiness contract with an isolated fixture only.
 - deterministic live model endpoint failure probe.
 - optional live model endpoint smoke.
 - GitHub Actions release workflow probe, proving provider-specific CI maps release-control inputs to the release pipeline and uploads evidence.
@@ -54,7 +55,7 @@ By default, the pipeline copies the latest evidence bundle to:
 
 `artifacts/ai-testpilot-release/latest`
 
-That directory includes `pipeline-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, provider CI quality probe evidence, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
+That directory includes `pipeline-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, provider CI quality probe evidence, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, production Lua evidence kit evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
 
 `release-risk-policy-manifest.json` is the machine-readable release-blocker decision for downstream CI, portal, or audit tooling. It is generated before the release evidence index and records whether package release is allowed under the active production driver, production Lua, and live-model enforcement switches.
 
@@ -64,7 +65,7 @@ That directory includes `pipeline-manifest.json`, release gate manifests, releas
 
 `.github/workflows/ai-testpilot-release.yml` is the provider-specific CI entry point for GitHub Actions. It targets a self-hosted Windows Unity runner because the release pipeline runs Unity 2021.3 batchmode validation. The workflow runs on `push`, `pull_request`, and `workflow_dispatch`.
 
-Manual dispatch exposes release-control inputs for `unity_path`, `game_replay_driver_type`, production-bound replay driver enforcement, production Lua patch enforcement, required live model smoke, missing API-key allowance for local gateways, and optional headless Cursor Agent output. The workflow passes those inputs to `Invoke-AITestPilotReleasePipeline.ps1`, enforces that `pipeline-manifest.json` reports `status=PASS` and `ciExitCode=0`, then uploads `artifacts\ai-testpilot-release\latest` as `ai-testpilot-release-evidence`.
+Manual dispatch exposes release-control inputs for `unity_path`, `game_replay_driver_type`, production-bound replay driver enforcement, production Lua patch enforcement, production Lua evidence directory, required live model smoke, missing API-key allowance for local gateways, and optional headless Cursor Agent output. The workflow passes those inputs to `Invoke-AITestPilotReleasePipeline.ps1`, enforces that `pipeline-manifest.json` reports `status=PASS` and `ciExitCode=0`, then uploads `artifacts\ai-testpilot-release\latest` as `ai-testpilot-release-evidence`.
 
 The release pipeline runs `Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1` before the release gate. That probe snapshots the workflow into the evidence bundle and proves the provider workflow still has the required triggers, self-hosted Windows Unity runner labels, read-only repository permission, pipeline switches, live endpoint secret bindings, manifest enforcement, and artifact upload.
 
@@ -133,10 +134,24 @@ The intake path supports evidence directories outside this repository. The defau
 
 The default pipeline records `production-lua-patch-readiness-manifest.json` after the Lua auto-patch sandbox probe. In package-release mode this manifest is expected to be blocked on real production Lua evidence while still proving the sandbox patch plan is clean and the package repository was not mutated. The pipeline also runs `production_lua_patch_bound_failure_probe`, which reruns readiness with `-RequireProductionLuaPatched` and proves the current no-production-Lua evidence is rejected.
 
+To generate the host-project evidence template before a real production run:
+
+```powershell
+.\tools\New-AITestPilotProductionLuaPatchEvidenceKit.ps1
+```
+
+The pipeline also runs `production_lua_patch_evidence_kit_probe`. It stores the template kit in release evidence, then uses an isolated accepted fixture only to prove the readiness contract. The gate requires `releasePipelineUsesFixture=false`, so this does not claim real production Lua evidence.
+
 To make production Lua patch evidence a hard release condition, run:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireProductionLuaPatched
+```
+
+For a passing production run, provide the real host-project evidence directory:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePipeline.ps1 -ProductionLuaEvidenceDir "path\to\production-lua-evidence" -RequireProductionLuaPatched
 ```
 
 In that mode the release gate requires real production Lua analysis, patch application, validation, retest, rollback proof, clean source-control state after validation, and zero remaining production findings.

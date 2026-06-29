@@ -73,6 +73,7 @@ $requiredParameters = @(
     "gameReplayDriverType",
     "requireProductionReplayDriverBound",
     "requireProductionLuaPatched",
+    "productionLuaEvidenceDir",
     "requireLiveModelEndpointSmoke",
     "allowMissingModelApiKey",
     "useCursorAgentExternalTaskOutput"
@@ -84,6 +85,7 @@ $requiredSwitches = @(
     "-ArtifactDir",
     "-RequireProductionReplayDriverBound",
     "-RequireProductionLuaPatched",
+    "-ProductionLuaEvidenceDir",
     "-RequireLiveModelEndpointSmoke",
     "-AllowMissingModelApiKey",
     "-UseCursorAgentExternalTaskOutput"

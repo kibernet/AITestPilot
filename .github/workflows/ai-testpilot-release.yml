@@ -25,6 +25,10 @@ on:
         required: false
         type: boolean
         default: false
+      production_lua_evidence_dir:
+        description: Directory containing production-lua-patch-evidence.json for required production Lua runs.
+        required: false
+        default: ''
       require_live_model_endpoint_smoke:
         description: Block unless a configured live model endpoint smoke passes.
         required: false
@@ -61,6 +65,7 @@ jobs:
       AI_TESTPILOT_GAME_REPLAY_DRIVER_TYPE: ${{ github.event_name == 'workflow_dispatch' && inputs.game_replay_driver_type || 'Kibernet.AITestPilot.Unity.Editor.SampleGameActionReplayDriver' }}
       AI_TESTPILOT_REQUIRE_PRODUCTION_BOUND: ${{ github.event_name == 'workflow_dispatch' && inputs.require_production_replay_driver_bound || false }}
       AI_TESTPILOT_REQUIRE_PRODUCTION_LUA_PATCHED: ${{ github.event_name == 'workflow_dispatch' && inputs.require_production_lua_patched || false }}
+      AI_TESTPILOT_PRODUCTION_LUA_EVIDENCE_DIR: ${{ github.event_name == 'workflow_dispatch' && inputs.production_lua_evidence_dir || '' }}
       AI_TESTPILOT_REQUIRE_LIVE_MODEL_ENDPOINT_SMOKE: ${{ github.event_name == 'workflow_dispatch' && inputs.require_live_model_endpoint_smoke || false }}
       AI_TESTPILOT_ALLOW_MISSING_MODEL_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_missing_model_api_key || false }}
       AI_TESTPILOT_USE_CURSOR_AGENT_EXTERNAL_TASK_OUTPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.use_cursor_agent_external_task_output || false }}
@@ -110,6 +115,10 @@ jobs:
 
           if (Test-Flag $env:AI_TESTPILOT_REQUIRE_PRODUCTION_LUA_PATCHED) {
             $pipelineArgs += "-RequireProductionLuaPatched"
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:AI_TESTPILOT_PRODUCTION_LUA_EVIDENCE_DIR)) {
+            $pipelineArgs += @("-ProductionLuaEvidenceDir", $env:AI_TESTPILOT_PRODUCTION_LUA_EVIDENCE_DIR)
           }
 
           if (Test-Flag $env:AI_TESTPILOT_REQUIRE_LIVE_MODEL_ENDPOINT_SMOKE) {
