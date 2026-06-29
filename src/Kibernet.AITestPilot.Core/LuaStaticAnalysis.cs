@@ -49,6 +49,47 @@ public sealed class LuaStaticAnalysisResult
     public IReadOnlyList<LuaStaticFinding> Findings { get; init; } = Array.Empty<LuaStaticFinding>();
 }
 
+public sealed class LuaPatchOperation
+{
+    public string RuleId { get; init; } = string.Empty;
+
+    public string FilePath { get; init; } = string.Empty;
+
+    public int LineNumber { get; init; }
+
+    public string Description { get; init; } = string.Empty;
+
+    public string OriginalText { get; init; } = string.Empty;
+
+    public string ReplacementText { get; init; } = string.Empty;
+
+    public bool Applied { get; init; }
+}
+
+public sealed class LuaPatchedSourceFile
+{
+    public string Path { get; init; } = string.Empty;
+
+    public string OriginalText { get; init; } = string.Empty;
+
+    public string PatchedText { get; init; } = string.Empty;
+
+    public bool Changed { get; init; }
+}
+
+public sealed class LuaAutoPatchResult
+{
+    public string SchemaVersion { get; init; } = "aitestpilot.lua_auto_patch_sandbox.v1";
+
+    public LuaStaticAnalysisResult BeforeAnalysis { get; init; } = new();
+
+    public LuaStaticAnalysisResult AfterAnalysis { get; init; } = new();
+
+    public IReadOnlyList<LuaPatchOperation> Operations { get; init; } = Array.Empty<LuaPatchOperation>();
+
+    public IReadOnlyList<LuaPatchedSourceFile> PatchedFiles { get; init; } = Array.Empty<LuaPatchedSourceFile>();
+}
+
 public static partial class LuaStaticAnalyzer
 {
     private static readonly HashSet<string> SafeFieldAccessPrefixes = new(StringComparer.Ordinal)
@@ -79,7 +120,7 @@ public static partial class LuaStaticAnalyzer
             for (var index = 0; index < lines.Length; index++)
             {
                 var lineNumber = index + 1;
-                var line = StripComment(lines[index]);
+                var line = StripStringLiterals(StripComment(lines[index]));
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;
@@ -121,6 +162,11 @@ public static partial class LuaStaticAnalyzer
     {
         var commentIndex = line.IndexOf("--", StringComparison.Ordinal);
         return commentIndex >= 0 ? line[..commentIndex] : line;
+    }
+
+    private static string StripStringLiterals(string line)
+    {
+        return StringLiteralRegex().Replace(line, match => match.Value[0] == '\'' ? "''" : "\"\"");
     }
 
     private static void RecordGuardedVariables(string line, HashSet<string> guardedVariables)
@@ -273,4 +319,191 @@ public static partial class LuaStaticAnalyzer
 
     [GeneratedRegex(@"\bif\s+(?:(?:not\s+(?<notVar>[A-Za-z_][A-Za-z0-9_]*))|(?:(?<leftVar>[A-Za-z_][A-Za-z0-9_]*)\s*==\s*nil)|(?:nil\s*==\s*(?<rightVar>[A-Za-z_][A-Za-z0-9_]*))|(?:(?<notNilVar>[A-Za-z_][A-Za-z0-9_]*)\s*~=\s*nil))")]
     private static partial Regex NilGuardRegex();
+
+    [GeneratedRegex(@"""(?:\\.|[^""\\])*""|'(?:\\.|[^'\\])*'")]
+    private static partial Regex StringLiteralRegex();
+}
+
+public static partial class LuaAutoPatcher
+{
+    public static LuaAutoPatchResult ApplySandboxPatches(IEnumerable<LuaSourceFile> files)
+    {
+        var sourceFiles = files.ToArray();
+        var beforeAnalysis = LuaStaticAnalyzer.Analyze(sourceFiles);
+        var operations = new List<LuaPatchOperation>();
+        var patchedFiles = new List<LuaPatchedSourceFile>();
+
+        foreach (var file in sourceFiles)
+        {
+            var findingsByLine = beforeAnalysis.Findings
+                .Where(finding => string.Equals(finding.FilePath, file.Path, StringComparison.Ordinal))
+                .GroupBy(finding => finding.LineNumber)
+                .ToDictionary(group => group.Key, group => group.ToArray());
+
+            var originalLines = SplitLines(file.Text);
+            var patchedLines = new List<string>();
+
+            for (var index = 0; index < originalLines.Length; index++)
+            {
+                var lineNumber = index + 1;
+                var originalLine = originalLines[index];
+                var lineFindings = findingsByLine.TryGetValue(lineNumber, out var findings)
+                    ? findings
+                    : Array.Empty<LuaStaticFinding>();
+
+                var patchedLine = originalLine;
+                foreach (var finding in lineFindings)
+                {
+                    if (finding.RuleId == "lua.unguarded_field_access" &&
+                        TryExtractFieldAccessVariable(originalLine, out var variableName))
+                    {
+                        var guard = $"{GetIndent(originalLine)}if {variableName} == nil then return nil end";
+                        patchedLines.Add(guard);
+                        operations.Add(new LuaPatchOperation
+                        {
+                            RuleId = finding.RuleId,
+                            FilePath = file.Path,
+                            LineNumber = lineNumber,
+                            Description = $"Insert nil guard for '{variableName}'.",
+                            OriginalText = string.Empty,
+                            ReplacementText = guard,
+                            Applied = true,
+                        });
+                    }
+                }
+
+                foreach (var finding in lineFindings)
+                {
+                    var replacement = TryPatchLine(patchedLine, finding);
+                    if (replacement is null || string.Equals(replacement, patchedLine, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    operations.Add(new LuaPatchOperation
+                    {
+                        RuleId = finding.RuleId,
+                        FilePath = file.Path,
+                        LineNumber = lineNumber,
+                        Description = finding.Recommendation,
+                        OriginalText = patchedLine,
+                        ReplacementText = replacement,
+                        Applied = true,
+                    });
+                    patchedLine = replacement;
+                }
+
+                patchedLines.Add(patchedLine);
+            }
+
+            var patchedText = string.Join("\n", patchedLines);
+            patchedFiles.Add(new LuaPatchedSourceFile
+            {
+                Path = file.Path,
+                OriginalText = file.Text,
+                PatchedText = patchedText,
+                Changed = !string.Equals(file.Text, patchedText, StringComparison.Ordinal),
+            });
+        }
+
+        var afterAnalysis = LuaStaticAnalyzer.Analyze(
+            patchedFiles.Select(file => new LuaSourceFile
+            {
+                Path = file.Path,
+                Text = file.PatchedText,
+            }));
+
+        return new LuaAutoPatchResult
+        {
+            BeforeAnalysis = beforeAnalysis,
+            AfterAnalysis = afterAnalysis,
+            Operations = operations,
+            PatchedFiles = patchedFiles,
+        };
+    }
+
+    private static string[] SplitLines(string text)
+    {
+        return text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+    }
+
+    private static string GetIndent(string line)
+    {
+        var length = 0;
+        while (length < line.Length && char.IsWhiteSpace(line[length]))
+        {
+            length++;
+        }
+
+        return line[..length];
+    }
+
+    private static string? TryPatchLine(string line, LuaStaticFinding finding)
+    {
+        return finding.RuleId switch
+        {
+            "lua.global_write" => TryPatchGlobalWrite(line),
+            "lua.dynamic_require" => TryPatchDynamicRequire(line),
+            "lua.unprotected_game_api_call" => TryPatchUnprotectedGameApiCall(line),
+            _ => null,
+        };
+    }
+
+    private static string? TryPatchGlobalWrite(string line)
+    {
+        var match = GlobalWriteRegex().Match(line);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        return line.Insert(match.Index + match.Groups["indent"].Length, "local ");
+    }
+
+    private static string? TryPatchDynamicRequire(string line)
+    {
+        var match = DynamicRequireRegex().Match(line);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        return DynamicRequireRegex().Replace(line, "require(\"Fishing.Default\")", 1);
+    }
+
+    private static string? TryPatchUnprotectedGameApiCall(string line)
+    {
+        var match = GameApiAssignmentRegex().Match(line);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var indent = match.Groups["indent"].Value;
+        var variableName = match.Groups["var"].Value;
+        var functionName = match.Groups["func"].Value;
+        var arguments = match.Groups["args"].Value.Trim();
+        return string.IsNullOrWhiteSpace(arguments)
+            ? $"{indent}local ok, {variableName} = pcall(GameApi.{functionName})\n{indent}if not ok then return nil end"
+            : $"{indent}local ok, {variableName} = pcall(GameApi.{functionName}, {arguments})\n{indent}if not ok then return nil end";
+    }
+
+    private static bool TryExtractFieldAccessVariable(string line, out string variableName)
+    {
+        var match = FieldAccessRegex().Match(line);
+        variableName = match.Success ? match.Groups["name"].Value : string.Empty;
+        return match.Success;
+    }
+
+    [GeneratedRegex(@"^(?<indent>\s*)(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*=")]
+    private static partial Regex GlobalWriteRegex();
+
+    [GeneratedRegex(@"require\s*\(\s*[^""'][^)]*\)")]
+    private static partial Regex DynamicRequireRegex();
+
+    [GeneratedRegex(@"^(?<indent>\s*)local\s+(?<var>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*GameApi\.(?<func>[A-Za-z_][A-Za-z0-9_]*)\((?<args>.*)\)\s*$")]
+    private static partial Regex GameApiAssignmentRegex();
+
+    [GeneratedRegex(@"(?<![\w.])(?<name>[A-Za-z_][A-Za-z0-9_]*)\.[A-Za-z_][A-Za-z0-9_]*")]
+    private static partial Regex FieldAccessRegex();
 }

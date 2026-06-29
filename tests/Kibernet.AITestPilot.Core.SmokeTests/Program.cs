@@ -10,6 +10,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("decision loop executes click then finish", DecisionLoopExecutesClickThenFinish),
     ("bug detector packages exception logs", BugDetectorPackagesExceptionLogs),
     ("Lua static analyzer finds risky replay repair patterns", LuaStaticAnalyzerFindsRiskyReplayRepairPatterns),
+    ("Lua auto patcher clears sandbox findings", LuaAutoPatcherClearsSandboxFindings),
     ("knowledge graph reuses previous fixes", KnowledgeGraphReusesPreviousFixes),
     ("release gate blocks failed checks", ReleaseGateBlocksFailedChecks),
     ("run report summarizes loop result", RunReportSummarizesLoopResult),
@@ -160,6 +161,45 @@ static Task LuaStaticAnalyzerFindsRiskyReplayRepairPatterns()
     AssertEqual(true, result.RuleIds.Contains("lua.global_write"), "lua global write rule");
     AssertEqual(true, result.RuleIds.Contains("lua.unprotected_game_api_call"), "lua game api rule");
     AssertEqual(0, result.Findings.Count(finding => finding.FilePath == "SafeRewardFlow.lua"), "safe lua finding count");
+    return Task.CompletedTask;
+}
+
+static Task LuaAutoPatcherClearsSandboxFindings()
+{
+    var result = LuaAutoPatcher.ApplySandboxPatches(new[]
+    {
+        new LuaSourceFile
+        {
+            Path = "RewardFlow.lua",
+            Text = """
+                   local reward = GameApi.ClaimDailyReward(playerId)
+                   local itemId = reward.itemId
+                   lastRewardItemId = itemId
+                   return itemId
+                   """,
+        },
+        new LuaSourceFile
+        {
+            Path = "FishingFlow.lua",
+            Text = """
+                   local moduleName = "Fishing." .. fishType
+                   local fishingModule = require(moduleName)
+                   local result = GameApi.FinishFishing(sessionId)
+                   return result.catchId
+                   """,
+        },
+    });
+
+    AssertEqual(true, result.BeforeAnalysis.FindingCount >= 5, "before lua finding count");
+    AssertEqual(true, result.Operations.Count >= 6, "lua patch operation count");
+    AssertEqual(true, result.Operations.All(operation => operation.Applied), "lua patch operations applied");
+    AssertEqual(0, result.AfterAnalysis.FindingCount, "after lua finding count");
+    AssertEqual(0, result.AfterAnalysis.HighRiskFindingCount, "after lua high risk finding count");
+    AssertEqual(true, result.PatchedFiles.All(file => file.Changed), "patched lua files changed");
+    AssertContains(result.PatchedFiles[0].PatchedText, "pcall(GameApi.ClaimDailyReward", "pcall patch");
+    AssertContains(result.PatchedFiles[0].PatchedText, "if reward == nil then return nil end", "nil guard patch");
+    AssertContains(result.PatchedFiles[0].PatchedText, "local lastRewardItemId", "global write patch");
+    AssertContains(result.PatchedFiles[1].PatchedText, "require(\"Fishing.Default\")", "dynamic require patch");
     return Task.CompletedTask;
 }
 

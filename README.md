@@ -229,7 +229,7 @@ To run the full repo-side release gate over the evidence bundle:
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -278,6 +278,14 @@ To prove Lua static analysis and patch-plan evidence for replay repair candidate
 ```
 
 The Lua static analyzer scans deterministic Lua fixtures for unguarded field access, global writes, dynamic `require`, and unprotected game API calls. It writes `lua-static-analysis-manifest.json`, a JSON/Markdown report, a patch-plan Markdown artifact, and fixture files into release evidence. The default probe is a package-side contract and explicitly records that real production Lua has not been analyzed yet.
+
+To prove deterministic Lua auto-patch application in a sandbox:
+
+```powershell
+.\tools\Invoke-AITestPilotLuaAutoPatchSandboxProbe.ps1
+```
+
+That sandbox probe applies the generated Lua patch operations to fixture copies, writes `lua-auto-patch-sandbox-manifest.json`, before/after analysis reports, operation JSON, a patch artifact, and patched Lua copies. The release gate requires the pre-patch findings to be present, all operations applied, post-patch findings cleared, and `mainRepositoryMutated=false` / `realProductionLuaPatched=false`.
 
 To prove live endpoint failures are classified before hitting a real provider:
 
@@ -371,6 +379,7 @@ Implemented now:
 - Policy-driven live model endpoint retry execution with per-attempt evidence.
 - Provider-specific live-smoke retry tuning and alert routing manifest for native, OpenAI, OpenAI-compatible, and local gateways.
 - Core Lua static analyzer plus release-gated Lua static analysis manifest for unguarded field access, global writes, dynamic `require`, unprotected game API calls, safe-fixture checks, and patch-plan evidence.
+- Release-gated Lua auto-patch sandbox evidence proving deterministic fixture patches clear findings without mutating production Lua.
 - Sample business replay path covering account setup, login, `enter_scene`, activity reward, and `play_fishing`.
 - Persisted replay profile asset plus JSON export for CI evidence.
 - Replay profile JSON import back into an editable Unity `ActionReplayProfile` asset.

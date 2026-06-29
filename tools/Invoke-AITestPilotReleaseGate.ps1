@@ -161,6 +161,7 @@ $modelEndpointManifest = Read-Manifest "model-endpoint-trace-manifest.json"
 $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provider-diagnostics-manifest.json"
 $modelEndpointProviderRetryPolicyManifest = Read-Manifest "model-endpoint-provider-retry-policy-manifest.json"
 $luaStaticAnalysisManifest = Read-Manifest "lua-static-analysis-manifest.json"
+$luaAutoPatchSandboxManifest = Read-Manifest "lua-auto-patch-sandbox-manifest.json"
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
@@ -1162,6 +1163,33 @@ if ($null -ne $luaStaticAnalysisManifest) {
     Test-ListedFiles $luaStaticAnalysisManifest "lua_static_analysis_probe"
 }
 
+if ($null -ne $luaAutoPatchSandboxManifest) {
+    Add-ReleaseCheck "lua_auto_patch_sandbox_probe" `
+        ($luaAutoPatchSandboxManifest.status -eq "PASS" -and
+            $luaAutoPatchSandboxManifest.schemaVersion -eq "aitestpilot.lua_auto_patch_sandbox.v1" -and
+            $luaAutoPatchSandboxManifest.source -eq "deterministic_lua_fixture" -and
+            [int]$luaAutoPatchSandboxManifest.beforeFindingCount -ge 5 -and
+            [int]$luaAutoPatchSandboxManifest.beforeHighRiskFindingCount -ge 2 -and
+            [int]$luaAutoPatchSandboxManifest.patchOperationCount -ge 6 -and
+            [int]$luaAutoPatchSandboxManifest.appliedOperationCount -eq [int]$luaAutoPatchSandboxManifest.patchOperationCount -and
+            [int]$luaAutoPatchSandboxManifest.changedFileCount -ge 2 -and
+            [int]$luaAutoPatchSandboxManifest.afterFindingCount -eq 0 -and
+            [int]$luaAutoPatchSandboxManifest.afterHighRiskFindingCount -eq 0 -and
+            [int]$luaAutoPatchSandboxManifest.afterAutoPatchCandidateCount -eq 0 -and
+            [int]$luaAutoPatchSandboxManifest.blockingReasonCount -eq 0) `
+        "Lua auto patch sandbox must apply deterministic patch operations and clear all fixture findings."
+
+    Add-ReleaseCheck "lua_auto_patch_sandbox_boundary" `
+        ([bool]$luaAutoPatchSandboxManifest.patchFileGenerated -and
+            [bool]$luaAutoPatchSandboxManifest.sandboxOnly -and
+            -not [bool]$luaAutoPatchSandboxManifest.mainRepositoryMutated -and
+            -not [bool]$luaAutoPatchSandboxManifest.realProductionLuaPatched -and
+            $luaAutoPatchSandboxManifest.productionBoundary -eq "deterministic_lua_fixture_only") `
+        "Lua auto patch sandbox must emit a patch artifact while preserving the no-production-mutation boundary."
+
+    Test-ListedFiles $luaAutoPatchSandboxManifest "lua_auto_patch_sandbox_probe"
+}
+
 if ($null -ne $liveModelEndpointFailureProbeManifest) {
     Add-ReleaseCheck "live_model_endpoint_failure_probe" `
         ($liveModelEndpointFailureProbeManifest.status -eq "PASS" -and
@@ -1359,6 +1387,7 @@ $sourceManifests = @(
     "model-endpoint-provider-diagnostics-manifest.json",
     "model-endpoint-provider-retry-policy-manifest.json",
     "lua-static-analysis-manifest.json",
+    "lua-auto-patch-sandbox-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json"

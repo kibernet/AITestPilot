@@ -59,3 +59,4 @@
 - Added repair-agent patch result analysis evidence linking prior fix hints, accepted output, retest, rollback, and knowledge graph outcome.
 - Added repair-agent patch result history evidence for multi-bug outcome persistence, trend aggregates, and production-output boundary checks.
 - Added core Lua static analysis and release-gated Lua fixture evidence with patch-plan output.
+- Added release-gated Lua auto-patch sandbox evidence that clears fixture findings without mutating production Lua.

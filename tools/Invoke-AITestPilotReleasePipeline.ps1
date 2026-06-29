@@ -324,6 +324,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "lua_auto_patch_sandbox_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotLuaAutoPatchSandboxProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "live_model_endpoint_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
