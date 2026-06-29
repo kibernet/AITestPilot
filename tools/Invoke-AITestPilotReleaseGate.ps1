@@ -182,6 +182,7 @@ $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-relea
 $azurePipelinesReleaseWorkflowProbeManifest = Read-Manifest "azure-pipelines-release-workflow-probe-manifest.json"
 $providerCiQualityProbeManifest = Read-Manifest "provider-ci-quality-probe-manifest.json"
 $productionHandoffPackageManifest = Read-Manifest "production-handoff-package-manifest.json"
+$productionHandoffExternalEvidencePreflightProbeManifest = Read-Manifest "production-handoff-external-evidence-preflight-probe-manifest.json"
 $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
@@ -1654,6 +1655,31 @@ if ($null -ne $productionHandoffPackageManifest) {
     Test-ListedFiles $productionHandoffPackageManifest "production_handoff_package"
 }
 
+if ($null -ne $productionHandoffExternalEvidencePreflightProbeManifest) {
+    Add-ReleaseCheck "production_handoff_external_evidence_preflight_probe" `
+        ($productionHandoffExternalEvidencePreflightProbeManifest.status -eq "PASS" -and
+            $productionHandoffExternalEvidencePreflightProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_external_evidence_preflight_probe.v1" -and
+            -not [bool]$productionHandoffExternalEvidencePreflightProbeManifest.externalBundleUnderRepo -and
+            [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedFixtureDirsGenerated -and
+            [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightPassed -and
+            [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightRunIntake -and
+            [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightRequireAllEvidence -and
+            [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightAllRequiredFilesPresent -and
+            [int]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightMissingAreaCount -eq 0 -and
+            [int]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightIntakeResultCount -eq 3 -and
+            [int]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightFailedIntakeCount -eq 0 -and
+            [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightIntakePassed -and
+            [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightRequiredFilesPassed -and
+            -not [bool]$productionHandoffExternalEvidencePreflightProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffExternalEvidencePreflightProbeManifest.realHostProjectEvidenceAccepted -and
+            $productionHandoffExternalEvidencePreflightProbeManifest.productionOutputBoundary -eq "accepted_fixture_preflight_contract_only" -and
+            [int]$productionHandoffExternalEvidencePreflightProbeManifest.checkCount -eq 5 -and
+            [int]$productionHandoffExternalEvidencePreflightProbeManifest.failedCheckCount -eq 0) `
+        "Production handoff external evidence preflight probe must prove the generated preflight script accepts complete host-project-shaped fixture evidence without promoting fixture data."
+
+    Test-ListedFiles $productionHandoffExternalEvidencePreflightProbeManifest "production_handoff_external_evidence_preflight_probe"
+}
+
 if ($null -ne $productionHardModeFailureProbeManifest) {
     Add-ReleaseCheck "production_hard_mode_failure_probe" `
         ($productionHardModeFailureProbeManifest.status -eq "PASS" -and
@@ -1712,6 +1738,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.azurePipelinesAccepted -and
             [bool]$releaseRiskPolicyManifest.providerCiQualityAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffPackageAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExternalEvidencePreflightAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHardModeFailureAccepted -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
@@ -1765,6 +1792,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "azure-pipelines-release-workflow-probe-manifest.json",
         "provider-ci-quality-probe-manifest.json",
         "production-handoff-package-manifest.json",
+        "production-handoff-external-evidence-preflight-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )
@@ -1857,6 +1885,7 @@ $sourceManifests = @(
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json",
     "production-handoff-package-manifest.json",
+    "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"

@@ -170,6 +170,7 @@ $hardModeSourceManifestNames = @(
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json",
     "production-handoff-package-manifest.json",
+    "production-handoff-external-evidence-preflight-probe-manifest.json",
     "release-risk-policy-hard-mode-manifest.json"
 )
 

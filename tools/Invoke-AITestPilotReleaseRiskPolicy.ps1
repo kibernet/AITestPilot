@@ -187,6 +187,7 @@ $githubActionsProbeManifest = Read-PolicyJson "github-actions-release-workflow-p
 $azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow-probe-manifest.json" "Azure Pipelines workflow probe manifest"
 $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
 $productionHandoffPackageManifest = Read-PolicyJson "production-handoff-package-manifest.json" "Production handoff package manifest"
+$productionHandoffExternalEvidencePreflightProbeManifest = Read-PolicyJson "production-handoff-external-evidence-preflight-probe-manifest.json" "Production handoff external evidence preflight probe manifest"
 $productionHardModeFailureProbeManifest = Read-PolicyJson "production-hard-mode-failure-probe-manifest.json" "Production hard-mode failure probe manifest"
 
 $runReports = @()
@@ -642,6 +643,31 @@ Add-PolicyCheck "production_handoff_package_policy" $productionHandoffPackageAcc
     "Release evidence must include a production handoff package that consolidates driver, Lua, live-model, and CI host-project next steps without promoting fixture evidence." `
     "production_handoff_package_not_accepted"
 
+$productionHandoffExternalEvidencePreflightAccepted = (
+    $null -ne $productionHandoffExternalEvidencePreflightProbeManifest -and
+    $productionHandoffExternalEvidencePreflightProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_external_evidence_preflight_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedFixtureDirsGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightRunIntake" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightRequireAllEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightAllRequiredFilesPresent" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightMissingAreaCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightIntakeResultCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightFailedIntakeCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightIntakePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightRequiredFilesPassed" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_preflight_contract_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_external_evidence_preflight_policy" $productionHandoffExternalEvidencePreflightAccepted `
+    "Production handoff evidence must prove the generated external evidence preflight accepts complete host-project-shaped fixture evidence without promoting fixture data." `
+    "production_handoff_external_evidence_preflight_not_accepted"
+
 $productionHardModeFailureAccepted = (
     $null -ne $productionHardModeFailureProbeManifest -and
     $productionHardModeFailureProbeManifest.status -eq "PASS" -and
@@ -705,6 +731,7 @@ $sourceFiles = @(
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json",
     "production-handoff-package-manifest.json",
+    "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json"
 )
 
@@ -749,6 +776,7 @@ $manifest = [ordered]@{
     azurePipelinesAccepted = [bool]$azurePipelinesAccepted
     providerCiQualityAccepted = [bool]$providerCiQualityAccepted
     productionHandoffPackageAccepted = [bool]$productionHandoffPackageAccepted
+    productionHandoffExternalEvidencePreflightAccepted = [bool]$productionHandoffExternalEvidencePreflightAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
     riskPolicyCheckCount = [int]$riskPolicyChecks.Count
     passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
@@ -780,6 +808,7 @@ $reportLines = @(
     "- Live model smoke evidence contract accepted: $($manifest.liveModelSmokeEvidenceContractAccepted)",
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
     "- Production handoff package accepted: $($manifest.productionHandoffPackageAccepted)",
+    "- Production handoff external evidence preflight accepted: $($manifest.productionHandoffExternalEvidencePreflightAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",
