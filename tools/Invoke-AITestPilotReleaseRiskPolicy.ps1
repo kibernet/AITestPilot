@@ -192,6 +192,7 @@ $productionHandoffExportManifest = Read-PolicyJson "production-handoff-export-ma
 $productionHandoffStatusManifest = Read-PolicyJson "production-handoff-status-manifest.json" "Production handoff status manifest"
 $productionHandoffDispatchPlanManifest = Read-PolicyJson "production-handoff-dispatch-manifest.json" "Production handoff dispatch plan manifest"
 $productionHandoffContactReadinessManifest = Read-PolicyJson "production-handoff-contact-readiness-manifest.json" "Production handoff contact readiness manifest"
+$productionHandoffContactReadinessContractProbeManifest = Read-PolicyJson "production-handoff-contact-readiness-contract-probe-manifest.json" "Production handoff contact readiness contract probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -820,6 +821,38 @@ Add-PolicyCheck "production_handoff_contact_readiness_policy" $productionHandoff
     "Production handoff evidence must include a contact roster readiness report that keeps missing real owner email addresses explicit." `
     "production_handoff_contact_readiness_not_accepted"
 
+$productionHandoffContactReadinessContractAccepted = (
+    $null -ne $productionHandoffContactReadinessContractProbeManifest -and
+    $productionHandoffContactReadinessContractProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_contact_readiness_contract_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedFixtureContactRosterGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedFixtureContactRosterUnderProbeBundle" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "defaultPackageContactReadinessStillBlocked" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "defaultMissingOwnerContactCount" 0)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "ownerContactCount" -1)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "defaultAutomaticEmailSendReady" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedContactReadinessPassed" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedConfiguredOwnerContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedMissingOwnerContactCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedInvalidOwnerContactCount" -1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedContactRosterComplete" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedConfiguredContactsAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedRealOwnerEmailAddressesConfigured" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedAutomaticEmailSendReady" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "acceptedSendBoundaryPreserved" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_owner_contact_readiness_contract_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "checkCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessContractProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_contact_readiness_contract_policy" $productionHandoffContactReadinessContractAccepted `
+    "Production handoff evidence must prove a complete configured owner-contact roster can pass readiness without claiming emails were sent." `
+    "production_handoff_contact_readiness_contract_not_accepted"
+
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
     $productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -1008,6 +1041,7 @@ $sourceFiles = @(
     "production-handoff-status-manifest.json",
     "production-handoff-dispatch-manifest.json",
     "production-handoff-contact-readiness-manifest.json",
+    "production-handoff-contact-readiness-contract-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
@@ -1062,6 +1096,7 @@ $manifest = [ordered]@{
     productionHandoffDispatchPlanAccepted = [bool]$productionHandoffDispatchPlanAccepted
     productionHandoffPendingDispatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffDispatchPlanManifest "pendingDispatchCount" 0))
     productionHandoffContactReadinessAccepted = [bool]$productionHandoffContactReadinessAccepted
+    productionHandoffContactReadinessContractAccepted = [bool]$productionHandoffContactReadinessContractAccepted
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
     productionHandoffPendingOwnerPacketCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "pendingOwnerPacketCount" 0))
@@ -1107,6 +1142,7 @@ $reportLines = @(
     "- Production handoff dispatch plan accepted: $($manifest.productionHandoffDispatchPlanAccepted)",
     "- Production handoff pending dispatches: $($manifest.productionHandoffPendingDispatchCount)",
     "- Production handoff contact readiness accepted: $($manifest.productionHandoffContactReadinessAccepted)",
+    "- Production handoff contact readiness contract accepted: $($manifest.productionHandoffContactReadinessContractAccepted)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",
     "- Production handoff remaining blockers: $($manifest.productionHandoffRemainingBlockingReasonCount)",

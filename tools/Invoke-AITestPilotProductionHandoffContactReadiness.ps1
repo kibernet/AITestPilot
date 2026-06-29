@@ -107,6 +107,18 @@ function Format-MarkdownCell {
     return $text.Replace("`r", " ").Replace("`n", " ").Replace("|", "\|")
 }
 
+function Convert-ToEvidenceRelativePath {
+    param([string]$Path)
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Generated file must stay under evidence bundle: $fullPath"
+    }
+
+    $relativePath = $fullPath.Substring($evidenceBundlePath.Length).TrimStart([char[]]@("\", "/"))
+    return $relativePath.Replace("\", "/")
+}
+
 function Convert-ToSlug {
     param([string]$Value)
 
@@ -236,6 +248,18 @@ $ownerContactCount = [int]$contactStatuses.Count
 $contactRosterComplete = $ownerContactCount -gt 0 -and $configuredContactCount -eq $ownerContactCount
 $realOwnerEmailAddressesConfigured = [bool]$contactRosterComplete
 $automaticEmailSendReady = $false
+$defaultMissingContactsExplicit = $ownerContactCount -gt 0 -and
+    $missingContactCount -eq $ownerContactCount -and
+    $configuredContactCount -eq 0 -and
+    $invalidContactCount -eq 0 -and
+    -not $contactRosterComplete -and
+    -not $realOwnerEmailAddressesConfigured
+$configuredContactsAccepted = $ownerContactCount -gt 0 -and
+    $configuredContactCount -eq $ownerContactCount -and
+    $missingContactCount -eq 0 -and
+    $invalidContactCount -eq 0 -and
+    $contactRosterComplete -and
+    $realOwnerEmailAddressesConfigured
 $pendingDispatchCount = [int](Get-JsonValue $dispatchManifest "pendingDispatchCount" 0)
 $pendingExternalEvidenceFileCount = [int](Get-JsonValue $dispatchManifest "pendingExternalEvidenceFileCount" 0)
 $remainingBlockingReasonCount = [int](Get-JsonValue $handoffStatusManifest "remainingBlockingReasonCount" 0)
@@ -288,7 +312,7 @@ New-Item -ItemType Directory -Force (Split-Path $reportFullPath -Parent) | Out-N
 $reportText | Set-Content -Path $reportFullPath -Encoding UTF8
 
 $reportContentValidated = $reportText.Contains("AI TestPilot Production Handoff Contact Readiness") -and
-    $reportText.Contains("MISSING_OWNER_EMAIL") -and
+    ($reportText.Contains("MISSING_OWNER_EMAIL") -or $reportText.Contains("CONTACT_CONFIGURED")) -and
     $reportText.Contains("Automatic dispatch stays blocked") -and
     -not $reportText.Contains("System.Collections") -and
     -not $reportText.Contains("@{")
@@ -303,12 +327,12 @@ Add-ContactCheck "contact_roster_generated" `
 Add-ContactCheck "owner_contact_mapping" `
     ($mappedOwnerContactCount -eq $ownerContactCount -and $ownerContactCount -eq [int](Get-JsonValue $ownerPacketIndex "ownerPacketCount" -1)) `
     "Every owner packet must have one contact roster entry."
-Add-ContactCheck "missing_contacts_explicit" `
-    ($missingContactCount -eq $ownerContactCount -and $configuredContactCount -eq 0 -and $invalidContactCount -eq 0) `
-    "Default package-release evidence must explicitly show all real owner email addresses are missing."
+Add-ContactCheck "contact_state_consistent" `
+    ($defaultMissingContactsExplicit -or $configuredContactsAccepted) `
+    "Contact roster must be internally consistent for either the default missing-contact state or a fully configured roster."
 Add-ContactCheck "send_boundary_preserved" `
-    (-not $automaticEmailSendReady -and -not $realOwnerEmailAddressesConfigured -and $pendingDispatchCount -eq $ownerContactCount) `
-    "Automatic owner email send must stay blocked until real contacts are configured."
+    (-not $automaticEmailSendReady -and $pendingDispatchCount -eq $ownerContactCount -and ($defaultMissingContactsExplicit -or $configuredContactsAccepted)) `
+    "Automatic owner email send must stay blocked until a separate send step proves real contacts and mail authorization."
 Add-ContactCheck "fixture_boundary_preserved" `
     (-not [bool](Get-JsonValue $handoffStatusManifest "realHostProjectEvidenceAccepted" $true) -and -not [bool](Get-JsonValue $handoffStatusManifest "fixtureEvidencePromoted" $true)) `
     "Contact readiness must not promote fixture evidence as real host-project evidence."
@@ -320,9 +344,9 @@ $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
 
 $generatedFiles = @(
-    "production-handoff-contact-readiness-manifest.json",
-    "production-handoff-contact-readiness.md",
-    "production-handoff-contact-roster.json"
+    (Convert-ToEvidenceRelativePath $manifestFullPath),
+    (Convert-ToEvidenceRelativePath $reportFullPath),
+    (Convert-ToEvidenceRelativePath $contactRosterFullPath)
 )
 $sourceFiles = @(
     "production-handoff-dispatch-manifest.json",
@@ -347,6 +371,8 @@ $manifest = [ordered]@{
     missingOwnerContactCount = [int]$missingContactCount
     invalidOwnerContactCount = [int]$invalidContactCount
     contactRosterComplete = [bool]$contactRosterComplete
+    defaultMissingContactsExplicit = [bool]$defaultMissingContactsExplicit
+    configuredContactsAccepted = [bool]$configuredContactsAccepted
     realOwnerEmailAddressesConfigured = [bool]$realOwnerEmailAddressesConfigured
     automaticEmailSendReady = [bool]$automaticEmailSendReady
     pendingDispatchCount = [int]$pendingDispatchCount

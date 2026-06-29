@@ -108,6 +108,7 @@ try {
         "tools\Invoke-AITestPilotProductionExternalEvidenceInboxContractProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffDispatchPlan.ps1",
         "tools\Invoke-AITestPilotProductionHandoffContactReadiness.ps1",
+        "tools\Invoke-AITestPilotProductionHandoffContactReadinessContractProbe.ps1",
         "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1",
         "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1",
         "tools\Invoke-AITestPilotReplayDriverFailureProbe.ps1",
