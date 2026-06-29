@@ -4,7 +4,7 @@ param(
     [string]$OutputDir,
     [string]$ManifestPath,
     [string]$CursorAgentCommand = "cursor-agent",
-    [string]$CursorAgentModel = "gpt-5.3-codex-low-fast"
+    [string]$CursorAgentModel = ""
 )
 
 Set-StrictMode -Version Latest
@@ -132,20 +132,60 @@ After writing files, respond with a concise confirmation and the exact files wri
 "@
 
 $previousErrorActionPreference = $ErrorActionPreference
-try {
-    $ErrorActionPreference = "Continue"
-    $cursorAgentOutput = @(& $CursorAgentCommand `
-        --print `
-        --trust `
-        --force `
-        --model $CursorAgentModel `
-        --workspace $repoRoot `
-        $prompt 2>&1)
-    $cursorAgentExitCode = $LASTEXITCODE
+function Invoke-CursorAgentPrint {
+    param(
+        [string]$Model
+    )
+
+    $arguments = @(
+        "--print",
+        "--trust",
+        "--force"
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($Model)) {
+        $arguments += @("--model", $Model)
+    }
+
+    $arguments += @(
+        "--workspace",
+        $repoRoot,
+        $prompt
+    )
+
+    try {
+        $script:ErrorActionPreference = "Continue"
+        $script:cursorAgentOutput = @(& $CursorAgentCommand @arguments 2>&1)
+        $script:cursorAgentExitCode = $LASTEXITCODE
+    }
+    finally {
+        $script:ErrorActionPreference = $previousErrorActionPreference
+    }
 }
-finally {
-    $ErrorActionPreference = $previousErrorActionPreference
+
+$cursorAgentRequestedModel = $CursorAgentModel
+$cursorAgentModelUsed = $CursorAgentModel
+$cursorAgentRetriedWithoutModel = $false
+$cursorAgentOutput = @()
+$cursorAgentExitCode = 1
+
+Invoke-CursorAgentPrint -Model $CursorAgentModel
+
+if ($cursorAgentExitCode -ne 0 -and
+    -not [string]::IsNullOrWhiteSpace($CursorAgentModel) -and
+    (@($cursorAgentOutput) -join "`n") -match "Cannot use this model") {
+    $firstAttemptOutput = @($cursorAgentOutput)
+    $cursorAgentRetriedWithoutModel = $true
+    $cursorAgentModelUsed = ""
+    Invoke-CursorAgentPrint -Model ""
+    $cursorAgentOutput = @(
+        "First Cursor Agent attempt failed with requested model: $CursorAgentModel",
+        "--- first attempt output ---"
+    ) + $firstAttemptOutput + @(
+        "--- retry without --model output ---"
+    ) + @($cursorAgentOutput)
 }
+
 $cursorAgentOutput | Set-Content -Path $cursorAgentLogPath -Encoding UTF8
 
 if ($cursorAgentExitCode -ne 0) {
@@ -245,7 +285,9 @@ $manifest = [ordered]@{
     source = "headless_cursor_agent"
     fixtureGenerated = $false
     cursorAgentCommand = $CursorAgentCommand
-    cursorAgentModel = $CursorAgentModel
+    cursorAgentRequestedModel = $cursorAgentRequestedModel
+    cursorAgentModel = $cursorAgentModelUsed
+    cursorAgentRetriedWithoutModel = [bool]$cursorAgentRetriedWithoutModel
     cursorAgentExitCode = [int]$cursorAgentExitCode
     outputDirectory = $outputPath
     taskId = $taskId

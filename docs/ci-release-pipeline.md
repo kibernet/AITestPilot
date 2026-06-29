@@ -51,6 +51,7 @@ The default pipeline remains deterministic and uses the acceptance fixture. To r
 ```
 
 That optional mode inserts a `repair_agent_cursor_agent_external_task_output` step before acceptance, writes `repair-agent-cursor-agent-external-output-manifest.json`, and then passes `Temp\release-evidence\cursor-agent-external-output` into the same main worktree apply/retest/rollback acceptance path. The release gate validates the Cursor Agent manifest when it is present.
+By default the wrapper does not pass `--model`, so the authenticated Cursor Agent account can use its current default model. If `-CursorAgentModel` is provided and the CLI rejects that model, the wrapper retries once without `--model` and records `cursorAgentRetriedWithoutModel=true` in the manifest.
 
 ## Exit Code Contract
 

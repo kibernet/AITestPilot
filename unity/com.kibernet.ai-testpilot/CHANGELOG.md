@@ -45,3 +45,4 @@
 - Added production-bound replay driver failure-probe evidence plus release-pipeline/release-gate switches for CI that must require real project driver binding.
 - Accepted Markdown-escaped backslashes when validating external repair-agent retest commands.
 - Added production replay integration contract-probe evidence for `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states.
+- Made the headless Cursor Agent wrapper tolerate unavailable explicit model names by retrying with the account default model.

@@ -6,7 +6,7 @@ param(
     [string]$ArtifactDir,
     [string]$ReleaseGateFailureProbeDir,
     [string]$CursorAgentOutputDir,
-    [string]$CursorAgentModel = "gpt-5.3-codex-low-fast",
+    [string]$CursorAgentModel = "",
     [switch]$UseCursorAgentExternalTaskOutput,
     [switch]$RequireProductionReplayDriverBound,
     [switch]$RequireLiveModelEndpointSmoke,
