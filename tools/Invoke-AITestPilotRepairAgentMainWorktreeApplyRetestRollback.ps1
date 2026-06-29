@@ -306,7 +306,12 @@ try {
     Copy-Item -LiteralPath $preflightManifestPath -Destination $preflightTarget -Force
     Copy-Item -LiteralPath $patchPath -Destination $patchTarget -Force
     Copy-Item -LiteralPath $validationLogPath -Destination $validationLogTarget -Force
-    $sourceStatusAfterRollback | Set-Content -Path $worktreeAfterRollbackTarget -Encoding UTF8
+    if ($sourceStatusAfterRollback.Count -eq 0) {
+        @("(clean)") | Set-Content -Path $worktreeAfterRollbackTarget -Encoding UTF8
+    }
+    else {
+        $sourceStatusAfterRollback | Set-Content -Path $worktreeAfterRollbackTarget -Encoding UTF8
+    }
 
     $files = @(
         "repair-agent-main-worktree-apply-retest-rollback-guard-manifest.json",
