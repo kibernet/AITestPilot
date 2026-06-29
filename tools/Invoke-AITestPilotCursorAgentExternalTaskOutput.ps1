@@ -101,6 +101,7 @@ $cursorAgentLogPath = Join-Path $outputPath "cursor-agent-output.log"
 $externalRunPath = Join-Path $outputPath "repair-agent-run.json"
 $externalPatchPath = Join-Path $outputPath "repair-agent.patch"
 $externalSummaryPath = Join-Path $outputPath "repair-agent-summary.md"
+$contractCheckPath = Join-Path (Split-Path $outputPath -Parent) "cursor-agent-output-contract-check"
 
 $prompt = @"
 You are acting as the external Cursor repair agent for the AI TestPilot repo.
@@ -217,6 +218,57 @@ function Test-CursorAgentRequiredOutputsPresent {
     return $true
 }
 
+function Test-TextContainsLiteralOrMarkdownEscaped {
+    param(
+        [string]$Text,
+        [string]$Value
+    )
+
+    if ($Text -match [regex]::Escape($Value)) {
+        return $true
+    }
+
+    $markdownEscapedValue = $Value.Replace("\", "\\")
+    return $Text -match [regex]::Escape($markdownEscapedValue)
+}
+
+function Test-CursorAgentPatchAppliesWithRequiredContext {
+    if (-not (Test-Path $externalPatchPath)) {
+        return $false
+    }
+
+    if (Test-Path $contractCheckPath) {
+        Remove-Item -LiteralPath $contractCheckPath -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Force $contractCheckPath | Out-Null
+    & git -C $contractCheckPath init -q *> $null
+    if ($LASTEXITCODE -ne 0) {
+        return $false
+    }
+
+    & git -C $contractCheckPath apply --check $externalPatchPath *> $null
+    if ($LASTEXITCODE -ne 0) {
+        return $false
+    }
+
+    & git -C $contractCheckPath apply $externalPatchPath *> $null
+    if ($LASTEXITCODE -ne 0) {
+        return $false
+    }
+
+    $probeFile = Join-Path $contractCheckPath "docs\repair-agent-main-worktree-apply-probe.md"
+    if (-not (Test-Path $probeFile)) {
+        return $false
+    }
+
+    $probeText = Get-Content -Path $probeFile -Raw
+    return ($probeText -match [regex]::Escape($taskId)) -and
+        ($probeText -match [regex]::Escape($bugId)) -and
+        ($probeText -match [regex]::Escape($suggestedFix)) -and
+        (Test-TextContainsLiteralOrMarkdownEscaped -Text $probeText -Value $retestCommand)
+}
+
 $cursorAgentRequestedModel = $CursorAgentModel
 $cursorAgentModelUsed = $CursorAgentModel
 $cursorAgentRetriedWithoutModel = $false
@@ -225,6 +277,7 @@ $cursorAgentExitCode = 1
 $cursorAgentAttemptCount = 0
 $cursorAgentTransientRetryCount = 0
 $cursorAgentOutputContractRetryCount = 0
+$cursorAgentPatchApplyContractPassed = $false
 $cursorAgentOutputLog = @()
 
 while ($cursorAgentAttemptCount -lt $CursorAgentMaxAttempts) {
@@ -237,11 +290,19 @@ while ($cursorAgentAttemptCount -lt $CursorAgentMaxAttempts) {
     ) + $attemptOutput
 
     if ($cursorAgentExitCode -eq 0) {
-        if (Test-CursorAgentRequiredOutputsPresent) {
+        if ((Test-CursorAgentRequiredOutputsPresent) -and
+            (Test-CursorAgentPatchAppliesWithRequiredContext)) {
+            $cursorAgentPatchApplyContractPassed = $true
             break
         }
 
-        $cursorAgentOutputLog += "Cursor Agent attempt $cursorAgentAttemptCount exited 0 but did not produce the required three-file output contract."
+        if (Test-CursorAgentRequiredOutputsPresent) {
+            $cursorAgentOutputLog += "Cursor Agent attempt $cursorAgentAttemptCount exited 0 and produced files, but the patch did not apply with the required task context."
+        }
+        else {
+            $cursorAgentOutputLog += "Cursor Agent attempt $cursorAgentAttemptCount exited 0 but did not produce the required three-file output contract."
+        }
+
         if ($cursorAgentAttemptCount -lt $CursorAgentMaxAttempts) {
             $cursorAgentOutputContractRetryCount++
             Start-Sleep -Seconds $CursorAgentRetryDelaySeconds
@@ -280,6 +341,10 @@ foreach ($requiredOutput in @($externalRunPath, $externalPatchPath, $externalSum
     if (-not (Test-Path $requiredOutput)) {
         throw "Cursor Agent did not produce required output: $requiredOutput"
     }
+}
+
+if (-not $cursorAgentPatchApplyContractPassed) {
+    throw "Cursor Agent output patch did not apply with the required repair task context."
 }
 
 $externalRun = Get-Content -Raw $externalRunPath | ConvertFrom-Json
@@ -377,6 +442,7 @@ $manifest = [ordered]@{
     cursorAgentOutputContractRetryCount = [int]$cursorAgentOutputContractRetryCount
     cursorAgentMaxAttempts = [int]$CursorAgentMaxAttempts
     cursorAgentExitCode = [int]$cursorAgentExitCode
+    cursorAgentPatchApplyContractPassed = [bool]$cursorAgentPatchApplyContractPassed
     outputDirectory = $outputPath
     taskId = $taskId
     bugId = $bugId
