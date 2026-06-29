@@ -35,6 +35,7 @@
 - Added main worktree apply-readiness evidence for dirty-baseline blockers and clean-baseline readiness.
 - Added task-bound main worktree apply/retest/rollback evidence for the explicit external-agent guarded path.
 - Added external repair-agent task output directory intake acceptance for the main worktree apply/retest/rollback path.
+- Added optional headless Cursor Agent external output generation with import/preflight evidence before main worktree acceptance.
 - Added external repair-agent patch safety preflight evidence and an unsafe path-traversal failure probe.
 - Added repository patch apply guard evidence for explicit apply switch, clean-worktree requirement, external-source requirement, and rollback/no-mutation proof.
 - Added clean temporary repository apply/rollback probe evidence for external-agent patch output.

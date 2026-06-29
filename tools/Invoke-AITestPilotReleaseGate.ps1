@@ -69,6 +69,26 @@ function Read-Manifest {
     }
 }
 
+function Read-OptionalManifest {
+    param(
+        [string]$FileName
+    )
+
+    $path = Join-Path $EvidenceBundleDir $FileName
+    if (-not (Test-Path $path)) {
+        return $null
+    }
+
+    try {
+        Add-ReleaseCheck "file:$FileName" $true "Optional manifest exists."
+        return Get-Content -Raw $path | ConvertFrom-Json
+    }
+    catch {
+        Add-ReleaseCheck "file:$FileName" $false ("Optional manifest could not be parsed: " + $_.Exception.Message)
+        return $null
+    }
+}
+
 function Test-ContainsAll {
     param(
         [object[]]$Actual,
@@ -112,6 +132,7 @@ $repairAgentGenericPatchImportProbeManifest = Read-Manifest "repair-agent-generi
 $repairAgentSourceSnapshotApplyValidateManifest = Read-Manifest "repair-agent-source-snapshot-apply-validate-manifest.json"
 $repairAgentMainWorktreeApplyReadinessManifest = Read-Manifest "repair-agent-main-worktree-apply-readiness-manifest.json"
 $repairAgentMainWorktreeApplyRetestRollbackManifest = Read-Manifest "repair-agent-main-worktree-apply-retest-rollback-manifest.json"
+$repairAgentCursorAgentExternalOutputManifest = Read-OptionalManifest "repair-agent-cursor-agent-external-output-manifest.json"
 $repairAgentExternalTaskOutputAcceptanceManifest = Read-Manifest "repair-agent-external-task-output-acceptance-manifest.json"
 $repairAgentExternalPatchPreflightManifest = Read-Manifest "repair-agent-external-patch-preflight-manifest.json"
 $repairAgentExternalPatchPreflightFailureProbeManifest = Read-Manifest "repair-agent-external-patch-preflight-failure-probe-manifest.json"
@@ -408,6 +429,42 @@ if ($null -ne $repairAgentMainWorktreeApplyRetestRollbackManifest) {
         "Repair-agent main worktree apply/retest/rollback must prove task-bound explicit verified external-directory patch application to the real main worktree, post-apply validation/retest before rollback, and clean rollback with no persistent patch."
 
     Test-ListedFiles $repairAgentMainWorktreeApplyRetestRollbackManifest "repair_agent_main_worktree_apply_retest_rollback"
+}
+
+if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
+    $cursorAgentOutputTaskBindingPassed = -not [string]::IsNullOrWhiteSpace($repairAgentCursorAgentExternalOutputManifest.taskId) -and
+        -not [string]::IsNullOrWhiteSpace($repairAgentCursorAgentExternalOutputManifest.bugId) -and
+        -not [string]::IsNullOrWhiteSpace($repairAgentCursorAgentExternalOutputManifest.suggestedFix) -and
+        [bool]$repairAgentCursorAgentExternalOutputManifest.patchMentionsTaskId -and
+        [bool]$repairAgentCursorAgentExternalOutputManifest.patchMentionsBugId -and
+        [bool]$repairAgentCursorAgentExternalOutputManifest.patchMentionsSuggestedFix -and
+        [bool]$repairAgentCursorAgentExternalOutputManifest.summaryContainsTaskId -and
+        [bool]$repairAgentCursorAgentExternalOutputManifest.summaryContainsBugId -and
+        [bool]$repairAgentCursorAgentExternalOutputManifest.summaryContainsSuggestedFix
+
+    Add-ReleaseCheck "repair_agent_cursor_agent_external_task_output" `
+        ($repairAgentCursorAgentExternalOutputManifest.status -eq "PASS" -and
+            $repairAgentCursorAgentExternalOutputManifest.schemaVersion -eq "aitestpilot.repair_agent_cursor_agent_external_output.v1" -and
+            $repairAgentCursorAgentExternalOutputManifest.source -eq "headless_cursor_agent" -and
+            -not [bool]$repairAgentCursorAgentExternalOutputManifest.fixtureGenerated -and
+            [int]$repairAgentCursorAgentExternalOutputManifest.cursorAgentExitCode -eq 0 -and
+            $repairAgentCursorAgentExternalOutputManifest.repairAgentRunStatus -eq "EXTERNAL_AGENT_COMPLETED" -and
+            [bool]$repairAgentCursorAgentExternalOutputManifest.repairAgentRunAgentLaunched -and
+            $repairAgentCursorAgentExternalOutputManifest.repairAgentPatchOutputStatus -eq "PRODUCED" -and
+            [int]$repairAgentCursorAgentExternalOutputManifest.repairAgentPatchOutputCount -ge 2 -and
+            [int]$repairAgentCursorAgentExternalOutputManifest.producedRequiredPatchOutputCount -eq [int]$repairAgentCursorAgentExternalOutputManifest.requiredPatchOutputCount -and
+            $repairAgentCursorAgentExternalOutputManifest.patchOutputImportStatus -eq "PASS" -and
+            $repairAgentCursorAgentExternalOutputManifest.patchOutputSource -eq "external_agent" -and
+            [bool]$repairAgentCursorAgentExternalOutputManifest.externalAgentCompletionVerified -and
+            $repairAgentCursorAgentExternalOutputManifest.preflightStatus -eq "PASS" -and
+            [bool]$repairAgentCursorAgentExternalOutputManifest.preflightSafeToInspect -and
+            [bool]$repairAgentCursorAgentExternalOutputManifest.preflightRepositoryApplyAllowed -and
+            [int]$repairAgentCursorAgentExternalOutputManifest.preflightUnsafePathCount -eq 0 -and
+            $cursorAgentOutputTaskBindingPassed -and
+            -not [bool]$repairAgentCursorAgentExternalOutputManifest.mainRepositoryPatchApplied) `
+        "Cursor Agent external task output must prove a headless non-fixture external package with import/preflight evidence and no repository mutation."
+
+    Test-ListedFiles $repairAgentCursorAgentExternalOutputManifest "repair_agent_cursor_agent_external_task_output"
 }
 
 if ($null -ne $repairAgentExternalTaskOutputAcceptanceManifest) {
@@ -907,6 +964,34 @@ if ($allowRelease) {
 else {
     $gateStatus = "BLOCKED"
 }
+$sourceManifests = @(
+    "manifest.json",
+    "repair-agent-patch-output-manifest.json",
+    "repair-agent-external-completion-failure-probe-manifest.json",
+    "repair-agent-generic-patch-import-probe-manifest.json",
+    "repair-agent-source-snapshot-apply-validate-manifest.json",
+    "repair-agent-main-worktree-apply-readiness-manifest.json",
+    "repair-agent-main-worktree-apply-retest-rollback-manifest.json",
+    "repair-agent-external-task-output-acceptance-manifest.json",
+    "repair-agent-external-patch-preflight-manifest.json",
+    "repair-agent-external-patch-preflight-failure-probe-manifest.json",
+    "repair-agent-repository-patch-apply-guard-manifest.json",
+    "repair-agent-repository-patch-apply-clean-probe-manifest.json",
+    "repair-agent-repository-patch-apply-clean-retest-manifest.json",
+    "repair-agent-patch-apply-retest-manifest.json",
+    "repair-retest-manifest.json",
+    "repair-driver-failure-manifest.json",
+    "replay-profile-import-manifest.json",
+    "model-endpoint-trace-manifest.json",
+    "model-endpoint-provider-diagnostics-manifest.json",
+    "live-model-endpoint-failure-probe-manifest.json",
+    "live-model-endpoint-smoke-manifest.json"
+)
+
+if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
+    $sourceManifests += "repair-agent-cursor-agent-external-output-manifest.json"
+}
+
 $manifest = [ordered]@{
     status = $gateStatus
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
@@ -915,29 +1000,7 @@ $manifest = [ordered]@{
     failedReasonCount = $failedReasons.Count
     failedReasons = @($failedReasons)
     checks = @($checks)
-    sourceManifests = @(
-        "manifest.json",
-        "repair-agent-patch-output-manifest.json",
-        "repair-agent-external-completion-failure-probe-manifest.json",
-        "repair-agent-generic-patch-import-probe-manifest.json",
-        "repair-agent-source-snapshot-apply-validate-manifest.json",
-        "repair-agent-main-worktree-apply-readiness-manifest.json",
-        "repair-agent-main-worktree-apply-retest-rollback-manifest.json",
-        "repair-agent-external-task-output-acceptance-manifest.json",
-        "repair-agent-external-patch-preflight-manifest.json",
-        "repair-agent-external-patch-preflight-failure-probe-manifest.json",
-        "repair-agent-repository-patch-apply-guard-manifest.json",
-        "repair-agent-repository-patch-apply-clean-probe-manifest.json",
-        "repair-agent-repository-patch-apply-clean-retest-manifest.json",
-        "repair-agent-patch-apply-retest-manifest.json",
-        "repair-retest-manifest.json",
-        "repair-driver-failure-manifest.json",
-        "replay-profile-import-manifest.json",
-        "model-endpoint-trace-manifest.json",
-        "model-endpoint-provider-diagnostics-manifest.json",
-        "live-model-endpoint-failure-probe-manifest.json",
-        "live-model-endpoint-smoke-manifest.json"
-    )
+    sourceManifests = @($sourceManifests)
 }
 
 New-Item -ItemType Directory -Force (Split-Path $ReleaseGateManifestPath -Parent) | Out-Null

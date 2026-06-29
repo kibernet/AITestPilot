@@ -5,6 +5,9 @@ param(
     [string]$EvidenceBundleDir,
     [string]$ArtifactDir,
     [string]$ReleaseGateFailureProbeDir,
+    [string]$CursorAgentOutputDir,
+    [string]$CursorAgentModel = "gpt-5.3-codex-low-fast",
+    [switch]$UseCursorAgentExternalTaskOutput,
     [switch]$RequireLiveModelEndpointSmoke,
     [switch]$AllowMissingModelApiKey,
     [switch]$DisableLiveModelEndpointFailurePolicyRetry,
@@ -27,6 +30,10 @@ if ([string]::IsNullOrWhiteSpace($ArtifactDir)) {
 
 if ([string]::IsNullOrWhiteSpace($ReleaseGateFailureProbeDir)) {
     $ReleaseGateFailureProbeDir = Join-Path $repoRoot "Temp\release-evidence\release-gate-failure-probe"
+}
+
+if ([string]::IsNullOrWhiteSpace($CursorAgentOutputDir)) {
+    $CursorAgentOutputDir = Join-Path $repoRoot "Temp\release-evidence\cursor-agent-external-output"
 }
 
 $steps = @()
@@ -169,11 +176,29 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    if ($UseCursorAgentExternalTaskOutput) {
+        Invoke-PipelineStep "repair_agent_cursor_agent_external_task_output" {
+            & (Join-Path $repoRoot "tools\Invoke-AITestPilotCursorAgentExternalTaskOutput.ps1") `
+                -EvidenceBundleDir $EvidenceBundleDir `
+                -OutputDir $CursorAgentOutputDir `
+                -CursorAgentModel $CursorAgentModel
+        }
+    }
+
     Invoke-PipelineStep "repair_agent_external_task_output_acceptance" {
-        & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1") `
-            -UnityPath $UnityPath `
-            -GameReplayDriverType $GameReplayDriverType `
-            -EvidenceBundleDir $EvidenceBundleDir
+        if ($UseCursorAgentExternalTaskOutput) {
+            & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1") `
+                -UnityPath $UnityPath `
+                -GameReplayDriverType $GameReplayDriverType `
+                -EvidenceBundleDir $EvidenceBundleDir `
+                -ExternalOutputDir $CursorAgentOutputDir
+        }
+        else {
+            & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1") `
+                -UnityPath $UnityPath `
+                -GameReplayDriverType $GameReplayDriverType `
+                -EvidenceBundleDir $EvidenceBundleDir
+        }
     }
 
     Invoke-PipelineStep "repair_agent_external_patch_preflight" {

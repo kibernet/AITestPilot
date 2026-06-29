@@ -39,6 +39,16 @@ By default, the pipeline copies the latest evidence bundle to:
 
 That directory includes `pipeline-manifest.json`, release gate manifests, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, model endpoint request/response/trace evidence, provider diagnostics, live endpoint failure-classification evidence, optional live model smoke evidence, and Unity logs.
 
+## Cursor Agent Output
+
+The default pipeline remains deterministic and uses the acceptance fixture. To replace that fixture with a real headless Cursor Agent output directory on a machine where `cursor-agent` is authenticated:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePipeline.ps1 -UseCursorAgentExternalTaskOutput
+```
+
+That optional mode inserts a `repair_agent_cursor_agent_external_task_output` step before acceptance, writes `repair-agent-cursor-agent-external-output-manifest.json`, and then passes `Temp\release-evidence\cursor-agent-external-output` into the same main worktree apply/retest/rollback acceptance path. The release gate validates the Cursor Agent manifest when it is present.
+
 ## Exit Code Contract
 
 - exit code `0`: every step passed and the release gate allowed release.

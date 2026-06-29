@@ -22,6 +22,7 @@
 - Main worktree apply-readiness evidence for dirty-baseline blockers and clean-baseline readiness.
 - Task-bound main worktree apply/retest/rollback evidence for the explicit external-agent guarded path.
 - External repair-agent task output directory intake acceptance for the main worktree apply/retest/rollback path.
+- Optional headless Cursor Agent external output generation for replacing the acceptance fixture on authenticated developer machines.
 - External repair-agent patch safety preflight with target-path policy and negative path-traversal probe.
 - Repository patch apply guard with explicit apply switch, clean-worktree requirement, and rollback/no-mutation evidence.
 - Clean temporary repository apply/rollback probe for external-agent patch output.
@@ -63,8 +64,8 @@
 
 ## V0.4 Retest and Repair Loop
 
-- Replace the acceptance fixture with actual patch outputs from a completed real repair-agent run.
-- Run a real external repair-agent patch against the main product worktree, generate rollback evidence, and re-run the captured steps after a code or prefab change.
+- Replace the sample-domain patch target with actual production code or prefab changes from a completed real repair-agent run.
+- Run a real external repair-agent patch against the main product worktree, generate rollback evidence, and re-run the captured steps after a production code or prefab change.
 
 ## V0.5 Knowledge Graph Persistence
 
