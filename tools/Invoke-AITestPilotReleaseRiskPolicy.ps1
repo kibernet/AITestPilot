@@ -203,6 +203,7 @@ $productionHandoffSendDryRunProbeManifest = Read-PolicyJson "production-handoff-
 $productionHandoffOwnerResponseBundleProbeManifest = Read-PolicyJson "production-handoff-owner-response-bundle-probe-manifest.json" "Production handoff owner response bundle probe manifest"
 $productionHandoffOwnerResponseBundleKitManifest = Read-PolicyJson "production-handoff-owner-response-bundle-kit-manifest.json" "Production handoff owner response bundle kit manifest"
 $releaseProgressNotificationOutboxManifest = Read-PolicyJson "release-progress-notification-outbox-manifest.json" "Release progress notification outbox manifest"
+$releaseProgressNotificationRemainingWorkSnapshotProbeManifest = Read-PolicyJson "release-progress-notification-remaining-work-snapshot-probe-manifest.json" "Release progress notification remaining-work snapshot probe manifest"
 $productionHandoffMailHelperAuthStatusProbeManifest = Read-PolicyJson "production-handoff-mail-helper-auth-status-probe-manifest.json" "Production handoff mail helper auth-status probe manifest"
 $releaseProgressNotificationConfirmationProbeManifest = Read-PolicyJson "release-progress-notification-confirmation-probe-manifest.json" "Release progress notification confirmation probe manifest"
 $releaseProgressNotificationReceiptProbeManifest = Read-PolicyJson "release-progress-notification-receipt-probe-manifest.json" "Release progress notification receipt probe manifest"
@@ -1332,6 +1333,38 @@ Add-PolicyCheck "release_progress_notification_outbox_policy" $releaseProgressNo
     "Release evidence must include a pending big-node progress notification outbox for the requested recipient while preserving local mail-auth and two-stage confirmation boundaries." `
     "release_progress_notification_outbox_not_accepted"
 
+$releaseProgressNotificationRemainingWorkSnapshotProbeAccepted = (
+    $null -ne $releaseProgressNotificationRemainingWorkSnapshotProbeManifest -and
+    $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_remaining_work_snapshot_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "snapshotSchemaVersionAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "snapshotContentValidated" $false)) -and
+    (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "notificationDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingBlockingReasonCount" 0)) -eq
+        (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingBlockingReasonCount" 0)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingMissingFileCount" 0)) -eq
+        (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingMissingFileCount" 0)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "localProgressMailRemainingActionCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "trackedRemainingWorkItemCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "productionDriverBlockingReasonCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "productionLuaBlockingReasonCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "liveModelSmokeBlockingReasonCount" 0)) -eq 1 -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "confirmationTokenCreated" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "productionOutputBoundary" "") -eq "progress_notification_remaining_work_snapshot_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "release_progress_notification_remaining_work_snapshot_probe_policy" $releaseProgressNotificationRemainingWorkSnapshotProbeAccepted `
+    "Release evidence must independently verify the remaining-work snapshot used by the progress notification outbox." `
+    "release_progress_notification_remaining_work_snapshot_probe_not_accepted"
+
 $productionHandoffMailHelperAuthStatusProbeAccepted = (
     $null -ne $productionHandoffMailHelperAuthStatusProbeManifest -and
     $productionHandoffMailHelperAuthStatusProbeManifest.status -eq "PASS" -and
@@ -1752,6 +1785,7 @@ $sourceFiles = @(
     "production-handoff-owner-response-bundle-probe-manifest.json",
     "production-handoff-owner-response-bundle-kit-manifest.json",
     "release-progress-notification-outbox-manifest.json",
+    "release-progress-notification-remaining-work-snapshot-probe-manifest.json",
     "production-handoff-mail-helper-auth-status-probe-manifest.json",
     "release-progress-notification-confirmation-probe-manifest.json",
     "release-progress-notification-receipt-probe-manifest.json",
@@ -1848,6 +1882,11 @@ $manifest = [ordered]@{
     releaseProgressNotificationExternalRemainingMissingFileCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingMissingFileCount" 0))
     releaseProgressNotificationLocalProgressMailRemainingActionCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "localProgressMailRemainingActionCount" 0))
     releaseProgressNotificationTrackedRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "trackedRemainingWorkItemCount" 0))
+    releaseProgressNotificationRemainingWorkSnapshotProbeAccepted = [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeAccepted
+    releaseProgressNotificationRemainingWorkSnapshotProbeExternalWorkItemCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingWorkItemCount" 0))
+    releaseProgressNotificationRemainingWorkSnapshotProbeExternalBlockingReasonCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingBlockingReasonCount" 0))
+    releaseProgressNotificationRemainingWorkSnapshotProbeExternalMissingFileCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingMissingFileCount" 0))
+    releaseProgressNotificationRemainingWorkSnapshotProbeTrackedRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "trackedRemainingWorkItemCount" 0))
     productionHandoffMailHelperAuthStatusProbeAccepted = [bool]$productionHandoffMailHelperAuthStatusProbeAccepted
     productionHandoffMailHelperOwnerBoundaryPassed = (Get-JsonValue $productionHandoffMailHelperAuthStatusProbeManifest "ownerPacketHelperAuthBoundaryPassed" $false)
     productionHandoffMailHelperProgressBoundaryPassed = (Get-JsonValue $productionHandoffMailHelperAuthStatusProbeManifest "progressNotificationHelperAuthBoundaryPassed" $false)
@@ -1955,6 +1994,11 @@ $reportLines = @(
     "- Release progress notification external missing files: $($manifest.releaseProgressNotificationExternalRemainingMissingFileCount)",
     "- Release progress notification local mail remaining actions: $($manifest.releaseProgressNotificationLocalProgressMailRemainingActionCount)",
     "- Release progress notification tracked remaining work items: $($manifest.releaseProgressNotificationTrackedRemainingWorkItemCount)",
+    "- Release progress notification remaining-work snapshot probe accepted: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeAccepted)",
+    "- Release progress notification snapshot probe external work items: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalWorkItemCount)",
+    "- Release progress notification snapshot probe external blockers: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalBlockingReasonCount)",
+    "- Release progress notification snapshot probe external missing files: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalMissingFileCount)",
+    "- Release progress notification snapshot probe tracked remaining work items: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeTrackedRemainingWorkItemCount)",
     "- Production handoff mail helper auth-status probe accepted: $($manifest.productionHandoffMailHelperAuthStatusProbeAccepted)",
     "- Production handoff owner packet helper auth boundary: $($manifest.productionHandoffMailHelperOwnerBoundaryPassed)",
     "- Production handoff progress notification helper auth boundary: $($manifest.productionHandoffMailHelperProgressBoundaryPassed)",

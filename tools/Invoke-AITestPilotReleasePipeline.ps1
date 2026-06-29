@@ -525,6 +525,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "release_progress_notification_remaining_work_snapshot_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseProgressNotificationRemainingWorkSnapshotProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_handoff_mail_helper_auth_status_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffMailHelperAuthStatusProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

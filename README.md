@@ -358,6 +358,12 @@ That script writes `production-handoff-owner-response-bundle-kit-manifest.json`,
 That script writes `release-progress-notification-outbox-manifest.json`, `release-progress-notification-outbox.md`, and `release-progress-notification-outbox\`. It prepares the requested big-node progress email for `kibernet@sina.com`, records the current remaining external counts, writes a `BIG_NODE_ONLY` cadence policy that suppresses separate small proof/probe emails, writes `remaining-work-snapshot.json`/`.md` with the three external owner areas plus the local progress-mail action, and provides a local `agently-cli` send helper with optional `-ReceiptPath` output while keeping the notification in `PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION` with `emailSent=false`.
 
 ```powershell
+.\tools\Invoke-AITestPilotReleaseProgressNotificationRemainingWorkSnapshotProbe.ps1
+```
+
+That probe writes `release-progress-notification-remaining-work-snapshot-probe-manifest.json` and a Markdown report. It independently verifies the outbox remaining-work snapshot against owner input, production driver readiness, production Lua readiness, and the returned-evidence inbox, keeping the pending local mail action separate from the eleven external blockers.
+
+```powershell
 .\tools\Invoke-AITestPilotProductionHandoffMailHelperAuthStatusProbe.ps1
 ```
 

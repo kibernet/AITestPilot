@@ -221,6 +221,7 @@ $productionHandoffSendDryRunProbeManifest = Read-Manifest "production-handoff-se
 $productionHandoffOwnerResponseBundleProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-probe-manifest.json"
 $productionHandoffOwnerResponseBundleKitManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-manifest.json"
 $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
+$releaseProgressNotificationRemainingWorkSnapshotProbeManifest = Read-Manifest "release-progress-notification-remaining-work-snapshot-probe-manifest.json"
 $productionHandoffMailHelperAuthStatusProbeManifest = Read-Manifest "production-handoff-mail-helper-auth-status-probe-manifest.json"
 $releaseProgressNotificationConfirmationProbeManifest = Read-Manifest "release-progress-notification-confirmation-probe-manifest.json"
 $releaseProgressNotificationReceiptProbeManifest = Read-Manifest "release-progress-notification-receipt-probe-manifest.json"
@@ -2284,6 +2285,35 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
     Test-ListedFiles $releaseProgressNotificationOutboxManifest "release_progress_notification_outbox"
 }
 
+if ($null -ne $releaseProgressNotificationRemainingWorkSnapshotProbeManifest) {
+    Add-ReleaseCheck "release_progress_notification_remaining_work_snapshot_probe" `
+        ($releaseProgressNotificationRemainingWorkSnapshotProbeManifest.status -eq "PASS" -and
+            $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.schemaVersion -eq "aitestpilot.release_progress_notification_remaining_work_snapshot_probe.v1" -and
+            [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.snapshotSchemaVersionAccepted -and
+            [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.snapshotContentValidated -and
+            $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.externalRemainingWorkItemCount -eq 3 -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.externalRemainingBlockingReasonCount -eq [int]$releaseProgressNotificationOutboxManifest.externalRemainingBlockingReasonCount -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.externalRemainingMissingFileCount -eq [int]$releaseProgressNotificationOutboxManifest.externalRemainingMissingFileCount -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.localProgressMailRemainingActionCount -eq 1 -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.trackedRemainingWorkItemCount -eq 4 -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.productionDriverBlockingReasonCount -eq 5 -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.productionLuaBlockingReasonCount -eq 5 -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.liveModelSmokeBlockingReasonCount -eq 1 -and
+            -not [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.emailSent -and
+            -not [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.confirmationTokenCreated -and
+            -not [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.externalEvidenceAccepted -and
+            -not [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.fixtureEvidencePromoted -and
+            $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.productionOutputBoundary -eq "progress_notification_remaining_work_snapshot_probe_only" -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.checkCount -eq 6 -and
+            [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.failedCheckCount -eq 0) `
+        "Release progress notification remaining-work snapshot probe must independently verify owner-area blockers, missing files, and pending mail action without claiming send or production evidence."
+
+    Test-ListedFiles $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "release_progress_notification_remaining_work_snapshot_probe"
+}
+
 if ($null -ne $productionHandoffMailHelperAuthStatusProbeManifest) {
     Add-ReleaseCheck "production_handoff_mail_helper_auth_status_probe" `
         ($productionHandoffMailHelperAuthStatusProbeManifest.status -eq "PASS" -and
@@ -2697,6 +2727,11 @@ if ($null -ne $releaseRiskPolicyManifest) {
             $releaseRiskPolicyManifest.releaseProgressNotificationTriggerKind -eq "BIG_NODE" -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationSmallNodeEmailSuppression -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationSuppressedSmallNodeCount -eq 6 -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeAccepted -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalWorkItemCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalBlockingReasonCount -eq [int]$releaseRiskPolicyManifest.productionHandoffRemainingBlockingReasonCount -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalMissingFileCount -eq [int]$releaseRiskPolicyManifest.productionExternalEvidenceInboxMissingFileCount -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeTrackedRemainingWorkItemCount -eq 4 -and
             [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperAuthStatusProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperOwnerBoundaryPassed -and
             [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperProgressBoundaryPassed -and
