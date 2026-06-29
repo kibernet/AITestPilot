@@ -174,6 +174,7 @@ $patchApplyRetestManifest = Read-PolicyJson "repair-agent-patch-apply-retest-man
 $patchHistoryManifest = Read-PolicyJson "repair-agent-patch-result-history-manifest.json" "Patch result history manifest"
 $productionDriverReadinessManifest = Read-PolicyJson "production-replay-driver-readiness-manifest.json" "Production replay driver readiness manifest"
 $productionDriverEvidenceIntakeManifest = Read-PolicyJson "production-driver-evidence-intake-manifest.json" "Production driver evidence intake manifest"
+$productionDriverEvidenceContractProbeManifest = Read-PolicyJson "production-driver-evidence-contract-probe-manifest.json" "Production driver evidence contract probe manifest"
 $productionLuaPatchReadinessManifest = Read-PolicyJson "production-lua-patch-readiness-manifest.json" "Production Lua patch readiness manifest"
 $productionLuaPatchEvidenceKitProbeManifest = Read-PolicyJson "production-lua-patch-evidence-kit-probe-manifest.json" "Production Lua patch evidence kit probe manifest"
 $productionLuaPatchExternalBundleIntakeProbeManifest = Read-PolicyJson "production-lua-patch-external-bundle-intake-probe-manifest.json" "Production Lua patch external bundle intake probe manifest"
@@ -324,6 +325,28 @@ if ($null -ne $productionDriverReadinessManifest -and $null -ne $productionDrive
 Add-PolicyCheck "production_driver_evidence_policy" $driverEvidenceAccepted `
     "Driver evidence must either be production-bound when required or explicitly accepted as sample/unbound package-release evidence with a hard-bound failure probe." `
     "production_driver_evidence_not_accepted"
+
+$productionDriverEvidenceContractAccepted = (
+    $null -ne $productionDriverEvidenceContractProbeManifest -and
+    $productionDriverEvidenceContractProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionDriverEvidenceContractProbeManifest "schemaVersion" "") -eq "aitestpilot.production_driver_evidence_contract_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionDriverEvidenceContractProbeManifest "acceptedFixtureGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionDriverEvidenceContractProbeManifest "acceptedFixtureIntakePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionDriverEvidenceContractProbeManifest "acceptedFixtureReadinessPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionDriverEvidenceContractProbeManifest "acceptedFixtureReadyForProductionDriverRelease" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionDriverEvidenceContractProbeManifest "acceptedFixtureRealProjectBound" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionDriverEvidenceContractProbeManifest "acceptedFixtureExternalProductionDriverSelected" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionDriverEvidenceContractProbeManifest "acceptedFixtureSampleGameReplayDriverUsed" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionDriverEvidenceContractProbeManifest "acceptedFixtureBlockingReasonCount" 1)) -eq 0 -and
+    -not (Convert-ToBool (Get-JsonValue $productionDriverEvidenceContractProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionDriverEvidenceContractProbeManifest "realProductionDriverEvidenceAccepted" $true)) -and
+    (Get-JsonValue $productionDriverEvidenceContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_contract_only" -and
+    (Convert-ToInt (Get-JsonValue $productionDriverEvidenceContractProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_driver_evidence_contract_policy" $productionDriverEvidenceContractAccepted `
+    "Production driver evidence must include an isolated accepted-fixture contract proving BOUND host evidence can pass intake without promoting fixture data as production." `
+    "production_driver_evidence_contract_not_accepted"
 
 $productionLuaEvidenceAccepted = $false
 $productionLuaEvidenceStatus = "BLOCKED"
@@ -599,6 +622,7 @@ $sourceFiles = @(
     "repair-agent-patch-result-history-manifest.json",
     "production-replay-driver-readiness-manifest.json",
     "production-driver-evidence-intake-manifest.json",
+    "production-driver-evidence-contract-probe-manifest.json",
     "production-lua-patch-readiness-manifest.json",
     "production-lua-patch-evidence-kit-probe-manifest.json",
     "production-lua-patch-external-bundle-intake-probe-manifest.json",
@@ -630,6 +654,7 @@ $manifest = [ordered]@{
     unverifiedHighRiskBugCount = [int]$unverifiedHighRiskBugCount
     unresolvedHighRiskGraphNodeCount = [int]$unresolvedHighRiskGraphNodeCount
     driverEvidenceAccepted = [bool]$driverEvidenceAccepted
+    productionDriverEvidenceContractAccepted = [bool]$productionDriverEvidenceContractAccepted
     driverEvidenceStatus = $driverEvidenceStatus
     productionDriverReady = [bool]$driverReadyForProduction
     productionDriverBlockingReasonCount = [int]$driverBlockingReasons.Count
@@ -669,6 +694,7 @@ $reportLines = @(
     "- AI exploration accepted: $($manifest.aiExplorationAccepted)",
     "- High-risk policy accepted: $($manifest.highRiskPolicyAccepted)",
     "- Driver evidence: $($manifest.driverEvidenceStatus)",
+    "- Production driver evidence contract accepted: $($manifest.productionDriverEvidenceContractAccepted)",
     "- Production Lua evidence: $($manifest.productionLuaEvidenceStatus)",
     "- Production Lua evidence kit accepted: $($manifest.productionLuaEvidenceKitAccepted)",
     "- Production Lua external bundle intake accepted: $($manifest.productionLuaExternalBundleIntakeAccepted)",

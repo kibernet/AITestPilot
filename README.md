@@ -199,6 +199,14 @@ To intake a real game project's production driver evidence bundle:
 That intake requires production-bound readiness and writes `production-driver-evidence-intake-manifest.json`. In the default repo pipeline it runs with `-ExpectBlocked`, proving the current sample/unbound bundle is rejected instead of accepted as production evidence.
 The evidence bundle may live outside this repository; the default release pipeline also runs `Invoke-AITestPilotProductionDriverExternalBundleIntakeProbe.ps1`, which copies the sample/unbound evidence to a system temp directory and proves that repo-external bundle paths are inspected while still blocked by production-bound policy.
 
+To prove the production-bound evidence contract can accept a complete host-project-shaped bundle without promoting fixture data as production:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionDriverEvidenceContractProbe.ps1
+```
+
+That probe builds an isolated BOUND fixture bundle, runs the same `Invoke-AITestPilotProductionDriverEvidenceIntake.ps1` path without `-ExpectBlocked`, and writes `production-driver-evidence-contract-probe-manifest.json`. It records `releasePipelineUsesFixture=false` and `realProductionDriverEvidenceAccepted=false`, so the default release still keeps the sample/unbound boundary while proving the acceptance contract for real host-project evidence.
+
 To prove the production-bound CI mode blocks the current sample/unbound evidence:
 
 ```powershell
@@ -439,6 +447,7 @@ Implemented now:
 - Negative replay-driver failure probe with driver, handler, action, target, and step diagnostics.
 - Production replay driver readiness manifest separating package release readiness from real-project driver binding readiness.
 - Production driver evidence intake manifest for accepting real production-bound bundles or proving sample/unbound bundles are blocked.
+- Production driver evidence contract probe proving an isolated BOUND fixture can pass intake without being promoted as real production evidence.
 - Production driver external bundle intake probe proving standalone repo-external evidence directories can be inspected without accepting sample/unbound evidence.
 - Production-bound replay driver failure probe proving sample/unbound evidence fails when real production binding is required.
 - Repo-side release gate that blocks missing driver descriptor, missing negative probe, failed retest, or missing evidence files.

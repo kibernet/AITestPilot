@@ -66,6 +66,7 @@
 - Production replay integration contract probe proving `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states without claiming real game API calls.
 - Production driver evidence intake gate for standalone real-project evidence bundles, with default sample/unbound rejection evidence.
 - Production driver binding kit generator plus release-gated probe for host-project starter files.
+- Production driver evidence contract probe proving an isolated BOUND fixture can pass intake without being promoted as real production evidence.
 - Repo-external production driver evidence bundle intake probe for host-project release-evidence directories outside this repository.
 - Production-bound replay driver failure probe plus release-pipeline/release-gate switches that make real project binding a hard CI requirement when requested.
 - GitHub Actions release workflow for self-hosted Windows Unity runners, with workflow-dispatch release controls, evidence artifact upload, and release-gated workflow probe.

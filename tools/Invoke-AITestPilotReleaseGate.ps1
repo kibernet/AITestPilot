@@ -151,6 +151,7 @@ $productionReplayIntegrationContractProbeManifest = Read-Manifest "production-re
 $productionDriverBindingKitManifest = Read-Manifest "production-driver-binding-kit-manifest.json"
 $productionReplayDriverReadinessManifest = Read-Manifest "production-replay-driver-readiness-manifest.json"
 $productionDriverEvidenceIntakeManifest = Read-Manifest "production-driver-evidence-intake-manifest.json"
+$productionDriverEvidenceContractProbeManifest = Read-Manifest "production-driver-evidence-contract-probe-manifest.json"
 $productionDriverExternalBundleIntakeProbeManifest = Read-Manifest "production-driver-external-bundle-intake-probe-manifest.json"
 if ($RequireProductionReplayDriverBound) {
     $productionReplayDriverBoundFailureProbeManifest = $null
@@ -976,6 +977,28 @@ if ($null -ne $productionDriverEvidenceIntakeManifest) {
     Test-ListedFiles $productionDriverEvidenceIntakeManifest "production_driver_evidence_intake"
 }
 
+if ($null -ne $productionDriverEvidenceContractProbeManifest) {
+    Add-ReleaseCheck "production_driver_evidence_contract_probe" `
+        ($productionDriverEvidenceContractProbeManifest.status -eq "PASS" -and
+            $productionDriverEvidenceContractProbeManifest.schemaVersion -eq "aitestpilot.production_driver_evidence_contract_probe.v1" -and
+            [bool]$productionDriverEvidenceContractProbeManifest.acceptedFixtureGenerated -and
+            [bool]$productionDriverEvidenceContractProbeManifest.acceptedFixtureIntakePassed -and
+            [bool]$productionDriverEvidenceContractProbeManifest.acceptedFixtureReadinessPassed -and
+            [bool]$productionDriverEvidenceContractProbeManifest.acceptedFixtureReadyForProductionDriverRelease -and
+            [bool]$productionDriverEvidenceContractProbeManifest.acceptedFixtureRealProjectBound -and
+            [bool]$productionDriverEvidenceContractProbeManifest.acceptedFixtureExternalProductionDriverSelected -and
+            -not [bool]$productionDriverEvidenceContractProbeManifest.acceptedFixtureSampleGameReplayDriverUsed -and
+            [int]$productionDriverEvidenceContractProbeManifest.acceptedFixtureBlockingReasonCount -eq 0 -and
+            -not [bool]$productionDriverEvidenceContractProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionDriverEvidenceContractProbeManifest.realProductionDriverEvidenceAccepted -and
+            $productionDriverEvidenceContractProbeManifest.productionOutputBoundary -eq "accepted_fixture_contract_only" -and
+            [int]$productionDriverEvidenceContractProbeManifest.checkCount -eq 3 -and
+            [int]$productionDriverEvidenceContractProbeManifest.failedCheckCount -eq 0) `
+        "Production driver evidence contract probe must prove a BOUND accepted fixture can pass intake without promoting fixture evidence as production."
+
+    Test-ListedFiles $productionDriverEvidenceContractProbeManifest "production_driver_evidence_contract_probe"
+}
+
 if ($null -ne $productionDriverExternalBundleIntakeProbeManifest) {
     Add-ReleaseCheck "production_driver_external_bundle_intake_probe" `
         ($productionDriverExternalBundleIntakeProbeManifest.status -eq "PASS" -and
@@ -1600,6 +1623,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.unverifiedHighRiskBugCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.unresolvedHighRiskGraphNodeCount -eq 0 -and
             [bool]$releaseRiskPolicyManifest.driverEvidenceAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionDriverEvidenceContractAccepted -and
             $releaseRiskPolicyManifest.driverEvidenceStatus -eq $expectedDriverEvidenceStatus -and
             [bool]$releaseRiskPolicyManifest.productionLuaEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.productionLuaEvidenceKitAccepted -and

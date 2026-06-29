@@ -207,6 +207,7 @@ function Get-DefaultSourceManifestNames {
         "replay-profile-import-manifest.json",
         "production-replay-integration-contract-probe-manifest.json",
         "production-driver-binding-kit-manifest.json",
+        "production-driver-evidence-contract-probe-manifest.json",
         "production-replay-driver-readiness-manifest.json",
         "production-driver-evidence-intake-manifest.json",
         "production-driver-external-bundle-intake-probe-manifest.json",

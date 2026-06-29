@@ -162,6 +162,14 @@ To validate only the production driver evidence package from a host game project
 The bundle must include `production-replay-integration-checklist.json`, `repair-retest-manifest.json`, `repair-driver-failure-manifest.json`, and `replay-profile-import-manifest.json`. The intake runs production readiness with `-RequireProductionBound` and rejects sample/unbound evidence.
 The bundle path can be outside the AI TestPilot repository. Package CI proves that with `Invoke-AITestPilotProductionDriverExternalBundleIntakeProbe.ps1`, which runs the same intake against a system temp copy of the sample/unbound bundle and expects it to remain blocked.
 
+To prove the accepted side of that same contract without claiming a real host project has already run, package CI also runs:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionDriverEvidenceContractProbe.ps1
+```
+
+The probe creates an isolated BOUND fixture, switches the retest manifest to a non-sample `type:` driver source, and runs production driver evidence intake without `-ExpectBlocked`. It only proves the file contract and gate behavior; its manifest keeps `releasePipelineUsesFixture=false` and `realProductionDriverEvidenceAccepted=false`.
+
 The one-command CI wrapper exposes the same policy:
 
 ```powershell
