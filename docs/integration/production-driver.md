@@ -127,6 +127,21 @@ To test that the gate blocks incomplete driver evidence:
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
 ```
 
+To require a real production binding instead of accepting the package-release sample/unbound boundary:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionReplayDriverReadiness.ps1 -RequireProductionBound
+.\tools\Invoke-AITestPilotReleaseGate.ps1 -RequireProductionReplayDriverBound
+```
+
+The one-command CI wrapper exposes the same policy:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePipeline.ps1 -GameReplayDriverType "Your.Game.Tests.ProductionReplayDriver" -RequireProductionReplayDriverBound
+```
+
+The default package-release pipeline also runs `Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1`, which proves the current sample/unbound evidence fails when `-RequireProductionBound` is enforced. Keep that failure probe in package-release CI until a real project supplies bound hooks and a non-sample `type:` driver.
+
 ## Template
 
 The package includes a copyable template at:

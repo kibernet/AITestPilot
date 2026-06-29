@@ -3,6 +3,7 @@ param(
     [string]$EvidenceBundleDir,
     [string]$ReleaseGateManifestPath,
     [switch]$ExpectBlocked,
+    [switch]$RequireProductionReplayDriverBound,
     [switch]$RequireLiveModelEndpointSmoke
 )
 
@@ -144,6 +145,12 @@ $repairRetestManifest = Read-Manifest "repair-retest-manifest.json"
 $failureProbeManifest = Read-Manifest "repair-driver-failure-manifest.json"
 $profileImportManifest = Read-Manifest "replay-profile-import-manifest.json"
 $productionReplayDriverReadinessManifest = Read-Manifest "production-replay-driver-readiness-manifest.json"
+if ($RequireProductionReplayDriverBound) {
+    $productionReplayDriverBoundFailureProbeManifest = $null
+}
+else {
+    $productionReplayDriverBoundFailureProbeManifest = Read-Manifest "production-replay-driver-bound-failure-probe-manifest.json"
+}
 $modelEndpointManifest = Read-Manifest "model-endpoint-trace-manifest.json"
 $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provider-diagnostics-manifest.json"
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
@@ -782,10 +789,27 @@ if ($null -ne $productionReplayDriverReadinessManifest) {
     Add-ReleaseCheck "production_replay_driver_readiness" `
         ($productionReplayDriverReadinessManifest.status -eq "PASS" -and
             $productionReplayDriverReadinessManifest.schemaVersion -eq "aitestpilot.production_replay_driver_readiness.v1" -and
-            ($productionDriverReady -or $productionDriverExplicitlyBlocked)) `
+            ($productionDriverReady -or (-not [bool]$RequireProductionReplayDriverBound -and $productionDriverExplicitlyBlocked))) `
         "Production replay driver readiness must either prove a real bound production driver or explicitly record the current sample/unbound blockers while keeping package release separate."
 
     Test-ListedFiles $productionReplayDriverReadinessManifest "production_replay_driver_readiness"
+}
+
+if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
+    Add-ReleaseCheck "production_replay_driver_bound_failure_probe" `
+        ($productionReplayDriverBoundFailureProbeManifest.status -eq "PASS" -and
+            $productionReplayDriverBoundFailureProbeManifest.schemaVersion -eq "aitestpilot.production_replay_driver_bound_failure_probe.v1" -and
+            [bool]$productionReplayDriverBoundFailureProbeManifest.expectedFailure -and
+            [bool]$productionReplayDriverBoundFailureProbeManifest.readinessCommandFailed -and
+            [bool]$productionReplayDriverBoundFailureProbeManifest.requireProductionBound -and
+            -not [bool]$productionReplayDriverBoundFailureProbeManifest.readyForProductionDriverRelease -and
+            -not [bool]$productionReplayDriverBoundFailureProbeManifest.realProjectBound -and
+            [bool]$productionReplayDriverBoundFailureProbeManifest.sampleGameReplayDriverUsed -and
+            -not [bool]$productionReplayDriverBoundFailureProbeManifest.externalProductionDriverSelected -and
+            [bool]$productionReplayDriverBoundFailureProbeManifest.expectedBlockingReasonsFound) `
+        "Production-bound failure probe must prove sample/unbound replay evidence is blocked when production binding is required."
+
+    Test-ListedFiles $productionReplayDriverBoundFailureProbeManifest "production_replay_driver_bound_failure_probe"
 }
 
 if ($null -ne $modelEndpointManifest) {
@@ -1045,6 +1069,10 @@ if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
     $sourceManifests += "repair-agent-cursor-agent-external-output-manifest.json"
 }
 
+if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
+    $sourceManifests += "production-replay-driver-bound-failure-probe-manifest.json"
+}
+
 $manifest = [ordered]@{
     status = $gateStatus
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
@@ -1052,6 +1080,7 @@ $manifest = [ordered]@{
     checkCount = $checks.Count
     failedReasonCount = $failedReasons.Count
     failedReasons = @($failedReasons)
+    requireProductionReplayDriverBound = [bool]$RequireProductionReplayDriverBound
     checks = @($checks)
     sourceManifests = @($sourceManifests)
 }

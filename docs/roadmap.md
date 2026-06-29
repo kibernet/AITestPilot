@@ -53,11 +53,12 @@
 - Live endpoint retry/escalation policy recorded in failure evidence.
 - Policy-driven live endpoint retry execution with per-attempt manifest evidence.
 - Production replay integration plan asset plus JSON/Markdown checklist evidence, explicitly marked unbound until real project APIs are wired.
+- Production-bound replay driver failure probe plus release-pipeline/release-gate switches that make real project binding a hard CI requirement when requested.
 
 ## V0.2 Unity Import Gate
 
 - Export release evidence into a stable CI artifact directory.
-- Replace the sample `IGameActionReplayDriver` and unbound production replay checklist with real project implementations for login, activity reward, fishing, and account setup, then run production readiness with `-RequireProductionBound`.
+- Replace the sample `IGameActionReplayDriver` and unbound production replay checklist with real project implementations for login, activity reward, fishing, and account setup, then run production readiness with `-RequireProductionBound` or the pipeline with `-RequireProductionReplayDriverBound`.
 
 ## V0.3 Model Bridge
 

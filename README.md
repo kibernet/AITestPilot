@@ -158,6 +158,14 @@ To write a machine-readable production driver readiness boundary:
 
 That script reads the production replay checklist, targeted retest, negative driver failure probe, and replay profile import evidence. It writes `production-replay-driver-readiness-manifest.json` with `readyForProductionDriverRelease=false` and explicit blockers while the repo still uses the sample driver and the checklist remains unbound. Passing `-RequireProductionBound` turns those blockers into a hard failure for real-project CI.
 
+To prove the production-bound CI mode blocks the current sample/unbound evidence:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1
+```
+
+That probe copies the current evidence bundle, reruns production replay driver readiness with `-RequireProductionBound`, expects it to fail on the sample/unbound blockers, and writes `production-replay-driver-bound-failure-probe-manifest.json` plus the failing readiness manifest copy into release evidence.
+
 To prove that driver failures are surfaced with actionable hook diagnostics:
 
 ```powershell
@@ -193,6 +201,7 @@ For CI, run the full pipeline wrapper:
 ```
 
 It runs the full chain and exports stable artifacts to `artifacts\ai-testpilot-release\latest`. See `docs\ci-release-pipeline.md`.
+Production CI that must block until real game APIs are wired can run the same wrapper with `-RequireProductionReplayDriverBound`; in that mode the release gate no longer accepts the sample/unbound package-release boundary.
 
 For a real model endpoint, use the generic HTTP/JSON `ModelEndpointDecisionClient` in the core library. It posts the goal, snapshot, previous steps, prior fix hints, allowed action list, and action JSON schema to a configured endpoint, validates the returned action before execution, and can write per-step trace files. See `docs\model-endpoint.md`.
 The Unity package also includes a `ModelEndpointSettings` asset and editor entry under `Tools/Kibernet/AI TestPilot/Create Model Endpoint Settings`; sample-scene validation proves the settings asset, offline request contract, and action parser without calling an external provider.
@@ -281,6 +290,7 @@ Implemented now:
 - Driver capability/configuration descriptor recorded in repair retest evidence.
 - Negative replay-driver failure probe with driver, handler, action, target, and step diagnostics.
 - Production replay driver readiness manifest separating package release readiness from real-project driver binding readiness.
+- Production-bound replay driver failure probe proving sample/unbound evidence fails when real production binding is required.
 - Repo-side release gate that blocks missing driver descriptor, missing negative probe, failed retest, or missing evidence files.
 - CI release pipeline wrapper with stable artifact output under `artifacts\ai-testpilot-release\latest`.
 - Generic HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.

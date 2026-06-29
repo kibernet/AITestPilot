@@ -8,6 +8,7 @@ param(
     [string]$CursorAgentOutputDir,
     [string]$CursorAgentModel = "gpt-5.3-codex-low-fast",
     [switch]$UseCursorAgentExternalTaskOutput,
+    [switch]$RequireProductionReplayDriverBound,
     [switch]$RequireLiveModelEndpointSmoke,
     [switch]$AllowMissingModelApiKey,
     [switch]$DisableLiveModelEndpointFailurePolicyRetry,
@@ -256,7 +257,15 @@ try {
 
     Invoke-PipelineStep "production_replay_driver_readiness" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionReplayDriverReadiness.ps1") `
-            -EvidenceBundleDir $EvidenceBundleDir
+            -EvidenceBundleDir $EvidenceBundleDir `
+            -RequireProductionBound:$RequireProductionReplayDriverBound
+    }
+
+    if (-not $RequireProductionReplayDriverBound) {
+        Invoke-PipelineStep "production_replay_driver_bound_failure_probe" {
+            & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1") `
+                -EvidenceBundleDir $EvidenceBundleDir
+        }
     }
 
     Invoke-PipelineStep "model_endpoint_trace_probe" {
@@ -287,6 +296,7 @@ try {
     Invoke-PipelineStep "release_gate" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseGate.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `
+            -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
             -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
     }
 
@@ -294,6 +304,7 @@ try {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `
             -ProbeBundleDir $ReleaseGateFailureProbeDir `
+            -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
             -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
     }
 

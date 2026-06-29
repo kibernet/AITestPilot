@@ -72,6 +72,7 @@ try {
         "tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1",
         "tools\Invoke-AITestPilotReplayDriverFailureProbe.ps1",
         "tools\Invoke-AITestPilotProductionReplayDriverReadiness.ps1",
+        "tools\Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1",
         "tools\Invoke-AITestPilotReleaseGate.ps1",
         "tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1",
         "tools\Invoke-AITestPilotReleasePipeline.ps1",
