@@ -263,13 +263,21 @@ To generate the host-project production handoff package from the current release
 
 That package writes `production-handoff-package-manifest.json` plus `production-handoff-package\README.md`, `action-plan.md`, `required-external-evidence.json`, and `ci-commands.ps1`. It consolidates the remaining production driver, production Lua, live-model, and CI hard-mode steps without promoting fixture evidence as real host-project evidence.
 
+To prove all production hard-mode switches block the current sample or missing-evidence state together:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1
+```
+
+That probe copies the current evidence into an isolated bundle, runs release risk policy, evidence index, and release gate with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, and `-RequireLiveModelEndpointSmoke`, then expects the combined hard-mode path to block on the current production driver, Lua, and live-model evidence gaps.
+
 To run the full repo-side release gate over the evidence bundle:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, production Lua external bundle intake proof, live model endpoint configuration kit proof, external live-smoke evidence intake proof, production handoff package proof, release risk policy acceptance, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, production Lua external bundle intake proof, live model endpoint configuration kit proof, external live-smoke evidence intake proof, production handoff package proof, production hard-mode failure proof, release risk policy acceptance, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -464,8 +472,9 @@ Implemented now:
 - Azure Pipelines release workflow for self-hosted Windows Unity pools, with release-gated workflow probe and evidence artifact publishing.
 - Provider-specific build, smoke test, and vision evidence checks for GitHub Actions and Azure Pipelines, with release-gated quality probe evidence.
 - Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence.
+- Production hard-mode failure probe proving combined driver, Lua, and live-model hard switches block the current sample or missing-evidence state.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers.
-- Release-gated risk policy manifest that blocks failed AI exploration, unresolved high-risk graph nodes, missing driver evidence, missing production Lua evidence, missing live-smoke policy evidence, missing CI provider controls, or missing production handoff evidence while preserving explicit package-release boundaries.
+- Release-gated risk policy manifest that blocks failed AI exploration, unresolved high-risk graph nodes, missing driver evidence, missing production Lua evidence, missing live-smoke policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure evidence while preserving explicit package-release boundaries.
 - Generic HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.
 - Model endpoint trace probe included in release evidence and enforced by the repo-side release gate.
 - Unity `ModelEndpointSettings` asset, editor creation flow, request-contract builder, response parser, and batch evidence.

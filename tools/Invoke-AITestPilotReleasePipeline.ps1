@@ -420,6 +420,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_hard_mode_failure_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "release_risk_policy" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `

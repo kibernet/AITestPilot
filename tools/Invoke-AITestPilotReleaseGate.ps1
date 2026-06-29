@@ -181,6 +181,7 @@ $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-relea
 $azurePipelinesReleaseWorkflowProbeManifest = Read-Manifest "azure-pipelines-release-workflow-probe-manifest.json"
 $providerCiQualityProbeManifest = Read-Manifest "provider-ci-quality-probe-manifest.json"
 $productionHandoffPackageManifest = Read-Manifest "production-handoff-package-manifest.json"
+$productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
 
@@ -1625,6 +1626,29 @@ if ($null -ne $productionHandoffPackageManifest) {
     Test-ListedFiles $productionHandoffPackageManifest "production_handoff_package"
 }
 
+if ($null -ne $productionHardModeFailureProbeManifest) {
+    Add-ReleaseCheck "production_hard_mode_failure_probe" `
+        ($productionHardModeFailureProbeManifest.status -eq "PASS" -and
+            $productionHardModeFailureProbeManifest.schemaVersion -eq "aitestpilot.production_hard_mode_failure_probe.v1" -and
+            [bool]$productionHardModeFailureProbeManifest.requireProductionReplayDriverBound -and
+            [bool]$productionHardModeFailureProbeManifest.requireProductionLuaPatched -and
+            [bool]$productionHardModeFailureProbeManifest.requireLiveModelEndpointSmoke -and
+            [bool]$productionHardModeFailureProbeManifest.riskPolicyBlockedAsExpected -and
+            [bool]$productionHardModeFailureProbeManifest.evidenceIndexTrackedHardMode -and
+            [bool]$productionHardModeFailureProbeManifest.releaseGateBlockedAsExpected -and
+            $productionHardModeFailureProbeManifest.riskPolicyStatus -eq "BLOCKED" -and
+            $productionHardModeFailureProbeManifest.releaseGateStatus -eq "BLOCKED" -and
+            -not [bool]$productionHardModeFailureProbeManifest.productionDriverReady -and
+            -not [bool]$productionHardModeFailureProbeManifest.productionLuaReady -and
+            -not [bool]$productionHardModeFailureProbeManifest.liveModelPolicyAccepted -and
+            $productionHardModeFailureProbeManifest.productionOutputBoundary -eq "hard_mode_failure_probe_only" -and
+            [int]$productionHardModeFailureProbeManifest.checkCount -eq 3 -and
+            [int]$productionHardModeFailureProbeManifest.failedCheckCount -eq 0) `
+        "Production hard-mode failure probe must prove combined production driver, production Lua, and live-model hard-mode switches block current sample or missing evidence."
+
+    Test-ListedFiles $productionHardModeFailureProbeManifest "production_hard_mode_failure_probe"
+}
+
 if ($null -ne $releaseRiskPolicyManifest) {
     $expectedDriverEvidenceStatus = if ($RequireProductionReplayDriverBound) { "PRODUCTION_BOUND_ACCEPTED" } else { "EXPLICIT_SAMPLE_BOUNDARY_ACCEPTED" }
     $expectedProductionLuaEvidenceStatus = if ($RequireProductionLuaPatched) { "PRODUCTION_LUA_PATCH_ACCEPTED" } else { "EXPLICIT_NO_PRODUCTION_LUA_BOUNDARY_ACCEPTED" }
@@ -1659,6 +1683,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.azurePipelinesAccepted -and
             [bool]$releaseRiskPolicyManifest.providerCiQualityAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffPackageAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHardModeFailureAccepted -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.missingOrInvalidSourceFileCount -eq 0) `
@@ -1710,6 +1735,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "azure-pipelines-release-workflow-probe-manifest.json",
         "provider-ci-quality-probe-manifest.json",
         "production-handoff-package-manifest.json",
+        "production-hard-mode-failure-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )
 
@@ -1800,6 +1826,7 @@ $sourceManifests = @(
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json",
     "production-handoff-package-manifest.json",
+    "production-hard-mode-failure-probe-manifest.json",
     "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"
 )
@@ -1825,6 +1852,7 @@ $manifest = [ordered]@{
     failedReasons = @($failedReasons)
     requireProductionReplayDriverBound = [bool]$RequireProductionReplayDriverBound
     requireProductionLuaPatched = [bool]$RequireProductionLuaPatched
+    requireLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke
     checks = @($checks)
     sourceManifests = @($sourceManifests)
 }

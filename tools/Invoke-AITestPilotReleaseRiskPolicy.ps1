@@ -186,6 +186,7 @@ $githubActionsProbeManifest = Read-PolicyJson "github-actions-release-workflow-p
 $azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow-probe-manifest.json" "Azure Pipelines workflow probe manifest"
 $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
 $productionHandoffPackageManifest = Read-PolicyJson "production-handoff-package-manifest.json" "Production handoff package manifest"
+$productionHardModeFailureProbeManifest = Read-PolicyJson "production-hard-mode-failure-probe-manifest.json" "Production hard-mode failure probe manifest"
 
 $runReports = @()
 if ($null -ne $sceneValidation) {
@@ -613,6 +614,26 @@ Add-PolicyCheck "production_handoff_package_policy" $productionHandoffPackageAcc
     "Release evidence must include a production handoff package that consolidates driver, Lua, live-model, and CI host-project next steps without promoting fixture evidence." `
     "production_handoff_package_not_accepted"
 
+$productionHardModeFailureAccepted = (
+    $null -ne $productionHardModeFailureProbeManifest -and
+    $productionHardModeFailureProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHardModeFailureProbeManifest "schemaVersion" "") -eq "aitestpilot.production_hard_mode_failure_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeFailureProbeManifest "requireProductionReplayDriverBound" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeFailureProbeManifest "requireProductionLuaPatched" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeFailureProbeManifest "requireLiveModelEndpointSmoke" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeFailureProbeManifest "riskPolicyBlockedAsExpected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeFailureProbeManifest "evidenceIndexTrackedHardMode" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeFailureProbeManifest "releaseGateBlockedAsExpected" $false)) -and
+    (Get-JsonValue $productionHardModeFailureProbeManifest "riskPolicyStatus" "") -eq "BLOCKED" -and
+    (Get-JsonValue $productionHardModeFailureProbeManifest "releaseGateStatus" "") -eq "BLOCKED" -and
+    (Get-JsonValue $productionHardModeFailureProbeManifest "productionOutputBoundary" "") -eq "hard_mode_failure_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHardModeFailureProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_hard_mode_failure_policy" $productionHardModeFailureAccepted `
+    "Release evidence must prove combined production driver, production Lua, and live-model hard-mode switches block the current sample or missing-evidence state." `
+    "production_hard_mode_failure_probe_not_accepted"
+
 $passedRiskPolicyCheckCount = @($riskPolicyChecks | Where-Object { [bool]$_.passed }).Count
 $failedRiskPolicyCheckCount = @($riskPolicyChecks | Where-Object { -not [bool]$_.passed }).Count
 $status = "PASS"
@@ -654,7 +675,8 @@ $sourceFiles = @(
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json",
-    "production-handoff-package-manifest.json"
+    "production-handoff-package-manifest.json",
+    "production-hard-mode-failure-probe-manifest.json"
 )
 
 $manifest = [ordered]@{
@@ -697,6 +719,7 @@ $manifest = [ordered]@{
     azurePipelinesAccepted = [bool]$azurePipelinesAccepted
     providerCiQualityAccepted = [bool]$providerCiQualityAccepted
     productionHandoffPackageAccepted = [bool]$productionHandoffPackageAccepted
+    productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
     riskPolicyCheckCount = [int]$riskPolicyChecks.Count
     passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
     failedRiskPolicyCheckCount = [int]$failedRiskPolicyCheckCount
@@ -726,6 +749,7 @@ $reportLines = @(
     "- Live model external smoke intake accepted: $($manifest.liveModelExternalSmokeIntakeAccepted)",
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
     "- Production handoff package accepted: $($manifest.productionHandoffPackageAccepted)",
+    "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",
     "## Boundary Summary",
