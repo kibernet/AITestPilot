@@ -75,6 +75,14 @@ To record whether the current main worktree is ready for real repair-agent patch
 
 That readiness check reads the source snapshot apply/validate proof, records the main repository `git status`, filters generated evidence directories, and writes `repair-agent-main-worktree-apply-readiness-manifest.json`. It records either `readyForMainRepositoryApply=false` with blocking reasons such as `dirty_worktree` and `untracked_source_files`, or `readyForMainRepositoryApply=true` once the source baseline is clean. It never applies a patch by itself and keeps `mainRepositoryPatchApplied=false`.
 
+To prove the explicit apply/retest/rollback path against this main worktree:
+
+```powershell
+.\tools\Invoke-AITestPilotRepairAgentMainWorktreeApplyRetestRollback.ps1
+```
+
+That probe requires the main worktree readiness manifest to be clean and ready. It imports a verified `external_agent` patch in an isolated evidence bundle, preflights it, applies it to the real main worktree through `Invoke-AITestPilotRepairAgentRepositoryPatchApplyGuard.ps1 -ApplyToRepository`, runs repo validation and repair retest before rollback, applies the generated rollback patch, and verifies the main worktree is clean again. The manifest records `mainRepositoryPatchApplied=true` for the probe and `mainRepositoryPatchPersisted=false` after rollback.
+
 To preflight an imported repair-agent patch before any repository application:
 
 ```powershell

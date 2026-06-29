@@ -111,6 +111,7 @@ $repairAgentExternalCompletionFailureProbeManifest = Read-Manifest "repair-agent
 $repairAgentGenericPatchImportProbeManifest = Read-Manifest "repair-agent-generic-patch-import-probe-manifest.json"
 $repairAgentSourceSnapshotApplyValidateManifest = Read-Manifest "repair-agent-source-snapshot-apply-validate-manifest.json"
 $repairAgentMainWorktreeApplyReadinessManifest = Read-Manifest "repair-agent-main-worktree-apply-readiness-manifest.json"
+$repairAgentMainWorktreeApplyRetestRollbackManifest = Read-Manifest "repair-agent-main-worktree-apply-retest-rollback-manifest.json"
 $repairAgentExternalPatchPreflightManifest = Read-Manifest "repair-agent-external-patch-preflight-manifest.json"
 $repairAgentExternalPatchPreflightFailureProbeManifest = Read-Manifest "repair-agent-external-patch-preflight-failure-probe-manifest.json"
 $repairAgentRepositoryPatchApplyGuardManifest = Read-Manifest "repair-agent-repository-patch-apply-guard-manifest.json"
@@ -340,6 +341,54 @@ if ($null -ne $repairAgentMainWorktreeApplyReadinessManifest) {
         "Repair-agent main worktree readiness must prove either a clean main-worktree baseline ready for explicit external patch apply, or a machine-readable dirty-baseline blocker while clean source snapshot apply/validate/rollback evidence exists."
 
     Test-ListedFiles $repairAgentMainWorktreeApplyReadinessManifest "repair_agent_main_worktree_apply_readiness"
+}
+
+if ($null -ne $repairAgentMainWorktreeApplyRetestRollbackManifest) {
+    Add-ReleaseCheck "repair_agent_main_worktree_apply_retest_rollback" `
+        ($repairAgentMainWorktreeApplyRetestRollbackManifest.status -eq "PASS" -and
+            $repairAgentMainWorktreeApplyRetestRollbackManifest.schemaVersion -eq "aitestpilot.repair_agent_main_worktree_apply_retest_rollback.v1" -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.readinessManifestPresent -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.readyForMainRepositoryApplyBeforeProbe -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.worktreeCleanBeforeApply -and
+            [int]$repairAgentMainWorktreeApplyRetestRollbackManifest.sourceStatusBeforeCount -eq 0 -and
+            $repairAgentMainWorktreeApplyRetestRollbackManifest.patchOutputSource -eq "external_agent" -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.externalAgentRun -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.externalAgentCompletionVerified -and
+            $repairAgentMainWorktreeApplyRetestRollbackManifest.repairAgentRunStatus -eq "EXTERNAL_AGENT_COMPLETED" -and
+            $repairAgentMainWorktreeApplyRetestRollbackManifest.repairAgentPatchOutputStatus -eq "PRODUCED" -and
+            -not [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.sampleFixSnippetRequired -and
+            $repairAgentMainWorktreeApplyRetestRollbackManifest.preflightStatus -eq "PASS" -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.preflightSafeToInspect -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.preflightRepositoryApplyAllowed -and
+            [int]$repairAgentMainWorktreeApplyRetestRollbackManifest.preflightUnsafePathCount -eq 0 -and
+            $repairAgentMainWorktreeApplyRetestRollbackManifest.applyDecision -eq "APPLY" -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.applySwitchProvided -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.gitApplyCheckPassed -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.repositoryChangedByScript -and
+            -not [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.guardSourceStatusUnchanged -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.mainRepositoryPatchApplied -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.mainRepositoryPatchAppliedDuringProbe -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchedFilePresentBeforeRollback -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchedFileContainsProbeText -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.postApplyValidationInvoked -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.postApplyValidationPassed -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.postApplyRetestInvoked -and
+            $repairAgentMainWorktreeApplyRetestRollbackManifest.postApplyRetestManifestStatus -eq "PASS" -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.postApplyRetestPassed -and
+            -not [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.postApplyBugStillPresent -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.retestRanBeforeRollback -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.rollbackPatchGenerated -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.rollbackPatchIncludesUntrackedFiles -and
+            [int]$repairAgentMainWorktreeApplyRetestRollbackManifest.rollbackPatchUntrackedFileCount -ge 1 -and
+            $repairAgentMainWorktreeApplyRetestRollbackManifest.rollbackPlanStatus -eq "READY" -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.rollbackApplied -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.rollbackRemovedPatchedFile -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.mainRepositoryCleanAfterRollback -and
+            [int]$repairAgentMainWorktreeApplyRetestRollbackManifest.sourceStatusAfterRollbackCount -eq 0 -and
+            -not [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.mainRepositoryPatchPersisted) `
+        "Repair-agent main worktree apply/retest/rollback must prove explicit verified external patch application to the real main worktree, post-apply validation/retest before rollback, and clean rollback with no persistent patch."
+
+    Test-ListedFiles $repairAgentMainWorktreeApplyRetestRollbackManifest "repair_agent_main_worktree_apply_retest_rollback"
 }
 
 if ($null -ne $repairAgentExternalPatchPreflightManifest) {
@@ -823,6 +872,7 @@ $manifest = [ordered]@{
         "repair-agent-generic-patch-import-probe-manifest.json",
         "repair-agent-source-snapshot-apply-validate-manifest.json",
         "repair-agent-main-worktree-apply-readiness-manifest.json",
+        "repair-agent-main-worktree-apply-retest-rollback-manifest.json",
         "repair-agent-external-patch-preflight-manifest.json",
         "repair-agent-external-patch-preflight-failure-probe-manifest.json",
         "repair-agent-repository-patch-apply-guard-manifest.json",

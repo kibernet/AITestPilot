@@ -169,6 +169,13 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "repair_agent_main_worktree_apply_retest_rollback" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentMainWorktreeApplyRetestRollback.ps1") `
+            -UnityPath $UnityPath `
+            -GameReplayDriverType $GameReplayDriverType `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "repair_agent_external_patch_preflight" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentExternalPatchPreflight.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
