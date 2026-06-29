@@ -225,6 +225,7 @@ $productionHandoffMailHelperAuthStatusProbeManifest = Read-Manifest "production-
 $releaseProgressNotificationConfirmationProbeManifest = Read-Manifest "release-progress-notification-confirmation-probe-manifest.json"
 $releaseProgressNotificationReceiptProbeManifest = Read-Manifest "release-progress-notification-receipt-probe-manifest.json"
 $releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-Manifest "release-progress-notification-dispatch-receipt-intake-probe-manifest.json"
+$releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-Manifest "release-progress-notification-local-send-workflow-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2386,6 +2387,43 @@ if ($null -ne $releaseProgressNotificationDispatchReceiptIntakeProbeManifest) {
     Test-ListedFiles $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "release_progress_notification_dispatch_receipt_intake_probe"
 }
 
+if ($null -ne $releaseProgressNotificationLocalSendWorkflowProbeManifest) {
+    Add-ReleaseCheck "release_progress_notification_local_send_workflow_probe" `
+        ($releaseProgressNotificationLocalSendWorkflowProbeManifest.status -eq "PASS" -and
+            $releaseProgressNotificationLocalSendWorkflowProbeManifest.schemaVersion -eq "aitestpilot.release_progress_notification_local_send_workflow_probe.v1" -and
+            [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.fakeAgentlyCliGenerated -and
+            [int]$releaseProgressNotificationLocalSendWorkflowProbeManifest.unauthenticatedAuthStatusCallCount -eq 1 -and
+            [int]$releaseProgressNotificationLocalSendWorkflowProbeManifest.unauthenticatedMeCallCount -eq 0 -and
+            [int]$releaseProgressNotificationLocalSendWorkflowProbeManifest.unauthenticatedMessageSendCallCount -eq 0 -and
+            [int]$releaseProgressNotificationLocalSendWorkflowProbeManifest.prepareExitCode -eq 8 -and
+            [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.prepareConfirmationTokenReturned -and
+            [int]$releaseProgressNotificationLocalSendWorkflowProbeManifest.prepareMessageSendCallCount -eq 1 -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.prepareMessageCallHasConfirmationToken -and
+            [int]$releaseProgressNotificationLocalSendWorkflowProbeManifest.confirmationExitCode -eq 0 -and
+            [int]$releaseProgressNotificationLocalSendWorkflowProbeManifest.confirmationMessageSendCallCount -eq 1 -and
+            [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.confirmationMessageCallHasConfirmationToken -and
+            [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.workflowReceiptGenerated -and
+            $releaseProgressNotificationLocalSendWorkflowProbeManifest.workflowReceiptMessageId -eq "msg_contract_workflow_001" -and
+            [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.dispatchReceiptIntakePassed -and
+            $releaseProgressNotificationLocalSendWorkflowProbeManifest.dispatchReceiptIntakeNotificationStatus -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.dispatchReceiptIntakeEmailSent -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.realEmailSent -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.emailSent -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.mailAuthorizationCheckedByPipeline -and
+            $releaseProgressNotificationLocalSendWorkflowProbeManifest.canonicalOutboxDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.canonicalOutboxEmailSent -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$releaseProgressNotificationLocalSendWorkflowProbeManifest.fixtureEvidencePromoted -and
+            $releaseProgressNotificationLocalSendWorkflowProbeManifest.productionOutputBoundary -eq "progress_notification_local_send_workflow_probe_fake_cli_only" -and
+            [int]$releaseProgressNotificationLocalSendWorkflowProbeManifest.checkCount -eq 6 -and
+            [int]$releaseProgressNotificationLocalSendWorkflowProbeManifest.failedCheckCount -eq 0) `
+        "Release progress notification local send workflow probe must prove auth stop, confirmation-token preparation, receipt writing, and contract-only receipt intake."
+
+    Test-ListedFiles $releaseProgressNotificationLocalSendWorkflowProbeManifest "release_progress_notification_local_send_workflow_probe"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2623,6 +2661,11 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationDispatchReceiptFakeRejected -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationDispatchReceiptContractAccepted -and
             -not [bool]$releaseRiskPolicyManifest.releaseProgressNotificationDispatchReceiptContractRealEmailSentAccepted -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationLocalSendWorkflowProbeAccepted -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationLocalWorkflowUnauthMessageSendCount -eq 0 -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationLocalWorkflowPrepareTokenReturned -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationLocalWorkflowReceiptMessageId -eq "msg_contract_workflow_001" -and
+            -not [bool]$releaseRiskPolicyManifest.releaseProgressNotificationLocalWorkflowDispatchEmailSent -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2700,6 +2743,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "release-progress-notification-confirmation-probe-manifest.json",
         "release-progress-notification-receipt-probe-manifest.json",
         "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
+        "release-progress-notification-local-send-workflow-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2815,6 +2859,7 @@ $sourceManifests = @(
     "release-progress-notification-confirmation-probe-manifest.json",
     "release-progress-notification-receipt-probe-manifest.json",
     "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
+    "release-progress-notification-local-send-workflow-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",

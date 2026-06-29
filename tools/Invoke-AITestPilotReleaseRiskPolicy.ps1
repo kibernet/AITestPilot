@@ -207,6 +207,7 @@ $productionHandoffMailHelperAuthStatusProbeManifest = Read-PolicyJson "productio
 $releaseProgressNotificationConfirmationProbeManifest = Read-PolicyJson "release-progress-notification-confirmation-probe-manifest.json" "Release progress notification confirmation probe manifest"
 $releaseProgressNotificationReceiptProbeManifest = Read-PolicyJson "release-progress-notification-receipt-probe-manifest.json" "Release progress notification receipt probe manifest"
 $releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-PolicyJson "release-progress-notification-dispatch-receipt-intake-probe-manifest.json" "Release progress notification dispatch receipt intake probe manifest"
+$releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-PolicyJson "release-progress-notification-local-send-workflow-probe-manifest.json" "Release progress notification local send workflow probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -1436,6 +1437,44 @@ Add-PolicyCheck "release_progress_notification_dispatch_receipt_intake_probe_pol
     "Release progress notification evidence must prove real-send receipt intake rejects fake probe receipts and accepts contract-shaped receipts without claiming a real email send." `
     "release_progress_notification_dispatch_receipt_intake_probe_not_accepted"
 
+$releaseProgressNotificationLocalSendWorkflowProbeAccepted = (
+    $null -ne $releaseProgressNotificationLocalSendWorkflowProbeManifest -and
+    $releaseProgressNotificationLocalSendWorkflowProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_local_send_workflow_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "fakeAgentlyCliGenerated" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "unauthenticatedAuthStatusCallCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "unauthenticatedMeCallCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "unauthenticatedMessageSendCallCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "prepareExitCode" 0)) -eq 8 -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "prepareConfirmationTokenReturned" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "prepareMessageSendCallCount" 0)) -eq 1 -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "prepareMessageCallHasConfirmationToken" $true)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "confirmationExitCode" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "confirmationMessageSendCallCount" 0)) -eq 1 -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "confirmationMessageCallHasConfirmationToken" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "workflowReceiptGenerated" $false)) -and
+    (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "workflowReceiptMessageId" "") -eq "msg_contract_workflow_001" -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "dispatchReceiptIntakePassed" $false)) -and
+    (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "dispatchReceiptIntakeNotificationStatus" "") -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "dispatchReceiptIntakeEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "realEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "mailAuthorizationCheckedByPipeline" $true)) -and
+    (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "canonicalOutboxDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "canonicalOutboxEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "productionOutputBoundary" "") -eq "progress_notification_local_send_workflow_probe_fake_cli_only" -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "release_progress_notification_local_send_workflow_probe_policy" $releaseProgressNotificationLocalSendWorkflowProbeAccepted `
+    "Release progress notification evidence must prove the local operator workflow stops when unauthenticated, requests a confirmation token first, writes a receipt after token confirmation, and keeps contract proof separate from real delivery." `
+    "release_progress_notification_local_send_workflow_probe_not_accepted"
+
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
     $productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -1668,6 +1707,7 @@ $sourceFiles = @(
     "release-progress-notification-confirmation-probe-manifest.json",
     "release-progress-notification-receipt-probe-manifest.json",
     "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
+    "release-progress-notification-local-send-workflow-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
@@ -1761,6 +1801,11 @@ $manifest = [ordered]@{
     releaseProgressNotificationDispatchReceiptFakeRejected = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "fakeReceiptRejected" $false)
     releaseProgressNotificationDispatchReceiptContractAccepted = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractReceiptAccepted" $false)
     releaseProgressNotificationDispatchReceiptContractRealEmailSentAccepted = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractRealEmailSentAccepted" $true)
+    releaseProgressNotificationLocalSendWorkflowProbeAccepted = [bool]$releaseProgressNotificationLocalSendWorkflowProbeAccepted
+    releaseProgressNotificationLocalWorkflowUnauthMessageSendCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "unauthenticatedMessageSendCallCount" 0))
+    releaseProgressNotificationLocalWorkflowPrepareTokenReturned = (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "prepareConfirmationTokenReturned" $false)
+    releaseProgressNotificationLocalWorkflowReceiptMessageId = (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "workflowReceiptMessageId" "")
+    releaseProgressNotificationLocalWorkflowDispatchEmailSent = (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "dispatchReceiptIntakeEmailSent" $true)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
@@ -1847,6 +1892,11 @@ $reportLines = @(
     "- Release progress notification dispatch receipt fake rejected: $($manifest.releaseProgressNotificationDispatchReceiptFakeRejected)",
     "- Release progress notification dispatch receipt contract accepted: $($manifest.releaseProgressNotificationDispatchReceiptContractAccepted)",
     "- Release progress notification dispatch receipt contract real email sent accepted: $($manifest.releaseProgressNotificationDispatchReceiptContractRealEmailSentAccepted)",
+    "- Release progress notification local send workflow probe accepted: $($manifest.releaseProgressNotificationLocalSendWorkflowProbeAccepted)",
+    "- Release progress notification local workflow unauth message sends: $($manifest.releaseProgressNotificationLocalWorkflowUnauthMessageSendCount)",
+    "- Release progress notification local workflow prepare token returned: $($manifest.releaseProgressNotificationLocalWorkflowPrepareTokenReturned)",
+    "- Release progress notification local workflow receipt message id: $($manifest.releaseProgressNotificationLocalWorkflowReceiptMessageId)",
+    "- Release progress notification local workflow dispatch email sent: $($manifest.releaseProgressNotificationLocalWorkflowDispatchEmailSent)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",
