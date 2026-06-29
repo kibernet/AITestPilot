@@ -15,7 +15,7 @@ The pipeline runs:
 - generic external repair-agent patch import probe, proving real external patches are not tied to the deterministic sample null-guard snippet.
 - source snapshot apply/validate/rollback probe, proving verified external patches can apply to a clean candidate made from the current source tree and pass repo validation.
 - main worktree apply readiness, proving whether real repository apply remains blocked by source baseline cleanliness or can proceed to the explicit external patch apply gate.
-- main worktree apply/retest/rollback, proving the explicit external-agent guard can patch the real main worktree, run validation and repair retest, then roll back to clean.
+- task-bound main worktree apply/retest/rollback, proving the explicit external-agent guard can patch the real main worktree with repair task context, run validation and repair retest, then roll back to clean.
 - repair-agent external patch safety preflight and unsafe path-traversal failure probe.
 - repository patch apply guard with explicit-switch, clean-worktree, and rollback-plan evidence.
 - clean temporary repository apply/rollback probe for external-agent patch output.

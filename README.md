@@ -81,7 +81,7 @@ To prove the explicit apply/retest/rollback path against this main worktree:
 .\tools\Invoke-AITestPilotRepairAgentMainWorktreeApplyRetestRollback.ps1
 ```
 
-That probe requires the main worktree readiness manifest to be clean and ready. It imports a verified `external_agent` patch in an isolated evidence bundle, preflights it, applies it to the real main worktree through `Invoke-AITestPilotRepairAgentRepositoryPatchApplyGuard.ps1 -ApplyToRepository`, runs repo validation and repair retest before rollback, applies the generated rollback patch, and verifies the main worktree is clean again. The manifest records `mainRepositoryPatchApplied=true` for the probe and `mainRepositoryPatchPersisted=false` after rollback.
+That probe requires the main worktree readiness manifest to be clean and ready. It imports a verified `external_agent` patch in an isolated evidence bundle, binds the patch and summary to the current `repair-task.json` `taskId`, `bugId`, and `suggestedFix`, preflights it, applies it to the real main worktree through `Invoke-AITestPilotRepairAgentRepositoryPatchApplyGuard.ps1 -ApplyToRepository`, runs repo validation and repair retest before rollback, applies the generated rollback patch, and verifies the main worktree is clean again. The manifest records `mainRepositoryPatchApplied=true` for the probe and `mainRepositoryPatchPersisted=false` after rollback.
 
 To preflight an imported repair-agent patch before any repository application:
 

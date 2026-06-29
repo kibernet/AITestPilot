@@ -93,6 +93,19 @@ if (-not (Test-Path $repairAgentRunSource)) {
     throw "Repair agent run artifact is missing: $repairAgentRunSource"
 }
 
+$repairTaskSource = Join-Path $evidenceBundlePath "repair-task.json"
+if (-not (Test-Path $repairTaskSource)) {
+    throw "Repair task artifact is missing: $repairTaskSource"
+}
+
+$repairTask = Get-Content -Raw $repairTaskSource | ConvertFrom-Json
+if ([string]::IsNullOrWhiteSpace($repairTask.taskId) -or
+    [string]::IsNullOrWhiteSpace($repairTask.bugId) -or
+    [string]::IsNullOrWhiteSpace($repairTask.suggestedFix) -or
+    [string]::IsNullOrWhiteSpace($repairTask.retestCommand)) {
+    throw "Repair task must include taskId, bugId, suggestedFix, and retestCommand."
+}
+
 $readinessManifestPath = Join-Path $evidenceBundlePath "repair-agent-main-worktree-apply-readiness-manifest.json"
 if (-not (Test-Path $readinessManifestPath)) {
     throw "Main worktree readiness manifest is missing: $readinessManifestPath"
@@ -131,26 +144,39 @@ foreach ($expectedOutput in @($probeRepairAgentRun.expectedPatchOutputs)) {
 
 $probeRepairAgentRun | ConvertTo-Json -Depth 10 | Set-Content -Path $probeRepairAgentRunPath -Encoding UTF8
 
-$patchText = @'
-diff --git a/docs/repair-agent-main-worktree-apply-probe.md b/docs/repair-agent-main-worktree-apply-probe.md
-new file mode 100644
---- /dev/null
-+++ b/docs/repair-agent-main-worktree-apply-probe.md
-@@ -0,0 +1,4 @@
-+# Main Worktree Apply Probe
-+
-+This temporary file proves a verified external-agent patch can apply to the main worktree, pass retest, and roll back cleanly.
-+It must not persist after rollback.
-'@
+$taskId = [string]$repairTask.taskId
+$bugId = [string]$repairTask.bugId
+$suggestedFix = [string]$repairTask.suggestedFix
+$retestCommand = [string]$repairTask.retestCommand
+$taskBoundTargetPath = "docs/repair-agent-main-worktree-apply-probe.md"
+$patchText = @(
+    "diff --git a/docs/repair-agent-main-worktree-apply-probe.md b/docs/repair-agent-main-worktree-apply-probe.md",
+    "new file mode 100644",
+    "--- /dev/null",
+    "+++ b/docs/repair-agent-main-worktree-apply-probe.md",
+    "@@ -0,0 +1,9 @@",
+    "+# Main Worktree Apply Probe",
+    "+",
+    "+TaskId: $taskId",
+    "+BugId: $bugId",
+    "+SuggestedFix: $suggestedFix",
+    "+RetestCommand: $retestCommand",
+    "+",
+    "+This temporary task-bound file proves a verified external-agent patch can apply to the main worktree, pass retest, and roll back cleanly.",
+    "+It must not persist after rollback."
+) -join "`n"
 
-$summaryText = @'
+$summaryText = @"
 # AI TestPilot Main Worktree Repair Agent Summary
 
 ## Result
-- Produced a verified external-agent documentation probe patch for the main worktree apply/retest/rollback path.
+- TaskId: $taskId
+- BugId: $bugId
+- Suggested fix: $suggestedFix
+- Produced a verified external-agent task-bound patch for the main worktree apply/retest/rollback path.
 - Patch output: repair-agent.patch.
-- Post-patch retest command: .\tools\Invoke-AITestPilotRepairRetest.ps1
-'@
+- Post-patch retest command: $retestCommand
+"@
 
 $patchPath = Join-Path $probeBundlePath "repair-agent.patch"
 $summaryPath = Join-Path $probeBundlePath "repair-agent-summary.md"
@@ -178,8 +204,25 @@ try {
         $patchOutputManifest.source -ne "external_agent" -or
         -not [bool]$patchOutputManifest.externalAgentCompletionVerified -or
         -not [bool]$patchOutputManifest.externalAgentRun -or
+        $patchOutputManifest.taskId -ne $taskId -or
+        $patchOutputManifest.bugId -ne $bugId -or
         [bool]$patchOutputManifest.sampleFixSnippetRequired) {
         throw "Main worktree probe patch output import did not prove completed generic external-agent provenance."
+    }
+
+    $patchMentionsTaskId = $patchText -match [regex]::Escape($taskId)
+    $patchMentionsBugId = $patchText -match [regex]::Escape($bugId)
+    $patchMentionsSuggestedFix = $patchText -match [regex]::Escape($suggestedFix)
+    $summaryContainsTaskId = $summaryText -match [regex]::Escape($taskId)
+    $summaryContainsBugId = $summaryText -match [regex]::Escape($bugId)
+    $summaryContainsSuggestedFix = $summaryText -match [regex]::Escape($suggestedFix)
+    if (-not $patchMentionsTaskId -or
+        -not $patchMentionsBugId -or
+        -not $patchMentionsSuggestedFix -or
+        -not $summaryContainsTaskId -or
+        -not $summaryContainsBugId -or
+        -not $summaryContainsSuggestedFix) {
+        throw "Main worktree probe patch and summary must include task id, bug id, and suggested fix."
     }
 
     & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentExternalPatchPreflight.ps1") `
@@ -332,6 +375,21 @@ try {
         status = "PASS"
         generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
         mainRepositoryRoot = $repoRoot
+        repairTaskPresent = $true
+        taskId = $taskId
+        bugId = $bugId
+        suggestedFix = $suggestedFix
+        retestCommand = $retestCommand
+        patchOutputTaskId = $patchOutputManifest.taskId
+        patchOutputBugId = $patchOutputManifest.bugId
+        taskBugMatchesPatchOutput = ($patchOutputManifest.taskId -eq $taskId -and $patchOutputManifest.bugId -eq $bugId)
+        taskBoundTargetPath = $taskBoundTargetPath
+        patchMentionsTaskId = [bool]$patchMentionsTaskId
+        patchMentionsBugId = [bool]$patchMentionsBugId
+        patchMentionsSuggestedFix = [bool]$patchMentionsSuggestedFix
+        summaryContainsTaskId = [bool]$summaryContainsTaskId
+        summaryContainsBugId = [bool]$summaryContainsBugId
+        summaryContainsSuggestedFix = [bool]$summaryContainsSuggestedFix
         readinessManifestPresent = $true
         readyForMainRepositoryApplyBeforeProbe = [bool]$readinessManifest.readyForMainRepositoryApply
         worktreeCleanBeforeApply = $true

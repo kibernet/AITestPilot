@@ -344,9 +344,24 @@ if ($null -ne $repairAgentMainWorktreeApplyReadinessManifest) {
 }
 
 if ($null -ne $repairAgentMainWorktreeApplyRetestRollbackManifest) {
+    $mainWorktreeTaskBindingPassed = [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.repairTaskPresent -and
+        -not [string]::IsNullOrWhiteSpace($repairAgentMainWorktreeApplyRetestRollbackManifest.taskId) -and
+        -not [string]::IsNullOrWhiteSpace($repairAgentMainWorktreeApplyRetestRollbackManifest.bugId) -and
+        -not [string]::IsNullOrWhiteSpace($repairAgentMainWorktreeApplyRetestRollbackManifest.suggestedFix) -and
+        [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.taskBugMatchesPatchOutput -and
+        $repairAgentMainWorktreeApplyRetestRollbackManifest.patchOutputTaskId -eq $repairAgentMainWorktreeApplyRetestRollbackManifest.taskId -and
+        $repairAgentMainWorktreeApplyRetestRollbackManifest.patchOutputBugId -eq $repairAgentMainWorktreeApplyRetestRollbackManifest.bugId -and
+        [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchMentionsTaskId -and
+        [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchMentionsBugId -and
+        [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchMentionsSuggestedFix -and
+        [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.summaryContainsTaskId -and
+        [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.summaryContainsBugId -and
+        [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.summaryContainsSuggestedFix
+
     Add-ReleaseCheck "repair_agent_main_worktree_apply_retest_rollback" `
         ($repairAgentMainWorktreeApplyRetestRollbackManifest.status -eq "PASS" -and
             $repairAgentMainWorktreeApplyRetestRollbackManifest.schemaVersion -eq "aitestpilot.repair_agent_main_worktree_apply_retest_rollback.v1" -and
+            $mainWorktreeTaskBindingPassed -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.readinessManifestPresent -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.readyForMainRepositoryApplyBeforeProbe -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.worktreeCleanBeforeApply -and
@@ -386,7 +401,7 @@ if ($null -ne $repairAgentMainWorktreeApplyRetestRollbackManifest) {
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.mainRepositoryCleanAfterRollback -and
             [int]$repairAgentMainWorktreeApplyRetestRollbackManifest.sourceStatusAfterRollbackCount -eq 0 -and
             -not [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.mainRepositoryPatchPersisted) `
-        "Repair-agent main worktree apply/retest/rollback must prove explicit verified external patch application to the real main worktree, post-apply validation/retest before rollback, and clean rollback with no persistent patch."
+        "Repair-agent main worktree apply/retest/rollback must prove task-bound explicit verified external patch application to the real main worktree, post-apply validation/retest before rollback, and clean rollback with no persistent patch."
 
     Test-ListedFiles $repairAgentMainWorktreeApplyRetestRollbackManifest "repair_agent_main_worktree_apply_retest_rollback"
 }
