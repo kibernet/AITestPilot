@@ -253,7 +253,7 @@ To run the full repo-side release gate over the evidence bundle:
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, release risk policy acceptance, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, production Lua external bundle intake proof, release risk policy acceptance, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -331,6 +331,14 @@ To generate the host-project evidence template and prove the accepted evidence c
 ```
 
 The kit writes `production-lua-patch-evidence.json`, schema guidance, retest and rollback templates. The release pipeline runs the kit probe, which keeps the generated template pending while using an isolated accepted fixture only to prove `Invoke-AITestPilotProductionLuaPatchReadiness.ps1` accepts a complete evidence contract. The probe records `releasePipelineUsesFixture=false` and `realProductionLuaPatchEvidenceAccepted=false`.
+
+The default pipeline also proves repo-external production Lua evidence intake with:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionLuaPatchExternalBundleIntakeProbe.ps1
+```
+
+That probe generates a pending evidence template under the system temp directory, copies the Lua readiness inputs beside it, runs readiness with `-RequireProductionLuaPatched`, and expects the command to fail while proving the external `production-lua-patch-evidence.json` was read and copied. This closes the path boundary without accepting incomplete template evidence as production.
 
 Production CI can require real production Lua analysis, patch, validation, retest, and rollback evidence through:
 
@@ -437,6 +445,7 @@ Implemented now:
 - Release-gated Lua auto-patch sandbox evidence proving deterministic fixture patches clear findings without mutating production Lua.
 - Production Lua patch readiness manifest and hard-bound failure probe separating sandbox-proven patches from real production Lua analysis, patch, retest, and rollback evidence.
 - Production Lua patch evidence kit generator plus release-gated contract probe for host-project Lua evidence templates.
+- Production Lua external bundle intake probe proving repo-external evidence directories are inspected while incomplete template evidence is blocked.
 - Sample business replay path covering account setup, login, `enter_scene`, activity reward, and `play_fishing`.
 - Persisted replay profile asset plus JSON export for CI evidence.
 - Replay profile JSON import back into an editable Unity `ActionReplayProfile` asset.

@@ -171,6 +171,7 @@ else {
 }
 $productionLuaPatchReadinessManifest = Read-Manifest "production-lua-patch-readiness-manifest.json"
 $productionLuaPatchEvidenceKitProbeManifest = Read-Manifest "production-lua-patch-evidence-kit-probe-manifest.json"
+$productionLuaPatchExternalBundleIntakeProbeManifest = Read-Manifest "production-lua-patch-external-bundle-intake-probe-manifest.json"
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
@@ -1296,6 +1297,31 @@ if ($null -ne $productionLuaPatchEvidenceKitProbeManifest) {
     Test-ListedFiles $productionLuaPatchEvidenceKitProbeManifest "production_lua_patch_evidence_kit_probe"
 }
 
+if ($null -ne $productionLuaPatchExternalBundleIntakeProbeManifest) {
+    Add-ReleaseCheck "production_lua_patch_external_bundle_intake_probe" `
+        ($productionLuaPatchExternalBundleIntakeProbeManifest.status -eq "PASS" -and
+            $productionLuaPatchExternalBundleIntakeProbeManifest.schemaVersion -eq "aitestpilot.production_lua_patch_external_bundle_intake_probe.v1" -and
+            -not [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.externalBundleUnderRepo -and
+            [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.templateEvidenceGenerated -and
+            $productionLuaPatchExternalBundleIntakeProbeManifest.templateEvidenceStatus -eq "PENDING_PRODUCTION_EVIDENCE" -and
+            [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.templateEvidenceRead -and
+            [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.expectedBlocked -and
+            [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.expectedBlockedPassed -and
+            [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.readinessCommandFailed -and
+            -not [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.readyForProductionLuaPatchRelease -and
+            [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.productionLuaBundleProvided -and
+            [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.productionLuaEvidenceCopied -and
+            -not [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.productionLuaEvidenceAccepted -and
+            $productionLuaPatchExternalBundleIntakeProbeManifest.productionOutputBoundary -eq "real_production_lua_patch_not_claimed" -and
+            [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.expectedBlockingReasonsFound -and
+            [bool]$productionLuaPatchExternalBundleIntakeProbeManifest.readinessRequireProductionLuaPatched -and
+            [int]$productionLuaPatchExternalBundleIntakeProbeManifest.checkCount -eq 4 -and
+            [int]$productionLuaPatchExternalBundleIntakeProbeManifest.failedCheckCount -eq 0) `
+        "Production Lua patch external bundle intake probe must prove repo-external template evidence is read and blocked when production Lua patch evidence is required."
+
+    Test-ListedFiles $productionLuaPatchExternalBundleIntakeProbeManifest "production_lua_patch_external_bundle_intake_probe"
+}
+
 if ($null -ne $liveModelEndpointFailureProbeManifest) {
     Add-ReleaseCheck "live_model_endpoint_failure_probe" `
         ($liveModelEndpointFailureProbeManifest.status -eq "PASS" -and
@@ -1527,6 +1553,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             $releaseRiskPolicyManifest.driverEvidenceStatus -eq $expectedDriverEvidenceStatus -and
             [bool]$releaseRiskPolicyManifest.productionLuaEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.productionLuaEvidenceKitAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionLuaExternalBundleIntakeAccepted -and
             $releaseRiskPolicyManifest.productionLuaEvidenceStatus -eq $expectedProductionLuaEvidenceStatus -and
             [bool]$releaseRiskPolicyManifest.liveModelPolicyAccepted -and
             $liveModelStatusAccepted -and
@@ -1575,6 +1602,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "lua-auto-patch-sandbox-manifest.json",
         "production-lua-patch-readiness-manifest.json",
         "production-lua-patch-evidence-kit-probe-manifest.json",
+        "production-lua-patch-external-bundle-intake-probe-manifest.json",
         "live-model-endpoint-failure-probe-manifest.json",
         "live-model-endpoint-smoke-manifest.json",
         "github-actions-release-workflow-probe-manifest.json",
@@ -1660,6 +1688,7 @@ $sourceManifests = @(
     "lua-auto-patch-sandbox-manifest.json",
     "production-lua-patch-readiness-manifest.json",
     "production-lua-patch-evidence-kit-probe-manifest.json",
+    "production-lua-patch-external-bundle-intake-probe-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",

@@ -59,6 +59,7 @@
 - Release-gated Lua auto-patch sandbox evidence that clears deterministic fixture findings without mutating production Lua.
 - Production Lua patch readiness gate plus hard-bound failure probe for real production Lua analysis, patch, retest, and rollback evidence.
 - Production Lua patch evidence kit generator plus release-gated accepted-fixture contract probe for host-project Lua evidence handoff.
+- Production Lua external bundle intake probe for repo-external host-project evidence directories, with incomplete template evidence blocked under hard production mode.
 - Production replay integration plan asset plus JSON/Markdown checklist evidence, explicitly marked unbound until real project APIs are wired.
 - Production replay integration contract probe proving `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states without claiming real game API calls.
 - Production driver evidence intake gate for standalone real-project evidence bundles, with default sample/unbound rejection evidence.

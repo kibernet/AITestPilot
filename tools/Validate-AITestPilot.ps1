@@ -85,6 +85,7 @@ try {
         "tools\Invoke-AITestPilotProductionLuaPatchBoundFailureProbe.ps1",
         "tools\New-AITestPilotProductionLuaPatchEvidenceKit.ps1",
         "tools\Invoke-AITestPilotProductionLuaPatchEvidenceKitProbe.ps1",
+        "tools\Invoke-AITestPilotProductionLuaPatchExternalBundleIntakeProbe.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1",
         ".github\workflows\ai-testpilot-release.yml",

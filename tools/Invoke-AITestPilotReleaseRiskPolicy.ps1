@@ -176,6 +176,7 @@ $productionDriverReadinessManifest = Read-PolicyJson "production-replay-driver-r
 $productionDriverEvidenceIntakeManifest = Read-PolicyJson "production-driver-evidence-intake-manifest.json" "Production driver evidence intake manifest"
 $productionLuaPatchReadinessManifest = Read-PolicyJson "production-lua-patch-readiness-manifest.json" "Production Lua patch readiness manifest"
 $productionLuaPatchEvidenceKitProbeManifest = Read-PolicyJson "production-lua-patch-evidence-kit-probe-manifest.json" "Production Lua patch evidence kit probe manifest"
+$productionLuaPatchExternalBundleIntakeProbeManifest = Read-PolicyJson "production-lua-patch-external-bundle-intake-probe-manifest.json" "Production Lua patch external bundle intake probe manifest"
 $liveModelFailureProbeManifest = Read-PolicyJson "live-model-endpoint-failure-probe-manifest.json" "Live model endpoint failure probe manifest"
 $liveModelSmokeManifest = Read-PolicyJson "live-model-endpoint-smoke-manifest.json" "Live model endpoint smoke manifest"
 $githubActionsProbeManifest = Read-PolicyJson "github-actions-release-workflow-probe-manifest.json" "GitHub Actions workflow probe manifest"
@@ -402,6 +403,30 @@ Add-PolicyCheck "production_lua_evidence_kit_policy" $productionLuaEvidenceKitAc
     "Production Lua patch evidence must include a host-project evidence kit and isolated accepted-fixture readiness contract without promoting fixture evidence as production." `
     "production_lua_evidence_kit_not_accepted"
 
+$productionLuaExternalBundleIntakeAccepted = (
+    $null -ne $productionLuaPatchExternalBundleIntakeProbeManifest -and
+    $productionLuaPatchExternalBundleIntakeProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "schemaVersion" "") -eq "aitestpilot.production_lua_patch_external_bundle_intake_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "templateEvidenceGenerated" $false)) -and
+    (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "templateEvidenceStatus" "") -eq "PENDING_PRODUCTION_EVIDENCE" -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "templateEvidenceRead" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "expectedBlockedPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "readinessCommandFailed" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "readyForProductionLuaPatchRelease" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "productionLuaBundleProvided" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "productionLuaEvidenceCopied" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "productionLuaEvidenceAccepted" $true)) -and
+    (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "productionOutputBoundary" "") -eq "real_production_lua_patch_not_claimed" -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "expectedBlockingReasonsFound" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "readinessRequireProductionLuaPatched" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionLuaPatchExternalBundleIntakeProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_lua_external_bundle_intake_policy" $productionLuaExternalBundleIntakeAccepted `
+    "Production Lua patch evidence intake must prove repo-external evidence directories are inspected and incomplete template evidence is blocked under hard production mode." `
+    "production_lua_external_bundle_intake_not_accepted"
+
 $liveModelPolicyAccepted = $false
 $liveModelPolicyStatus = "BLOCKED"
 
@@ -527,6 +552,7 @@ $sourceFiles = @(
     "production-driver-evidence-intake-manifest.json",
     "production-lua-patch-readiness-manifest.json",
     "production-lua-patch-evidence-kit-probe-manifest.json",
+    "production-lua-patch-external-bundle-intake-probe-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
@@ -559,6 +585,7 @@ $manifest = [ordered]@{
     productionDriverBlockingReasons = @($driverBlockingReasons)
     productionLuaEvidenceAccepted = [bool]$productionLuaEvidenceAccepted
     productionLuaEvidenceKitAccepted = [bool]$productionLuaEvidenceKitAccepted
+    productionLuaExternalBundleIntakeAccepted = [bool]$productionLuaExternalBundleIntakeAccepted
     productionLuaEvidenceStatus = $productionLuaEvidenceStatus
     productionLuaReady = [bool]$productionLuaReadyForProduction
     productionLuaBlockingReasonCount = [int]$luaBlockingReasons.Count
@@ -591,6 +618,7 @@ $reportLines = @(
     "- Driver evidence: $($manifest.driverEvidenceStatus)",
     "- Production Lua evidence: $($manifest.productionLuaEvidenceStatus)",
     "- Production Lua evidence kit accepted: $($manifest.productionLuaEvidenceKitAccepted)",
+    "- Production Lua external bundle intake accepted: $($manifest.productionLuaExternalBundleIntakeAccepted)",
     "- Live model policy: $($manifest.liveModelPolicyStatus)",
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",

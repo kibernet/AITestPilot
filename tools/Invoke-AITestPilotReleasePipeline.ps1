@@ -351,6 +351,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_lua_patch_external_bundle_intake_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionLuaPatchExternalBundleIntakeProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "live_model_endpoint_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
