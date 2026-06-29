@@ -1,0 +1,134 @@
+name: AI TestPilot Release Gate
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+parameters:
+  - name: unityPath
+    displayName: Unity 2021.3 editor path
+    type: string
+    default: F:\Unity\2021_3_45_f2\Editor\Unity.exe
+  - name: gameReplayDriverType
+    displayName: Fully qualified IGameActionReplayDriver type
+    type: string
+    default: Kibernet.AITestPilot.Unity.Editor.SampleGameActionReplayDriver
+  - name: requireProductionReplayDriverBound
+    displayName: Require production replay driver evidence
+    type: boolean
+    default: false
+  - name: requireProductionLuaPatched
+    displayName: Require production Lua patch evidence
+    type: boolean
+    default: false
+  - name: requireLiveModelEndpointSmoke
+    displayName: Require live model endpoint smoke
+    type: boolean
+    default: false
+  - name: allowMissingModelApiKey
+    displayName: Allow missing model API key for local gateways
+    type: boolean
+    default: false
+  - name: useCursorAgentExternalTaskOutput
+    displayName: Use headless Cursor Agent repair output
+    type: boolean
+    default: false
+
+pool:
+  name: SelfHostedWindowsUnity
+  demands:
+    - Agent.OS -equals Windows_NT
+
+variables:
+  AI_TESTPILOT_UNITY_PATH: ${{ parameters.unityPath }}
+  AI_TESTPILOT_GAME_REPLAY_DRIVER_TYPE: ${{ parameters.gameReplayDriverType }}
+  AI_TESTPILOT_REQUIRE_PRODUCTION_BOUND: ${{ parameters.requireProductionReplayDriverBound }}
+  AI_TESTPILOT_REQUIRE_PRODUCTION_LUA_PATCHED: ${{ parameters.requireProductionLuaPatched }}
+  AI_TESTPILOT_REQUIRE_LIVE_MODEL_ENDPOINT_SMOKE: ${{ parameters.requireLiveModelEndpointSmoke }}
+  AI_TESTPILOT_ALLOW_MISSING_MODEL_API_KEY: ${{ parameters.allowMissingModelApiKey }}
+  AI_TESTPILOT_USE_CURSOR_AGENT_EXTERNAL_TASK_OUTPUT: ${{ parameters.useCursorAgentExternalTaskOutput }}
+
+steps:
+  - checkout: self
+
+  - task: PowerShell@2
+    displayName: Verify runner prerequisites
+    inputs:
+      pwsh: true
+      targetType: inline
+      script: |
+        if (-not (Test-Path "$(AI_TESTPILOT_UNITY_PATH)")) {
+          throw "Unity executable not found: $(AI_TESTPILOT_UNITY_PATH)"
+        }
+
+        dotnet --info
+
+  - task: PowerShell@2
+    displayName: Run release pipeline
+    env:
+      AITESTPILOT_LIVE_MODEL_ENDPOINT: $(AITESTPILOT_LIVE_MODEL_ENDPOINT)
+      AI_TESTPILOT_MODEL_API_KEY: $(AI_TESTPILOT_MODEL_API_KEY)
+      AITESTPILOT_LIVE_MODEL: $(AITESTPILOT_LIVE_MODEL)
+      AITESTPILOT_LIVE_MODEL_REQUEST_FORMAT: $(AITESTPILOT_LIVE_MODEL_REQUEST_FORMAT)
+    inputs:
+      pwsh: true
+      targetType: inline
+      script: |
+        function Test-Flag {
+          param([string]$Value)
+          return $Value -ieq "true"
+        }
+
+        $pipelineArgs = @(
+          "-UnityPath", "$(AI_TESTPILOT_UNITY_PATH)",
+          "-GameReplayDriverType", "$(AI_TESTPILOT_GAME_REPLAY_DRIVER_TYPE)",
+          "-ArtifactDir", "artifacts\ai-testpilot-release\latest"
+        )
+
+        if (Test-Flag "$(AI_TESTPILOT_REQUIRE_PRODUCTION_BOUND)") {
+          $pipelineArgs += "-RequireProductionReplayDriverBound"
+        }
+
+        if (Test-Flag "$(AI_TESTPILOT_REQUIRE_PRODUCTION_LUA_PATCHED)") {
+          $pipelineArgs += "-RequireProductionLuaPatched"
+        }
+
+        if (Test-Flag "$(AI_TESTPILOT_REQUIRE_LIVE_MODEL_ENDPOINT_SMOKE)") {
+          $pipelineArgs += "-RequireLiveModelEndpointSmoke"
+        }
+
+        if (Test-Flag "$(AI_TESTPILOT_ALLOW_MISSING_MODEL_API_KEY)") {
+          $pipelineArgs += "-AllowMissingModelApiKey"
+        }
+
+        if (Test-Flag "$(AI_TESTPILOT_USE_CURSOR_AGENT_EXTERNAL_TASK_OUTPUT)") {
+          $pipelineArgs += "-UseCursorAgentExternalTaskOutput"
+        }
+
+        & .\tools\Invoke-AITestPilotReleasePipeline.ps1 @pipelineArgs
+
+  - task: PowerShell@2
+    displayName: Enforce release manifest
+    inputs:
+      pwsh: true
+      targetType: inline
+      script: |
+        $manifestPath = "artifacts\ai-testpilot-release\latest\pipeline-manifest.json"
+        if (-not (Test-Path $manifestPath)) {
+          throw "Pipeline manifest is missing: $manifestPath"
+        }
+
+        $manifest = Get-Content -Path $manifestPath -Raw | ConvertFrom-Json
+        if ($manifest.status -ne "PASS" -or [int]$manifest.ciExitCode -ne 0) {
+          throw "Release pipeline did not pass. status=$($manifest.status) ciExitCode=$($manifest.ciExitCode)"
+        }
+
+  - publish: artifacts\ai-testpilot-release\latest
+    artifact: ai-testpilot-release-evidence
+    condition: succeededOrFailed()

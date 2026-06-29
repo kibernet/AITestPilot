@@ -87,6 +87,8 @@ try {
         "tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1",
         ".github\workflows\ai-testpilot-release.yml",
         "tools\Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1",
+        ".azure-pipelines\ai-testpilot-release.yml",
+        "tools\Invoke-AITestPilotAzurePipelinesWorkflowProbe.ps1",
         "tools\Invoke-AITestPilotReplayDriverFailureProbe.ps1",
         "tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1",
         "tools\Invoke-AITestPilotProductionDriverExternalBundleIntakeProbe.ps1",

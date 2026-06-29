@@ -173,6 +173,7 @@ $productionLuaPatchReadinessManifest = Read-Manifest "production-lua-patch-readi
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
+$azurePipelinesReleaseWorkflowProbeManifest = Read-Manifest "azure-pipelines-release-workflow-probe-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
 
 if ($null -ne $sceneManifest) {
@@ -1429,6 +1430,36 @@ if ($null -ne $githubActionsReleaseWorkflowProbeManifest) {
     Test-ListedFiles $githubActionsReleaseWorkflowProbeManifest "github_actions_release_workflow_probe"
 }
 
+if ($null -ne $azurePipelinesReleaseWorkflowProbeManifest) {
+    Add-ReleaseCheck "azure_pipelines_release_workflow_probe" `
+        ($azurePipelinesReleaseWorkflowProbeManifest.status -eq "PASS" -and
+            $azurePipelinesReleaseWorkflowProbeManifest.schemaVersion -eq "aitestpilot.azure_pipelines_release_workflow_probe.v1" -and
+            $azurePipelinesReleaseWorkflowProbeManifest.provider -eq "azure_pipelines" -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.triggerSupported -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.pullRequestSupported -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.parametersConfigured -and
+            [int]$azurePipelinesReleaseWorkflowProbeManifest.requiredParameterCount -eq [int]$azurePipelinesReleaseWorkflowProbeManifest.requiredParametersFoundCount -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.poolConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.selfHostedPoolNamed -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.windowsDemandConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.checkoutConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.powerShellTasksConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.pwshConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.runnerPrerequisitesConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.releasePipelineCommandFound -and
+            [int]$azurePipelinesReleaseWorkflowProbeManifest.requiredSwitchCount -eq [int]$azurePipelinesReleaseWorkflowProbeManifest.requiredSwitchesFoundCount -and
+            [int]$azurePipelinesReleaseWorkflowProbeManifest.variableBindingCount -eq [int]$azurePipelinesReleaseWorkflowProbeManifest.variableBindingsFoundCount -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.manifestStatusCheckConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.ciExitCodeCheckConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.artifactPublishConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.artifactNameConfigured -and
+            [bool]$azurePipelinesReleaseWorkflowProbeManifest.artifactAlwaysPublished -and
+            [int]$azurePipelinesReleaseWorkflowProbeManifest.failedCheckCount -eq 0) `
+        "Azure Pipelines release workflow must expose release-control parameters, run the release pipeline, enforce PASS artifacts, and publish evidence."
+
+    Test-ListedFiles $azurePipelinesReleaseWorkflowProbeManifest "azure_pipelines_release_workflow_probe"
+}
+
 if ($null -ne $releaseEvidenceIndexManifest) {
     $requiredIndexedManifests = @(
         "manifest.json",
@@ -1463,7 +1494,8 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-lua-patch-readiness-manifest.json",
         "live-model-endpoint-failure-probe-manifest.json",
         "live-model-endpoint-smoke-manifest.json",
-        "github-actions-release-workflow-probe-manifest.json"
+        "github-actions-release-workflow-probe-manifest.json",
+        "azure-pipelines-release-workflow-probe-manifest.json"
     )
 
     if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
@@ -1498,7 +1530,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "Release evidence index must summarize all source manifests as machine-readable, portal-ready evidence with no missing, unparseable, failed, blocked, unaccepted, or missing-file entries."
 
     Add-ReleaseCheck "release_evidence_index_primary_manifest_coverage" `
-        (Test-ContainsAll @($releaseEvidenceIndexManifest.sourceManifestNames) $requiredIndexedManifests) `
+        (Test-ContainsAll -Actual @($releaseEvidenceIndexManifest.sourceManifestNames) -Required $requiredIndexedManifests) `
         "Release evidence index must include all primary release-gate source manifests."
 
     Test-ListedFiles $releaseEvidenceIndexManifest "release_evidence_index"
@@ -1545,6 +1577,7 @@ $sourceManifests = @(
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
+    "azure-pipelines-release-workflow-probe-manifest.json",
     "release-evidence-index-manifest.json"
 )
 

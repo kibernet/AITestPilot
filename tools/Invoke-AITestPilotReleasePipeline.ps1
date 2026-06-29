@@ -363,6 +363,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "ci_provider_azure_pipelines_workflow_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotAzurePipelinesWorkflowProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "release_evidence_index" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `
