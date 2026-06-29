@@ -274,7 +274,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 - GitHub Actions release workflow probe manifest proving provider-specific CI wiring for self-hosted Windows Unity runners.
 - Azure Pipelines release workflow probe manifest proving a second provider-specific CI wiring for self-hosted Windows Unity pools.
 - provider CI quality probe manifest proving both provider workflows run explicit build, smoke test, and vision evidence checks.
-- production handoff package manifest plus README, action plan, required-evidence JSON, and CI command examples consolidating the host-project driver, Lua, live-model, and CI hard-mode next steps, with generated-content quality checks for concrete owner, kit, evidence, and command details.
+- production handoff package manifest plus README, action plan, required-evidence JSON, CI command examples, external-evidence preflight script, and pending preflight self-check consolidating the host-project driver, Lua, live-model, and CI hard-mode next steps, with generated-content quality checks for concrete owner, kit, evidence, and command details.
 - production hard-mode failure probe manifest plus copied hard-mode risk, index, and gate manifests proving combined production driver, Lua, and live-model hard switches block current sample or missing evidence.
 - release risk policy manifest proving package release is blocked unless AI exploration, high-risk graph, driver evidence, Lua evidence, live endpoint policy and accepted-contract proof, CI provider controls, production handoff evidence, and hard-mode failure evidence are explicitly accepted.
 - release evidence index manifest proving all primary source manifests are indexed, parseable, accepted, and have no missing listed files.

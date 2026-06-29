@@ -632,8 +632,9 @@ $productionHandoffPackageAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "ciReleaseControlsReady" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "fixtureEvidencePromoted" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "generatedHandoffContentQualityAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "externalEvidencePreflightAccepted" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "sourceManifestCount" 0)) -ge 12 -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 4 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 6 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "failedCheckCount" 1)) -eq 0
 )
 

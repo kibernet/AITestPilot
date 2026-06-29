@@ -314,6 +314,7 @@ This package is the host-project handoff entry point generated from release evid
 - ``action-plan.md``: owner-facing next steps for the remaining host-project work.
 - ``required-external-evidence.json``: machine-readable evidence contract for driver, Lua, and live model completion.
 - ``ci-commands.ps1``: copyable release-pipeline commands for hard production enforcement.
+- ``verify-external-evidence.ps1``: host-project preflight for checking required external evidence paths before hard validation.
 
 Keep this package with the release evidence bundle so external host-project owners can generate the missing evidence and feed it back through the same intake commands.
 "@
@@ -375,19 +376,272 @@ $ciCommands = @'
     -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"
 '@
 
+$preflightScript = @'
+# AI TestPilot production handoff external evidence preflight.
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$EvidenceBundleDir,
+    [string]$ProductionDriverEvidenceDir,
+    [string]$ProductionLuaEvidenceDir,
+    [string]$LiveModelEndpointSmokeEvidenceDir,
+    [string]$GameReplayDriverType = "Your.Game.Tests.ProductionReplayDriver",
+    [string]$OutputPath,
+    [switch]$RequireAllEvidence,
+    [switch]$RunIntake
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Find-RepoRoot {
+    param([string]$StartDir)
+
+    $current = Resolve-FullPath $StartDir
+    while ($true) {
+        if (Test-Path (Join-Path $current "tools\Invoke-AITestPilotReleasePipeline.ps1")) {
+            return $current
+        }
+
+        $parent = [System.IO.Directory]::GetParent($current)
+        if ($null -eq $parent) {
+            throw "Could not locate repo root from $StartDir. Pass -RepoRoot explicitly."
+        }
+
+        $parentPath = $parent.FullName
+        if ($parentPath -eq $current) {
+            throw "Could not locate repo root from $StartDir. Pass -RepoRoot explicitly."
+        }
+
+        $current = $parentPath
+    }
+}
+
+function Test-RequiredFiles {
+    param(
+        [string]$BaseDir,
+        [string[]]$RequiredFiles
+    )
+
+    $provided = -not [string]::IsNullOrWhiteSpace($BaseDir)
+    $path = ""
+    $missingFiles = @()
+
+    if (-not $provided) {
+        $missingFiles = @($RequiredFiles)
+    } else {
+        $path = Resolve-FullPath $BaseDir
+        if (-not (Test-Path $path)) {
+            $missingFiles = @($RequiredFiles)
+        } else {
+            foreach ($fileName in $RequiredFiles) {
+                if (-not (Test-Path (Join-Path $path $fileName))) {
+                    $missingFiles += $fileName
+                }
+            }
+        }
+    }
+
+    return [ordered]@{
+        provided = [bool]$provided
+        path = $path
+        requiredFiles = @($RequiredFiles)
+        missingFiles = @($missingFiles)
+        missingFileCount = [int]$missingFiles.Count
+        allPresent = ($provided -and $missingFiles.Count -eq 0)
+    }
+}
+
+function Add-PreflightCheck {
+    param(
+        [string]$Name,
+        [bool]$Passed,
+        [string]$Message
+    )
+
+    $script:checks += [ordered]@{
+        name = $Name
+        passed = [bool]$Passed
+        message = $Message
+    }
+}
+
+function Invoke-PreflightCommand {
+    param(
+        [string]$Name,
+        [scriptblock]$Command
+    )
+
+    $passed = $true
+    $message = "PASS"
+    try {
+        & $Command | Out-Null
+    } catch {
+        $passed = $false
+        $message = $_.Exception.Message
+    }
+
+    return [ordered]@{
+        name = $Name
+        passed = [bool]$passed
+        message = $message
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+    $RepoRoot = Find-RepoRoot $PSScriptRoot
+}
+$repoPath = Resolve-FullPath $RepoRoot
+
+if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
+    $EvidenceBundleDir = Join-Path $PSScriptRoot ".."
+}
+$evidencePath = Resolve-FullPath $EvidenceBundleDir
+
+if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+    $OutputPath = Join-Path $PSScriptRoot "external-evidence-preflight.json"
+}
+$outputFullPath = Resolve-FullPath $OutputPath
+
+$driverRequiredFiles = @(
+    "production-replay-integration-checklist.json",
+    "repair-retest-manifest.json",
+    "repair-driver-failure-manifest.json",
+    "replay-profile-import-manifest.json"
+)
+$luaRequiredFiles = @(
+    "production-lua-patch-evidence.json",
+    "production-lua-patch-retest-template.md",
+    "production-lua-patch-rollback-plan-template.md"
+)
+$liveModelRequiredFiles = @(
+    "live-model-endpoint-smoke-manifest.json",
+    "live-model-endpoint-decision-trace.json"
+)
+
+$driverEvidence = Test-RequiredFiles $ProductionDriverEvidenceDir $driverRequiredFiles
+$luaEvidence = Test-RequiredFiles $ProductionLuaEvidenceDir $luaRequiredFiles
+$liveModelEvidence = Test-RequiredFiles $LiveModelEndpointSmokeEvidenceDir $liveModelRequiredFiles
+
+$checks = @()
+Add-PreflightCheck "production_driver_required_files" ([bool]$driverEvidence.allPresent) "Production driver evidence must include checklist, retest, failure-probe, and replay profile import files."
+Add-PreflightCheck "production_lua_required_files" ([bool]$luaEvidence.allPresent) "Production Lua evidence must include evidence JSON, retest template, and rollback plan template."
+Add-PreflightCheck "live_model_required_files" ([bool]$liveModelEvidence.allPresent) "Live model evidence must include smoke manifest and decision trace."
+
+$actionItems = @()
+if (-not [bool]$driverEvidence.allPresent) {
+    $actionItems += [ordered]@{
+        id = "production_driver_binding"
+        owner = "host_project_gameplay_qa"
+        missingFileCount = [int]$driverEvidence.missingFileCount
+        missingFiles = @($driverEvidence.missingFiles)
+    }
+}
+if (-not [bool]$luaEvidence.allPresent) {
+    $actionItems += [ordered]@{
+        id = "production_lua_patch_evidence"
+        owner = "host_project_lua_owner"
+        missingFileCount = [int]$luaEvidence.missingFileCount
+        missingFiles = @($luaEvidence.missingFiles)
+    }
+}
+if (-not [bool]$liveModelEvidence.allPresent) {
+    $actionItems += [ordered]@{
+        id = "live_model_endpoint_smoke"
+        owner = "host_project_ai_platform"
+        missingFileCount = [int]$liveModelEvidence.missingFileCount
+        missingFiles = @($liveModelEvidence.missingFiles)
+    }
+}
+
+$intakeResults = @()
+if ([bool]$RunIntake) {
+    if ([bool]$driverEvidence.allPresent) {
+        $intakeResults += Invoke-PreflightCommand "production_driver_intake" {
+            & (Join-Path $repoPath "tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1") -EvidenceBundleDir $driverEvidence.path
+        }
+    }
+
+    if ([bool]$luaEvidence.allPresent) {
+        $intakeResults += Invoke-PreflightCommand "production_lua_readiness" {
+            & (Join-Path $repoPath "tools\Invoke-AITestPilotProductionLuaPatchReadiness.ps1") -EvidenceBundleDir $evidencePath -ProductionLuaEvidenceDir $luaEvidence.path -RequireProductionLuaPatched
+        }
+    }
+
+    if ([bool]$liveModelEvidence.allPresent) {
+        $intakeResults += Invoke-PreflightCommand "live_model_smoke_intake" {
+            & (Join-Path $repoPath "tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1") -EvidenceBundleDir $evidencePath -SmokeEvidenceDir $liveModelEvidence.path -RequireLiveModelEndpointSmoke
+        }
+    }
+}
+
+$failedIntakeCount = @($intakeResults | Where-Object { -not [bool]$_.passed }).Count
+$allRequiredExternalEvidenceFilesPresent = [bool]$driverEvidence.allPresent -and [bool]$luaEvidence.allPresent -and [bool]$liveModelEvidence.allPresent
+$status = if ($failedIntakeCount -gt 0) {
+    "FAIL"
+} elseif ($allRequiredExternalEvidenceFilesPresent) {
+    "PASS"
+} else {
+    "PENDING_EXTERNAL_EVIDENCE"
+}
+
+$manifest = [ordered]@{
+    schemaVersion = "aitestpilot.production_handoff_external_evidence_preflight.v1"
+    status = $status
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    repoRoot = $repoPath
+    evidenceBundleDir = $evidencePath
+    requireAllEvidence = [bool]$RequireAllEvidence
+    runIntake = [bool]$RunIntake
+    allRequiredExternalEvidenceFilesPresent = [bool]$allRequiredExternalEvidenceFilesPresent
+    missingExternalEvidenceAreaCount = [int]$actionItems.Count
+    productionDriverEvidence = $driverEvidence
+    productionLuaEvidence = $luaEvidence
+    liveModelEndpointEvidence = $liveModelEvidence
+    gameReplayDriverType = $GameReplayDriverType
+    actionItems = @($actionItems)
+    intakeResults = @($intakeResults)
+    failedIntakeCount = [int]$failedIntakeCount
+    checks = @($checks)
+    hardValidationCommand = ".\tools\Invoke-AITestPilotReleasePipeline.ps1 -GameReplayDriverType `"$GameReplayDriverType`" -ProductionLuaEvidenceDir `"$ProductionLuaEvidenceDir`" -RequireProductionReplayDriverBound -RequireProductionLuaPatched -RequireLiveModelEndpointSmoke -LiveModelEndpointSmokeEvidenceDir `"$LiveModelEndpointSmokeEvidenceDir`""
+}
+
+New-Item -ItemType Directory -Force (Split-Path $outputFullPath -Parent) | Out-Null
+$manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $outputFullPath -Encoding UTF8
+
+if ([bool]$RequireAllEvidence -and $status -ne "PASS") {
+    throw "External evidence preflight did not pass. Manifest: $outputFullPath"
+}
+
+Write-Output "External evidence preflight manifest: $outputFullPath"
+Write-Output "AI TestPilot production handoff external evidence preflight status: $status"
+'@
+
 $readmePath = Join-Path $packagePath "README.md"
 $actionPlanPath = Join-Path $packagePath "action-plan.md"
 $requiredEvidencePath = Join-Path $packagePath "required-external-evidence.json"
 $ciCommandsPath = Join-Path $packagePath "ci-commands.ps1"
+$preflightScriptPath = Join-Path $packagePath "verify-external-evidence.ps1"
+$preflightSelfCheckPath = Join-Path $packagePath "external-evidence-preflight-self-check.json"
 
 $readme | Set-Content -Path $readmePath -Encoding UTF8
 $actionPlanLines | Set-Content -Path $actionPlanPath -Encoding UTF8
 $requiredEvidence | ConvertTo-Json -Depth 10 | Set-Content -Path $requiredEvidencePath -Encoding UTF8
 $ciCommands | Set-Content -Path $ciCommandsPath -Encoding UTF8
+$preflightScript | Set-Content -Path $preflightScriptPath -Encoding UTF8
+
+& $preflightScriptPath -RepoRoot $repoRoot -EvidenceBundleDir $evidenceBundlePath -OutputPath $preflightSelfCheckPath | Out-Null
 
 $actionPlanText = Get-Content -Path $actionPlanPath -Encoding UTF8 -Raw
 $requiredEvidenceText = Get-Content -Path $requiredEvidencePath -Encoding UTF8 -Raw
 $ciCommandsText = Get-Content -Path $ciCommandsPath -Encoding UTF8 -Raw
+$preflightScriptText = Get-Content -Path $preflightScriptPath -Encoding UTF8 -Raw
+$preflightSelfCheck = Get-Content -Path $preflightSelfCheckPath -Encoding UTF8 -Raw | ConvertFrom-Json
 
 $expectedActionPlanSnippets = @()
 if ($actionItems.Count -eq 0) {
@@ -422,13 +676,29 @@ $ciCommandsContentValid = $ciCommandsText.Contains("-RequireProductionReplayDriv
     $ciCommandsText.Contains("-LiveModelEndpointSmokeEvidenceDir") -and
     -not ($ciCommandsText -match "System\.Collections|OrderedDictionary")
 
+$preflightScriptContentValid = $preflightScriptText.Contains("aitestpilot.production_handoff_external_evidence_preflight.v1") -and
+    $preflightScriptText.Contains("ProductionDriverEvidenceDir") -and
+    $preflightScriptText.Contains("ProductionLuaEvidenceDir") -and
+    $preflightScriptText.Contains("LiveModelEndpointSmokeEvidenceDir") -and
+    $preflightScriptText.Contains("RequireAllEvidence") -and
+    $preflightScriptText.Contains("RunIntake") -and
+    -not ($preflightScriptText -match "System\.Collections|OrderedDictionary")
+
+$preflightSelfCheckValid = $preflightSelfCheck.schemaVersion -eq "aitestpilot.production_handoff_external_evidence_preflight.v1" -and
+    $preflightSelfCheck.status -eq "PENDING_EXTERNAL_EVIDENCE" -and
+    [int]$preflightSelfCheck.missingExternalEvidenceAreaCount -eq 3 -and
+    -not [bool]$preflightSelfCheck.allRequiredExternalEvidenceFilesPresent
+
 $generatedHandoffContentQualityAccepted = $actionPlanContentValid -and $requiredEvidenceContentValid -and $ciCommandsContentValid
+$externalEvidencePreflightAccepted = $preflightScriptContentValid -and $preflightSelfCheckValid
 
 $generatedFiles = @(
     "production-handoff-package/README.md",
     "production-handoff-package/action-plan.md",
     "production-handoff-package/required-external-evidence.json",
-    "production-handoff-package/ci-commands.ps1"
+    "production-handoff-package/ci-commands.ps1",
+    "production-handoff-package/verify-external-evidence.ps1",
+    "production-handoff-package/external-evidence-preflight-self-check.json"
 )
 
 $checks = @()
@@ -442,6 +712,9 @@ Add-HandoffCheck "generated_handoff_files" `
 Add-HandoffCheck "generated_handoff_content_quality" `
     $generatedHandoffContentQualityAccepted `
     "Generated handoff files must contain concrete owner, kit, evidence, and command details without serialized PowerShell object names."
+Add-HandoffCheck "external_evidence_preflight_script" `
+    $externalEvidencePreflightAccepted `
+    "Generated handoff package must include a runnable external evidence preflight script with a pending self-check."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -480,6 +753,11 @@ $manifest = [ordered]@{
     actionPlanContentValidated = [bool]$actionPlanContentValid
     requiredEvidenceContentValidated = [bool]$requiredEvidenceContentValid
     ciCommandsContentValidated = [bool]$ciCommandsContentValid
+    externalEvidencePreflightAccepted = [bool]$externalEvidencePreflightAccepted
+    preflightScriptContentValidated = [bool]$preflightScriptContentValid
+    preflightSelfCheckValidated = [bool]$preflightSelfCheckValid
+    preflightSelfCheckStatus = [string]$preflightSelfCheck.status
+    preflightSelfCheckMissingAreaCount = [int]$preflightSelfCheck.missingExternalEvidenceAreaCount
     hostProjectActionItemCount = [int]$actionItems.Count
     actionItems = @($actionItems)
     sourceManifestCount = [int]$sourceManifests.Count
