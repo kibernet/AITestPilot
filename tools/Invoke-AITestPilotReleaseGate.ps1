@@ -216,6 +216,7 @@ $productionHandoffMailAuthReadinessManifest = Read-Manifest "production-handoff-
 $productionHandoffOwnerUnblockPackManifest = Read-Manifest "production-handoff-owner-unblock-pack-manifest.json"
 $productionHandoffOwnerUnblockPackContractProbeManifest = Read-Manifest "production-handoff-owner-unblock-pack-contract-probe-manifest.json"
 $productionHandoffOwnerInputRequestPackManifest = Read-Manifest "production-handoff-owner-input-request-pack-manifest.json"
+$productionHandoffOwnerContactExternalIntakeProbeManifest = Read-Manifest "production-handoff-owner-contact-external-intake-probe-manifest.json"
 $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
@@ -2064,13 +2065,55 @@ if ($null -ne $productionHandoffOwnerInputRequestPackManifest) {
     Test-ListedFiles $productionHandoffOwnerInputRequestPackManifest "production_handoff_owner_input_request_pack"
 }
 
+if ($null -ne $productionHandoffOwnerContactExternalIntakeProbeManifest) {
+    Add-ReleaseCheck "production_handoff_owner_contact_external_intake_probe" `
+        ($productionHandoffOwnerContactExternalIntakeProbeManifest.status -eq "PASS" -and
+            $productionHandoffOwnerContactExternalIntakeProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_contact_external_intake_probe.v1" -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.externalRosterOutsideRepo -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.defaultContactBoundaryPreserved -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.defaultSendBoundaryPreserved -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.defaultOwnerInputBoundaryPreserved -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.externalContactIntakeAccepted -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.externalSendReadyForConfirmation -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.defaultMissingOwnerContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingOwnerContactCount -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.defaultBlockedSendCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.blockedSendCount -and
+            $productionHandoffOwnerContactExternalIntakeProbeManifest.defaultOwnerInputRequestStatus -eq "AWAITING_EXTERNAL_OWNER_INPUT" -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedConfiguredOwnerContactCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedMissingOwnerContactCount -eq 0 -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedInvalidOwnerContactCount -eq 0 -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedContactRosterComplete -and
+            $productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedSendReadinessStatus -eq "READY_FOR_CONFIRMATION" -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedReadySendCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedBlockedSendCount -eq 0 -and
+            -not [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedAutomaticEmailSendReady -and
+            -not [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedMailAuthorizationCheckedByPipeline -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.acceptedTwoStageConfirmationRequired -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.mailAndEvidenceBoundariesPreserved -and
+            [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.fixtureOwnerContactRosterUsed -and
+            -not [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.fixtureOwnerContactsPromoted -and
+            -not [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.emailSent -and
+            -not [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerContactExternalIntakeProbeManifest.fixtureEvidencePromoted -and
+            $productionHandoffOwnerContactExternalIntakeProbeManifest.productionOutputBoundary -eq "repo_external_owner_contact_intake_contract_only" -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.checkCount -eq 7 -and
+            [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.failedCheckCount -eq 0) `
+        "Production handoff owner contact external intake probe must prove repo-external contacts can move sends to ready-for-confirmation without sending email or changing default boundaries."
+
+    Test-ListedFiles $productionHandoffOwnerContactExternalIntakeProbeManifest "production_handoff_owner_contact_external_intake_probe"
+}
+
 if ($null -ne $releaseProgressNotificationOutboxManifest) {
     Add-ReleaseCheck "release_progress_notification_outbox" `
         ($releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
             $releaseProgressNotificationOutboxManifest.schemaVersion -eq "aitestpilot.release_progress_notification_outbox.v1" -and
             $releaseProgressNotificationOutboxManifest.recipient -eq "kibernet@sina.com" -and
-            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_input_request_pack" -and
+            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_contact_external_intake_probe" -and
             $releaseProgressNotificationOutboxManifest.latestBigNodeStatus -eq "PASS" -and
+            [bool]$releaseProgressNotificationOutboxManifest.externalContactIntakeAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.externalSendReadyForConfirmation -and
             $releaseProgressNotificationOutboxManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseProgressNotificationOutboxManifest.statusGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.progressEmailDraftGenerated -and
@@ -2101,7 +2144,7 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
             -not [bool]$releaseProgressNotificationOutboxManifest.externalEvidenceAccepted -and
             -not [bool]$releaseProgressNotificationOutboxManifest.fixtureEvidencePromoted -and
             $releaseProgressNotificationOutboxManifest.productionOutputBoundary -eq "release_progress_notification_outbox_only" -and
-            [int]$releaseProgressNotificationOutboxManifest.checkCount -eq 6 -and
+            [int]$releaseProgressNotificationOutboxManifest.checkCount -eq 7 -and
             [int]$releaseProgressNotificationOutboxManifest.failedCheckCount -eq 0) `
         "Release progress notification outbox must prepare the requested big-node email while preserving not-sent, local-auth, and two-stage confirmation boundaries."
 
@@ -2319,6 +2362,8 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerUnblockPackContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerInputRequestPackAccepted -and
             $releaseRiskPolicyManifest.productionHandoffOwnerInputRequestStatus -eq "AWAITING_EXTERNAL_OWNER_INPUT" -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerContactExternalIntakeProbeAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerContactExternalSendReady -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
@@ -2389,6 +2434,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-unblock-pack-manifest.json",
         "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
         "production-handoff-owner-input-request-pack-manifest.json",
+        "production-handoff-owner-contact-external-intake-probe-manifest.json",
         "release-progress-notification-outbox-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
@@ -2498,6 +2544,7 @@ $sourceManifests = @(
     "production-handoff-owner-unblock-pack-manifest.json",
     "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
     "production-handoff-owner-input-request-pack-manifest.json",
+    "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",

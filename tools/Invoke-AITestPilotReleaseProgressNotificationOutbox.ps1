@@ -159,12 +159,13 @@ if (Test-Path $outboxPath) {
 New-Item -ItemType Directory -Force $outboxPath | Out-Null
 
 $ownerInputRequestManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-input-request-pack-manifest.json") "Production handoff owner input request pack manifest"
+$ownerContactExternalIntakeProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-contact-external-intake-probe-manifest.json") "Production handoff owner contact external intake probe manifest"
 $ownerUnblockManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-unblock-pack-manifest.json") "Production handoff owner unblock pack manifest"
 $mailAuthReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-mail-auth-readiness-manifest.json") "Production handoff mail auth readiness manifest"
 $sendReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-send-readiness-manifest.json") "Production handoff send readiness manifest"
 
-$latestBigNodeName = "production_handoff_owner_input_request_pack"
-$latestBigNodeStatus = [string](Get-JsonValue $ownerInputRequestManifest "status" "")
+$latestBigNodeName = "production_handoff_owner_contact_external_intake_probe"
+$latestBigNodeStatus = [string](Get-JsonValue $ownerContactExternalIntakeProbeManifest "status" "")
 $ownerInputRequestStatus = [string](Get-JsonValue $ownerInputRequestManifest "ownerInputRequestStatus" "")
 $ownerUnblockStatus = [string](Get-JsonValue $ownerInputRequestManifest "ownerUnblockStatus" "")
 $missingOwnerContactCount = Convert-ToInt (Get-JsonValue $ownerInputRequestManifest "missingOwnerContactCount" 0)
@@ -176,7 +177,9 @@ $blockedSendCount = Convert-ToInt (Get-JsonValue $ownerInputRequestManifest "blo
 $readySendCount = Convert-ToInt (Get-JsonValue $ownerInputRequestManifest "readySendCount" 0)
 $sendReadinessStatus = [string](Get-JsonValue $ownerInputRequestManifest "sendReadinessStatus" "")
 $mailAuthReadinessStatus = [string](Get-JsonValue $ownerInputRequestManifest "mailAuthReadinessStatus" "")
-$notificationSubject = "AI TestPilot progress - owner input request pack ready"
+$externalContactIntakeAccepted = Convert-ToBool (Get-JsonValue $ownerContactExternalIntakeProbeManifest "externalContactIntakeAccepted" $false)
+$externalSendReadyForConfirmation = Convert-ToBool (Get-JsonValue $ownerContactExternalIntakeProbeManifest "externalSendReadyForConfirmation" $false)
+$notificationSubject = "AI TestPilot progress - owner contact intake path ready"
 $notificationDispatchStatus = "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION"
 
 $statusPath = Join-Path $outboxPath "notification-status.json"
@@ -194,6 +197,8 @@ $status = [ordered]@{
     latestBigNodeStatus = $latestBigNodeStatus
     ownerInputRequestStatus = $ownerInputRequestStatus
     ownerUnblockStatus = $ownerUnblockStatus
+    externalContactIntakeAccepted = [bool]$externalContactIntakeAccepted
+    externalSendReadyForConfirmation = [bool]$externalSendReadyForConfirmation
     notificationDispatchStatus = $notificationDispatchStatus
     mailAuthReadinessStatus = $mailAuthReadinessStatus
     sendReadinessStatus = $sendReadinessStatus
@@ -224,6 +229,8 @@ $emailDraftLines = @(
     "",
     "- Latest completed node: $latestBigNodeName",
     "- Node status: $latestBigNodeStatus",
+    "- External owner contact intake accepted: $externalContactIntakeAccepted",
+    "- External-contact send readiness path: $externalSendReadyForConfirmation",
     "- Release evidence boundary: repo-side package/gate evidence remains PASS; production completion still needs external owner input.",
     "- Owner input request status: $ownerInputRequestStatus",
     "- Owner unblock status: $ownerUnblockStatus",
@@ -243,6 +250,8 @@ $emailDraftLines = @(
     "- production-handoff-owner-input-request-pack-manifest.json",
     "- production-handoff-owner-input-request-pack.md",
     "- production-handoff-owner-input-request-pack/",
+    "- production-handoff-owner-contact-external-intake-probe-manifest.json",
+    "- production-handoff-owner-contact-external-intake-probe.md",
     "- release-progress-notification-outbox-manifest.json",
     "- release-progress-notification-outbox/",
     "",
@@ -336,6 +345,8 @@ $reportLines = @(
     "| Subject | $(Format-MarkdownCell $notificationSubject) |",
     "| Latest big node | $(Format-MarkdownCell $latestBigNodeName) |",
     "| Latest big node status | $(Format-MarkdownCell $latestBigNodeStatus) |",
+    "| External owner contact intake accepted | $externalContactIntakeAccepted |",
+    "| External-contact send readiness path | $externalSendReadyForConfirmation |",
     "| Notification dispatch status | $(Format-MarkdownCell $notificationDispatchStatus) |",
     "| Owner input request status | $(Format-MarkdownCell $ownerInputRequestStatus) |",
     "| Missing owner contacts | $missingOwnerContactCount |",
@@ -396,8 +407,15 @@ $reportContentValidated = $reportContent.Contains("Release Progress Notification
 
 $checks = @()
 Add-OutboxCheck "progress_notification_sources_available" `
-    ($ownerInputRequestManifest.status -eq "PASS" -and $ownerUnblockManifest.status -eq "PASS" -and $mailAuthReadinessManifest.status -eq "PASS" -and $sendReadinessManifest.status -eq "PASS") `
-    "Progress notification outbox must be based on passing owner input request, owner unblock, mail-auth readiness, and send readiness evidence."
+    ($ownerInputRequestManifest.status -eq "PASS" -and $ownerContactExternalIntakeProbeManifest.status -eq "PASS" -and $ownerUnblockManifest.status -eq "PASS" -and $mailAuthReadinessManifest.status -eq "PASS" -and $sendReadinessManifest.status -eq "PASS") `
+    "Progress notification outbox must be based on passing owner input request, owner contact external intake, owner unblock, mail-auth readiness, and send readiness evidence."
+Add-OutboxCheck "progress_notification_latest_big_node_accepted" `
+    ($latestBigNodeName -eq "production_handoff_owner_contact_external_intake_probe" -and
+        $latestBigNodeStatus -eq "PASS" -and
+        $externalContactIntakeAccepted -and
+        $externalSendReadyForConfirmation -and
+        -not (Convert-ToBool (Get-JsonValue $ownerContactExternalIntakeProbeManifest "emailSent" $true))) `
+    "Progress notification outbox must report the latest owner contact external intake node without claiming email was sent."
 Add-OutboxCheck "progress_notification_counts_match_owner_input" `
     ($missingOwnerContactCount -eq (Convert-ToInt (Get-JsonValue $ownerUnblockManifest "missingOwnerContactCount" -1)) -and
         $pendingDispatchCount -eq (Convert-ToInt (Get-JsonValue $ownerUnblockManifest "pendingDispatchCount" -1)) -and
@@ -439,6 +457,7 @@ $generatedFiles = @(
 )
 $sourceFiles = @(
     "production-handoff-owner-input-request-pack-manifest.json",
+    "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "production-handoff-owner-unblock-pack-manifest.json",
     "production-handoff-mail-auth-readiness-manifest.json",
     "production-handoff-send-readiness-manifest.json"
@@ -457,6 +476,8 @@ $manifest = [ordered]@{
     latestBigNodeStatus = $latestBigNodeStatus
     ownerInputRequestStatus = $ownerInputRequestStatus
     ownerUnblockStatus = $ownerUnblockStatus
+    externalContactIntakeAccepted = [bool]$externalContactIntakeAccepted
+    externalSendReadyForConfirmation = [bool]$externalSendReadyForConfirmation
     notificationDispatchStatus = $notificationDispatchStatus
     statusGenerated = (Test-Path $statusPath)
     progressEmailDraftGenerated = (Test-Path $emailDraftPath)

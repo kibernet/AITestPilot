@@ -328,6 +328,12 @@ That probe writes `production-handoff-owner-unblock-pack-contract-probe-manifest
 That script writes `production-handoff-owner-input-request-pack-manifest.json`, `production-handoff-owner-input-request-pack.md`, and `production-handoff-owner-input-request-pack\`. It turns the remaining external-owner blockers into a fill-in contact roster template, owner input checklist, returned-evidence checklist, and request email draft for `kibernet@sina.com` while keeping `ownerInputRequestStatus=AWAITING_EXTERNAL_OWNER_INPUT`, `automaticEmailSendReady=false`, and all real-evidence acceptance flags false.
 
 ```powershell
+.\tools\Invoke-AITestPilotProductionHandoffOwnerContactExternalIntakeProbe.ps1
+```
+
+That probe writes `production-handoff-owner-contact-external-intake-probe-manifest.json` and a Markdown report. It starts with a repo-external contact roster fixture, imports it into an isolated bundle, proves contact readiness accepts all owner contacts, and proves send readiness moves to `READY_FOR_CONFIRMATION` while the default bundle still records missing contacts and `emailSent=false`.
+
+```powershell
 .\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1
 ```
 
