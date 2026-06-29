@@ -5,7 +5,8 @@ param(
     [string]$ManifestPath,
     [string]$ReportPath,
     [switch]$RequireReceipt,
-    [switch]$ContractFixtureMode
+    [switch]$ContractFixtureMode,
+    [switch]$ConfirmLocalSendReceipt
 )
 
 Set-StrictMode -Version Latest
@@ -140,12 +141,15 @@ $receiptAccepted = (
     (Get-JsonValue $receipt "agentlyCliExitCode" -1) -eq 0 -and
     -not (Get-JsonValue $receipt "releasePipelineGenerated" $true)
 )
-$realEmailSentAccepted = $receiptAccepted -and -not [bool]$ContractFixtureMode
+$realEmailSentAccepted = $receiptAccepted -and -not [bool]$ContractFixtureMode -and [bool]$ConfirmLocalSendReceipt
 $notificationDispatchStatus = if ($realEmailSentAccepted) {
     "SENT_BY_LOCAL_AGENTLY_CLI"
 }
 elseif ($receiptAccepted -and [bool]$ContractFixtureMode) {
     "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND"
+}
+elseif ($receiptAccepted) {
+    "VALID_RECEIPT_PENDING_OPERATOR_REAL_SEND_CONFIRMATION"
 }
 else {
     "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION"
@@ -171,10 +175,11 @@ Add-ReceiptCheck "receipt_success_boundary" `
 Add-ReceiptCheck "fake_receipt_rejected" `
     $fakeReceiptRejected `
     "Receipts produced by fake CLI probes must not be accepted as dispatch evidence."
-Add-ReceiptCheck "fixture_boundary_preserved" `
-    ((-not [bool]$ContractFixtureMode -and $receiptAccepted) -or
-        ([bool]$ContractFixtureMode -and $receiptAccepted -and -not $realEmailSentAccepted)) `
-    "Contract fixture mode may validate receipt shape but must not claim a real email send."
+Add-ReceiptCheck "real_send_acceptance_guard" `
+    (([bool]$ContractFixtureMode -and $receiptAccepted -and -not $realEmailSentAccepted) -or
+        (-not [bool]$ContractFixtureMode -and [bool]$ConfirmLocalSendReceipt -and $receiptAccepted -and $realEmailSentAccepted) -or
+        (-not [bool]$ContractFixtureMode -and -not [bool]$ConfirmLocalSendReceipt -and $receiptAccepted -and -not $realEmailSentAccepted)) `
+    "A valid receipt may claim a real local send only when ContractFixtureMode is off and ConfirmLocalSendReceipt is supplied."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($receiptAccepted) { "PASS" } elseif ([bool]$RequireReceipt) { "FAIL" } else { "PENDING_RECEIPT" }
@@ -194,6 +199,7 @@ $reportLines = @(
     "| Subject | $(Format-MarkdownCell $subject) |",
     "| Message id | $(Format-MarkdownCell $messageId) |",
     "| Contract fixture mode | $([bool]$ContractFixtureMode) |",
+    "| Confirm local send receipt | $([bool]$ConfirmLocalSendReceipt) |",
     "| Receipt accepted | $receiptAccepted |",
     "| Real email sent accepted | $realEmailSentAccepted |",
     "| Dispatch status | $(Format-MarkdownCell $notificationDispatchStatus) |",
@@ -203,6 +209,7 @@ $reportLines = @(
     "- Release pipeline does not send email.",
     "- Fake CLI probe receipts are rejected.",
     "- Contract fixture mode does not claim real email delivery.",
+    "- Valid receipts require explicit operator confirmation before emailSent=true.",
     "",
     "## Checks",
     "",
@@ -244,6 +251,9 @@ $manifest = [ordered]@{
     releasePipelineGenerated = (Get-JsonValue $receipt "releasePipelineGenerated" $true)
     realDeliveryVerified = (Get-JsonValue $receipt "realDeliveryVerified" $false)
     contractFixtureMode = [bool]$ContractFixtureMode
+    confirmLocalSendReceipt = [bool]$ConfirmLocalSendReceipt
+    operatorRealSendConfirmationRequired = [bool]($receiptAccepted -and -not [bool]$ContractFixtureMode -and -not [bool]$ConfirmLocalSendReceipt)
+    operatorRealSendConfirmed = [bool]$realEmailSentAccepted
     fakeReceiptRejected = [bool]$fakeReceiptRejected
     releasePipelineSendsEmail = $false
     realEmailSentAccepted = [bool]$realEmailSentAccepted
@@ -255,6 +265,8 @@ $manifest = [ordered]@{
         "progress_notification_real_dispatch_receipt_accepted"
     } elseif ($receiptAccepted -and [bool]$ContractFixtureMode) {
         "progress_notification_dispatch_receipt_contract_only"
+    } elseif ($receiptAccepted) {
+        "progress_notification_dispatch_receipt_pending_operator_confirmation"
     } else {
         "progress_notification_dispatch_receipt_not_accepted"
     }

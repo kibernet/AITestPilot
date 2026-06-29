@@ -389,6 +389,12 @@ That intake script writes `release-progress-notification-dispatch-receipt-intake
 
 That probe writes `release-progress-notification-local-send-workflow-probe-manifest.json`, a Markdown report, and `release-progress-notification-local-send-workflow-probe\`. It proves the complete local operator workflow with a fake CLI: unauthenticated runs stop before `message +send`, logged-in prepare requests a confirmation token, token-confirmed send writes a receipt, and dispatch receipt intake accepts only contract shape without claiming real email delivery.
 
+```powershell
+.\tools\Invoke-AITestPilotReleaseProgressNotificationRealReceiptGuardProbe.ps1
+```
+
+That probe writes `release-progress-notification-real-receipt-guard-probe-manifest.json`, a Markdown report, and `release-progress-notification-real-receipt-guard-probe\`. It proves a valid send receipt cannot set `emailSent=true` unless the operator explicitly runs receipt intake with `-ConfirmLocalSendReceipt`; contract fixture mode still cannot claim a real send even when that confirmation switch is present.
+
 To run the stable repo-side acceptance entry point after host-project owners return driver, Lua, and live-smoke evidence directories:
 
 ```powershell

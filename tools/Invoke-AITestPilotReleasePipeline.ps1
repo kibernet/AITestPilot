@@ -550,6 +550,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "release_progress_notification_real_receipt_guard_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseProgressNotificationRealReceiptGuardProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_hard_mode_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

@@ -226,6 +226,7 @@ $releaseProgressNotificationConfirmationProbeManifest = Read-Manifest "release-p
 $releaseProgressNotificationReceiptProbeManifest = Read-Manifest "release-progress-notification-receipt-probe-manifest.json"
 $releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-Manifest "release-progress-notification-dispatch-receipt-intake-probe-manifest.json"
 $releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-Manifest "release-progress-notification-local-send-workflow-probe-manifest.json"
+$releaseProgressNotificationRealReceiptGuardProbeManifest = Read-Manifest "release-progress-notification-real-receipt-guard-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2424,6 +2425,36 @@ if ($null -ne $releaseProgressNotificationLocalSendWorkflowProbeManifest) {
     Test-ListedFiles $releaseProgressNotificationLocalSendWorkflowProbeManifest "release_progress_notification_local_send_workflow_probe"
 }
 
+if ($null -ne $releaseProgressNotificationRealReceiptGuardProbeManifest) {
+    Add-ReleaseCheck "release_progress_notification_real_receipt_guard_probe" `
+        ($releaseProgressNotificationRealReceiptGuardProbeManifest.status -eq "PASS" -and
+            $releaseProgressNotificationRealReceiptGuardProbeManifest.schemaVersion -eq "aitestpilot.release_progress_notification_real_receipt_guard_probe.v1" -and
+            [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.confirmLocalSendReceiptSwitchAvailable -and
+            [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.unconfirmedReceiptAccepted -and
+            $releaseProgressNotificationRealReceiptGuardProbeManifest.unconfirmedReceiptMessageId -eq "msg_contract_guard_001" -and
+            $releaseProgressNotificationRealReceiptGuardProbeManifest.unconfirmedNotificationDispatchStatus -eq "VALID_RECEIPT_PENDING_OPERATOR_REAL_SEND_CONFIRMATION" -and
+            [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.unconfirmedOperatorRealSendConfirmationRequired -and
+            -not [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.unconfirmedOperatorRealSendConfirmed -and
+            -not [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.unconfirmedRealEmailSentAccepted -and
+            -not [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.unconfirmedEmailSent -and
+            [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.contractConfirmedReceiptAccepted -and
+            [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.contractConfirmedContractFixtureMode -and
+            [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.contractConfirmedConfirmLocalSendReceipt -and
+            $releaseProgressNotificationRealReceiptGuardProbeManifest.contractConfirmedNotificationDispatchStatus -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
+            -not [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.contractConfirmedOperatorRealSendConfirmed -and
+            -not [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.contractConfirmedRealEmailSentAccepted -and
+            -not [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.contractConfirmedEmailSent -and
+            -not [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.releasePipelineSendsEmail -and
+            $releaseProgressNotificationRealReceiptGuardProbeManifest.canonicalOutboxDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            -not [bool]$releaseProgressNotificationRealReceiptGuardProbeManifest.canonicalOutboxEmailSent -and
+            $releaseProgressNotificationRealReceiptGuardProbeManifest.productionOutputBoundary -eq "progress_notification_real_receipt_guard_probe_only" -and
+            [int]$releaseProgressNotificationRealReceiptGuardProbeManifest.checkCount -eq 5 -and
+            [int]$releaseProgressNotificationRealReceiptGuardProbeManifest.failedCheckCount -eq 0) `
+        "Release progress notification real receipt guard must require explicit operator confirmation before emailSent and keep contract fixtures not-sent."
+
+    Test-ListedFiles $releaseProgressNotificationRealReceiptGuardProbeManifest "release_progress_notification_real_receipt_guard_probe"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2666,6 +2697,11 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationLocalWorkflowPrepareTokenReturned -and
             $releaseRiskPolicyManifest.releaseProgressNotificationLocalWorkflowReceiptMessageId -eq "msg_contract_workflow_001" -and
             -not [bool]$releaseRiskPolicyManifest.releaseProgressNotificationLocalWorkflowDispatchEmailSent -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationRealReceiptGuardProbeAccepted -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationRealReceiptGuardUnconfirmedStatus -eq "VALID_RECEIPT_PENDING_OPERATOR_REAL_SEND_CONFIRMATION" -and
+            -not [bool]$releaseRiskPolicyManifest.releaseProgressNotificationRealReceiptGuardUnconfirmedEmailSent -and
+            -not [bool]$releaseRiskPolicyManifest.releaseProgressNotificationRealReceiptGuardContractConfirmedEmailSent -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationRealReceiptGuardConfirmSwitchAvailable -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2744,6 +2780,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "release-progress-notification-receipt-probe-manifest.json",
         "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
         "release-progress-notification-local-send-workflow-probe-manifest.json",
+        "release-progress-notification-real-receipt-guard-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2860,6 +2897,7 @@ $sourceManifests = @(
     "release-progress-notification-receipt-probe-manifest.json",
     "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
     "release-progress-notification-local-send-workflow-probe-manifest.json",
+    "release-progress-notification-real-receipt-guard-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",

@@ -249,6 +249,7 @@ function Get-DefaultSourceManifestNames {
         "release-progress-notification-receipt-probe-manifest.json",
         "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
         "release-progress-notification-local-send-workflow-probe-manifest.json",
+        "release-progress-notification-real-receipt-guard-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
