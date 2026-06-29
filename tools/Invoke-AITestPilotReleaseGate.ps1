@@ -184,6 +184,7 @@ $providerCiQualityProbeManifest = Read-Manifest "provider-ci-quality-probe-manif
 $productionHandoffPackageManifest = Read-Manifest "production-handoff-package-manifest.json"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-Manifest "production-handoff-external-evidence-preflight-probe-manifest.json"
 $productionHandoffExportManifest = Read-Manifest "production-handoff-export-manifest.json"
+$productionHandoffStatusManifest = Read-Manifest "production-handoff-status-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
@@ -1719,6 +1720,29 @@ if ($null -ne $productionHandoffExportManifest) {
     Test-ListedFiles $productionHandoffExportManifest "production_handoff_export"
 }
 
+if ($null -ne $productionHandoffStatusManifest) {
+    Add-ReleaseCheck "production_handoff_status" `
+        ($productionHandoffStatusManifest.status -eq "PASS" -and
+            $productionHandoffStatusManifest.schemaVersion -eq "aitestpilot.production_handoff_status.v1" -and
+            [bool]$productionHandoffStatusManifest.reportGenerated -and
+            [bool]$productionHandoffStatusManifest.reportContentValidated -and
+            [int]$productionHandoffStatusManifest.ownerPacketCount -eq [int]$productionHandoffStatusManifest.hostProjectActionItemCount -and
+            [int]$productionHandoffStatusManifest.acceptedOwnerPacketCount -ge 0 -and
+            [int]$productionHandoffStatusManifest.pendingOwnerPacketCount -ge 0 -and
+            ([int]$productionHandoffStatusManifest.acceptedOwnerPacketCount + [int]$productionHandoffStatusManifest.pendingOwnerPacketCount) -eq [int]$productionHandoffStatusManifest.ownerPacketCount -and
+            [int]$productionHandoffStatusManifest.totalBlockingReasonCount -eq [int]$productionHandoffExportManifest.ownerPacketBlockingReasonCount -and
+            [int]$productionHandoffStatusManifest.remainingBlockingReasonCount -le [int]$productionHandoffStatusManifest.totalBlockingReasonCount -and
+            -not [bool]$productionHandoffStatusManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffStatusManifest.fixtureEvidencePromoted -and
+            -not [bool]$productionHandoffStatusManifest.realHostProjectEvidenceAccepted -and
+            $productionHandoffStatusManifest.productionOutputBoundary -eq "host_project_external_evidence_collection_status_only" -and
+            [int]$productionHandoffStatusManifest.checkCount -eq 8 -and
+            [int]$productionHandoffStatusManifest.failedCheckCount -eq 0) `
+        "Production handoff status must summarize owner evidence collection, remaining blockers, and fixture boundary without claiming real host-project evidence."
+
+    Test-ListedFiles $productionHandoffStatusManifest "production_handoff_status"
+}
+
 if ($null -ne $productionExternalEvidenceAcceptanceContractProbeManifest) {
     Add-ReleaseCheck "production_external_evidence_acceptance_contract_probe" `
         ($productionExternalEvidenceAcceptanceContractProbeManifest.status -eq "PASS" -and
@@ -1897,6 +1921,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-package-manifest.json",
         "production-handoff-external-evidence-preflight-probe-manifest.json",
         "production-handoff-export-manifest.json",
+        "production-handoff-status-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
@@ -1993,6 +2018,7 @@ $sourceManifests = @(
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-handoff-export-manifest.json",
+    "production-handoff-status-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",

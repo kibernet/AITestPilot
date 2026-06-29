@@ -189,6 +189,7 @@ $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-man
 $productionHandoffPackageManifest = Read-PolicyJson "production-handoff-package-manifest.json" "Production handoff package manifest"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-PolicyJson "production-handoff-external-evidence-preflight-probe-manifest.json" "Production handoff external evidence preflight probe manifest"
 $productionHandoffExportManifest = Read-PolicyJson "production-handoff-export-manifest.json" "Production handoff export manifest"
+$productionHandoffStatusManifest = Read-PolicyJson "production-handoff-status-manifest.json" "Production handoff status manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionHardModeFailureProbeManifest = Read-PolicyJson "production-hard-mode-failure-probe-manifest.json" "Production hard-mode failure probe manifest"
@@ -715,6 +716,33 @@ Add-PolicyCheck "production_handoff_export_policy" $productionHandoffExportAccep
     "Production handoff evidence must include a compact owner-facing export zip with handoff package, owner packets, kits, and contract reports without promoting fixture data." `
     "production_handoff_export_not_accepted"
 
+$productionHandoffStatusAccepted = (
+    $null -ne $productionHandoffStatusManifest -and
+    $productionHandoffStatusManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffStatusManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_status.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffStatusManifest "reportGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffStatusManifest "reportContentValidated" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "ownerPacketCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "hostProjectActionItemCount" -2)) -and
+    ((Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "acceptedOwnerPacketCount" -1)) +
+        (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "pendingOwnerPacketCount" -1))) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "ownerPacketCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "totalBlockingReasonCount" 0)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerPacketBlockingReasonCount" -1)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" -1)) -le
+        (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "totalBlockingReasonCount" 0)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffStatusManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffStatusManifest "fixtureEvidencePromoted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffStatusManifest "realHostProjectEvidenceAccepted" $true)) -and
+    (Get-JsonValue $productionHandoffStatusManifest "productionOutputBoundary" "") -eq "host_project_external_evidence_collection_status_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "checkCount" 0)) -eq 8 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_status_policy" $productionHandoffStatusAccepted `
+    "Production handoff evidence must include an owner-level external evidence collection status report without promoting fixture data." `
+    "production_handoff_status_not_accepted"
+
 $productionExternalEvidenceAcceptanceContractAccepted = (
     $null -ne $productionExternalEvidenceAcceptanceContractProbeManifest -and
     $productionExternalEvidenceAcceptanceContractProbeManifest.status -eq "PASS" -and
@@ -844,6 +872,7 @@ $sourceFiles = @(
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-handoff-export-manifest.json",
+    "production-handoff-status-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json"
@@ -892,6 +921,9 @@ $manifest = [ordered]@{
     productionHandoffPackageAccepted = [bool]$productionHandoffPackageAccepted
     productionHandoffExternalEvidencePreflightAccepted = [bool]$productionHandoffExternalEvidencePreflightAccepted
     productionHandoffExportAccepted = [bool]$productionHandoffExportAccepted
+    productionHandoffStatusAccepted = [bool]$productionHandoffStatusAccepted
+    productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
+    productionHandoffPendingOwnerPacketCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "pendingOwnerPacketCount" 0))
     productionExternalEvidenceAcceptanceContractAccepted = [bool]$productionExternalEvidenceAcceptanceContractAccepted
     productionExternalEvidenceAcceptanceFailureAccepted = [bool]$productionExternalEvidenceAcceptanceFailureAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
@@ -927,6 +959,9 @@ $reportLines = @(
     "- Production handoff package accepted: $($manifest.productionHandoffPackageAccepted)",
     "- Production handoff external evidence preflight accepted: $($manifest.productionHandoffExternalEvidencePreflightAccepted)",
     "- Production handoff export accepted: $($manifest.productionHandoffExportAccepted)",
+    "- Production handoff status accepted: $($manifest.productionHandoffStatusAccepted)",
+    "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",
+    "- Production handoff remaining blockers: $($manifest.productionHandoffRemainingBlockingReasonCount)",
     "- Production external evidence acceptance contract accepted: $($manifest.productionExternalEvidenceAcceptanceContractAccepted)",
     "- Production external evidence acceptance failure accepted: $($manifest.productionExternalEvidenceAcceptanceFailureAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
