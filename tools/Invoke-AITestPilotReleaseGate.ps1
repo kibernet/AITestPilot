@@ -2232,6 +2232,13 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
             [bool]$releaseProgressNotificationOutboxManifest.ownerResponseBundleKitGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.ownerResponseBundleKitZipGenerated -and
             [int]$releaseProgressNotificationOutboxManifest.ownerResponseBundleKitRequiredFileCount -gt 0 -and
+            $releaseProgressNotificationOutboxManifest.notificationCadencePolicy -eq "BIG_NODE_ONLY" -and
+            $releaseProgressNotificationOutboxManifest.notificationTriggerKind -eq "BIG_NODE" -and
+            [bool]$releaseProgressNotificationOutboxManifest.bigNodeNotificationEligible -and
+            [bool]$releaseProgressNotificationOutboxManifest.smallNodeEmailSuppression -and
+            [int]$releaseProgressNotificationOutboxManifest.suppressedSmallNodeCount -eq 6 -and
+            [bool]$releaseProgressNotificationOutboxManifest.cadencePolicyGenerated -and
+            [bool]$releaseProgressNotificationOutboxManifest.cadencePolicyContentValidated -and
             $releaseProgressNotificationOutboxManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseProgressNotificationOutboxManifest.statusGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.progressEmailDraftGenerated -and
@@ -2262,7 +2269,7 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
             -not [bool]$releaseProgressNotificationOutboxManifest.externalEvidenceAccepted -and
             -not [bool]$releaseProgressNotificationOutboxManifest.fixtureEvidencePromoted -and
             $releaseProgressNotificationOutboxManifest.productionOutputBoundary -eq "release_progress_notification_outbox_only" -and
-            [int]$releaseProgressNotificationOutboxManifest.checkCount -eq 7 -and
+            [int]$releaseProgressNotificationOutboxManifest.checkCount -eq 8 -and
             [int]$releaseProgressNotificationOutboxManifest.failedCheckCount -eq 0) `
         "Release progress notification outbox must prepare the requested big-node email while preserving not-sent, local-auth, and two-stage confirmation boundaries."
 
@@ -2678,6 +2685,10 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitRequiredFileCount -gt 0 -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationCadencePolicy -eq "BIG_NODE_ONLY" -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationTriggerKind -eq "BIG_NODE" -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationSmallNodeEmailSuppression -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationSuppressedSmallNodeCount -eq 6 -and
             [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperAuthStatusProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperOwnerBoundaryPassed -and
             [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperProgressBoundaryPassed -and

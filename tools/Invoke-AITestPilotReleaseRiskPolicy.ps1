@@ -1270,6 +1270,13 @@ $releaseProgressNotificationOutboxAccepted = (
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseBundleKitGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseBundleKitZipGenerated" $false)) -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseBundleKitRequiredFileCount" 0)) -gt 0 -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationCadencePolicy" "") -eq "BIG_NODE_ONLY" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationTriggerKind" "") -eq "BIG_NODE" -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "bigNodeNotificationEligible" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "smallNodeEmailSuppression" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "suppressedSmallNodeCount" 0)) -eq 6 -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "cadencePolicyGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "cadencePolicyContentValidated" $false)) -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "statusGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "progressEmailDraftGenerated" $false)) -and
@@ -1307,7 +1314,7 @@ $releaseProgressNotificationOutboxAccepted = (
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "productionOutputBoundary" "") -eq "release_progress_notification_outbox_only" -and
-    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "checkCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "checkCount" 0)) -eq 8 -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -1820,6 +1827,10 @@ $manifest = [ordered]@{
     releaseProgressNotificationOutboxAccepted = [bool]$releaseProgressNotificationOutboxAccepted
     releaseProgressNotificationDispatchStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "")
     releaseProgressNotificationRecipient = (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "")
+    releaseProgressNotificationCadencePolicy = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationCadencePolicy" "")
+    releaseProgressNotificationTriggerKind = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationTriggerKind" "")
+    releaseProgressNotificationSmallNodeEmailSuppression = (Get-JsonValue $releaseProgressNotificationOutboxManifest "smallNodeEmailSuppression" $false)
+    releaseProgressNotificationSuppressedSmallNodeCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "suppressedSmallNodeCount" 0))
     productionHandoffMailHelperAuthStatusProbeAccepted = [bool]$productionHandoffMailHelperAuthStatusProbeAccepted
     productionHandoffMailHelperOwnerBoundaryPassed = (Get-JsonValue $productionHandoffMailHelperAuthStatusProbeManifest "ownerPacketHelperAuthBoundaryPassed" $false)
     productionHandoffMailHelperProgressBoundaryPassed = (Get-JsonValue $productionHandoffMailHelperAuthStatusProbeManifest "progressNotificationHelperAuthBoundaryPassed" $false)
@@ -1916,6 +1927,10 @@ $reportLines = @(
     "- Release progress notification outbox accepted: $($manifest.releaseProgressNotificationOutboxAccepted)",
     "- Release progress notification dispatch status: $($manifest.releaseProgressNotificationDispatchStatus)",
     "- Release progress notification recipient: $($manifest.releaseProgressNotificationRecipient)",
+    "- Release progress notification cadence policy: $($manifest.releaseProgressNotificationCadencePolicy)",
+    "- Release progress notification trigger kind: $($manifest.releaseProgressNotificationTriggerKind)",
+    "- Release progress notification small-node email suppression: $($manifest.releaseProgressNotificationSmallNodeEmailSuppression)",
+    "- Release progress notification suppressed small-node count: $($manifest.releaseProgressNotificationSuppressedSmallNodeCount)",
     "- Production handoff mail helper auth-status probe accepted: $($manifest.productionHandoffMailHelperAuthStatusProbeAccepted)",
     "- Production handoff owner packet helper auth boundary: $($manifest.productionHandoffMailHelperOwnerBoundaryPassed)",
     "- Production handoff progress notification helper auth boundary: $($manifest.productionHandoffMailHelperProgressBoundaryPassed)",

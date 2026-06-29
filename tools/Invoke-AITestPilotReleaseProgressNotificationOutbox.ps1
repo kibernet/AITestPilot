@@ -194,8 +194,23 @@ $ownerResponseBundleKitZipGenerated = Convert-ToBool (Get-JsonValue $ownerRespon
 $ownerResponseBundleKitRequiredFileCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleKitManifest "requiredEvidenceFileCount" 0)
 $notificationSubject = "AI TestPilot progress - owner response bundle kit ready"
 $notificationDispatchStatus = "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION"
+$notificationCadencePolicy = "BIG_NODE_ONLY"
+$notificationTriggerKind = "BIG_NODE"
+$bigNodeNotificationEligible = $true
+$smallNodeEmailSuppression = $true
+$eligibleBigNodeNames = @($latestBigNodeName)
+$suppressedSmallNodeNames = @(
+    "production_handoff_mail_helper_auth_status_probe",
+    "release_progress_notification_confirmation_probe",
+    "release_progress_notification_receipt_probe",
+    "release_progress_notification_dispatch_receipt_intake_probe",
+    "release_progress_notification_local_send_workflow_probe",
+    "release_progress_notification_real_receipt_guard_probe"
+)
+$suppressedSmallNodeCount = @($suppressedSmallNodeNames).Count
 
 $statusPath = Join-Path $outboxPath "notification-status.json"
+$cadencePolicyPath = Join-Path $outboxPath "notification-cadence-policy.json"
 $emailDraftPath = Join-Path $outboxPath "big-node-progress-email.md"
 $sendHelperPath = Join-Path $outboxPath "send-progress-notification.ps1"
 $readmePath = Join-Path $outboxPath "README.md"
@@ -222,6 +237,13 @@ $status = [ordered]@{
     ownerResponseBundleKitGenerated = [bool]$ownerResponseBundleKitGenerated
     ownerResponseBundleKitZipGenerated = [bool]$ownerResponseBundleKitZipGenerated
     ownerResponseBundleKitRequiredFileCount = [int]$ownerResponseBundleKitRequiredFileCount
+    notificationCadencePolicy = $notificationCadencePolicy
+    notificationTriggerKind = $notificationTriggerKind
+    bigNodeNotificationEligible = [bool]$bigNodeNotificationEligible
+    smallNodeEmailSuppression = [bool]$smallNodeEmailSuppression
+    eligibleBigNodeNames = @($eligibleBigNodeNames)
+    suppressedSmallNodeNames = @($suppressedSmallNodeNames)
+    suppressedSmallNodeCount = [int]$suppressedSmallNodeCount
     notificationDispatchStatus = $notificationDispatchStatus
     mailAuthReadinessStatus = $mailAuthReadinessStatus
     sendReadinessStatus = $sendReadinessStatus
@@ -244,6 +266,26 @@ $status = [ordered]@{
 }
 $status | ConvertTo-Json -Depth 8 | Set-Content -Path $statusPath -Encoding UTF8
 
+$cadencePolicy = [ordered]@{
+    schemaVersion = "aitestpilot.release_progress_notification_cadence_policy.v1"
+    status = "PASS"
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    notificationCadencePolicy = $notificationCadencePolicy
+    notificationTriggerKind = $notificationTriggerKind
+    bigNodeNotificationEligible = [bool]$bigNodeNotificationEligible
+    latestBigNodeName = $latestBigNodeName
+    latestBigNodeStatus = $latestBigNodeStatus
+    eligibleBigNodeNames = @($eligibleBigNodeNames)
+    smallNodeEmailSuppression = [bool]$smallNodeEmailSuppression
+    suppressedSmallNodeNames = @($suppressedSmallNodeNames)
+    suppressedSmallNodeCount = [int]$suppressedSmallNodeCount
+    releasePipelineSendsEmail = $false
+    emailSent = $false
+    confirmationTokenCreated = $false
+    productionOutputBoundary = "release_progress_notification_cadence_policy_only"
+}
+$cadencePolicy | ConvertTo-Json -Depth 8 | Set-Content -Path $cadencePolicyPath -Encoding UTF8
+
 $emailDraftLines = @(
     "To: $ProgressRecipient",
     "Subject: $notificationSubject",
@@ -264,6 +306,10 @@ $emailDraftLines = @(
     "- Owner response bundle kit generated: $ownerResponseBundleKitGenerated",
     "- Owner response bundle kit zip generated: $ownerResponseBundleKitZipGenerated",
     "- Owner response bundle kit required evidence files: $ownerResponseBundleKitRequiredFileCount",
+    "- Notification cadence policy: $notificationCadencePolicy",
+    "- Notification trigger kind: $notificationTriggerKind",
+    "- Small-node email suppression active: $smallNodeEmailSuppression",
+    "- Suppressed small-node notification count: $suppressedSmallNodeCount",
     "- Release evidence boundary: repo-side package/gate evidence remains PASS; production completion still needs external owner input.",
     "- Owner input request status: $ownerInputRequestStatus",
     "- Owner unblock status: $ownerUnblockStatus",
@@ -395,10 +441,12 @@ $readmeLines = @(
     "Files:",
     "",
     "- ``notification-status.json``: machine-readable pending notification state.",
+    "- ``notification-cadence-policy.json``: machine-readable big-node-only notification cadence policy.",
     "- ``big-node-progress-email.md``: prepared email body for ``$ProgressRecipient``.",
     "- ``send-progress-notification.ps1``: local helper for the agently-cli two-stage send flow.",
     "",
     "The release pipeline does not send email, run OAuth login, or create confirmation tokens.",
+    "Only big-node progress creates a prepared progress email. Small proof/probe nodes are recorded in evidence but do not create separate progress emails.",
     "",
     "Local workflow after agently-cli authorization:",
     "",
@@ -435,6 +483,11 @@ $reportLines = @(
     "| Owner response bundle kit generated | $ownerResponseBundleKitGenerated |",
     "| Owner response bundle kit zip generated | $ownerResponseBundleKitZipGenerated |",
     "| Owner response bundle kit required files | $ownerResponseBundleKitRequiredFileCount |",
+    "| Notification cadence policy | $(Format-MarkdownCell $notificationCadencePolicy) |",
+    "| Notification trigger kind | $(Format-MarkdownCell $notificationTriggerKind) |",
+    "| Big-node notification eligible | $bigNodeNotificationEligible |",
+    "| Small-node email suppression | $smallNodeEmailSuppression |",
+    "| Suppressed small-node notification count | $suppressedSmallNodeCount |",
     "| Notification dispatch status | $(Format-MarkdownCell $notificationDispatchStatus) |",
     "| Owner input request status | $(Format-MarkdownCell $ownerInputRequestStatus) |",
     "| Missing owner contacts | $missingOwnerContactCount |",
@@ -449,6 +502,7 @@ $reportLines = @(
     "## Boundary",
     "",
     "- Prepared notification only; emailSent=false.",
+    "- Notification cadence is big-node-only; proof/probe nodes do not generate separate emails.",
     "- Release pipeline does not send email.",
     "- Local agently-cli authorization and two-stage confirmation are required.",
     "- Real host-project evidence has not been accepted.",
@@ -457,11 +511,13 @@ $reportLines = @(
 $reportLines | Set-Content -Path $reportFullPath -Encoding UTF8
 
 $statusContent = Get-Content -Path $statusPath -Encoding UTF8 -Raw
+$cadencePolicyContent = Get-Content -Path $cadencePolicyPath -Encoding UTF8 -Raw
 $emailDraftContent = Get-Content -Path $emailDraftPath -Encoding UTF8 -Raw
 $sendHelperContent = Get-Content -Path $sendHelperPath -Encoding UTF8 -Raw
 $readmeContent = Get-Content -Path $readmePath -Encoding UTF8 -Raw
 $reportContent = Get-Content -Path $reportFullPath -Encoding UTF8 -Raw
 $noObjectLeakage = -not $statusContent.Contains("System.Collections") -and -not $statusContent.Contains("@{") -and
+    -not $cadencePolicyContent.Contains("System.Collections") -and -not $cadencePolicyContent.Contains("@{") -and
     -not $emailDraftContent.Contains("System.Collections") -and -not $emailDraftContent.Contains("@{") -and
     -not $sendHelperContent.Contains("System.Collections") -and
     -not $readmeContent.Contains("System.Collections") -and -not $readmeContent.Contains("@{") -and
@@ -471,10 +527,17 @@ $statusContentValidated = $statusContent.Contains("release_progress_notification
     $statusContent.Contains($ProgressRecipient) -and
     $statusContent.Contains($notificationDispatchStatus) -and
     $statusContent.Contains($latestBigNodeName) -and
+    $statusContent.Contains($notificationCadencePolicy) -and
+    $noObjectLeakage
+$cadencePolicyContentValidated = $cadencePolicyContent.Contains("release_progress_notification_cadence_policy.v1") -and
+    $cadencePolicyContent.Contains($notificationCadencePolicy) -and
+    $cadencePolicyContent.Contains($latestBigNodeName) -and
+    $cadencePolicyContent.Contains("release_progress_notification_real_receipt_guard_probe") -and
     $noObjectLeakage
 $emailDraftContentValidated = $emailDraftContent.Contains($ProgressRecipient) -and
     $emailDraftContent.Contains($notificationSubject) -and
     $emailDraftContent.Contains($latestBigNodeName) -and
+    $emailDraftContent.Contains("Notification cadence policy: $notificationCadencePolicy") -and
     $emailDraftContent.Contains("Missing owner contacts: $missingOwnerContactCount") -and
     $emailDraftContent.Contains("prepared but not sent") -and
     $noObjectLeakage
@@ -491,11 +554,13 @@ $sendHelperContentValidated = $sendHelperContent.Contains("agently-cli auth stat
     $noObjectLeakage
 $readmeContentValidated = $readmeContent.Contains("two-stage send flow") -and
     $readmeContent.Contains("does not send email") -and
+    $readmeContent.Contains("big-node-only") -and
     $readmeContent.Contains("agently-cli auth status") -and
     $noObjectLeakage
 $reportContentValidated = $reportContent.Contains("Release Progress Notification Outbox") -and
     $reportContent.Contains($notificationDispatchStatus) -and
     $reportContent.Contains("emailSent=false") -and
+    $reportContent.Contains($notificationCadencePolicy) -and
     $reportContent.Contains("two-stage confirmation") -and
     $noObjectLeakage
 
@@ -530,11 +595,22 @@ Add-OutboxCheck "progress_notification_counts_match_owner_input" `
         $readySendCount -eq (Convert-ToInt (Get-JsonValue $sendReadinessManifest "readySendCount" -1))) `
     "Progress notification outbox counts must match the owner input and unblock source manifests."
 Add-OutboxCheck "progress_notification_files_generated" `
-    ((Test-Path $statusPath) -and (Test-Path $emailDraftPath) -and (Test-Path $sendHelperPath) -and (Test-Path $readmePath) -and (Test-Path $reportFullPath)) `
-    "Progress notification outbox must generate status, email draft, send helper, README, and report files."
+    ((Test-Path $statusPath) -and (Test-Path $cadencePolicyPath) -and (Test-Path $emailDraftPath) -and (Test-Path $sendHelperPath) -and (Test-Path $readmePath) -and (Test-Path $reportFullPath)) `
+    "Progress notification outbox must generate status, cadence policy, email draft, send helper, README, and report files."
 Add-OutboxCheck "progress_notification_content_validated" `
-    ($statusContentValidated -and $emailDraftContentValidated -and $sendHelperContentValidated -and $readmeContentValidated -and $reportContentValidated) `
-    "Progress notification outbox files must contain recipient, subject, node, counts, agently-cli send flow, and not-sent boundary text."
+    ($statusContentValidated -and $cadencePolicyContentValidated -and $emailDraftContentValidated -and $sendHelperContentValidated -and $readmeContentValidated -and $reportContentValidated) `
+    "Progress notification outbox files must contain recipient, subject, node, cadence policy, counts, agently-cli send flow, and not-sent boundary text."
+Add-OutboxCheck "progress_notification_big_node_only_cadence" `
+    ($notificationCadencePolicy -eq "BIG_NODE_ONLY" -and
+        $notificationTriggerKind -eq "BIG_NODE" -and
+        $bigNodeNotificationEligible -and
+        $smallNodeEmailSuppression -and
+        $suppressedSmallNodeCount -eq 6 -and
+        $suppressedSmallNodeNames -contains "release_progress_notification_confirmation_probe" -and
+        $suppressedSmallNodeNames -contains "release_progress_notification_real_receipt_guard_probe" -and
+        @($eligibleBigNodeNames).Count -eq 1 -and
+        $eligibleBigNodeNames[0] -eq "production_handoff_owner_response_bundle_kit") `
+    "Progress notification cadence must be big-node-only and suppress separate emails for small proof/probe nodes."
 Add-OutboxCheck "progress_notification_mail_boundary_preserved" `
     ($notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
         $mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
@@ -555,6 +631,7 @@ $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $manifestFullPath),
     (Convert-ToEvidenceRelativePath $reportFullPath),
     (Convert-ToEvidenceRelativePath $statusPath),
+    (Convert-ToEvidenceRelativePath $cadencePolicyPath),
     (Convert-ToEvidenceRelativePath $emailDraftPath),
     (Convert-ToEvidenceRelativePath $sendHelperPath),
     (Convert-ToEvidenceRelativePath $readmePath)
@@ -595,13 +672,22 @@ $manifest = [ordered]@{
     ownerResponseBundleKitGenerated = [bool]$ownerResponseBundleKitGenerated
     ownerResponseBundleKitZipGenerated = [bool]$ownerResponseBundleKitZipGenerated
     ownerResponseBundleKitRequiredFileCount = [int]$ownerResponseBundleKitRequiredFileCount
+    notificationCadencePolicy = $notificationCadencePolicy
+    notificationTriggerKind = $notificationTriggerKind
+    bigNodeNotificationEligible = [bool]$bigNodeNotificationEligible
+    smallNodeEmailSuppression = [bool]$smallNodeEmailSuppression
+    eligibleBigNodeNames = @($eligibleBigNodeNames)
+    suppressedSmallNodeNames = @($suppressedSmallNodeNames)
+    suppressedSmallNodeCount = [int]$suppressedSmallNodeCount
     notificationDispatchStatus = $notificationDispatchStatus
     statusGenerated = (Test-Path $statusPath)
+    cadencePolicyGenerated = (Test-Path $cadencePolicyPath)
     progressEmailDraftGenerated = (Test-Path $emailDraftPath)
     sendHelperGenerated = (Test-Path $sendHelperPath)
     readmeGenerated = (Test-Path $readmePath)
     reportGenerated = (Test-Path $reportFullPath)
     statusContentValidated = [bool]$statusContentValidated
+    cadencePolicyContentValidated = [bool]$cadencePolicyContentValidated
     progressEmailDraftContentValidated = [bool]$emailDraftContentValidated
     sendHelperContentValidated = [bool]$sendHelperContentValidated
     readmeContentValidated = [bool]$readmeContentValidated

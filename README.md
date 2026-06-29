@@ -355,7 +355,7 @@ That script writes `production-handoff-owner-response-bundle-kit-manifest.json`,
 .\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1
 ```
 
-That script writes `release-progress-notification-outbox-manifest.json`, `release-progress-notification-outbox.md`, and `release-progress-notification-outbox\`. It prepares the requested big-node progress email for `kibernet@sina.com`, records the current remaining external counts, and provides a local `agently-cli` send helper with optional `-ReceiptPath` output while keeping the notification in `PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION` with `emailSent=false`.
+That script writes `release-progress-notification-outbox-manifest.json`, `release-progress-notification-outbox.md`, and `release-progress-notification-outbox\`. It prepares the requested big-node progress email for `kibernet@sina.com`, records the current remaining external counts, writes a `BIG_NODE_ONLY` cadence policy that suppresses separate small proof/probe emails, and provides a local `agently-cli` send helper with optional `-ReceiptPath` output while keeping the notification in `PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION` with `emailSent=false`.
 
 ```powershell
 .\tools\Invoke-AITestPilotProductionHandoffMailHelperAuthStatusProbe.ps1
