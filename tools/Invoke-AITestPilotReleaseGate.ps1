@@ -174,6 +174,7 @@ $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-fail
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
 $azurePipelinesReleaseWorkflowProbeManifest = Read-Manifest "azure-pipelines-release-workflow-probe-manifest.json"
+$releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
 
 if ($null -ne $sceneManifest) {
@@ -1460,6 +1461,41 @@ if ($null -ne $azurePipelinesReleaseWorkflowProbeManifest) {
     Test-ListedFiles $azurePipelinesReleaseWorkflowProbeManifest "azure_pipelines_release_workflow_probe"
 }
 
+if ($null -ne $releaseRiskPolicyManifest) {
+    $expectedDriverEvidenceStatus = if ($RequireProductionReplayDriverBound) { "PRODUCTION_BOUND_ACCEPTED" } else { "EXPLICIT_SAMPLE_BOUNDARY_ACCEPTED" }
+    $expectedProductionLuaEvidenceStatus = if ($RequireProductionLuaPatched) { "PRODUCTION_LUA_PATCH_ACCEPTED" } else { "EXPLICIT_NO_PRODUCTION_LUA_BOUNDARY_ACCEPTED" }
+    $liveModelStatusAccepted = $releaseRiskPolicyManifest.liveModelPolicyStatus -eq "LIVE_MODEL_SMOKE_ACCEPTED" -or
+        (-not [bool]$RequireLiveModelEndpointSmoke -and
+            ($releaseRiskPolicyManifest.liveModelPolicyStatus -eq "OPTIONAL_LIVE_MODEL_SMOKE_ACCEPTED" -or
+                $releaseRiskPolicyManifest.liveModelPolicyStatus -eq "OPTIONAL_LIVE_MODEL_SKIP_ACCEPTED_WITH_FAILURE_POLICY"))
+
+    Add-ReleaseCheck "release_risk_policy" `
+        ($releaseRiskPolicyManifest.status -eq "PASS" -and
+            $releaseRiskPolicyManifest.schemaVersion -eq "aitestpilot.release_risk_policy.v1" -and
+            [bool]$releaseRiskPolicyManifest.allowPackageRelease -and
+            [int]$releaseRiskPolicyManifest.releaseBlockerCount -eq 0 -and
+            [bool]$releaseRiskPolicyManifest.aiExplorationAccepted -and
+            [int]$releaseRiskPolicyManifest.unexpectedFailedRunReportCount -eq 0 -and
+            [bool]$releaseRiskPolicyManifest.highRiskPolicyAccepted -and
+            [int]$releaseRiskPolicyManifest.unverifiedHighRiskBugCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.unresolvedHighRiskGraphNodeCount -eq 0 -and
+            [bool]$releaseRiskPolicyManifest.driverEvidenceAccepted -and
+            $releaseRiskPolicyManifest.driverEvidenceStatus -eq $expectedDriverEvidenceStatus -and
+            [bool]$releaseRiskPolicyManifest.productionLuaEvidenceAccepted -and
+            $releaseRiskPolicyManifest.productionLuaEvidenceStatus -eq $expectedProductionLuaEvidenceStatus -and
+            [bool]$releaseRiskPolicyManifest.liveModelPolicyAccepted -and
+            $liveModelStatusAccepted -and
+            [bool]$releaseRiskPolicyManifest.ciProviderEvidenceAccepted -and
+            [bool]$releaseRiskPolicyManifest.githubActionsAccepted -and
+            [bool]$releaseRiskPolicyManifest.azurePipelinesAccepted -and
+            [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
+            [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.missingOrInvalidSourceFileCount -eq 0) `
+        "Release risk policy must explicitly accept AI exploration, high-risk graph, driver evidence, Lua evidence, live-model policy, and CI provider controls before release."
+
+    Test-ListedFiles $releaseRiskPolicyManifest "release_risk_policy"
+}
+
 if ($null -ne $releaseEvidenceIndexManifest) {
     $requiredIndexedManifests = @(
         "manifest.json",
@@ -1495,7 +1531,8 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "live-model-endpoint-failure-probe-manifest.json",
         "live-model-endpoint-smoke-manifest.json",
         "github-actions-release-workflow-probe-manifest.json",
-        "azure-pipelines-release-workflow-probe-manifest.json"
+        "azure-pipelines-release-workflow-probe-manifest.json",
+        "release-risk-policy-manifest.json"
     )
 
     if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
@@ -1578,6 +1615,7 @@ $sourceManifests = @(
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
+    "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"
 )
 

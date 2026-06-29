@@ -231,13 +231,21 @@ To export a machine-readable release evidence index:
 
 That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. The full release pipeline runs it before the release gate so CI and portal handoff can consume one stable evidence summary.
 
+To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint policy, and CI provider controls:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseRiskPolicy.ps1
+```
+
+That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, and `-RequireLiveModelEndpointSmoke`.
+
 To run the full repo-side release gate over the evidence bundle:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, release risk policy acceptance, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -394,6 +402,7 @@ Implemented now:
 - GitHub Actions release workflow for self-hosted Windows Unity runners, with release-gated workflow probe and evidence artifact upload.
 - Azure Pipelines release workflow for self-hosted Windows Unity pools, with release-gated workflow probe and evidence artifact publishing.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers.
+- Release-gated risk policy manifest that blocks failed AI exploration, unresolved high-risk graph nodes, missing driver evidence, missing production Lua evidence, missing live-smoke policy evidence, or missing CI provider controls while preserving explicit package-release boundaries.
 - Generic HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.
 - Model endpoint trace probe included in release evidence and enforced by the repo-side release gate.
 - Unity `ModelEndpointSettings` asset, editor creation flow, request-contract builder, response parser, and batch evidence.
@@ -418,5 +427,6 @@ Not implemented yet:
 - Cloud/local cluster orchestration.
 - Real production Lua patch execution with host-project analysis, retest, rollback, and evidence export.
 - Prefab mutation and retest orchestration across Unity editor restarts.
+- Provider-specific build, test, and vision checks beyond the current release workflows.
 - Further CI providers beyond GitHub Actions and Azure Pipelines if required.
 - Real game-project driver implementation for production login, account preparation, activity, fishing, and other game systems.

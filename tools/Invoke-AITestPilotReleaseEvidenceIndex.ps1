@@ -219,7 +219,8 @@ function Get-DefaultSourceManifestNames {
         "live-model-endpoint-failure-probe-manifest.json",
         "live-model-endpoint-smoke-manifest.json",
         "github-actions-release-workflow-probe-manifest.json",
-        "azure-pipelines-release-workflow-probe-manifest.json"
+        "azure-pipelines-release-workflow-probe-manifest.json",
+        "release-risk-policy-manifest.json"
     )
 
     $cursorAgentManifest = Join-Path $evidenceBundlePath "repair-agent-cursor-agent-external-output-manifest.json"

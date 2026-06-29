@@ -368,6 +368,14 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "release_risk_policy" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir `
+            -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+            -RequireProductionLuaPatched:$RequireProductionLuaPatched `
+            -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
+    }
+
     Invoke-PipelineStep "release_evidence_index" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `

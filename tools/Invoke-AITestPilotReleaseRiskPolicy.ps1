@@ -1,0 +1,596 @@
+[CmdletBinding()]
+param(
+    [string]$EvidenceBundleDir,
+    [string]$ManifestPath,
+    [string]$ReportPath,
+    [switch]$RequireProductionReplayDriverBound,
+    [switch]$RequireProductionLuaPatched,
+    [switch]$RequireLiveModelEndpointSmoke
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+
+if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
+    $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
+}
+
+if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
+    $ManifestPath = Join-Path $EvidenceBundleDir "release-risk-policy-manifest.json"
+}
+
+if ([string]::IsNullOrWhiteSpace($ReportPath)) {
+    $ReportPath = Join-Path $EvidenceBundleDir "release-risk-policy.md"
+}
+
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Assert-PathUnderRepo {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Get-JsonValue {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [object]$DefaultValue = $null
+    )
+
+    if ($null -eq $Object) {
+        return $DefaultValue
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+
+    return $property.Value
+}
+
+function Convert-ToArray {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return @()
+    }
+
+    return @($Value)
+}
+
+function Convert-ToBool {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return $false
+    }
+
+    return [bool]$Value
+}
+
+function Convert-ToInt {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return 0
+    }
+
+    return [int]$Value
+}
+
+function Test-ContainsAll {
+    param(
+        [object[]]$Actual,
+        [string[]]$Required
+    )
+
+    foreach ($item in $Required) {
+        if ($Actual -notcontains $item) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+$riskPolicyChecks = @()
+$releaseBlockers = @()
+$missingOrInvalidSourceFiles = @()
+
+function Add-PolicyCheck {
+    param(
+        [string]$Name,
+        [bool]$Passed,
+        [string]$Message,
+        [string]$BlockingReason = ""
+    )
+
+    $script:riskPolicyChecks += [ordered]@{
+        name = $Name
+        passed = [bool]$Passed
+        message = $Message
+    }
+
+    if (-not $Passed) {
+        if ([string]::IsNullOrWhiteSpace($BlockingReason)) {
+            $BlockingReason = $Name
+        }
+
+        $script:releaseBlockers += $BlockingReason
+    }
+}
+
+function Read-PolicyJson {
+    param(
+        [string]$FileName,
+        [string]$Label
+    )
+
+    $path = Join-Path $evidenceBundlePath $FileName
+    if (-not (Test-Path $path)) {
+        $script:missingOrInvalidSourceFiles += $FileName
+        Add-PolicyCheck ("source_file:" + $FileName) $false ($Label + " is missing.") "source_file_missing"
+        return $null
+    }
+
+    try {
+        Add-PolicyCheck ("source_file:" + $FileName) $true ($Label + " exists and is parseable.")
+        return Get-Content -Path $path -Encoding UTF8 -Raw | ConvertFrom-Json
+    }
+    catch {
+        $script:missingOrInvalidSourceFiles += $FileName
+        Add-PolicyCheck ("source_file:" + $FileName) $false ($Label + " is not parseable: " + $_.Exception.Message) "source_file_unparseable"
+        return $null
+    }
+}
+
+$evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
+$manifestFullPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
+$reportFullPath = Assert-PathUnderRepo $ReportPath "ReportPath"
+
+if (-not (Test-Path $evidenceBundlePath)) {
+    throw "Evidence bundle does not exist: $evidenceBundlePath"
+}
+
+$sceneManifest = Read-PolicyJson "manifest.json" "Release scene manifest"
+$sceneValidation = Read-PolicyJson "scene-validation.json" "Scene validation report"
+$bugKnowledgeGraph = Read-PolicyJson "bug-knowledge-graph.json" "Bug knowledge graph"
+$patchApplyRetestManifest = Read-PolicyJson "repair-agent-patch-apply-retest-manifest.json" "Patch apply retest manifest"
+$patchHistoryManifest = Read-PolicyJson "repair-agent-patch-result-history-manifest.json" "Patch result history manifest"
+$productionDriverReadinessManifest = Read-PolicyJson "production-replay-driver-readiness-manifest.json" "Production replay driver readiness manifest"
+$productionDriverEvidenceIntakeManifest = Read-PolicyJson "production-driver-evidence-intake-manifest.json" "Production driver evidence intake manifest"
+$productionLuaPatchReadinessManifest = Read-PolicyJson "production-lua-patch-readiness-manifest.json" "Production Lua patch readiness manifest"
+$liveModelFailureProbeManifest = Read-PolicyJson "live-model-endpoint-failure-probe-manifest.json" "Live model endpoint failure probe manifest"
+$liveModelSmokeManifest = Read-PolicyJson "live-model-endpoint-smoke-manifest.json" "Live model endpoint smoke manifest"
+$githubActionsProbeManifest = Read-PolicyJson "github-actions-release-workflow-probe-manifest.json" "GitHub Actions workflow probe manifest"
+$azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow-probe-manifest.json" "Azure Pipelines workflow probe manifest"
+
+$runReports = @()
+if ($null -ne $sceneValidation) {
+    $runReports = Convert-ToArray (Get-JsonValue $sceneValidation "runReports" $null)
+}
+
+$unexpectedFailedRunReports = @($runReports | Where-Object {
+        $outcome = [string](Get-JsonValue $_ "outcome" "")
+        -not [string]::IsNullOrWhiteSpace($outcome) -and
+            $outcome -ne "PASSED" -and
+            $outcome -ne "BUG_DETECTED"
+    })
+$bugDetectedRunReports = @($runReports | Where-Object { [string](Get-JsonValue $_ "outcome" "") -eq "BUG_DETECTED" })
+
+$sceneStatusPassed = (
+    $null -ne $sceneManifest -and
+    $sceneManifest.status -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $sceneManifest "allowRelease" $false)) -and
+    (Convert-ToBool (Get-JsonValue $sceneManifest "retestPassed" $false)) -and
+    (Convert-ToInt (Get-JsonValue $sceneManifest "unverifiedHighRiskBugCount" 0)) -eq 0
+)
+$sceneValidationPassed = (
+    $null -ne $sceneValidation -and
+    $sceneValidation.status -eq "PASS" -and
+    $null -ne (Get-JsonValue $sceneValidation "releaseEvidence" $null) -and
+    (Convert-ToBool (Get-JsonValue $sceneValidation.releaseEvidence "allowRelease" $false)) -and
+    @((Convert-ToArray (Get-JsonValue $sceneValidation.releaseEvidence "failedReasons" $null))).Count -eq 0
+)
+$retestReportPassed = (
+    $null -ne $sceneValidation -and
+    $null -ne (Get-JsonValue $sceneValidation "retestReport" $null) -and
+    (Convert-ToBool (Get-JsonValue $sceneValidation.retestReport "passed" $false))
+)
+$patchRetestPassed = (
+    $null -ne $patchApplyRetestManifest -and
+    $patchApplyRetestManifest.status -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $patchApplyRetestManifest "postPatchRetestPassed" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $patchApplyRetestManifest "postPatchBugStillPresent" $true))
+)
+$aiExplorationAccepted = (
+    $sceneStatusPassed -and
+    $sceneValidationPassed -and
+    $unexpectedFailedRunReports.Count -eq 0 -and
+    ($bugDetectedRunReports.Count -eq 0 -or ($retestReportPassed -and $patchRetestPassed))
+)
+
+Add-PolicyCheck "ai_exploration_release_evidence" $aiExplorationAccepted `
+    "AI exploration must have passing release evidence, no unexpected failed run reports, and any detected high-risk bug must have passing retest evidence." `
+    "ai_exploration_not_release_ready"
+
+$graphHighRiskCount = 0
+if ($null -ne $bugKnowledgeGraph) {
+    $graphHighRiskCount = Convert-ToInt (Get-JsonValue $bugKnowledgeGraph "highRiskCount" 0)
+}
+elseif ($null -ne $sceneManifest -and $null -ne (Get-JsonValue $sceneManifest "summary" $null)) {
+    $graphHighRiskCount = Convert-ToInt (Get-JsonValue $sceneManifest.summary "bugKnowledgeGraphHighRiskCount" 0)
+}
+
+$unverifiedHighRiskBugCount = 0
+if ($null -ne $sceneManifest) {
+    $unverifiedHighRiskBugCount = Convert-ToInt (Get-JsonValue $sceneManifest "unverifiedHighRiskBugCount" 0)
+}
+
+$unresolvedHighRiskGraphNodeCount = 0
+if ($null -ne $patchHistoryManifest) {
+    $unresolvedHighRiskGraphNodeCount = Convert-ToInt (Get-JsonValue $patchHistoryManifest "unresolvedHighRiskCount" 0)
+}
+
+$highRiskPolicyAccepted = (
+    $null -ne $patchHistoryManifest -and
+    $patchHistoryManifest.status -eq "PASS" -and
+    $unverifiedHighRiskBugCount -eq 0 -and
+    $unresolvedHighRiskGraphNodeCount -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $patchHistoryManifest "currentAnalysisIncluded" $false)) -and
+    (Convert-ToInt (Get-JsonValue $patchHistoryManifest "retestPassedCount" 0)) -ge 1 -and
+    (Convert-ToInt (Get-JsonValue $patchHistoryManifest "rollbackVerifiedCount" 0)) -ge 1 -and
+    (Convert-ToInt (Get-JsonValue $patchHistoryManifest "blockingReasonCount" 0)) -eq 0
+)
+
+Add-PolicyCheck "high_risk_graph_resolution" $highRiskPolicyAccepted `
+    "High-risk graph nodes must be covered by retest/rollback history with zero unresolved or unverified high-risk nodes." `
+    "high_risk_graph_not_resolved"
+
+$driverEvidenceAccepted = $false
+$driverEvidenceStatus = "BLOCKED"
+$driverReadyForProduction = $false
+
+if ($null -ne $productionDriverReadinessManifest -and $null -ne $productionDriverEvidenceIntakeManifest) {
+    $driverReadyForProduction = Convert-ToBool (Get-JsonValue $productionDriverReadinessManifest "readyForProductionDriverRelease" $false)
+    if ([bool]$RequireProductionReplayDriverBound) {
+        $driverEvidenceAccepted = (
+            $productionDriverReadinessManifest.status -eq "PASS" -and
+            $productionDriverEvidenceIntakeManifest.status -eq "PASS" -and
+            $driverReadyForProduction -and
+            (Convert-ToBool (Get-JsonValue $productionDriverEvidenceIntakeManifest "intakeAccepted" $false)) -and
+            (Convert-ToBool (Get-JsonValue $productionDriverReadinessManifest "realProjectBound" $false)) -and
+            -not (Convert-ToBool (Get-JsonValue $productionDriverReadinessManifest "sampleGameReplayDriverUsed" $true)) -and
+            (Convert-ToBool (Get-JsonValue $productionDriverReadinessManifest "externalProductionDriverSelected" $false)) -and
+            (Convert-ToInt (Get-JsonValue $productionDriverReadinessManifest "unresolvedRequiredHookCount" 0)) -eq 0 -and
+            (Convert-ToInt (Get-JsonValue $productionDriverReadinessManifest "blockingReasonCount" 0)) -eq 0
+        )
+        if ($driverEvidenceAccepted) {
+            $driverEvidenceStatus = "PRODUCTION_BOUND_ACCEPTED"
+        }
+        else {
+            $driverEvidenceStatus = "PRODUCTION_BOUND_REQUIRED_BUT_NOT_READY"
+        }
+    }
+    else {
+        $expectedSampleDriverReasons = @(
+            "production_replay_integration_not_bound",
+            "required_hooks_not_all_bound",
+            "unresolved_required_hooks",
+            "sample_game_replay_driver_used",
+            "external_production_driver_not_selected"
+        )
+        $driverBlockingReasons = Convert-ToArray (Get-JsonValue $productionDriverReadinessManifest "blockingReasons" $null)
+        $driverEvidenceAccepted = (
+            $productionDriverReadinessManifest.status -eq "PASS" -and
+            $productionDriverEvidenceIntakeManifest.status -eq "PASS" -and
+            -not $driverReadyForProduction -and
+            (Convert-ToBool (Get-JsonValue $productionDriverReadinessManifest "packageReleaseAllowedWithoutProductionBinding" $false)) -and
+            -not (Convert-ToBool (Get-JsonValue $productionDriverReadinessManifest "productionBindingRequiredForPackageRelease" $true)) -and
+            (Convert-ToBool (Get-JsonValue $productionDriverEvidenceIntakeManifest "expectedBlocked" $false)) -and
+            (Convert-ToBool (Get-JsonValue $productionDriverEvidenceIntakeManifest "expectedBlockedPassed" $false)) -and
+            (Convert-ToBool (Get-JsonValue $productionDriverEvidenceIntakeManifest "expectedSampleBlockingReasonsFound" $false)) -and
+            (Test-ContainsAll -Actual $driverBlockingReasons -Required $expectedSampleDriverReasons)
+        )
+        if ($driverEvidenceAccepted) {
+            $driverEvidenceStatus = "EXPLICIT_SAMPLE_BOUNDARY_ACCEPTED"
+        }
+        else {
+            $driverEvidenceStatus = "SAMPLE_BOUNDARY_NOT_PROVEN"
+        }
+    }
+}
+
+Add-PolicyCheck "production_driver_evidence_policy" $driverEvidenceAccepted `
+    "Driver evidence must either be production-bound when required or explicitly accepted as sample/unbound package-release evidence with a hard-bound failure probe." `
+    "production_driver_evidence_not_accepted"
+
+$productionLuaEvidenceAccepted = $false
+$productionLuaEvidenceStatus = "BLOCKED"
+$productionLuaReadyForProduction = $false
+
+if ($null -ne $productionLuaPatchReadinessManifest) {
+    $productionLuaReadyForProduction = Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "readyForProductionLuaPatchRelease" $false)
+    if ([bool]$RequireProductionLuaPatched) {
+        $productionLuaEvidenceAccepted = (
+            $productionLuaPatchReadinessManifest.status -eq "PASS" -and
+            $productionLuaReadyForProduction -and
+            (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "productionLuaEvidenceAccepted" $false)) -and
+            (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "realProductionLuaAnalyzed" $false)) -and
+            (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "realProductionLuaPatched" $false)) -and
+            (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "productionRetestPassed" $false)) -and
+            (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "rollbackVerified" $false)) -and
+            (Convert-ToInt (Get-JsonValue $productionLuaPatchReadinessManifest "blockingReasonCount" 0)) -eq 0
+        )
+        if ($productionLuaEvidenceAccepted) {
+            $productionLuaEvidenceStatus = "PRODUCTION_LUA_PATCH_ACCEPTED"
+        }
+        else {
+            $productionLuaEvidenceStatus = "PRODUCTION_LUA_PATCH_REQUIRED_BUT_NOT_READY"
+        }
+    }
+    else {
+        $expectedLuaReasons = @(
+            "real_production_lua_bundle_missing",
+            "real_production_lua_not_analyzed",
+            "real_production_lua_not_patched",
+            "production_lua_retest_evidence_missing",
+            "real_production_patch_rollback_missing"
+        )
+        $luaBlockingReasons = Convert-ToArray (Get-JsonValue $productionLuaPatchReadinessManifest "blockingReasons" $null)
+        $productionLuaEvidenceAccepted = (
+            $productionLuaPatchReadinessManifest.status -eq "PASS" -and
+            -not $productionLuaReadyForProduction -and
+            (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "packageReleaseAllowedWithoutProductionLuaPatch" $false)) -and
+            -not (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "productionLuaPatchRequiredForPackageRelease" $true)) -and
+            (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "staticAnalysisPassed" $false)) -and
+            (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "sandboxAfterFindingsCleared" $false)) -and
+            (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "sandboxBoundaryPreserved" $false)) -and
+            (Get-JsonValue $productionLuaPatchReadinessManifest "productionOutputBoundary" "") -eq "real_production_lua_patch_not_claimed" -and
+            (Test-ContainsAll -Actual $luaBlockingReasons -Required $expectedLuaReasons)
+        )
+        if ($productionLuaEvidenceAccepted) {
+            $productionLuaEvidenceStatus = "EXPLICIT_NO_PRODUCTION_LUA_BOUNDARY_ACCEPTED"
+        }
+        else {
+            $productionLuaEvidenceStatus = "NO_PRODUCTION_LUA_BOUNDARY_NOT_PROVEN"
+        }
+    }
+}
+
+Add-PolicyCheck "production_lua_patch_policy" $productionLuaEvidenceAccepted `
+    "Lua patch evidence must either be real production patch evidence when required or explicit sandbox-only package-release evidence with production blockers recorded." `
+    "production_lua_evidence_not_accepted"
+
+$liveModelPolicyAccepted = $false
+$liveModelPolicyStatus = "BLOCKED"
+
+if ($null -ne $liveModelSmokeManifest -and $null -ne $liveModelFailureProbeManifest) {
+    if ([bool]$RequireLiveModelEndpointSmoke) {
+        $liveModelPolicyAccepted = (
+            $liveModelSmokeManifest.status -eq "PASS" -and
+            (Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "endpointConfigured" $false)) -and
+            (Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "modelConfigured" $false)) -and
+            (Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "responseValidated" $false)) -and
+            (Get-JsonValue $liveModelSmokeManifest "traceStatus" "") -eq "PASS"
+        )
+        if ($liveModelPolicyAccepted) {
+            $liveModelPolicyStatus = "LIVE_MODEL_SMOKE_ACCEPTED"
+        }
+        else {
+            $liveModelPolicyStatus = "LIVE_MODEL_SMOKE_REQUIRED_BUT_NOT_READY"
+        }
+    }
+    elseif ($liveModelSmokeManifest.status -eq "PASS") {
+        $liveModelPolicyAccepted = (
+            (Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "responseValidated" $false)) -and
+            (Get-JsonValue $liveModelSmokeManifest "traceStatus" "") -eq "PASS"
+        )
+        if ($liveModelPolicyAccepted) {
+            $liveModelPolicyStatus = "OPTIONAL_LIVE_MODEL_SMOKE_ACCEPTED"
+        }
+        else {
+            $liveModelPolicyStatus = "OPTIONAL_LIVE_MODEL_SMOKE_NOT_VALID"
+        }
+    }
+    elseif ($liveModelSmokeManifest.status -eq "SKIPPED") {
+        $liveModelPolicyAccepted = (
+            -not (Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "required" $true)) -and
+            $liveModelFailureProbeManifest.status -eq "PASS" -and
+            (Convert-ToBool (Get-JsonValue $liveModelFailureProbeManifest "expectedFailure" $false)) -and
+            (Get-JsonValue $liveModelFailureProbeManifest "failureCategory" "") -eq "auth" -and
+            $null -ne (Get-JsonValue $liveModelFailureProbeManifest "failurePolicy" $null) -and
+            (Get-JsonValue $liveModelFailureProbeManifest.failurePolicy "releaseGateAction" "") -eq "block"
+        )
+        if ($liveModelPolicyAccepted) {
+            $liveModelPolicyStatus = "OPTIONAL_LIVE_MODEL_SKIP_ACCEPTED_WITH_FAILURE_POLICY"
+        }
+        else {
+            $liveModelPolicyStatus = "OPTIONAL_LIVE_MODEL_SKIP_NOT_PROVEN"
+        }
+    }
+    else {
+        $liveModelPolicyStatus = "LIVE_MODEL_SMOKE_FAILED"
+    }
+}
+
+Add-PolicyCheck "live_model_endpoint_policy" $liveModelPolicyAccepted `
+    "Live model smoke must pass when required; otherwise the optional skip must be paired with deterministic failure-classification policy evidence." `
+    "live_model_endpoint_policy_not_accepted"
+
+$githubActionsAccepted = (
+    $null -ne $githubActionsProbeManifest -and
+    $githubActionsProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $githubActionsProbeManifest "schemaVersion" "") -eq "aitestpilot.github_actions_release_workflow_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $githubActionsProbeManifest "releasePipelineCommandFound" $false)) -and
+    (Convert-ToBool (Get-JsonValue $githubActionsProbeManifest "manifestStatusCheckConfigured" $false)) -and
+    (Convert-ToBool (Get-JsonValue $githubActionsProbeManifest "ciExitCodeCheckConfigured" $false)) -and
+    (Convert-ToInt (Get-JsonValue $githubActionsProbeManifest "failedCheckCount" 0)) -eq 0
+)
+$azurePipelinesAccepted = (
+    $null -ne $azurePipelinesProbeManifest -and
+    $azurePipelinesProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $azurePipelinesProbeManifest "schemaVersion" "") -eq "aitestpilot.azure_pipelines_release_workflow_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $azurePipelinesProbeManifest "releasePipelineCommandFound" $false)) -and
+    (Convert-ToBool (Get-JsonValue $azurePipelinesProbeManifest "manifestStatusCheckConfigured" $false)) -and
+    (Convert-ToBool (Get-JsonValue $azurePipelinesProbeManifest "ciExitCodeCheckConfigured" $false)) -and
+    (Convert-ToInt (Get-JsonValue $azurePipelinesProbeManifest "failedCheckCount" 0)) -eq 0
+)
+$ciProviderEvidenceAccepted = $githubActionsAccepted -and $azurePipelinesAccepted
+
+Add-PolicyCheck "ci_provider_release_controls" $ciProviderEvidenceAccepted `
+    "GitHub Actions and Azure Pipelines provider workflows must both expose release controls, run the release pipeline, enforce the manifest, and publish evidence." `
+    "ci_provider_release_controls_not_accepted"
+
+$passedRiskPolicyCheckCount = @($riskPolicyChecks | Where-Object { [bool]$_.passed }).Count
+$failedRiskPolicyCheckCount = @($riskPolicyChecks | Where-Object { -not [bool]$_.passed }).Count
+$status = "PASS"
+if ($failedRiskPolicyCheckCount -gt 0) {
+    $status = "BLOCKED"
+}
+
+$driverBlockingReasons = @()
+if ($null -ne $productionDriverReadinessManifest) {
+    $driverBlockingReasons = Convert-ToArray (Get-JsonValue $productionDriverReadinessManifest "blockingReasons" $null)
+}
+
+$luaBlockingReasons = @()
+if ($null -ne $productionLuaPatchReadinessManifest) {
+    $luaBlockingReasons = Convert-ToArray (Get-JsonValue $productionLuaPatchReadinessManifest "blockingReasons" $null)
+}
+
+$generatedFiles = @(
+    "release-risk-policy-manifest.json",
+    "release-risk-policy.md"
+)
+
+$sourceFiles = @(
+    "manifest.json",
+    "scene-validation.json",
+    "bug-knowledge-graph.json",
+    "repair-agent-patch-apply-retest-manifest.json",
+    "repair-agent-patch-result-history-manifest.json",
+    "production-replay-driver-readiness-manifest.json",
+    "production-driver-evidence-intake-manifest.json",
+    "production-lua-patch-readiness-manifest.json",
+    "live-model-endpoint-failure-probe-manifest.json",
+    "live-model-endpoint-smoke-manifest.json",
+    "github-actions-release-workflow-probe-manifest.json",
+    "azure-pipelines-release-workflow-probe-manifest.json"
+)
+
+$manifest = [ordered]@{
+    schemaVersion = "aitestpilot.release_risk_policy.v1"
+    status = $status
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    allowPackageRelease = ($status -eq "PASS")
+    releaseBlockerCount = [int]$failedRiskPolicyCheckCount
+    releaseBlockers = @($releaseBlockers)
+    requireProductionReplayDriverBound = [bool]$RequireProductionReplayDriverBound
+    requireProductionLuaPatched = [bool]$RequireProductionLuaPatched
+    requireLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke
+    aiExplorationAccepted = [bool]$aiExplorationAccepted
+    unexpectedFailedRunReportCount = [int]$unexpectedFailedRunReports.Count
+    bugDetectedRunReportCount = [int]$bugDetectedRunReports.Count
+    sceneRetestAccepted = [bool]($retestReportPassed -and $patchRetestPassed)
+    highRiskPolicyAccepted = [bool]$highRiskPolicyAccepted
+    graphHighRiskCount = [int]$graphHighRiskCount
+    unverifiedHighRiskBugCount = [int]$unverifiedHighRiskBugCount
+    unresolvedHighRiskGraphNodeCount = [int]$unresolvedHighRiskGraphNodeCount
+    driverEvidenceAccepted = [bool]$driverEvidenceAccepted
+    driverEvidenceStatus = $driverEvidenceStatus
+    productionDriverReady = [bool]$driverReadyForProduction
+    productionDriverBlockingReasonCount = [int]$driverBlockingReasons.Count
+    productionDriverBlockingReasons = @($driverBlockingReasons)
+    productionLuaEvidenceAccepted = [bool]$productionLuaEvidenceAccepted
+    productionLuaEvidenceStatus = $productionLuaEvidenceStatus
+    productionLuaReady = [bool]$productionLuaReadyForProduction
+    productionLuaBlockingReasonCount = [int]$luaBlockingReasons.Count
+    productionLuaBlockingReasons = @($luaBlockingReasons)
+    liveModelPolicyAccepted = [bool]$liveModelPolicyAccepted
+    liveModelPolicyStatus = $liveModelPolicyStatus
+    ciProviderEvidenceAccepted = [bool]$ciProviderEvidenceAccepted
+    githubActionsAccepted = [bool]$githubActionsAccepted
+    azurePipelinesAccepted = [bool]$azurePipelinesAccepted
+    riskPolicyCheckCount = [int]$riskPolicyChecks.Count
+    passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
+    failedRiskPolicyCheckCount = [int]$failedRiskPolicyCheckCount
+    missingOrInvalidSourceFileCount = [int]$missingOrInvalidSourceFiles.Count
+    missingOrInvalidSourceFiles = @($missingOrInvalidSourceFiles)
+    sourceFiles = @($sourceFiles)
+    generatedFiles = @($generatedFiles)
+    files = @($generatedFiles + $sourceFiles)
+    checks = @($riskPolicyChecks)
+}
+
+$reportLines = @(
+    "# AI TestPilot Release Risk Policy",
+    "",
+    "- Status: $status",
+    "- Package release allowed: $($manifest.allowPackageRelease)",
+    "- Release blockers: $($manifest.releaseBlockerCount)",
+    "- AI exploration accepted: $($manifest.aiExplorationAccepted)",
+    "- High-risk policy accepted: $($manifest.highRiskPolicyAccepted)",
+    "- Driver evidence: $($manifest.driverEvidenceStatus)",
+    "- Production Lua evidence: $($manifest.productionLuaEvidenceStatus)",
+    "- Live model policy: $($manifest.liveModelPolicyStatus)",
+    "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
+    "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
+    "",
+    "## Boundary Summary",
+    "",
+    "- Graph high-risk nodes: $($manifest.graphHighRiskCount)",
+    "- Unverified high-risk bugs: $($manifest.unverifiedHighRiskBugCount)",
+    "- Unresolved high-risk graph nodes: $($manifest.unresolvedHighRiskGraphNodeCount)",
+    "- Production driver ready: $($manifest.productionDriverReady)",
+    "- Production driver blocking reasons: $($manifest.productionDriverBlockingReasonCount)",
+    "- Production Lua ready: $($manifest.productionLuaReady)",
+    "- Production Lua blocking reasons: $($manifest.productionLuaBlockingReasonCount)",
+    "",
+    "## Checks",
+    "",
+    "| Check | Passed | Message |",
+    "| --- | --- | --- |"
+)
+
+foreach ($check in $riskPolicyChecks) {
+    $reportLines += "| $($check.name) | $($check.passed) | $($check.message) |"
+}
+
+if ($releaseBlockers.Count -gt 0) {
+    $reportLines += ""
+    $reportLines += "## Release Blockers"
+    $reportLines += ""
+    foreach ($blocker in $releaseBlockers) {
+        $reportLines += "- $blocker"
+    }
+}
+
+New-Item -ItemType Directory -Force (Split-Path $manifestFullPath -Parent) | Out-Null
+New-Item -ItemType Directory -Force (Split-Path $reportFullPath -Parent) | Out-Null
+
+$manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $manifestFullPath -Encoding UTF8
+$reportLines | Set-Content -Path $reportFullPath -Encoding UTF8
+
+Write-Output "Release risk policy manifest: $manifestFullPath"
+
+if ($status -ne "PASS") {
+    throw "AI TestPilot release risk policy blocked release. Manifest: $manifestFullPath"
+}
+
+Write-Output "PASS AI TestPilot release risk policy"
