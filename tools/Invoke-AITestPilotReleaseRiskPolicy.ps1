@@ -200,6 +200,7 @@ $productionHandoffOwnerUnblockPackContractProbeManifest = Read-PolicyJson "produ
 $productionHandoffOwnerInputRequestPackManifest = Read-PolicyJson "production-handoff-owner-input-request-pack-manifest.json" "Production handoff owner input request pack manifest"
 $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-PolicyJson "production-handoff-owner-contact-external-intake-probe-manifest.json" "Production handoff owner contact external intake probe manifest"
 $productionHandoffSendDryRunProbeManifest = Read-PolicyJson "production-handoff-send-dry-run-probe-manifest.json" "Production handoff send dry-run probe manifest"
+$productionHandoffOwnerResponseBundleProbeManifest = Read-PolicyJson "production-handoff-owner-response-bundle-probe-manifest.json" "Production handoff owner response bundle probe manifest"
 $releaseProgressNotificationOutboxManifest = Read-PolicyJson "release-progress-notification-outbox-manifest.json" "Release progress notification outbox manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
@@ -1159,18 +1160,69 @@ Add-PolicyCheck "production_handoff_send_dry_run_probe_policy" $productionHandof
     "Production handoff evidence must prove owner-packet send dry run works without local mail authorization and does not create confirmation tokens or send email." `
     "production_handoff_send_dry_run_probe_not_accepted"
 
+$productionHandoffOwnerResponseBundleProbeAccepted = (
+    $null -ne $productionHandoffOwnerResponseBundleProbeManifest -and
+    $productionHandoffOwnerResponseBundleProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_owner_response_bundle_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "externalResponseBundleOutsideRepo" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "externalResponseBundleComplete" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "defaultBoundaryPreserved" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseContactsAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseSendReadyForConfirmation" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseEvidenceComplete" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseReadyForConfirmation" $false)) -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "acceptedOwnerUnblockStatus" "") -eq "READY_FOR_CONFIRMATION_PENDING_REAL_ACCEPTANCE" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "defaultMissingOwnerContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingOwnerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "defaultMissingRequiredFileCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "acceptedMissingOwnerContactCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "acceptedMissingRequiredFileCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "acceptedBlockedSendCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "acceptedReadySendCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "acceptedExternalEvidenceCollectionComplete" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "dryRunPreparedPreviewCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "dryRunBlockedPreviewCount" -1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "dryRunDoesNotCreateConfirmationToken" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "dryRunAuthorizationFree" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "confirmationTokenCreated" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "mailAuthorizationCheckedByPipeline" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "mailAndEvidenceBoundariesPreserved" $false)) -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "productionOutputBoundary" "") -eq "owner_response_bundle_contract_fixture_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "checkCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_owner_response_bundle_probe_policy" $productionHandoffOwnerResponseBundleProbeAccepted `
+    "Production handoff evidence must prove a repo-external owner response bundle can carry contacts and returned evidence into the owner-unblock flow without sending email or promoting fixtures." `
+    "production_handoff_owner_response_bundle_probe_not_accepted"
+
 $releaseProgressNotificationOutboxAccepted = (
     $null -ne $releaseProgressNotificationOutboxManifest -and
     $releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_outbox.v1" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "") -eq "kibernet@sina.com" -and
-    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "") -eq "production_handoff_send_dry_run_probe" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "") -eq "production_handoff_owner_response_bundle_probe" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeStatus" "") -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalContactIntakeAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalSendReadyForConfirmation" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "sendDryRunAuthorizationFree" $false)) -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "defaultDryRunBlockedPreviewCount" 0)) -gt 0 -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "acceptedContactDryRunPreparedPreviewCount" 0)) -gt 0 -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseBundleAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseEvidenceComplete" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseDryRunPreparedPreviewCount" 0)) -gt 0 -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseBundleOutsideRepo" $false)) -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "statusGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "progressEmailDraftGenerated" $false)) -and
@@ -1441,6 +1493,7 @@ $sourceFiles = @(
     "production-handoff-owner-input-request-pack-manifest.json",
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "production-handoff-send-dry-run-probe-manifest.json",
+    "production-handoff-owner-response-bundle-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
@@ -1512,6 +1565,9 @@ $manifest = [ordered]@{
     productionHandoffOwnerContactExternalSendReady = (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "externalSendReadyForConfirmation" $false)
     productionHandoffSendDryRunProbeAccepted = [bool]$productionHandoffSendDryRunProbeAccepted
     productionHandoffSendDryRunAuthorizationFree = (Get-JsonValue $productionHandoffSendDryRunProbeManifest "authorizationNotRequiredForDryRun" $false)
+    productionHandoffOwnerResponseBundleProbeAccepted = [bool]$productionHandoffOwnerResponseBundleProbeAccepted
+    productionHandoffOwnerResponseBundleReady = (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseReadyForConfirmation" $false)
+    productionHandoffOwnerResponseBundleEvidenceComplete = (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseEvidenceComplete" $false)
     releaseProgressNotificationOutboxAccepted = [bool]$releaseProgressNotificationOutboxAccepted
     releaseProgressNotificationDispatchStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "")
     releaseProgressNotificationRecipient = (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "")
@@ -1578,6 +1634,9 @@ $reportLines = @(
     "- Production handoff owner contact external send ready: $($manifest.productionHandoffOwnerContactExternalSendReady)",
     "- Production handoff send dry-run probe accepted: $($manifest.productionHandoffSendDryRunProbeAccepted)",
     "- Production handoff send dry run auth-free: $($manifest.productionHandoffSendDryRunAuthorizationFree)",
+    "- Production handoff owner response bundle probe accepted: $($manifest.productionHandoffOwnerResponseBundleProbeAccepted)",
+    "- Production handoff owner response bundle ready: $($manifest.productionHandoffOwnerResponseBundleReady)",
+    "- Production handoff owner response bundle evidence complete: $($manifest.productionHandoffOwnerResponseBundleEvidenceComplete)",
     "- Release progress notification outbox accepted: $($manifest.releaseProgressNotificationOutboxAccepted)",
     "- Release progress notification dispatch status: $($manifest.releaseProgressNotificationDispatchStatus)",
     "- Release progress notification recipient: $($manifest.releaseProgressNotificationRecipient)",

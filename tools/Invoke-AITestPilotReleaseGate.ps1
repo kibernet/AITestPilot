@@ -218,6 +218,7 @@ $productionHandoffOwnerUnblockPackContractProbeManifest = Read-Manifest "product
 $productionHandoffOwnerInputRequestPackManifest = Read-Manifest "production-handoff-owner-input-request-pack-manifest.json"
 $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-Manifest "production-handoff-owner-contact-external-intake-probe-manifest.json"
 $productionHandoffSendDryRunProbeManifest = Read-Manifest "production-handoff-send-dry-run-probe-manifest.json"
+$productionHandoffOwnerResponseBundleProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-probe-manifest.json"
 $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
@@ -2130,18 +2131,63 @@ if ($null -ne $productionHandoffSendDryRunProbeManifest) {
     Test-ListedFiles $productionHandoffSendDryRunProbeManifest "production_handoff_send_dry_run_probe"
 }
 
+if ($null -ne $productionHandoffOwnerResponseBundleProbeManifest) {
+    Add-ReleaseCheck "production_handoff_owner_response_bundle_probe" `
+        ($productionHandoffOwnerResponseBundleProbeManifest.status -eq "PASS" -and
+            $productionHandoffOwnerResponseBundleProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_response_bundle_probe.v1" -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.externalResponseBundleOutsideRepo -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.externalResponseBundleComplete -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.defaultBoundaryPreserved -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.ownerResponseContactsAccepted -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.ownerResponseSendReadyForConfirmation -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.ownerResponseEvidenceComplete -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.ownerResponseReadyForConfirmation -and
+            $productionHandoffOwnerResponseBundleProbeManifest.acceptedOwnerUnblockStatus -eq "READY_FOR_CONFIRMATION_PENDING_REAL_ACCEPTANCE" -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.ownerContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.defaultMissingOwnerContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingOwnerContactCount -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.defaultMissingRequiredFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.acceptedMissingOwnerContactCount -eq 0 -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.acceptedMissingRequiredFileCount -eq 0 -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.acceptedBlockedSendCount -eq 0 -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.acceptedReadySendCount -eq [int]$productionHandoffOwnerResponseBundleProbeManifest.ownerContactCount -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.acceptedExternalEvidenceCollectionComplete -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.dryRunPreparedPreviewCount -eq [int]$productionHandoffOwnerResponseBundleProbeManifest.ownerContactCount -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.dryRunBlockedPreviewCount -eq 0 -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.dryRunDoesNotCreateConfirmationToken -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.dryRunAuthorizationFree -and
+            -not [bool]$productionHandoffOwnerResponseBundleProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffOwnerResponseBundleProbeManifest.emailSent -and
+            -not [bool]$productionHandoffOwnerResponseBundleProbeManifest.confirmationTokenCreated -and
+            -not [bool]$productionHandoffOwnerResponseBundleProbeManifest.mailAuthorizationCheckedByPipeline -and
+            -not [bool]$productionHandoffOwnerResponseBundleProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerResponseBundleProbeManifest.externalEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerResponseBundleProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffOwnerResponseBundleProbeManifest.fixtureEvidencePromoted -and
+            [bool]$productionHandoffOwnerResponseBundleProbeManifest.mailAndEvidenceBoundariesPreserved -and
+            $productionHandoffOwnerResponseBundleProbeManifest.productionOutputBoundary -eq "owner_response_bundle_contract_fixture_only" -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.checkCount -eq 9 -and
+            [int]$productionHandoffOwnerResponseBundleProbeManifest.failedCheckCount -eq 0) `
+        "Production handoff owner response bundle probe must prove repo-external contacts and returned evidence can move owner unblock state to ready-for-confirmation without sending email or promoting fixtures."
+
+    Test-ListedFiles $productionHandoffOwnerResponseBundleProbeManifest "production_handoff_owner_response_bundle_probe"
+}
+
 if ($null -ne $releaseProgressNotificationOutboxManifest) {
     Add-ReleaseCheck "release_progress_notification_outbox" `
         ($releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
             $releaseProgressNotificationOutboxManifest.schemaVersion -eq "aitestpilot.release_progress_notification_outbox.v1" -and
             $releaseProgressNotificationOutboxManifest.recipient -eq "kibernet@sina.com" -and
-            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_send_dry_run_probe" -and
+            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_response_bundle_probe" -and
             $releaseProgressNotificationOutboxManifest.latestBigNodeStatus -eq "PASS" -and
             [bool]$releaseProgressNotificationOutboxManifest.externalContactIntakeAccepted -and
             [bool]$releaseProgressNotificationOutboxManifest.externalSendReadyForConfirmation -and
             [bool]$releaseProgressNotificationOutboxManifest.sendDryRunAuthorizationFree -and
             [int]$releaseProgressNotificationOutboxManifest.defaultDryRunBlockedPreviewCount -gt 0 -and
             [int]$releaseProgressNotificationOutboxManifest.acceptedContactDryRunPreparedPreviewCount -gt 0 -and
+            [bool]$releaseProgressNotificationOutboxManifest.ownerResponseBundleAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.ownerResponseEvidenceComplete -and
+            [int]$releaseProgressNotificationOutboxManifest.ownerResponseDryRunPreparedPreviewCount -gt 0 -and
+            [bool]$releaseProgressNotificationOutboxManifest.ownerResponseBundleOutsideRepo -and
             $releaseProgressNotificationOutboxManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseProgressNotificationOutboxManifest.statusGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.progressEmailDraftGenerated -and
@@ -2394,6 +2440,9 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerContactExternalSendReady -and
             [bool]$releaseRiskPolicyManifest.productionHandoffSendDryRunProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffSendDryRunAuthorizationFree -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleProbeAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleReady -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleEvidenceComplete -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
@@ -2466,6 +2515,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-input-request-pack-manifest.json",
         "production-handoff-owner-contact-external-intake-probe-manifest.json",
         "production-handoff-send-dry-run-probe-manifest.json",
+        "production-handoff-owner-response-bundle-probe-manifest.json",
         "release-progress-notification-outbox-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",

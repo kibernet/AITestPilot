@@ -340,6 +340,12 @@ That probe writes `production-handoff-owner-contact-external-intake-probe-manife
 That probe writes `production-handoff-send-dry-run-probe-manifest.json` and a Markdown report. It proves the generated `send-owner-packets.ps1` dry run works without local `agently-cli` authorization: the default bundle previews three blocked sends, and the external-contact intake bundle previews three prepared sends, without creating confirmation tokens or sending email.
 
 ```powershell
+.\tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleProbe.ps1
+```
+
+That probe writes `production-handoff-owner-response-bundle-probe-manifest.json` and a Markdown report. It builds a repo-external owner response bundle containing a contact roster plus driver, Lua, and live-smoke evidence directories, imports it into an isolated bundle, and proves contacts, returned evidence, send dry-run previews, and owner unblock readiness move together without sending email or promoting fixture evidence as real host-project evidence.
+
+```powershell
 .\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1
 ```
 

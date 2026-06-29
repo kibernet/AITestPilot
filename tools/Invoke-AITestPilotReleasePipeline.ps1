@@ -510,6 +510,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_handoff_owner_response_bundle_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "release_progress_notification_outbox" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
