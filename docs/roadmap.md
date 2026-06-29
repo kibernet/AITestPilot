@@ -72,8 +72,9 @@
 - GitHub Actions release workflow for self-hosted Windows Unity runners, with workflow-dispatch release controls, evidence artifact upload, and release-gated workflow probe.
 - Azure Pipelines release workflow for self-hosted Windows Unity pools, with release-control parameters, evidence artifact publishing, and release-gated workflow probe.
 - Provider-specific build, smoke test, and vision evidence checks for GitHub Actions and Azure Pipelines, with release-gated quality probe evidence.
+- Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers.
-- Release-gated risk policy blocking failing AI exploration, unresolved high-risk graph nodes, missing production driver evidence, missing production Lua evidence, missing live endpoint policy evidence, or missing CI provider controls.
+- Release-gated risk policy blocking failing AI exploration, unresolved high-risk graph nodes, missing production driver evidence, missing production Lua evidence, missing live endpoint policy evidence, missing CI provider controls, or missing production handoff evidence.
 
 ## V0.2 Unity Import Gate
 

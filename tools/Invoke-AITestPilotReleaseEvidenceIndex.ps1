@@ -226,6 +226,7 @@ function Get-DefaultSourceManifestNames {
         "github-actions-release-workflow-probe-manifest.json",
         "azure-pipelines-release-workflow-probe-manifest.json",
         "provider-ci-quality-probe-manifest.json",
+        "production-handoff-package-manifest.json",
         "release-risk-policy-manifest.json"
     )
 

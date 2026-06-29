@@ -415,6 +415,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_handoff_package" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffPackage.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "release_risk_policy" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `

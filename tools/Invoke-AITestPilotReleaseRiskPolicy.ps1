@@ -185,6 +185,7 @@ $liveModelExternalSmokeIntakeProbeManifest = Read-PolicyJson "live-model-endpoin
 $githubActionsProbeManifest = Read-PolicyJson "github-actions-release-workflow-probe-manifest.json" "GitHub Actions workflow probe manifest"
 $azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow-probe-manifest.json" "Azure Pipelines workflow probe manifest"
 $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
+$productionHandoffPackageManifest = Read-PolicyJson "production-handoff-package-manifest.json" "Production handoff package manifest"
 
 $runReports = @()
 if ($null -ne $sceneValidation) {
@@ -592,6 +593,26 @@ Add-PolicyCheck "ci_provider_release_controls" $ciProviderEvidenceAccepted `
     "GitHub Actions and Azure Pipelines provider workflows must expose release controls, provider build/test/vision checks, manifest enforcement, and evidence publishing." `
     "ci_provider_release_controls_not_accepted"
 
+$productionHandoffPackageAccepted = (
+    $null -ne $productionHandoffPackageManifest -and
+    $productionHandoffPackageManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffPackageManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_package.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "hostProjectHandoffReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "externalEvidenceRequiredForProduction" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "productionDriverHandoffReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "productionLuaHandoffReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "liveModelHandoffReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "ciReleaseControlsReady" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "fixtureEvidencePromoted" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "sourceManifestCount" 0)) -ge 12 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 4 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_package_policy" $productionHandoffPackageAccepted `
+    "Release evidence must include a production handoff package that consolidates driver, Lua, live-model, and CI host-project next steps without promoting fixture evidence." `
+    "production_handoff_package_not_accepted"
+
 $passedRiskPolicyCheckCount = @($riskPolicyChecks | Where-Object { [bool]$_.passed }).Count
 $failedRiskPolicyCheckCount = @($riskPolicyChecks | Where-Object { -not [bool]$_.passed }).Count
 $status = "PASS"
@@ -632,7 +653,8 @@ $sourceFiles = @(
     "live-model-endpoint-external-smoke-intake-probe-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
-    "provider-ci-quality-probe-manifest.json"
+    "provider-ci-quality-probe-manifest.json",
+    "production-handoff-package-manifest.json"
 )
 
 $manifest = [ordered]@{
@@ -674,6 +696,7 @@ $manifest = [ordered]@{
     githubActionsAccepted = [bool]$githubActionsAccepted
     azurePipelinesAccepted = [bool]$azurePipelinesAccepted
     providerCiQualityAccepted = [bool]$providerCiQualityAccepted
+    productionHandoffPackageAccepted = [bool]$productionHandoffPackageAccepted
     riskPolicyCheckCount = [int]$riskPolicyChecks.Count
     passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
     failedRiskPolicyCheckCount = [int]$failedRiskPolicyCheckCount
@@ -702,6 +725,7 @@ $reportLines = @(
     "- Live model config kit accepted: $($manifest.liveModelConfigKitAccepted)",
     "- Live model external smoke intake accepted: $($manifest.liveModelExternalSmokeIntakeAccepted)",
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
+    "- Production handoff package accepted: $($manifest.productionHandoffPackageAccepted)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",
     "## Boundary Summary",

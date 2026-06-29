@@ -180,6 +180,7 @@ $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.j
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
 $azurePipelinesReleaseWorkflowProbeManifest = Read-Manifest "azure-pipelines-release-workflow-probe-manifest.json"
 $providerCiQualityProbeManifest = Read-Manifest "provider-ci-quality-probe-manifest.json"
+$productionHandoffPackageManifest = Read-Manifest "production-handoff-package-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
 
@@ -1604,6 +1605,26 @@ if ($null -ne $providerCiQualityProbeManifest) {
     Test-ListedFiles $providerCiQualityProbeManifest "provider_ci_quality_probe"
 }
 
+if ($null -ne $productionHandoffPackageManifest) {
+    Add-ReleaseCheck "production_handoff_package" `
+        ($productionHandoffPackageManifest.status -eq "PASS" -and
+            $productionHandoffPackageManifest.schemaVersion -eq "aitestpilot.production_handoff_package.v1" -and
+            [bool]$productionHandoffPackageManifest.hostProjectHandoffReady -and
+            [bool]$productionHandoffPackageManifest.externalEvidenceRequiredForProduction -and
+            [bool]$productionHandoffPackageManifest.productionDriverHandoffReady -and
+            [bool]$productionHandoffPackageManifest.productionLuaHandoffReady -and
+            [bool]$productionHandoffPackageManifest.liveModelHandoffReady -and
+            [bool]$productionHandoffPackageManifest.ciReleaseControlsReady -and
+            -not [bool]$productionHandoffPackageManifest.fixtureEvidencePromoted -and
+            [int]$productionHandoffPackageManifest.sourceManifestCount -ge 12 -and
+            [int]$productionHandoffPackageManifest.generatedFileCount -ge 4 -and
+            [int]$productionHandoffPackageManifest.checkCount -eq 5 -and
+            [int]$productionHandoffPackageManifest.failedCheckCount -eq 0) `
+        "Production handoff package must consolidate host-project driver, Lua, live-model, and CI next steps without promoting fixture evidence."
+
+    Test-ListedFiles $productionHandoffPackageManifest "production_handoff_package"
+}
+
 if ($null -ne $releaseRiskPolicyManifest) {
     $expectedDriverEvidenceStatus = if ($RequireProductionReplayDriverBound) { "PRODUCTION_BOUND_ACCEPTED" } else { "EXPLICIT_SAMPLE_BOUNDARY_ACCEPTED" }
     $expectedProductionLuaEvidenceStatus = if ($RequireProductionLuaPatched) { "PRODUCTION_LUA_PATCH_ACCEPTED" } else { "EXPLICIT_NO_PRODUCTION_LUA_BOUNDARY_ACCEPTED" }
@@ -1637,6 +1658,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.githubActionsAccepted -and
             [bool]$releaseRiskPolicyManifest.azurePipelinesAccepted -and
             [bool]$releaseRiskPolicyManifest.providerCiQualityAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffPackageAccepted -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.missingOrInvalidSourceFileCount -eq 0) `
@@ -1668,6 +1690,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "replay-profile-import-manifest.json",
         "production-replay-integration-contract-probe-manifest.json",
         "production-driver-binding-kit-manifest.json",
+        "production-driver-evidence-contract-probe-manifest.json",
         "production-replay-driver-readiness-manifest.json",
         "production-driver-evidence-intake-manifest.json",
         "production-driver-external-bundle-intake-probe-manifest.json",
@@ -1675,6 +1698,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "model-endpoint-provider-diagnostics-manifest.json",
         "model-endpoint-provider-retry-policy-manifest.json",
         "live-model-endpoint-config-kit-probe-manifest.json",
+        "live-model-endpoint-external-smoke-intake-probe-manifest.json",
         "lua-static-analysis-manifest.json",
         "lua-auto-patch-sandbox-manifest.json",
         "production-lua-patch-readiness-manifest.json",
@@ -1685,6 +1709,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "github-actions-release-workflow-probe-manifest.json",
         "azure-pipelines-release-workflow-probe-manifest.json",
         "provider-ci-quality-probe-manifest.json",
+        "production-handoff-package-manifest.json",
         "release-risk-policy-manifest.json"
     )
 
@@ -1755,6 +1780,7 @@ $sourceManifests = @(
     "replay-profile-import-manifest.json",
     "production-replay-integration-contract-probe-manifest.json",
     "production-driver-binding-kit-manifest.json",
+    "production-driver-evidence-contract-probe-manifest.json",
     "production-replay-driver-readiness-manifest.json",
     "production-driver-evidence-intake-manifest.json",
     "production-driver-external-bundle-intake-probe-manifest.json",
@@ -1762,6 +1788,7 @@ $sourceManifests = @(
     "model-endpoint-provider-diagnostics-manifest.json",
     "model-endpoint-provider-retry-policy-manifest.json",
     "live-model-endpoint-config-kit-probe-manifest.json",
+    "live-model-endpoint-external-smoke-intake-probe-manifest.json",
     "lua-static-analysis-manifest.json",
     "lua-auto-patch-sandbox-manifest.json",
     "production-lua-patch-readiness-manifest.json",
@@ -1772,6 +1799,7 @@ $sourceManifests = @(
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json",
+    "production-handoff-package-manifest.json",
     "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"
 )
