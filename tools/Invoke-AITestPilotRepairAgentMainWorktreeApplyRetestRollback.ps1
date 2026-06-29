@@ -81,6 +81,20 @@ function Write-Utf8NoBomFile {
     [System.IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
+function Test-TextContainsLiteralOrMarkdownEscaped {
+    param(
+        [string]$Text,
+        [string]$Value
+    )
+
+    if ($Text -match [regex]::Escape($Value)) {
+        return $true
+    }
+
+    $markdownEscapedValue = $Value.Replace("\", "\\")
+    return $Text -match [regex]::Escape($markdownEscapedValue)
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $probeBundlePath = Assert-PathUnderRepo $ProbeBundleDir "ProbeBundleDir"
 $manifestPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
@@ -307,7 +321,9 @@ try {
     $patchedFileContainsTaskId = $patchedFileText -match [regex]::Escape($taskId)
     $patchedFileContainsBugId = $patchedFileText -match [regex]::Escape($bugId)
     $patchedFileContainsSuggestedFix = $patchedFileText -match [regex]::Escape($suggestedFix)
-    $patchedFileContainsRetestCommand = $patchedFileText -match [regex]::Escape($retestCommand)
+    $patchedFileContainsRetestCommand = Test-TextContainsLiteralOrMarkdownEscaped `
+        -Text $patchedFileText `
+        -Value $retestCommand
     $patchedFileContainsProbeText = $patchedFileContainsTaskId -and
         $patchedFileContainsBugId -and
         $patchedFileContainsSuggestedFix -and
