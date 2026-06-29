@@ -229,7 +229,8 @@ $suppressedSmallNodeNames = @(
     "release_progress_notification_receipt_probe",
     "release_progress_notification_dispatch_receipt_intake_probe",
     "release_progress_notification_local_send_workflow_probe",
-    "release_progress_notification_real_receipt_guard_probe"
+    "release_progress_notification_real_receipt_guard_probe",
+    "release_progress_notification_remaining_work_snapshot_probe"
 )
 $suppressedSmallNodeCount = @($suppressedSmallNodeNames).Count
 
@@ -723,6 +724,7 @@ $cadencePolicyContentValidated = $cadencePolicyContent.Contains("release_progres
     $cadencePolicyContent.Contains($notificationCadencePolicy) -and
     $cadencePolicyContent.Contains($latestBigNodeName) -and
     $cadencePolicyContent.Contains("release_progress_notification_real_receipt_guard_probe") -and
+    $cadencePolicyContent.Contains("release_progress_notification_remaining_work_snapshot_probe") -and
     $noObjectLeakage
 $remainingWorkSnapshotContentValidated = $remainingWorkSnapshotContent.Contains("release_progress_notification_remaining_work_snapshot.v1") -and
     $remainingWorkSnapshotContent.Contains($latestBigNodeName) -and
@@ -822,9 +824,10 @@ Add-OutboxCheck "progress_notification_big_node_only_cadence" `
         $notificationTriggerKind -eq "BIG_NODE" -and
         $bigNodeNotificationEligible -and
         $smallNodeEmailSuppression -and
-        $suppressedSmallNodeCount -eq 6 -and
+        $suppressedSmallNodeCount -eq 7 -and
         $suppressedSmallNodeNames -contains "release_progress_notification_confirmation_probe" -and
         $suppressedSmallNodeNames -contains "release_progress_notification_real_receipt_guard_probe" -and
+        $suppressedSmallNodeNames -contains "release_progress_notification_remaining_work_snapshot_probe" -and
         @($eligibleBigNodeNames).Count -eq 1 -and
         $eligibleBigNodeNames[0] -eq "production_handoff_owner_response_bundle_kit") `
     "Progress notification cadence must be big-node-only and suppress separate emails for small proof/probe nodes."

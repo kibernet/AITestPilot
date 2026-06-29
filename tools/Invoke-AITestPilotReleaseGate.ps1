@@ -2237,7 +2237,7 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
             $releaseProgressNotificationOutboxManifest.notificationTriggerKind -eq "BIG_NODE" -and
             [bool]$releaseProgressNotificationOutboxManifest.bigNodeNotificationEligible -and
             [bool]$releaseProgressNotificationOutboxManifest.smallNodeEmailSuppression -and
-            [int]$releaseProgressNotificationOutboxManifest.suppressedSmallNodeCount -eq 6 -and
+            [int]$releaseProgressNotificationOutboxManifest.suppressedSmallNodeCount -eq 7 -and
             [bool]$releaseProgressNotificationOutboxManifest.cadencePolicyGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.cadencePolicyContentValidated -and
             [bool]$releaseProgressNotificationOutboxManifest.remainingWorkSnapshotGenerated -and
@@ -2726,7 +2726,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             $releaseRiskPolicyManifest.releaseProgressNotificationCadencePolicy -eq "BIG_NODE_ONLY" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationTriggerKind -eq "BIG_NODE" -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationSmallNodeEmailSuppression -and
-            [int]$releaseRiskPolicyManifest.releaseProgressNotificationSuppressedSmallNodeCount -eq 6 -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationSuppressedSmallNodeCount -eq 7 -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeAccepted -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalWorkItemCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalBlockingReasonCount -eq [int]$releaseRiskPolicyManifest.productionHandoffRemainingBlockingReasonCount -and

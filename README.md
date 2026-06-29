@@ -361,7 +361,7 @@ That script writes `release-progress-notification-outbox-manifest.json`, `releas
 .\tools\Invoke-AITestPilotReleaseProgressNotificationRemainingWorkSnapshotProbe.ps1
 ```
 
-That probe writes `release-progress-notification-remaining-work-snapshot-probe-manifest.json` and a Markdown report. It independently verifies the outbox remaining-work snapshot against owner input, production driver readiness, production Lua readiness, and the returned-evidence inbox, keeping the pending local mail action separate from the eleven external blockers.
+That probe writes `release-progress-notification-remaining-work-snapshot-probe-manifest.json` and a Markdown report. It independently verifies the outbox remaining-work snapshot against owner input, production driver readiness, production Lua readiness, and the returned-evidence inbox, keeping the pending local mail action separate from the eleven external blockers. It is a small proof node and is included in the `BIG_NODE_ONLY` suppression list, so it does not create a separate progress email.
 
 ```powershell
 .\tools\Invoke-AITestPilotProductionHandoffMailHelperAuthStatusProbe.ps1

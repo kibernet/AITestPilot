@@ -1275,7 +1275,7 @@ $releaseProgressNotificationOutboxAccepted = (
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationTriggerKind" "") -eq "BIG_NODE" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "bigNodeNotificationEligible" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "smallNodeEmailSuppression" $false)) -and
-    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "suppressedSmallNodeCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "suppressedSmallNodeCount" 0)) -eq 7 -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "cadencePolicyGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "cadencePolicyContentValidated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingWorkSnapshotGenerated" $false)) -and
