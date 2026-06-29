@@ -244,6 +244,14 @@ The default release pipeline also runs:
 
 That probe writes a deterministic SKIPPED smoke manifest outside the repository, runs intake with `-RequireLiveModelEndpointSmoke`, and expects it to fail. It proves the external handoff path is inspected and that skipped evidence cannot satisfy required live smoke.
 
+The release pipeline also proves the accepted side of the same contract:
+
+```powershell
+.\tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceContractProbe.ps1
+```
+
+That probe writes a PASS-shaped smoke manifest and decision trace outside the repository, imports them through `Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1 -RequireLiveModelEndpointSmoke -PromoteToCanonical` in an isolated bundle, and records the accepted canonical manifest/trace outputs. The probe remains fixture-only evidence: `releasePipelineUsesFixture=false` and `realProductionLiveEndpointAccessProven=false` keep real provider access as a host-project requirement.
+
 ## Failure Classification
 
 Live smoke writes a classified `FAIL` manifest when a configured endpoint is reachable enough to execute the probe command but the request fails. The manifest includes `failureCategory`, `failureMessage`, `failureRemediation`, and `failurePolicy`.

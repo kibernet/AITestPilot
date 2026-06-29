@@ -165,6 +165,7 @@ $hardModeSourceManifestNames = @(
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "live-model-endpoint-external-smoke-intake-probe-manifest.json",
+    "live-model-endpoint-smoke-evidence-contract-probe-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json",

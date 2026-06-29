@@ -132,6 +132,7 @@ $sourceManifests = @(
     "production-lua-patch-external-bundle-intake-probe-manifest.json",
     "live-model-endpoint-config-kit-probe-manifest.json",
     "live-model-endpoint-external-smoke-intake-probe-manifest.json",
+    "live-model-endpoint-smoke-evidence-contract-probe-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json"
@@ -146,6 +147,7 @@ $luaKit = Read-JsonFile "production-lua-patch-evidence-kit-probe-manifest.json" 
 $luaExternalIntake = Read-JsonFile "production-lua-patch-external-bundle-intake-probe-manifest.json" "Production Lua external bundle intake probe manifest"
 $liveConfigKit = Read-JsonFile "live-model-endpoint-config-kit-probe-manifest.json" "Live model endpoint config kit probe manifest"
 $liveExternalSmoke = Read-JsonFile "live-model-endpoint-external-smoke-intake-probe-manifest.json" "Live model endpoint external smoke intake probe manifest"
+$liveSmokeEvidenceContract = Read-JsonFile "live-model-endpoint-smoke-evidence-contract-probe-manifest.json" "Live model endpoint smoke evidence contract probe manifest"
 $githubWorkflow = Read-JsonFile "github-actions-release-workflow-probe-manifest.json" "GitHub Actions release workflow probe manifest"
 $azureWorkflow = Read-JsonFile "azure-pipelines-release-workflow-probe-manifest.json" "Azure Pipelines release workflow probe manifest"
 $providerQuality = Read-JsonFile "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
@@ -189,7 +191,15 @@ $liveModelHandoffReady = $liveConfigKit.status -eq "PASS" -and
     -not [bool](Get-JsonValue $liveConfigKit "secretsSerialized" $true) -and
     $liveExternalSmoke.status -eq "PASS" -and
     -not [bool](Get-JsonValue $liveExternalSmoke "externalBundleUnderRepo" $true) -and
-    [bool](Get-JsonValue $liveExternalSmoke "expectedBlockedPassed" $false)
+    [bool](Get-JsonValue $liveExternalSmoke "expectedBlockedPassed" $false) -and
+    $liveSmokeEvidenceContract.status -eq "PASS" -and
+    -not [bool](Get-JsonValue $liveSmokeEvidenceContract "externalBundleUnderRepo" $true) -and
+    [bool](Get-JsonValue $liveSmokeEvidenceContract "acceptedFixtureIntakePassed" $false) -and
+    [bool](Get-JsonValue $liveSmokeEvidenceContract "acceptedFixtureSmokeEvidenceAccepted" $false) -and
+    [bool](Get-JsonValue $liveSmokeEvidenceContract "acceptedFixtureCanonicalSmokePromoted" $false) -and
+    [bool](Get-JsonValue $liveSmokeEvidenceContract "acceptedFixtureCanonicalTracePromoted" $false) -and
+    -not [bool](Get-JsonValue $liveSmokeEvidenceContract "releasePipelineUsesFixture" $true) -and
+    -not [bool](Get-JsonValue $liveSmokeEvidenceContract "realProductionLiveEndpointAccessProven" $true)
 
 $ciReleaseControlsReady = $githubWorkflow.status -eq "PASS" -and
     $azureWorkflow.status -eq "PASS" -and

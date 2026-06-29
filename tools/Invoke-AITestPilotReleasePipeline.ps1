@@ -400,6 +400,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "live_model_endpoint_smoke_evidence_contract_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceContractProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "ci_provider_release_workflow_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

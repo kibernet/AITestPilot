@@ -164,6 +164,7 @@ $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provid
 $modelEndpointProviderRetryPolicyManifest = Read-Manifest "model-endpoint-provider-retry-policy-manifest.json"
 $liveModelEndpointConfigKitProbeManifest = Read-Manifest "live-model-endpoint-config-kit-probe-manifest.json"
 $liveModelEndpointExternalSmokeIntakeProbeManifest = Read-Manifest "live-model-endpoint-external-smoke-intake-probe-manifest.json"
+$liveModelEndpointSmokeEvidenceContractProbeManifest = Read-Manifest "live-model-endpoint-smoke-evidence-contract-probe-manifest.json"
 $luaStaticAnalysisManifest = Read-Manifest "lua-static-analysis-manifest.json"
 $luaAutoPatchSandboxManifest = Read-Manifest "lua-auto-patch-sandbox-manifest.json"
 if ($RequireProductionLuaPatched) {
@@ -1219,6 +1220,31 @@ if ($null -ne $liveModelEndpointExternalSmokeIntakeProbeManifest) {
     Test-ListedFiles $liveModelEndpointExternalSmokeIntakeProbeManifest "live_model_endpoint_external_smoke_intake_probe"
 }
 
+if ($null -ne $liveModelEndpointSmokeEvidenceContractProbeManifest) {
+    Add-ReleaseCheck "live_model_endpoint_smoke_evidence_contract_probe" `
+        ($liveModelEndpointSmokeEvidenceContractProbeManifest.status -eq "PASS" -and
+            $liveModelEndpointSmokeEvidenceContractProbeManifest.schemaVersion -eq "aitestpilot.live_model_endpoint_smoke_evidence_contract_probe.v1" -and
+            -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.externalBundleUnderRepo -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureGenerated -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureIntakePassed -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureSmokeEvidenceAccepted -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureProductionLiveEndpointAccessProven -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureCanonicalSmokePromoted -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureCanonicalTracePromoted -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureSmokeContractPassed -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureTraceContractPassed -and
+            [int]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureBlockingReasonCount -eq 0 -and
+            -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.realProductionLiveEndpointAccessProven -and
+            -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.realLiveSmokeExecuted -and
+            $liveModelEndpointSmokeEvidenceContractProbeManifest.productionOutputBoundary -eq "accepted_fixture_contract_only" -and
+            [int]$liveModelEndpointSmokeEvidenceContractProbeManifest.checkCount -eq 4 -and
+            [int]$liveModelEndpointSmokeEvidenceContractProbeManifest.failedCheckCount -eq 0) `
+        "Live model endpoint smoke evidence contract probe must prove PASS external smoke evidence can be accepted and promoted inside an isolated bundle without claiming real provider access."
+
+    Test-ListedFiles $liveModelEndpointSmokeEvidenceContractProbeManifest "live_model_endpoint_smoke_evidence_contract_probe"
+}
+
 if ($null -ne $luaStaticAnalysisManifest) {
     Add-ReleaseCheck "lua_static_analysis_probe" `
         ($luaStaticAnalysisManifest.status -eq "PASS" -and
@@ -1677,6 +1703,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.liveModelPolicyAccepted -and
             [bool]$releaseRiskPolicyManifest.liveModelConfigKitAccepted -and
             [bool]$releaseRiskPolicyManifest.liveModelExternalSmokeIntakeAccepted -and
+            [bool]$releaseRiskPolicyManifest.liveModelSmokeEvidenceContractAccepted -and
             $liveModelStatusAccepted -and
             [bool]$releaseRiskPolicyManifest.ciProviderEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.githubActionsAccepted -and
@@ -1724,6 +1751,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "model-endpoint-provider-retry-policy-manifest.json",
         "live-model-endpoint-config-kit-probe-manifest.json",
         "live-model-endpoint-external-smoke-intake-probe-manifest.json",
+        "live-model-endpoint-smoke-evidence-contract-probe-manifest.json",
         "lua-static-analysis-manifest.json",
         "lua-auto-patch-sandbox-manifest.json",
         "production-lua-patch-readiness-manifest.json",
@@ -1815,6 +1843,7 @@ $sourceManifests = @(
     "model-endpoint-provider-retry-policy-manifest.json",
     "live-model-endpoint-config-kit-probe-manifest.json",
     "live-model-endpoint-external-smoke-intake-probe-manifest.json",
+    "live-model-endpoint-smoke-evidence-contract-probe-manifest.json",
     "lua-static-analysis-manifest.json",
     "lua-auto-patch-sandbox-manifest.json",
     "production-lua-patch-readiness-manifest.json",

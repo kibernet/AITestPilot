@@ -84,6 +84,7 @@ try {
         "tools\Invoke-AITestPilotLiveModelEndpointConfigKitProbe.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointExternalSmokeIntakeProbe.ps1",
+        "tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceContractProbe.ps1",
         "tools\Invoke-AITestPilotLuaStaticAnalysisProbe.ps1",
         "tools\Invoke-AITestPilotLuaAutoPatchSandboxProbe.ps1",
         "tools\Invoke-AITestPilotProductionLuaPatchReadiness.ps1",

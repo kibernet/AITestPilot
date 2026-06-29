@@ -57,6 +57,7 @@
 - Provider-specific live-smoke retry tuning and alert routing for native, OpenAI, OpenAI-compatible, and local gateways.
 - Live model endpoint configuration kit, static config intake, and release-gated repo-external pending-config rejection evidence without serializing secrets or claiming provider access.
 - Live model endpoint smoke evidence intake with release-gated repo-external skipped-evidence rejection for host-project live smoke handoff.
+- Live model endpoint smoke evidence accepted-contract probe with isolated PASS-shaped host-project evidence intake and fixture boundary proof.
 - Core Lua static analyzer and release-gated static-analysis evidence for replay repair candidates.
 - Release-gated Lua auto-patch sandbox evidence that clears deterministic fixture findings without mutating production Lua.
 - Production Lua patch readiness gate plus hard-bound failure probe for real production Lua analysis, patch, retest, and rollback evidence.

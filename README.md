@@ -239,13 +239,13 @@ To export a machine-readable release evidence index:
 
 That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. The full release pipeline runs it before the release gate so CI and portal handoff can consume one stable evidence summary.
 
-To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint configuration, external live-smoke evidence intake, live endpoint policy, and CI provider controls:
+To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint configuration, external live-smoke evidence intake, live-smoke accepted-contract proof, live endpoint policy, and CI provider controls:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseRiskPolicy.ps1
 ```
 
-That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries plus the production Lua evidence kit, live model endpoint configuration-kit, and external live-smoke intake guard contracts; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, `-ProductionLuaEvidenceDir`, `-RequireLiveModelEndpointSmoke`, and `-LiveModelEndpointSmokeEvidenceDir`.
+That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries plus the production Lua evidence kit, live model endpoint configuration-kit, external live-smoke intake guard, and accepted live-smoke evidence contract; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, `-ProductionLuaEvidenceDir`, `-RequireLiveModelEndpointSmoke`, and `-LiveModelEndpointSmokeEvidenceDir`.
 
 To prove provider-specific CI build, smoke test, and vision evidence checks are wired for GitHub Actions and Azure Pipelines:
 
@@ -277,7 +277,7 @@ To run the full repo-side release gate over the evidence bundle:
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, production Lua external bundle intake proof, live model endpoint configuration kit proof, external live-smoke evidence intake proof, production handoff package proof, production hard-mode failure proof, release risk policy acceptance, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, production Lua external bundle intake proof, live model endpoint configuration kit proof, external live-smoke evidence intake proof, live-smoke accepted-contract proof, production handoff package proof, production hard-mode failure proof, release risk policy acceptance, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -337,6 +337,14 @@ To intake live smoke evidence exported by a host project:
 ```
 
 The intake expects `live-model-endpoint-smoke-manifest.json` plus `live-model-endpoint-decision-trace.json` with a real `status=PASS` live HTTP request, validated action response, action schema evidence, and trace payload. `-PromoteToCanonical` copies accepted evidence into the canonical release-gate filenames so production CI can satisfy `-RequireLiveModelEndpointSmoke` from a host-project evidence directory. The release pipeline always runs the external smoke intake probe, which generates a SKIPPED fixture outside the repository and proves hard live-smoke mode rejects it.
+
+To prove the accepted live-smoke evidence contract without promoting fixture provider access:
+
+```powershell
+.\tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceContractProbe.ps1
+```
+
+That probe generates a PASS-shaped host-project smoke bundle outside the repository, runs the same intake path with `-RequireLiveModelEndpointSmoke -PromoteToCanonical` in an isolated bundle, and records that canonical smoke and trace evidence can be accepted while `releasePipelineUsesFixture=false` and `realProductionLiveEndpointAccessProven=false` remain explicit.
 
 To prove Lua static analysis and patch-plan evidence for replay repair candidates:
 
@@ -489,6 +497,7 @@ Implemented now:
 - Provider-specific live-smoke retry tuning and alert routing manifest for native, OpenAI, OpenAI-compatible, and local gateways.
 - Live model endpoint configuration kit generator, static config intake, and release-gated probe proving host-project endpoint configs can be validated while secrets and real provider access remain outside repo evidence.
 - Live model endpoint smoke evidence intake plus release-gated repo-external SKIPPED evidence rejection for host-project live-smoke handoff.
+- Live model endpoint smoke evidence accepted-contract probe proving PASS-shaped host-project evidence can be accepted in isolation without claiming real provider access.
 - Core Lua static analyzer plus release-gated Lua static analysis manifest for unguarded field access, global writes, dynamic `require`, unprotected game API calls, safe-fixture checks, and patch-plan evidence.
 - Release-gated Lua auto-patch sandbox evidence proving deterministic fixture patches clear findings without mutating production Lua.
 - Production Lua patch readiness manifest and hard-bound failure probe separating sandbox-proven patches from real production Lua analysis, patch, retest, and rollback evidence.

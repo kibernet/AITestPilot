@@ -182,6 +182,7 @@ $liveModelFailureProbeManifest = Read-PolicyJson "live-model-endpoint-failure-pr
 $liveModelSmokeManifest = Read-PolicyJson "live-model-endpoint-smoke-manifest.json" "Live model endpoint smoke manifest"
 $liveModelConfigKitProbeManifest = Read-PolicyJson "live-model-endpoint-config-kit-probe-manifest.json" "Live model endpoint config kit probe manifest"
 $liveModelExternalSmokeIntakeProbeManifest = Read-PolicyJson "live-model-endpoint-external-smoke-intake-probe-manifest.json" "Live model endpoint external smoke intake probe manifest"
+$liveModelSmokeEvidenceContractProbeManifest = Read-PolicyJson "live-model-endpoint-smoke-evidence-contract-probe-manifest.json" "Live model endpoint smoke evidence contract probe manifest"
 $githubActionsProbeManifest = Read-PolicyJson "github-actions-release-workflow-probe-manifest.json" "GitHub Actions workflow probe manifest"
 $azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow-probe-manifest.json" "Azure Pipelines workflow probe manifest"
 $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
@@ -557,6 +558,31 @@ Add-PolicyCheck "live_model_endpoint_external_smoke_intake_policy" $liveModelExt
     "Live model endpoint smoke evidence intake must prove repo-external smoke evidence is inspected and skipped evidence is blocked when live smoke is required." `
     "live_model_endpoint_external_smoke_intake_not_accepted"
 
+$liveModelSmokeEvidenceContractAccepted = (
+    $null -ne $liveModelSmokeEvidenceContractProbeManifest -and
+    $liveModelSmokeEvidenceContractProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "schemaVersion" "") -eq "aitestpilot.live_model_endpoint_smoke_evidence_contract_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureIntakePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureSmokeEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureProductionLiveEndpointAccessProven" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureCanonicalSmokePromoted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureCanonicalTracePromoted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureSmokeContractPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureTraceContractPassed" $false)) -and
+    (Convert-ToInt (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureBlockingReasonCount" 1)) -eq 0 -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "realProductionLiveEndpointAccessProven" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "realLiveSmokeExecuted" $true)) -and
+    (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_contract_only" -and
+    (Convert-ToInt (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "live_model_endpoint_smoke_evidence_contract_policy" $liveModelSmokeEvidenceContractAccepted `
+    "Live model endpoint smoke evidence must include an accepted-fixture contract proving PASS host-project smoke evidence can be accepted without promoting fixture access as real provider evidence." `
+    "live_model_endpoint_smoke_evidence_contract_not_accepted"
+
 $githubActionsAccepted = (
     $null -ne $githubActionsProbeManifest -and
     $githubActionsProbeManifest.status -eq "PASS" -and
@@ -672,6 +698,7 @@ $sourceFiles = @(
     "live-model-endpoint-smoke-manifest.json",
     "live-model-endpoint-config-kit-probe-manifest.json",
     "live-model-endpoint-external-smoke-intake-probe-manifest.json",
+    "live-model-endpoint-smoke-evidence-contract-probe-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json",
@@ -714,6 +741,7 @@ $manifest = [ordered]@{
     liveModelPolicyStatus = $liveModelPolicyStatus
     liveModelConfigKitAccepted = [bool]$liveModelConfigKitAccepted
     liveModelExternalSmokeIntakeAccepted = [bool]$liveModelExternalSmokeIntakeAccepted
+    liveModelSmokeEvidenceContractAccepted = [bool]$liveModelSmokeEvidenceContractAccepted
     ciProviderEvidenceAccepted = [bool]$ciProviderEvidenceAccepted
     githubActionsAccepted = [bool]$githubActionsAccepted
     azurePipelinesAccepted = [bool]$azurePipelinesAccepted
@@ -747,6 +775,7 @@ $reportLines = @(
     "- Live model policy: $($manifest.liveModelPolicyStatus)",
     "- Live model config kit accepted: $($manifest.liveModelConfigKitAccepted)",
     "- Live model external smoke intake accepted: $($manifest.liveModelExternalSmokeIntakeAccepted)",
+    "- Live model smoke evidence contract accepted: $($manifest.liveModelSmokeEvidenceContractAccepted)",
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
     "- Production handoff package accepted: $($manifest.productionHandoffPackageAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
