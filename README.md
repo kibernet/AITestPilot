@@ -346,6 +346,12 @@ That probe writes `production-handoff-send-dry-run-probe-manifest.json` and a Ma
 That probe writes `production-handoff-owner-response-bundle-probe-manifest.json` and a Markdown report. It builds a repo-external owner response bundle containing a contact roster plus driver, Lua, and live-smoke evidence directories, imports it into an isolated bundle, and proves contacts, returned evidence, send dry-run previews, and owner unblock readiness move together without sending email or promoting fixture evidence as real host-project evidence.
 
 ```powershell
+.\tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKit.ps1
+```
+
+That script writes `production-handoff-owner-response-bundle-kit-manifest.json`, a Markdown report, `production-handoff-owner-response-bundle-kit\`, and `production-handoff-owner-response-bundle-kit.zip`. The kit is the fillable owner-return package: a contact roster template, driver/Lua/live-smoke evidence directories, required-file manifests, a local verifier, an import helper, and a request draft. It does not send email, run OAuth, accept production evidence, or include fixture evidence.
+
+```powershell
 .\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1
 ```
 

@@ -162,12 +162,13 @@ $ownerInputRequestManifest = Read-JsonFile (Join-Path $evidenceBundlePath "produ
 $ownerContactExternalIntakeProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-contact-external-intake-probe-manifest.json") "Production handoff owner contact external intake probe manifest"
 $sendDryRunProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-send-dry-run-probe-manifest.json") "Production handoff send dry-run probe manifest"
 $ownerResponseBundleProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-response-bundle-probe-manifest.json") "Production handoff owner response bundle probe manifest"
+$ownerResponseBundleKitManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-response-bundle-kit-manifest.json") "Production handoff owner response bundle kit manifest"
 $ownerUnblockManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-unblock-pack-manifest.json") "Production handoff owner unblock pack manifest"
 $mailAuthReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-mail-auth-readiness-manifest.json") "Production handoff mail auth readiness manifest"
 $sendReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-send-readiness-manifest.json") "Production handoff send readiness manifest"
 
-$latestBigNodeName = "production_handoff_owner_response_bundle_probe"
-$latestBigNodeStatus = [string](Get-JsonValue $ownerResponseBundleProbeManifest "status" "")
+$latestBigNodeName = "production_handoff_owner_response_bundle_kit"
+$latestBigNodeStatus = [string](Get-JsonValue $ownerResponseBundleKitManifest "status" "")
 $ownerInputRequestStatus = [string](Get-JsonValue $ownerInputRequestManifest "ownerInputRequestStatus" "")
 $ownerUnblockStatus = [string](Get-JsonValue $ownerInputRequestManifest "ownerUnblockStatus" "")
 $missingOwnerContactCount = Convert-ToInt (Get-JsonValue $ownerInputRequestManifest "missingOwnerContactCount" 0)
@@ -188,7 +189,10 @@ $ownerResponseBundleAccepted = Convert-ToBool (Get-JsonValue $ownerResponseBundl
 $ownerResponseEvidenceComplete = Convert-ToBool (Get-JsonValue $ownerResponseBundleProbeManifest "ownerResponseEvidenceComplete" $false)
 $ownerResponseDryRunPreparedPreviewCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleProbeManifest "dryRunPreparedPreviewCount" 0)
 $ownerResponseBundleOutsideRepo = Convert-ToBool (Get-JsonValue $ownerResponseBundleProbeManifest "externalResponseBundleOutsideRepo" $false)
-$notificationSubject = "AI TestPilot progress - owner response bundle path ready"
+$ownerResponseBundleKitGenerated = Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "responseBundleTemplateGenerated" $false)
+$ownerResponseBundleKitZipGenerated = Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "zipGenerated" $false)
+$ownerResponseBundleKitRequiredFileCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleKitManifest "requiredEvidenceFileCount" 0)
+$notificationSubject = "AI TestPilot progress - owner response bundle kit ready"
 $notificationDispatchStatus = "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION"
 
 $statusPath = Join-Path $outboxPath "notification-status.json"
@@ -215,6 +219,9 @@ $status = [ordered]@{
     ownerResponseEvidenceComplete = [bool]$ownerResponseEvidenceComplete
     ownerResponseDryRunPreparedPreviewCount = [int]$ownerResponseDryRunPreparedPreviewCount
     ownerResponseBundleOutsideRepo = [bool]$ownerResponseBundleOutsideRepo
+    ownerResponseBundleKitGenerated = [bool]$ownerResponseBundleKitGenerated
+    ownerResponseBundleKitZipGenerated = [bool]$ownerResponseBundleKitZipGenerated
+    ownerResponseBundleKitRequiredFileCount = [int]$ownerResponseBundleKitRequiredFileCount
     notificationDispatchStatus = $notificationDispatchStatus
     mailAuthReadinessStatus = $mailAuthReadinessStatus
     sendReadinessStatus = $sendReadinessStatus
@@ -254,6 +261,9 @@ $emailDraftLines = @(
     "- Owner response evidence complete in contract fixture: $ownerResponseEvidenceComplete",
     "- Owner response dry-run prepared previews: $ownerResponseDryRunPreparedPreviewCount",
     "- Owner response bundle generated outside repo: $ownerResponseBundleOutsideRepo",
+    "- Owner response bundle kit generated: $ownerResponseBundleKitGenerated",
+    "- Owner response bundle kit zip generated: $ownerResponseBundleKitZipGenerated",
+    "- Owner response bundle kit required evidence files: $ownerResponseBundleKitRequiredFileCount",
     "- Release evidence boundary: repo-side package/gate evidence remains PASS; production completion still needs external owner input.",
     "- Owner input request status: $ownerInputRequestStatus",
     "- Owner unblock status: $ownerUnblockStatus",
@@ -279,6 +289,9 @@ $emailDraftLines = @(
     "- production-handoff-send-dry-run-probe.md",
     "- production-handoff-owner-response-bundle-probe-manifest.json",
     "- production-handoff-owner-response-bundle-probe.md",
+    "- production-handoff-owner-response-bundle-kit-manifest.json",
+    "- production-handoff-owner-response-bundle-kit.md",
+    "- production-handoff-owner-response-bundle-kit.zip",
     "- release-progress-notification-outbox-manifest.json",
     "- release-progress-notification-outbox/",
     "",
@@ -381,6 +394,9 @@ $reportLines = @(
     "| Owner response evidence complete | $ownerResponseEvidenceComplete |",
     "| Owner response dry-run prepared previews | $ownerResponseDryRunPreparedPreviewCount |",
     "| Owner response bundle outside repo | $ownerResponseBundleOutsideRepo |",
+    "| Owner response bundle kit generated | $ownerResponseBundleKitGenerated |",
+    "| Owner response bundle kit zip generated | $ownerResponseBundleKitZipGenerated |",
+    "| Owner response bundle kit required files | $ownerResponseBundleKitRequiredFileCount |",
     "| Notification dispatch status | $(Format-MarkdownCell $notificationDispatchStatus) |",
     "| Owner input request status | $(Format-MarkdownCell $ownerInputRequestStatus) |",
     "| Missing owner contacts | $missingOwnerContactCount |",
@@ -441,10 +457,10 @@ $reportContentValidated = $reportContent.Contains("Release Progress Notification
 
 $checks = @()
 Add-OutboxCheck "progress_notification_sources_available" `
-    ($ownerInputRequestManifest.status -eq "PASS" -and $ownerContactExternalIntakeProbeManifest.status -eq "PASS" -and $sendDryRunProbeManifest.status -eq "PASS" -and $ownerResponseBundleProbeManifest.status -eq "PASS" -and $ownerUnblockManifest.status -eq "PASS" -and $mailAuthReadinessManifest.status -eq "PASS" -and $sendReadinessManifest.status -eq "PASS") `
-    "Progress notification outbox must be based on passing owner input request, owner contact external intake, send dry-run, owner response bundle, owner unblock, mail-auth readiness, and send readiness evidence."
+    ($ownerInputRequestManifest.status -eq "PASS" -and $ownerContactExternalIntakeProbeManifest.status -eq "PASS" -and $sendDryRunProbeManifest.status -eq "PASS" -and $ownerResponseBundleProbeManifest.status -eq "PASS" -and $ownerResponseBundleKitManifest.status -eq "PASS" -and $ownerUnblockManifest.status -eq "PASS" -and $mailAuthReadinessManifest.status -eq "PASS" -and $sendReadinessManifest.status -eq "PASS") `
+    "Progress notification outbox must be based on passing owner input request, owner contact external intake, send dry-run, owner response bundle, owner response bundle kit, owner unblock, mail-auth readiness, and send readiness evidence."
 Add-OutboxCheck "progress_notification_latest_big_node_accepted" `
-    ($latestBigNodeName -eq "production_handoff_owner_response_bundle_probe" -and
+    ($latestBigNodeName -eq "production_handoff_owner_response_bundle_kit" -and
         $latestBigNodeStatus -eq "PASS" -and
         $externalContactIntakeAccepted -and
         $externalSendReadyForConfirmation -and
@@ -455,8 +471,11 @@ Add-OutboxCheck "progress_notification_latest_big_node_accepted" `
         $ownerResponseEvidenceComplete -and
         $ownerResponseDryRunPreparedPreviewCount -gt 0 -and
         $ownerResponseBundleOutsideRepo -and
-        -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbeManifest "emailSent" $true))) `
-    "Progress notification outbox must report the latest owner response bundle node without claiming email was sent."
+        $ownerResponseBundleKitGenerated -and
+        $ownerResponseBundleKitZipGenerated -and
+        $ownerResponseBundleKitRequiredFileCount -gt 0 -and
+        -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "emailSent" $true))) `
+    "Progress notification outbox must report the latest owner response bundle kit node without claiming email was sent."
 Add-OutboxCheck "progress_notification_counts_match_owner_input" `
     ($missingOwnerContactCount -eq (Convert-ToInt (Get-JsonValue $ownerUnblockManifest "missingOwnerContactCount" -1)) -and
         $pendingDispatchCount -eq (Convert-ToInt (Get-JsonValue $ownerUnblockManifest "pendingDispatchCount" -1)) -and
@@ -501,6 +520,7 @@ $sourceFiles = @(
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "production-handoff-send-dry-run-probe-manifest.json",
     "production-handoff-owner-response-bundle-probe-manifest.json",
+    "production-handoff-owner-response-bundle-kit-manifest.json",
     "production-handoff-owner-unblock-pack-manifest.json",
     "production-handoff-mail-auth-readiness-manifest.json",
     "production-handoff-send-readiness-manifest.json"
@@ -528,6 +548,9 @@ $manifest = [ordered]@{
     ownerResponseEvidenceComplete = [bool]$ownerResponseEvidenceComplete
     ownerResponseDryRunPreparedPreviewCount = [int]$ownerResponseDryRunPreparedPreviewCount
     ownerResponseBundleOutsideRepo = [bool]$ownerResponseBundleOutsideRepo
+    ownerResponseBundleKitGenerated = [bool]$ownerResponseBundleKitGenerated
+    ownerResponseBundleKitZipGenerated = [bool]$ownerResponseBundleKitZipGenerated
+    ownerResponseBundleKitRequiredFileCount = [int]$ownerResponseBundleKitRequiredFileCount
     notificationDispatchStatus = $notificationDispatchStatus
     statusGenerated = (Test-Path $statusPath)
     progressEmailDraftGenerated = (Test-Path $emailDraftPath)

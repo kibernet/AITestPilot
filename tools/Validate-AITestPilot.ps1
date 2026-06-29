@@ -117,6 +117,7 @@ try {
         "tools\Invoke-AITestPilotProductionHandoffOwnerContactExternalIntakeProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffSendDryRunProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleProbe.ps1",
+        "tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKit.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1",
         "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1",
         "tools\Invoke-AITestPilotProductionHardModeSuccessContractProbe.ps1",

@@ -219,6 +219,7 @@ $productionHandoffOwnerInputRequestPackManifest = Read-Manifest "production-hand
 $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-Manifest "production-handoff-owner-contact-external-intake-probe-manifest.json"
 $productionHandoffSendDryRunProbeManifest = Read-Manifest "production-handoff-send-dry-run-probe-manifest.json"
 $productionHandoffOwnerResponseBundleProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-probe-manifest.json"
+$productionHandoffOwnerResponseBundleKitManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-manifest.json"
 $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
@@ -2172,12 +2173,46 @@ if ($null -ne $productionHandoffOwnerResponseBundleProbeManifest) {
     Test-ListedFiles $productionHandoffOwnerResponseBundleProbeManifest "production_handoff_owner_response_bundle_probe"
 }
 
+if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
+    Add-ReleaseCheck "production_handoff_owner_response_bundle_kit" `
+        ($productionHandoffOwnerResponseBundleKitManifest.status -eq "PASS" -and
+            $productionHandoffOwnerResponseBundleKitManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_response_bundle_kit.v1" -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.responseBundleTemplateGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.contactRosterTemplateGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.responseBundleManifestGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.verifyScriptGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.importScriptGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.requestDraftGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.reportGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.zipGenerated -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.ownerContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.requiredEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.templateDirectoryCount -eq 3 -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.requiredFilesJsonCount -eq 3 -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.areaReadmeCount -eq 3 -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.kitFileCount -gt 0 -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitManifest.emailSent -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitManifest.confirmationTokenCreated -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitManifest.mailAuthorizationCheckedByPipeline -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitManifest.externalEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitManifest.fixtureEvidencePromoted -and
+            $productionHandoffOwnerResponseBundleKitManifest.productionOutputBoundary -eq "owner_response_bundle_template_kit_only" -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.checkCount -eq 6 -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.failedCheckCount -eq 0) `
+        "Production handoff owner response bundle kit must package fillable owner evidence directories, roster, scripts, request draft, and zip without sending email or accepting real evidence."
+
+    Test-ListedFiles $productionHandoffOwnerResponseBundleKitManifest "production_handoff_owner_response_bundle_kit"
+}
+
 if ($null -ne $releaseProgressNotificationOutboxManifest) {
     Add-ReleaseCheck "release_progress_notification_outbox" `
         ($releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
             $releaseProgressNotificationOutboxManifest.schemaVersion -eq "aitestpilot.release_progress_notification_outbox.v1" -and
             $releaseProgressNotificationOutboxManifest.recipient -eq "kibernet@sina.com" -and
-            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_response_bundle_probe" -and
+            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_response_bundle_kit" -and
             $releaseProgressNotificationOutboxManifest.latestBigNodeStatus -eq "PASS" -and
             [bool]$releaseProgressNotificationOutboxManifest.externalContactIntakeAccepted -and
             [bool]$releaseProgressNotificationOutboxManifest.externalSendReadyForConfirmation -and
@@ -2188,6 +2223,9 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
             [bool]$releaseProgressNotificationOutboxManifest.ownerResponseEvidenceComplete -and
             [int]$releaseProgressNotificationOutboxManifest.ownerResponseDryRunPreparedPreviewCount -gt 0 -and
             [bool]$releaseProgressNotificationOutboxManifest.ownerResponseBundleOutsideRepo -and
+            [bool]$releaseProgressNotificationOutboxManifest.ownerResponseBundleKitGenerated -and
+            [bool]$releaseProgressNotificationOutboxManifest.ownerResponseBundleKitZipGenerated -and
+            [int]$releaseProgressNotificationOutboxManifest.ownerResponseBundleKitRequiredFileCount -gt 0 -and
             $releaseProgressNotificationOutboxManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseProgressNotificationOutboxManifest.statusGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.progressEmailDraftGenerated -and
@@ -2443,6 +2481,9 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleReady -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleEvidenceComplete -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitZipGenerated -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitRequiredFileCount -gt 0 -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
@@ -2516,6 +2557,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-contact-external-intake-probe-manifest.json",
         "production-handoff-send-dry-run-probe-manifest.json",
         "production-handoff-owner-response-bundle-probe-manifest.json",
+        "production-handoff-owner-response-bundle-kit-manifest.json",
         "release-progress-notification-outbox-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
