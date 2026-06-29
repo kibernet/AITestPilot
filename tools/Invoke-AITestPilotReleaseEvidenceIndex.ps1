@@ -6,6 +6,7 @@ param(
     [string]$ManifestPath,
     [string[]]$SourceManifestNames,
     [switch]$RequireProductionReplayDriverBound,
+    [switch]$RequireProductionLuaPatched,
     [switch]$RequireLiveModelEndpointSmoke
 )
 
@@ -214,6 +215,7 @@ function Get-DefaultSourceManifestNames {
         "model-endpoint-provider-retry-policy-manifest.json",
         "lua-static-analysis-manifest.json",
         "lua-auto-patch-sandbox-manifest.json",
+        "production-lua-patch-readiness-manifest.json",
         "live-model-endpoint-failure-probe-manifest.json",
         "live-model-endpoint-smoke-manifest.json",
         "github-actions-release-workflow-probe-manifest.json"
@@ -226,6 +228,10 @@ function Get-DefaultSourceManifestNames {
 
     if (-not [bool]$RequireProductionReplayDriverBound) {
         $names += "production-replay-driver-bound-failure-probe-manifest.json"
+    }
+
+    if (-not [bool]$RequireProductionLuaPatched) {
+        $names += "production-lua-patch-bound-failure-probe-manifest.json"
     }
 
     return @($names)
@@ -337,6 +343,7 @@ $manifest = [ordered]@{
     machineReadable = $true
     portalHandoffReady = ($status -eq "PASS")
     requireProductionReplayDriverBound = [bool]$RequireProductionReplayDriverBound
+    requireProductionLuaPatched = [bool]$RequireProductionLuaPatched
     requireLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke
     evidenceBundlePath = $evidenceBundlePath
     requiredSourceManifestCount = [int]$SourceManifestNames.Count

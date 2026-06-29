@@ -72,6 +72,7 @@ $requiredInputs = @(
     "unity_path",
     "game_replay_driver_type",
     "require_production_replay_driver_bound",
+    "require_production_lua_patched",
     "require_live_model_endpoint_smoke",
     "allow_missing_model_api_key",
     "use_cursor_agent_external_task_output"
@@ -82,6 +83,7 @@ $requiredSwitches = @(
     "-GameReplayDriverType",
     "-ArtifactDir",
     "-RequireProductionReplayDriverBound",
+    "-RequireProductionLuaPatched",
     "-RequireLiveModelEndpointSmoke",
     "-AllowMissingModelApiKey",
     "-UseCursorAgentExternalTaskOutput"

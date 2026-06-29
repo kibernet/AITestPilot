@@ -11,6 +11,7 @@ param(
     [int]$CursorAgentRetryDelaySeconds = 2,
     [switch]$UseCursorAgentExternalTaskOutput,
     [switch]$RequireProductionReplayDriverBound,
+    [switch]$RequireProductionLuaPatched,
     [switch]$RequireLiveModelEndpointSmoke,
     [switch]$AllowMissingModelApiKey,
     [switch]$DisableLiveModelEndpointFailurePolicyRetry,
@@ -329,6 +330,19 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_lua_patch_readiness" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionLuaPatchReadiness.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir `
+            -RequireProductionLuaPatched:$RequireProductionLuaPatched
+    }
+
+    if (-not $RequireProductionLuaPatched) {
+        Invoke-PipelineStep "production_lua_patch_bound_failure_probe" {
+            & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionLuaPatchBoundFailureProbe.ps1") `
+                -EvidenceBundleDir $EvidenceBundleDir
+        }
+    }
+
     Invoke-PipelineStep "live_model_endpoint_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
@@ -353,6 +367,7 @@ try {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `
             -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+            -RequireProductionLuaPatched:$RequireProductionLuaPatched `
             -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
     }
 
@@ -360,6 +375,7 @@ try {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseGate.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `
             -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+            -RequireProductionLuaPatched:$RequireProductionLuaPatched `
             -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
     }
 
@@ -368,6 +384,7 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir `
             -ProbeBundleDir $ReleaseGateFailureProbeDir `
             -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+            -RequireProductionLuaPatched:$RequireProductionLuaPatched `
             -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
     }
 

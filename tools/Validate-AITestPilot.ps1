@@ -81,6 +81,8 @@ try {
         "tools\Invoke-AITestPilotModelEndpointProviderRetryPolicyProbe.ps1",
         "tools\Invoke-AITestPilotLuaStaticAnalysisProbe.ps1",
         "tools\Invoke-AITestPilotLuaAutoPatchSandboxProbe.ps1",
+        "tools\Invoke-AITestPilotProductionLuaPatchReadiness.ps1",
+        "tools\Invoke-AITestPilotProductionLuaPatchBoundFailureProbe.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1",
         ".github\workflows\ai-testpilot-release.yml",

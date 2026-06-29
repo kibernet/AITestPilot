@@ -3,6 +3,7 @@ param(
     [string]$EvidenceBundleDir,
     [string]$ProbeBundleDir,
     [switch]$RequireProductionReplayDriverBound,
+    [switch]$RequireProductionLuaPatched,
     [switch]$RequireLiveModelEndpointSmoke
 )
 
@@ -51,4 +52,5 @@ $releaseGateScript = Join-Path $PSScriptRoot "Invoke-AITestPilotReleaseGate.ps1"
     -ReleaseGateManifestPath (Join-Path $ProbeBundleDir "release-gate-manifest.json") `
     -ExpectBlocked `
     -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+    -RequireProductionLuaPatched:$RequireProductionLuaPatched `
     -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke

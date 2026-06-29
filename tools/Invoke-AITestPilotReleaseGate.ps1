@@ -4,6 +4,7 @@ param(
     [string]$ReleaseGateManifestPath,
     [switch]$ExpectBlocked,
     [switch]$RequireProductionReplayDriverBound,
+    [switch]$RequireProductionLuaPatched,
     [switch]$RequireLiveModelEndpointSmoke
 )
 
@@ -162,6 +163,13 @@ $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provid
 $modelEndpointProviderRetryPolicyManifest = Read-Manifest "model-endpoint-provider-retry-policy-manifest.json"
 $luaStaticAnalysisManifest = Read-Manifest "lua-static-analysis-manifest.json"
 $luaAutoPatchSandboxManifest = Read-Manifest "lua-auto-patch-sandbox-manifest.json"
+if ($RequireProductionLuaPatched) {
+    $productionLuaPatchBoundFailureProbeManifest = $null
+}
+else {
+    $productionLuaPatchBoundFailureProbeManifest = Read-Manifest "production-lua-patch-bound-failure-probe-manifest.json"
+}
+$productionLuaPatchReadinessManifest = Read-Manifest "production-lua-patch-readiness-manifest.json"
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
@@ -1191,6 +1199,75 @@ if ($null -ne $luaAutoPatchSandboxManifest) {
     Test-ListedFiles $luaAutoPatchSandboxManifest "lua_auto_patch_sandbox_probe"
 }
 
+if ($null -ne $productionLuaPatchReadinessManifest) {
+    $productionLuaPatchReady = [bool]$productionLuaPatchReadinessManifest.readyForProductionLuaPatchRelease -and
+        [bool]$productionLuaPatchReadinessManifest.productionLuaBundleProvided -and
+        [bool]$productionLuaPatchReadinessManifest.productionLuaEvidenceAccepted -and
+        [bool]$productionLuaPatchReadinessManifest.staticAnalysisPassed -and
+        [bool]$productionLuaPatchReadinessManifest.sandboxAfterFindingsCleared -and
+        [bool]$productionLuaPatchReadinessManifest.sandboxBoundaryPreserved -and
+        [bool]$productionLuaPatchReadinessManifest.realProductionLuaAnalyzed -and
+        [bool]$productionLuaPatchReadinessManifest.realProductionLuaPatched -and
+        [bool]$productionLuaPatchReadinessManifest.productionPatchApplied -and
+        [bool]$productionLuaPatchReadinessManifest.productionPatchValidated -and
+        [bool]$productionLuaPatchReadinessManifest.productionRetestPassed -and
+        [bool]$productionLuaPatchReadinessManifest.rollbackPlanGenerated -and
+        [bool]$productionLuaPatchReadinessManifest.rollbackVerified -and
+        -not [bool]$productionLuaPatchReadinessManifest.packageRepositoryMutated -and
+        [bool]$productionLuaPatchReadinessManifest.sourceControlCleanAfterValidation -and
+        [int]$productionLuaPatchReadinessManifest.productionChangedFileCount -gt 0 -and
+        [int]$productionLuaPatchReadinessManifest.productionAfterFindingCount -eq 0 -and
+        [int]$productionLuaPatchReadinessManifest.productionAfterHighRiskFindingCount -eq 0 -and
+        [int]$productionLuaPatchReadinessManifest.blockingReasonCount -eq 0
+
+    $productionLuaPatchExplicitlyBlocked = -not [bool]$productionLuaPatchReadinessManifest.readyForProductionLuaPatchRelease -and
+        [bool]$productionLuaPatchReadinessManifest.packageReleaseAllowedWithoutProductionLuaPatch -and
+        -not [bool]$productionLuaPatchReadinessManifest.productionLuaPatchRequiredForPackageRelease -and
+        -not [bool]$productionLuaPatchReadinessManifest.productionLuaBundleProvided -and
+        -not [bool]$productionLuaPatchReadinessManifest.productionLuaEvidenceAccepted -and
+        [bool]$productionLuaPatchReadinessManifest.staticAnalysisPassed -and
+        [bool]$productionLuaPatchReadinessManifest.sandboxAfterFindingsCleared -and
+        [bool]$productionLuaPatchReadinessManifest.sandboxBoundaryPreserved -and
+        -not [bool]$productionLuaPatchReadinessManifest.realProductionLuaAnalyzed -and
+        -not [bool]$productionLuaPatchReadinessManifest.realProductionLuaPatched -and
+        -not [bool]$productionLuaPatchReadinessManifest.packageRepositoryMutated -and
+        [int]$productionLuaPatchReadinessManifest.blockingReasonCount -ge 5 -and
+        (Test-ContainsAll @($productionLuaPatchReadinessManifest.blockingReasons) @(
+            "real_production_lua_bundle_missing",
+            "real_production_lua_not_analyzed",
+            "real_production_lua_not_patched",
+            "production_lua_retest_evidence_missing",
+            "real_production_patch_rollback_missing"
+        ))
+
+    Add-ReleaseCheck "production_lua_patch_readiness" `
+        ($productionLuaPatchReadinessManifest.status -eq "PASS" -and
+            $productionLuaPatchReadinessManifest.schemaVersion -eq "aitestpilot.production_lua_patch_readiness.v1" -and
+            ($productionLuaPatchReady -or (-not [bool]$RequireProductionLuaPatched -and $productionLuaPatchExplicitlyBlocked))) `
+        "Production Lua patch readiness must either prove real production Lua analysis/patch/retest/rollback evidence or explicitly record the current no-production-Lua blockers while keeping package release separate."
+
+    Test-ListedFiles $productionLuaPatchReadinessManifest "production_lua_patch_readiness"
+}
+
+if ($null -ne $productionLuaPatchBoundFailureProbeManifest) {
+    Add-ReleaseCheck "production_lua_patch_bound_failure_probe" `
+        ($productionLuaPatchBoundFailureProbeManifest.status -eq "PASS" -and
+            $productionLuaPatchBoundFailureProbeManifest.schemaVersion -eq "aitestpilot.production_lua_patch_bound_failure_probe.v1" -and
+            [bool]$productionLuaPatchBoundFailureProbeManifest.expectedFailure -and
+            [bool]$productionLuaPatchBoundFailureProbeManifest.readinessCommandFailed -and
+            [bool]$productionLuaPatchBoundFailureProbeManifest.requireProductionLuaPatched -and
+            -not [bool]$productionLuaPatchBoundFailureProbeManifest.readyForProductionLuaPatchRelease -and
+            -not [bool]$productionLuaPatchBoundFailureProbeManifest.productionLuaEvidenceAccepted -and
+            -not [bool]$productionLuaPatchBoundFailureProbeManifest.realProductionLuaAnalyzed -and
+            -not [bool]$productionLuaPatchBoundFailureProbeManifest.realProductionLuaPatched -and
+            [bool]$productionLuaPatchBoundFailureProbeManifest.sandboxAfterFindingsCleared -and
+            [bool]$productionLuaPatchBoundFailureProbeManifest.sandboxBoundaryPreserved -and
+            [bool]$productionLuaPatchBoundFailureProbeManifest.expectedBlockingReasonsFound) `
+        "Production Lua patch bound failure probe must prove no-production-Lua evidence is blocked when real production Lua patching is required."
+
+    Test-ListedFiles $productionLuaPatchBoundFailureProbeManifest "production_lua_patch_bound_failure_probe"
+}
+
 if ($null -ne $liveModelEndpointFailureProbeManifest) {
     Add-ReleaseCheck "live_model_endpoint_failure_probe" `
         ($liveModelEndpointFailureProbeManifest.status -eq "PASS" -and
@@ -1383,6 +1460,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "model-endpoint-provider-retry-policy-manifest.json",
         "lua-static-analysis-manifest.json",
         "lua-auto-patch-sandbox-manifest.json",
+        "production-lua-patch-readiness-manifest.json",
         "live-model-endpoint-failure-probe-manifest.json",
         "live-model-endpoint-smoke-manifest.json",
         "github-actions-release-workflow-probe-manifest.json"
@@ -1394,6 +1472,10 @@ if ($null -ne $releaseEvidenceIndexManifest) {
 
     if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
         $requiredIndexedManifests += "production-replay-driver-bound-failure-probe-manifest.json"
+    }
+
+    if ($null -ne $productionLuaPatchBoundFailureProbeManifest) {
+        $requiredIndexedManifests += "production-lua-patch-bound-failure-probe-manifest.json"
     }
 
     Add-ReleaseCheck "release_evidence_index" `
@@ -1459,6 +1541,7 @@ $sourceManifests = @(
     "model-endpoint-provider-retry-policy-manifest.json",
     "lua-static-analysis-manifest.json",
     "lua-auto-patch-sandbox-manifest.json",
+    "production-lua-patch-readiness-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
@@ -1473,6 +1556,10 @@ if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
     $sourceManifests += "production-replay-driver-bound-failure-probe-manifest.json"
 }
 
+if ($null -ne $productionLuaPatchBoundFailureProbeManifest) {
+    $sourceManifests += "production-lua-patch-bound-failure-probe-manifest.json"
+}
+
 $manifest = [ordered]@{
     status = $gateStatus
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
@@ -1481,6 +1568,7 @@ $manifest = [ordered]@{
     failedReasonCount = $failedReasons.Count
     failedReasons = @($failedReasons)
     requireProductionReplayDriverBound = [bool]$RequireProductionReplayDriverBound
+    requireProductionLuaPatched = [bool]$RequireProductionLuaPatched
     checks = @($checks)
     sourceManifests = @($sourceManifests)
 }
