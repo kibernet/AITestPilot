@@ -136,6 +136,7 @@ $handoffManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-hand
 $preflightProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-external-evidence-preflight-probe-manifest.json") "Production handoff external evidence preflight probe manifest"
 $acceptanceContractProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-contract-probe-manifest.json") "Production external evidence acceptance contract probe manifest"
 $acceptanceFailureProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-failure-probe-manifest.json") "Production external evidence acceptance failure probe manifest"
+$inboxContractProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-inbox-contract-probe-manifest.json") "Production external evidence inbox contract probe manifest"
 
 $requiredDirectories = @(
     "production-handoff-package",
@@ -166,7 +167,11 @@ $requiredFiles = @(
     "production-external-evidence-acceptance-driver-only-manifest.json",
     "production-external-evidence-acceptance-driver-only.md",
     "production-external-evidence-inbox-manifest.json",
-    "production-external-evidence-inbox.md"
+    "production-external-evidence-inbox.md",
+    "production-external-evidence-inbox-contract-probe-manifest.json",
+    "production-external-evidence-inbox-acceptance-wrapper-manifest.json",
+    "production-external-evidence-inbox-acceptance-manifest.json",
+    "production-external-evidence-inbox-acceptance.md"
 )
 
 foreach ($fileName in $requiredFiles) {
@@ -201,6 +206,7 @@ $exportReadmeLines = @(
     "- `production-lua-patch-evidence-kit/`: host-project production Lua evidence template kit.",
     "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit.",
     "- `contract-evidence/`: accepted-fixture and rejection reports proving the intake path without claiming real production evidence.",
+    "- `contract-evidence/production-external-evidence-inbox-acceptance.md`: accepted returned-evidence inbox wrapper contract report.",
     "",
     "## Current External Work",
     "",
@@ -232,6 +238,7 @@ $requiredExportSnippets = @(
     "live-model-endpoint-config-kit",
     "production-external-evidence-inbox",
     "accept-returned-evidence.ps1",
+    "production-external-evidence-inbox-acceptance.md",
     "contract-evidence",
     "Real host-project evidence accepted: False"
 )
@@ -253,7 +260,8 @@ $requiredExportPaths = @(
     "production-handoff-export\live-model-endpoint-config-kit\README.md",
     "production-handoff-export\contract-evidence\production-external-evidence-acceptance-contract.md",
     "production-handoff-export\contract-evidence\production-external-evidence-acceptance-missing-all.md",
-    "production-handoff-export\contract-evidence\production-external-evidence-acceptance-driver-only.md"
+    "production-handoff-export\contract-evidence\production-external-evidence-acceptance-driver-only.md",
+    "production-handoff-export\contract-evidence\production-external-evidence-inbox-acceptance.md"
 )
 $missingExportPathCount = @($requiredExportPaths | Where-Object { $exportFiles -notcontains $_ }).Count
 
@@ -265,7 +273,7 @@ $checks = @(
     },
     [ordered]@{
         name = "contract_boundary_preserved"
-        passed = (-not [bool]$handoffManifest.fixtureEvidencePromoted -and -not [bool]$preflightProbeManifest.realHostProjectEvidenceAccepted -and -not [bool]$acceptanceContractProbeManifest.realHostProjectEvidenceAccepted)
+        passed = (-not [bool]$handoffManifest.fixtureEvidencePromoted -and -not [bool]$preflightProbeManifest.realHostProjectEvidenceAccepted -and -not [bool]$acceptanceContractProbeManifest.realHostProjectEvidenceAccepted -and -not [bool]$inboxContractProbeManifest.realHostProjectEvidenceAccepted)
         message = "Exported fixture contract evidence must not be promoted as real host-project evidence."
     },
     [ordered]@{
@@ -285,8 +293,8 @@ $checks = @(
     },
     [ordered]@{
         name = "external_evidence_inbox"
-        passed = ($missingExportPathCount -eq 0 -and $exportFiles -contains "production-handoff-export\production-external-evidence-inbox\accept-returned-evidence.ps1")
-        message = "Export must include the returned external evidence inbox and acceptance wrapper."
+        passed = ($missingExportPathCount -eq 0 -and $exportFiles -contains "production-handoff-export\production-external-evidence-inbox\accept-returned-evidence.ps1" -and $inboxContractProbeManifest.status -eq "PASS" -and [bool]$inboxContractProbeManifest.acceptedWrapperPassed)
+        message = "Export must include the returned external evidence inbox, acceptance wrapper, and accepted inbox contract proof."
     }
 )
 

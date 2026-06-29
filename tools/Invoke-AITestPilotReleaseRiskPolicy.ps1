@@ -193,6 +193,7 @@ $productionHandoffStatusManifest = Read-PolicyJson "production-handoff-status-ma
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
+$productionExternalEvidenceInboxContractProbeManifest = Read-PolicyJson "production-external-evidence-inbox-contract-probe-manifest.json" "Production external evidence inbox contract probe manifest"
 $productionHardModeFailureProbeManifest = Read-PolicyJson "production-hard-mode-failure-probe-manifest.json" "Production hard-mode failure probe manifest"
 
 $runReports = @()
@@ -771,6 +772,36 @@ Add-PolicyCheck "production_external_evidence_inbox_policy" $productionExternalE
     "Production evidence handoff must include a returned-evidence inbox layout and acceptance wrapper without promoting fixture data." `
     "production_external_evidence_inbox_not_accepted"
 
+$productionExternalEvidenceInboxContractAccepted = (
+    $null -ne $productionExternalEvidenceInboxContractProbeManifest -and
+    $productionExternalEvidenceInboxContractProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_inbox_contract_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "inboxTemplateGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxComplete" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxEvidenceAreaCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxCompleteAreaCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxMissingRequiredFileCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedWrapperPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedWrapperReportGenerated" $false)) -and
+    (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedWrapperAcceptanceStatus" "") -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedWrapperAllExternalEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedWrapperContractFixtureMode" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedProductionDriverEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedProductionLuaEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedLiveModelSmokeEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedAllExternalEvidenceAccepted" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "releasePipelineUsesFixture" $true)) -and
+    (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_external_evidence_inbox_contract_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_inbox_contract_policy" $productionExternalEvidenceInboxContractAccepted `
+    "Production evidence handoff must prove the returned-evidence inbox wrapper can accept complete host-project-shaped evidence without promoting fixture data." `
+    "production_external_evidence_inbox_contract_not_accepted"
+
 $productionExternalEvidenceAcceptanceContractAccepted = (
     $null -ne $productionExternalEvidenceAcceptanceContractProbeManifest -and
     $productionExternalEvidenceAcceptanceContractProbeManifest.status -eq "PASS" -and
@@ -904,6 +935,7 @@ $sourceFiles = @(
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
+    "production-external-evidence-inbox-contract-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json"
 )
 
@@ -955,6 +987,7 @@ $manifest = [ordered]@{
     productionHandoffPendingOwnerPacketCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "pendingOwnerPacketCount" 0))
     productionExternalEvidenceInboxAccepted = [bool]$productionExternalEvidenceInboxAccepted
     productionExternalEvidenceInboxMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "missingRequiredFileCount" 0))
+    productionExternalEvidenceInboxContractAccepted = [bool]$productionExternalEvidenceInboxContractAccepted
     productionExternalEvidenceAcceptanceContractAccepted = [bool]$productionExternalEvidenceAcceptanceContractAccepted
     productionExternalEvidenceAcceptanceFailureAccepted = [bool]$productionExternalEvidenceAcceptanceFailureAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
@@ -995,6 +1028,7 @@ $reportLines = @(
     "- Production handoff remaining blockers: $($manifest.productionHandoffRemainingBlockingReasonCount)",
     "- Production external evidence inbox accepted: $($manifest.productionExternalEvidenceInboxAccepted)",
     "- Production external evidence inbox missing files: $($manifest.productionExternalEvidenceInboxMissingFileCount)",
+    "- Production external evidence inbox contract accepted: $($manifest.productionExternalEvidenceInboxContractAccepted)",
     "- Production external evidence acceptance contract accepted: $($manifest.productionExternalEvidenceAcceptanceContractAccepted)",
     "- Production external evidence acceptance failure accepted: $($manifest.productionExternalEvidenceAcceptanceFailureAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",

@@ -234,6 +234,7 @@ function Get-DefaultSourceManifestNames {
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
+        "production-external-evidence-inbox-contract-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )

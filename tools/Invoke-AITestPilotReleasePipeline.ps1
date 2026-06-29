@@ -445,6 +445,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_external_evidence_inbox_contract_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceInboxContractProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_handoff_export" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffExport.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

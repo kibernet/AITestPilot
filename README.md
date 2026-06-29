@@ -239,13 +239,13 @@ To export a machine-readable release evidence index:
 
 That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. The full release pipeline runs it before the release gate so CI and portal handoff can consume one stable evidence summary.
 
-To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint configuration, external live-smoke evidence intake, live-smoke accepted-contract proof, live endpoint policy, and CI provider controls:
+To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint configuration, external live-smoke evidence intake, live-smoke accepted-contract proof, returned-evidence inbox contract proof, live endpoint policy, and CI provider controls:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseRiskPolicy.ps1
 ```
 
-That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries plus the production Lua evidence kit, live model endpoint configuration-kit, external live-smoke intake guard, and accepted live-smoke evidence contract; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, `-ProductionLuaEvidenceDir`, `-RequireLiveModelEndpointSmoke`, and `-LiveModelEndpointSmokeEvidenceDir`.
+That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries plus the production Lua evidence kit, live model endpoint configuration-kit, external live-smoke intake guard, accepted live-smoke evidence contract, and returned-evidence inbox contract; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, `-ProductionLuaEvidenceDir`, `-RequireLiveModelEndpointSmoke`, and `-LiveModelEndpointSmokeEvidenceDir`.
 
 To prove provider-specific CI build, smoke test, and vision evidence checks are wired for GitHub Actions and Azure Pipelines:
 
@@ -263,7 +263,7 @@ To generate the host-project production handoff package from the current release
 
 That package writes `production-handoff-package-manifest.json` plus `production-handoff-package\README.md`, `action-plan.md`, `required-external-evidence.json`, `blocker-resolution-map.json`, `blocker-resolution-map.md`, `owner-packets\owner-packet-index.json`, one owner packet per remaining action item, `ci-commands.ps1`, `verify-external-evidence.ps1`, `accept-external-evidence.ps1`, and `external-evidence-preflight-self-check.json`. It consolidates the remaining production driver, production Lua, live-model, and CI hard-mode steps without promoting fixture evidence as real host-project evidence, validates that owner, kit, evidence, blocker-resolution, command, preflight, acceptance-wrapper, and per-owner packet details render as concrete handoff content, and includes host-project scripts for checking external evidence paths and running unified acceptance before hard validation. The release pipeline also runs `Invoke-AITestPilotProductionHandoffExternalEvidencePreflightProbe.ps1`, which feeds complete accepted fixture evidence into the generated preflight with `-RequireAllEvidence -RunIntake`, runs the generated acceptance wrapper in contract mode to produce a Markdown report, and records the result as contract proof without accepting it as real production evidence.
 
-For a smaller owner-facing handoff artifact, run `.\tools\Invoke-AITestPilotProductionHandoffExport.ps1`. It writes `production-handoff-export-manifest.json`, `production-handoff-export\README.md`, and `production-handoff-export.zip` containing the handoff package, owner packets, generated kits, and contract reports without promoting fixture evidence as real host-project evidence.
+For a smaller owner-facing handoff artifact, run `.\tools\Invoke-AITestPilotProductionHandoffExport.ps1`. It writes `production-handoff-export-manifest.json`, `production-handoff-export\README.md`, and `production-handoff-export.zip` containing the handoff package, owner packets, generated kits, returned-evidence inbox, and contract reports without promoting fixture evidence as real host-project evidence.
 
 To create the returned-evidence inbox that owners fill after receiving packets:
 
@@ -272,6 +272,8 @@ To create the returned-evidence inbox that owners fill after receiving packets:
 ```
 
 That script writes `production-external-evidence-inbox-manifest.json`, `production-external-evidence-inbox.md`, and `production-external-evidence-inbox\accept-returned-evidence.ps1`. The inbox contains `production-driver-evidence`, `production-lua-evidence`, and `live-smoke-evidence` directories with README files and required-file lists, so returned evidence can be accepted through one wrapper without promoting fixture evidence as real host-project evidence.
+
+The release pipeline also runs `Invoke-AITestPilotProductionExternalEvidenceInboxContractProbe.ps1`, which fills the returned-evidence inbox with complete accepted fixture evidence from outside the repository, executes `accept-returned-evidence.ps1` in contract mode, and records the result as wrapper proof while keeping `realHostProjectEvidenceAccepted=false`.
 
 To summarize external evidence collection after distributing owner packets, run `.\tools\Invoke-AITestPilotProductionHandoffStatus.ps1`. It writes `production-handoff-status-manifest.json` and `production-handoff-status.md`, showing accepted versus pending owner packets, remaining blocker counts, required evidence files, and the next acceptance-wrapper commands without promoting fixture evidence as real host-project evidence.
 

@@ -188,6 +188,7 @@ $productionHandoffStatusManifest = Read-Manifest "production-handoff-status-mani
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
+$productionExternalEvidenceInboxContractProbeManifest = Read-Manifest "production-external-evidence-inbox-contract-probe-manifest.json"
 $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
@@ -1769,6 +1770,35 @@ if ($null -ne $productionExternalEvidenceInboxManifest) {
     Test-ListedFiles $productionExternalEvidenceInboxManifest "production_external_evidence_inbox"
 }
 
+if ($null -ne $productionExternalEvidenceInboxContractProbeManifest) {
+    Add-ReleaseCheck "production_external_evidence_inbox_contract_probe" `
+        ($productionExternalEvidenceInboxContractProbeManifest.status -eq "PASS" -and
+            $productionExternalEvidenceInboxContractProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_inbox_contract_probe.v1" -and
+            -not [bool]$productionExternalEvidenceInboxContractProbeManifest.externalBundleUnderRepo -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.inboxTemplateGenerated -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.filledInboxComplete -and
+            [int]$productionExternalEvidenceInboxContractProbeManifest.filledInboxEvidenceAreaCount -eq 3 -and
+            [int]$productionExternalEvidenceInboxContractProbeManifest.filledInboxCompleteAreaCount -eq 3 -and
+            [int]$productionExternalEvidenceInboxContractProbeManifest.filledInboxMissingRequiredFileCount -eq 0 -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedWrapperPassed -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedWrapperReportGenerated -and
+            $productionExternalEvidenceInboxContractProbeManifest.acceptedWrapperAcceptanceStatus -eq "PASS" -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedWrapperAllExternalEvidenceAccepted -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedWrapperContractFixtureMode -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedProductionDriverEvidenceAccepted -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedProductionLuaEvidenceAccepted -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedLiveModelSmokeEvidenceAccepted -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedAllExternalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceInboxContractProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceInboxContractProbeManifest.releasePipelineUsesFixture -and
+            $productionExternalEvidenceInboxContractProbeManifest.productionOutputBoundary -eq "accepted_fixture_external_evidence_inbox_contract_only" -and
+            [int]$productionExternalEvidenceInboxContractProbeManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceInboxContractProbeManifest.failedCheckCount -eq 0) `
+        "Production external evidence inbox contract probe must prove returned complete evidence can pass the wrapper while preserving the fixture boundary."
+
+    Test-ListedFiles $productionExternalEvidenceInboxContractProbeManifest "production_external_evidence_inbox_contract_probe"
+}
+
 if ($null -ne $productionExternalEvidenceAcceptanceContractProbeManifest) {
     Add-ReleaseCheck "production_external_evidence_acceptance_contract_probe" `
         ($productionExternalEvidenceAcceptanceContractProbeManifest.status -eq "PASS" -and
@@ -1892,6 +1922,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffExternalEvidencePreflightAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHardModeFailureAccepted -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
@@ -1951,6 +1982,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
+        "production-external-evidence-inbox-contract-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )
@@ -2049,6 +2081,7 @@ $sourceManifests = @(
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
+    "production-external-evidence-inbox-contract-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"

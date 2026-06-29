@@ -183,6 +183,7 @@ param(
     [string]$EvidenceBundleDir,
     [string]$OutputDir,
     [string]$GameReplayDriverType = "Your.Game.Tests.ProductionReplayDriver",
+    [switch]$ContractFixtureMode,
     [switch]$RunHardValidation
 )
 
@@ -248,6 +249,7 @@ if (-not (Test-Path $handoffWrapper)) {
     -LiveModelEndpointSmokeEvidenceDir (Join-Path $PSScriptRoot "live-smoke-evidence") `
     -GameReplayDriverType $GameReplayDriverType `
     -RequireAllEvidence `
+    -ContractFixtureMode:$ContractFixtureMode `
     -RunHardValidation:$RunHardValidation
 '@
 $acceptScript | Set-Content -Path $acceptScriptPath -Encoding UTF8
@@ -349,10 +351,11 @@ $rootReadmeLines += @(
     "## Acceptance",
     "",
     '```powershell',
-    ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`"",
-    '```',
-    "",
-    "Add `-RunHardValidation` only after the acceptance report passes.",
+        ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`"",
+        '```',
+        "",
+        "Add `-ContractFixtureMode` only for repository contract probes that use accepted fixture evidence.",
+        "Add `-RunHardValidation` only after the acceptance report passes.",
     "",
     "## Boundary",
     "",
