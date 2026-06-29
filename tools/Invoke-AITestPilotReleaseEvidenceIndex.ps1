@@ -239,6 +239,7 @@ function Get-DefaultSourceManifestNames {
         "production-handoff-owner-unblock-pack-manifest.json",
         "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
         "production-handoff-owner-input-request-pack-manifest.json",
+        "release-progress-notification-outbox-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",

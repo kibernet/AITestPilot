@@ -500,6 +500,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "release_progress_notification_outbox" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_hard_mode_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

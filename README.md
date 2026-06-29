@@ -327,6 +327,12 @@ That probe writes `production-handoff-owner-unblock-pack-contract-probe-manifest
 
 That script writes `production-handoff-owner-input-request-pack-manifest.json`, `production-handoff-owner-input-request-pack.md`, and `production-handoff-owner-input-request-pack\`. It turns the remaining external-owner blockers into a fill-in contact roster template, owner input checklist, returned-evidence checklist, and request email draft for `kibernet@sina.com` while keeping `ownerInputRequestStatus=AWAITING_EXTERNAL_OWNER_INPUT`, `automaticEmailSendReady=false`, and all real-evidence acceptance flags false.
 
+```powershell
+.\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1
+```
+
+That script writes `release-progress-notification-outbox-manifest.json`, `release-progress-notification-outbox.md`, and `release-progress-notification-outbox\`. It prepares the requested big-node progress email for `kibernet@sina.com`, records the current remaining external counts, and provides a local `agently-cli` send helper while keeping the notification in `PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION` with `emailSent=false`.
+
 To run the stable repo-side acceptance entry point after host-project owners return driver, Lua, and live-smoke evidence directories:
 
 ```powershell

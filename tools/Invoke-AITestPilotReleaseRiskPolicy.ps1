@@ -198,6 +198,7 @@ $productionHandoffMailAuthReadinessManifest = Read-PolicyJson "production-handof
 $productionHandoffOwnerUnblockPackManifest = Read-PolicyJson "production-handoff-owner-unblock-pack-manifest.json" "Production handoff owner unblock pack manifest"
 $productionHandoffOwnerUnblockPackContractProbeManifest = Read-PolicyJson "production-handoff-owner-unblock-pack-contract-probe-manifest.json" "Production handoff owner unblock pack contract probe manifest"
 $productionHandoffOwnerInputRequestPackManifest = Read-PolicyJson "production-handoff-owner-input-request-pack-manifest.json" "Production handoff owner input request pack manifest"
+$releaseProgressNotificationOutboxManifest = Read-PolicyJson "release-progress-notification-outbox-manifest.json" "Release progress notification outbox manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -1082,6 +1083,58 @@ Add-PolicyCheck "production_handoff_owner_input_request_pack_policy" $production
     "Production handoff evidence must include an owner-facing input request pack that routes contacts, dispatches, and returned evidence while preserving send and evidence boundaries." `
     "production_handoff_owner_input_request_pack_not_accepted"
 
+$releaseProgressNotificationOutboxAccepted = (
+    $null -ne $releaseProgressNotificationOutboxManifest -and
+    $releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_outbox.v1" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "") -eq "kibernet@sina.com" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "") -eq "production_handoff_owner_input_request_pack" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeStatus" "") -eq "PASS" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "statusGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "progressEmailDraftGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "sendHelperGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "readmeGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "reportGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "statusContentValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "progressEmailDraftContentValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "sendHelperContentValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "readmeContentValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "reportContentValidated" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "missingOwnerContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingOwnerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "pendingDispatchCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "pendingDispatchCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "pendingOwnerPacketCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "pendingOwnerPacketCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "missingRequiredFileCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingBlockingReasonCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "remainingBlockingReasonCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "blockedSendCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "readySendCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "readySendCount" -2)) -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "mailAuthReadinessStatus" "") -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "automaticEmailSendReady" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "mailAuthorizationCheckedByPipeline" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "confirmationTokenCreated" $true)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "twoStageConfirmationRequired" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "productionOutputBoundary" "") -eq "release_progress_notification_outbox_only" -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "release_progress_notification_outbox_policy" $releaseProgressNotificationOutboxAccepted `
+    "Release evidence must include a pending big-node progress notification outbox for the requested recipient while preserving local mail-auth and two-stage confirmation boundaries." `
+    "release_progress_notification_outbox_not_accepted"
+
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
     $productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -1305,6 +1358,7 @@ $sourceFiles = @(
     "production-handoff-owner-unblock-pack-manifest.json",
     "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
     "production-handoff-owner-input-request-pack-manifest.json",
+    "release-progress-notification-outbox-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
@@ -1371,6 +1425,9 @@ $manifest = [ordered]@{
     productionHandoffOwnerInputRequestPackAccepted = [bool]$productionHandoffOwnerInputRequestPackAccepted
     productionHandoffOwnerInputRequestStatus = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerInputRequestStatus" "")
     productionHandoffOwnerInputRequestRecipient = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "operatorProgressRecipient" "")
+    releaseProgressNotificationOutboxAccepted = [bool]$releaseProgressNotificationOutboxAccepted
+    releaseProgressNotificationDispatchStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "")
+    releaseProgressNotificationRecipient = (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "")
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
@@ -1430,6 +1487,9 @@ $reportLines = @(
     "- Production handoff owner input request pack accepted: $($manifest.productionHandoffOwnerInputRequestPackAccepted)",
     "- Production handoff owner input request status: $($manifest.productionHandoffOwnerInputRequestStatus)",
     "- Production handoff owner input request recipient: $($manifest.productionHandoffOwnerInputRequestRecipient)",
+    "- Release progress notification outbox accepted: $($manifest.releaseProgressNotificationOutboxAccepted)",
+    "- Release progress notification dispatch status: $($manifest.releaseProgressNotificationDispatchStatus)",
+    "- Release progress notification recipient: $($manifest.releaseProgressNotificationRecipient)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",

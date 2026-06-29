@@ -216,6 +216,7 @@ $productionHandoffMailAuthReadinessManifest = Read-Manifest "production-handoff-
 $productionHandoffOwnerUnblockPackManifest = Read-Manifest "production-handoff-owner-unblock-pack-manifest.json"
 $productionHandoffOwnerUnblockPackContractProbeManifest = Read-Manifest "production-handoff-owner-unblock-pack-contract-probe-manifest.json"
 $productionHandoffOwnerInputRequestPackManifest = Read-Manifest "production-handoff-owner-input-request-pack-manifest.json"
+$releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2063,6 +2064,50 @@ if ($null -ne $productionHandoffOwnerInputRequestPackManifest) {
     Test-ListedFiles $productionHandoffOwnerInputRequestPackManifest "production_handoff_owner_input_request_pack"
 }
 
+if ($null -ne $releaseProgressNotificationOutboxManifest) {
+    Add-ReleaseCheck "release_progress_notification_outbox" `
+        ($releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
+            $releaseProgressNotificationOutboxManifest.schemaVersion -eq "aitestpilot.release_progress_notification_outbox.v1" -and
+            $releaseProgressNotificationOutboxManifest.recipient -eq "kibernet@sina.com" -and
+            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_input_request_pack" -and
+            $releaseProgressNotificationOutboxManifest.latestBigNodeStatus -eq "PASS" -and
+            $releaseProgressNotificationOutboxManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            [bool]$releaseProgressNotificationOutboxManifest.statusGenerated -and
+            [bool]$releaseProgressNotificationOutboxManifest.progressEmailDraftGenerated -and
+            [bool]$releaseProgressNotificationOutboxManifest.sendHelperGenerated -and
+            [bool]$releaseProgressNotificationOutboxManifest.readmeGenerated -and
+            [bool]$releaseProgressNotificationOutboxManifest.reportGenerated -and
+            [bool]$releaseProgressNotificationOutboxManifest.statusContentValidated -and
+            [bool]$releaseProgressNotificationOutboxManifest.progressEmailDraftContentValidated -and
+            [bool]$releaseProgressNotificationOutboxManifest.sendHelperContentValidated -and
+            [bool]$releaseProgressNotificationOutboxManifest.readmeContentValidated -and
+            [bool]$releaseProgressNotificationOutboxManifest.reportContentValidated -and
+            [int]$releaseProgressNotificationOutboxManifest.missingOwnerContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingOwnerContactCount -and
+            [int]$releaseProgressNotificationOutboxManifest.pendingDispatchCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.pendingDispatchCount -and
+            [int]$releaseProgressNotificationOutboxManifest.pendingOwnerPacketCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.pendingOwnerPacketCount -and
+            [int]$releaseProgressNotificationOutboxManifest.missingRequiredFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [int]$releaseProgressNotificationOutboxManifest.remainingBlockingReasonCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.remainingBlockingReasonCount -and
+            [int]$releaseProgressNotificationOutboxManifest.blockedSendCount -eq [int]$productionHandoffSendReadinessManifest.blockedSendCount -and
+            [int]$releaseProgressNotificationOutboxManifest.readySendCount -eq [int]$productionHandoffSendReadinessManifest.readySendCount -and
+            $releaseProgressNotificationOutboxManifest.mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.automaticEmailSendReady -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.mailAuthorizationCheckedByPipeline -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.releasePipelineSendsEmail -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.emailSent -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.confirmationTokenCreated -and
+            [bool]$releaseProgressNotificationOutboxManifest.twoStageConfirmationRequired -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.releasePipelineUsesFixture -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.externalEvidenceAccepted -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.fixtureEvidencePromoted -and
+            $releaseProgressNotificationOutboxManifest.productionOutputBoundary -eq "release_progress_notification_outbox_only" -and
+            [int]$releaseProgressNotificationOutboxManifest.checkCount -eq 6 -and
+            [int]$releaseProgressNotificationOutboxManifest.failedCheckCount -eq 0) `
+        "Release progress notification outbox must prepare the requested big-node email while preserving not-sent, local-auth, and two-stage confirmation boundaries."
+
+    Test-ListedFiles $releaseProgressNotificationOutboxManifest "release_progress_notification_outbox"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2274,6 +2319,8 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerUnblockPackContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerInputRequestPackAccepted -and
             $releaseRiskPolicyManifest.productionHandoffOwnerInputRequestStatus -eq "AWAITING_EXTERNAL_OWNER_INPUT" -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2342,6 +2389,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-unblock-pack-manifest.json",
         "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
         "production-handoff-owner-input-request-pack-manifest.json",
+        "release-progress-notification-outbox-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2450,6 +2498,7 @@ $sourceManifests = @(
     "production-handoff-owner-unblock-pack-manifest.json",
     "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
     "production-handoff-owner-input-request-pack-manifest.json",
+    "release-progress-notification-outbox-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
