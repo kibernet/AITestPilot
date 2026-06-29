@@ -186,6 +186,7 @@ $productionHandoffExternalEvidencePreflightProbeManifest = Read-Manifest "produc
 $productionHandoffExportManifest = Read-Manifest "production-handoff-export-manifest.json"
 $productionHandoffStatusManifest = Read-Manifest "production-handoff-status-manifest.json"
 $productionHandoffDispatchPlanManifest = Read-Manifest "production-handoff-dispatch-manifest.json"
+$productionHandoffContactReadinessManifest = Read-Manifest "production-handoff-contact-readiness-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -1778,6 +1779,36 @@ if ($null -ne $productionHandoffDispatchPlanManifest) {
     Test-ListedFiles $productionHandoffDispatchPlanManifest "production_handoff_dispatch_plan"
 }
 
+if ($null -ne $productionHandoffContactReadinessManifest) {
+    Add-ReleaseCheck "production_handoff_contact_readiness" `
+        ($productionHandoffContactReadinessManifest.status -eq "PASS" -and
+            $productionHandoffContactReadinessManifest.schemaVersion -eq "aitestpilot.production_handoff_contact_readiness.v1" -and
+            [bool]$productionHandoffContactReadinessManifest.contactRosterGenerated -and
+            [bool]$productionHandoffContactReadinessManifest.contactReportGenerated -and
+            [bool]$productionHandoffContactReadinessManifest.contactReportContentValidated -and
+            [int]$productionHandoffContactReadinessManifest.ownerContactCount -eq [int]$productionHandoffDispatchPlanManifest.ownerPacketCount -and
+            [int]$productionHandoffContactReadinessManifest.mappedOwnerContactCount -eq [int]$productionHandoffContactReadinessManifest.ownerContactCount -and
+            [int]$productionHandoffContactReadinessManifest.configuredOwnerContactCount -eq 0 -and
+            [int]$productionHandoffContactReadinessManifest.missingOwnerContactCount -eq [int]$productionHandoffContactReadinessManifest.ownerContactCount -and
+            [int]$productionHandoffContactReadinessManifest.invalidOwnerContactCount -eq 0 -and
+            -not [bool]$productionHandoffContactReadinessManifest.contactRosterComplete -and
+            -not [bool]$productionHandoffContactReadinessManifest.realOwnerEmailAddressesConfigured -and
+            -not [bool]$productionHandoffContactReadinessManifest.automaticEmailSendReady -and
+            [int]$productionHandoffContactReadinessManifest.pendingDispatchCount -eq [int]$productionHandoffDispatchPlanManifest.pendingDispatchCount -and
+            [int]$productionHandoffContactReadinessManifest.pendingExternalEvidenceFileCount -eq 9 -and
+            [int]$productionHandoffContactReadinessManifest.remainingBlockingReasonCount -eq [int]$productionHandoffStatusManifest.remainingBlockingReasonCount -and
+            -not [bool]$productionHandoffContactReadinessManifest.externalEvidenceCollectionComplete -and
+            -not [bool]$productionHandoffContactReadinessManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffContactReadinessManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffContactReadinessManifest.fixtureEvidencePromoted -and
+            $productionHandoffContactReadinessManifest.productionOutputBoundary -eq "host_project_owner_contact_readiness_only" -and
+            [int]$productionHandoffContactReadinessManifest.checkCount -eq 7 -and
+            [int]$productionHandoffContactReadinessManifest.failedCheckCount -eq 0) `
+        "Production handoff contact readiness must make missing real owner email addresses explicit and keep automatic dispatch blocked."
+
+    Test-ListedFiles $productionHandoffContactReadinessManifest "production_handoff_contact_readiness"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -1953,6 +1984,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffPackageAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExternalEvidencePreflightAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2013,6 +2045,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-export-manifest.json",
         "production-handoff-status-manifest.json",
         "production-handoff-dispatch-manifest.json",
+        "production-handoff-contact-readiness-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2113,6 +2146,7 @@ $sourceManifests = @(
     "production-handoff-export-manifest.json",
     "production-handoff-status-manifest.json",
     "production-handoff-dispatch-manifest.json",
+    "production-handoff-contact-readiness-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
