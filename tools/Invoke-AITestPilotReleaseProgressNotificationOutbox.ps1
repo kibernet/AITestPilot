@@ -95,6 +95,16 @@ function Get-JsonValue {
     return $property.Value
 }
 
+function Convert-ToArray {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return @()
+    }
+
+    return @($Value)
+}
+
 function Convert-ToBool {
     param([object]$Value)
 
@@ -128,6 +138,17 @@ function Format-MarkdownCell {
     }
 
     return $text.Replace("`r", " ").Replace("`n", " ").Replace("|", "\|")
+}
+
+function Join-TextList {
+    param([object[]]$Values)
+
+    $items = @($Values | ForEach-Object { ([string]$_).Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($items.Count -eq 0) {
+        return "(none)"
+    }
+
+    return [string]::Join(", ", $items)
 }
 
 function Add-OutboxCheck {
@@ -166,6 +187,9 @@ $ownerResponseBundleKitManifest = Read-JsonFile (Join-Path $evidenceBundlePath "
 $ownerUnblockManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-unblock-pack-manifest.json") "Production handoff owner unblock pack manifest"
 $mailAuthReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-mail-auth-readiness-manifest.json") "Production handoff mail auth readiness manifest"
 $sendReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-send-readiness-manifest.json") "Production handoff send readiness manifest"
+$productionDriverReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-replay-driver-readiness-manifest.json") "Production replay driver readiness manifest"
+$productionLuaPatchReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-lua-patch-readiness-manifest.json") "Production Lua patch readiness manifest"
+$productionExternalEvidenceInboxManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-inbox-manifest.json") "Production external evidence inbox manifest"
 
 $latestBigNodeName = "production_handoff_owner_response_bundle_kit"
 $latestBigNodeStatus = [string](Get-JsonValue $ownerResponseBundleKitManifest "status" "")
@@ -209,8 +233,66 @@ $suppressedSmallNodeNames = @(
 )
 $suppressedSmallNodeCount = @($suppressedSmallNodeNames).Count
 
+$ownerInputs = @(Convert-ToArray (Get-JsonValue $ownerInputRequestManifest "ownerInputs" @()))
+$remainingExternalWorkItems = @()
+$remainingExternalBlockingReasonCount = 0
+$remainingExternalMissingFileCount = 0
+foreach ($item in $ownerInputs) {
+    $remainingReasons = @(Convert-ToArray (Get-JsonValue $item "remainingBlockingReasons" @()) | ForEach-Object { [string]$_ })
+    $missingFiles = @(Convert-ToArray (Get-JsonValue $item "missingFiles" @()) | ForEach-Object { [string]$_ })
+    $requiredFiles = @(Convert-ToArray (Get-JsonValue $item "requiredEvidenceFiles" @()) | ForEach-Object { [string]$_ })
+    $itemBlockingReasonCount = Convert-ToInt (Get-JsonValue $item "remainingBlockingReasonCount" $remainingReasons.Count)
+    $itemMissingFileCount = Convert-ToInt (Get-JsonValue $item "missingFileCount" $missingFiles.Count)
+
+    $remainingExternalBlockingReasonCount += $itemBlockingReasonCount
+    $remainingExternalMissingFileCount += $itemMissingFileCount
+
+    $remainingExternalWorkItems += [ordered]@{
+        owner = [string](Get-JsonValue $item "owner" "")
+        area = [string](Get-JsonValue $item "area" "")
+        ownerStatus = [string](Get-JsonValue $item "ownerStatus" "")
+        contactStatus = [string](Get-JsonValue $item "contactStatus" "")
+        sendStatus = [string](Get-JsonValue $item "sendStatus" "")
+        dispatchStatus = [string](Get-JsonValue $item "dispatchStatus" "")
+        inboxDirectory = [string](Get-JsonValue $item "inboxDirectory" "")
+        missingFileCount = [int]$itemMissingFileCount
+        missingFiles = @($missingFiles)
+        requiredEvidenceFiles = @($requiredFiles)
+        remainingBlockingReasonCount = [int]$itemBlockingReasonCount
+        remainingBlockingReasons = @($remainingReasons)
+        ownerPacketPath = [string](Get-JsonValue $item "ownerPacketPath" "")
+        dispatchDraftPath = [string](Get-JsonValue $item "dispatchDraftPath" "")
+        preflightCommand = [string](Get-JsonValue $item "preflightCommand" "")
+        acceptanceWrapperCommand = [string](Get-JsonValue $item "acceptanceWrapperCommand" "")
+        hardValidationCommand = [string](Get-JsonValue $item "hardValidationCommand" "")
+    }
+}
+
+$localProgressMailRemainingActionCount = 1
+$trackedRemainingWorkItemCount = [int](@($remainingExternalWorkItems).Count + $localProgressMailRemainingActionCount)
+$localProgressMailWorkItem = [ordered]@{
+    area = "release_progress_notification_send"
+    status = $notificationDispatchStatus
+    recipient = $ProgressRecipient
+    subject = $notificationSubject
+    remainingActionCount = [int]$localProgressMailRemainingActionCount
+    remainingActions = @(
+        "complete_local_agently_cli_oauth_login",
+        "request_confirmation_token_with_prepare_confirmation",
+        "rerun_with_operator_approved_confirmation_token",
+        "record_and_confirm_real_send_receipt"
+    )
+    helperPath = "release-progress-notification-outbox/send-progress-notification.ps1"
+    receiptIntakeCommand = ".\tools\Invoke-AITestPilotReleaseProgressNotificationDispatchReceiptIntake.ps1 -ReceiptPath ""path\to\progress-notification-send-receipt.json"" -RequireReceipt -ConfirmLocalSendReceipt"
+    releasePipelineSendsEmail = $false
+    emailSent = $false
+    twoStageConfirmationRequired = $true
+}
+
 $statusPath = Join-Path $outboxPath "notification-status.json"
 $cadencePolicyPath = Join-Path $outboxPath "notification-cadence-policy.json"
+$remainingWorkSnapshotPath = Join-Path $outboxPath "remaining-work-snapshot.json"
+$remainingWorkSnapshotMarkdownPath = Join-Path $outboxPath "remaining-work-snapshot.md"
 $emailDraftPath = Join-Path $outboxPath "big-node-progress-email.md"
 $sendHelperPath = Join-Path $outboxPath "send-progress-notification.ps1"
 $readmePath = Join-Path $outboxPath "README.md"
@@ -286,6 +368,97 @@ $cadencePolicy = [ordered]@{
 }
 $cadencePolicy | ConvertTo-Json -Depth 8 | Set-Content -Path $cadencePolicyPath -Encoding UTF8
 
+$remainingWorkSnapshot = [ordered]@{
+    schemaVersion = "aitestpilot.release_progress_notification_remaining_work_snapshot.v1"
+    status = "PASS"
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    recipient = $ProgressRecipient
+    subject = $notificationSubject
+    latestBigNodeName = $latestBigNodeName
+    latestBigNodeStatus = $latestBigNodeStatus
+    ownerInputRequestStatus = $ownerInputRequestStatus
+    ownerUnblockStatus = $ownerUnblockStatus
+    notificationDispatchStatus = $notificationDispatchStatus
+    externalRemainingWorkItemCount = [int]@($remainingExternalWorkItems).Count
+    externalRemainingBlockingReasonCount = [int]$remainingExternalBlockingReasonCount
+    externalRemainingMissingFileCount = [int]$remainingExternalMissingFileCount
+    canonicalRemainingBlockingReasonCount = [int]$remainingBlockingReasonCount
+    canonicalMissingRequiredFileCount = [int]$missingRequiredFileCount
+    localProgressMailRemainingActionCount = [int]$localProgressMailRemainingActionCount
+    trackedRemainingWorkItemCount = [int]$trackedRemainingWorkItemCount
+    productionDriverReadinessStatus = [string](Get-JsonValue $productionDriverReadinessManifest "status" "")
+    productionDriverReady = [bool](Convert-ToBool (Get-JsonValue $productionDriverReadinessManifest "readyForProductionDriverRelease" $false))
+    productionDriverBlockingReasonCount = [int](Convert-ToInt (Get-JsonValue $productionDriverReadinessManifest "blockingReasonCount" 0))
+    productionLuaReadinessStatus = [string](Get-JsonValue $productionLuaPatchReadinessManifest "status" "")
+    productionLuaReady = [bool](Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "readyForProductionLuaPatchRelease" $false))
+    productionLuaBlockingReasonCount = [int](Convert-ToInt (Get-JsonValue $productionLuaPatchReadinessManifest "blockingReasonCount" 0))
+    externalEvidenceInboxStatus = [string](Get-JsonValue $productionExternalEvidenceInboxManifest "status" "")
+    externalEvidenceInboxMissingFileCount = [int](Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "missingRequiredFileCount" 0))
+    externalRemainingWorkItems = @($remainingExternalWorkItems)
+    localProgressMailWorkItem = $localProgressMailWorkItem
+    releasePipelineSendsEmail = $false
+    emailSent = $false
+    confirmationTokenCreated = $false
+    realHostProjectEvidenceAccepted = $false
+    externalEvidenceAccepted = $false
+    fixtureEvidencePromoted = $false
+    productionOutputBoundary = "release_progress_notification_remaining_work_snapshot_only"
+}
+$remainingWorkSnapshot | ConvertTo-Json -Depth 12 | Set-Content -Path $remainingWorkSnapshotPath -Encoding UTF8
+
+$remainingWorkSnapshotLines = @(
+    "# AI TestPilot Remaining Work Snapshot",
+    "",
+    "Schema: ``aitestpilot.release_progress_notification_remaining_work_snapshot.v1``",
+    "Generated at UTC: $((Get-Date).ToUniversalTime().ToString("O"))",
+    "",
+    "## Summary",
+    "",
+    "| Field | Value |",
+    "| --- | --- |",
+    "| Latest big node | $(Format-MarkdownCell $latestBigNodeName) |",
+    "| Latest big node status | $(Format-MarkdownCell $latestBigNodeStatus) |",
+    "| Owner input request status | $(Format-MarkdownCell $ownerInputRequestStatus) |",
+    "| External remaining work items | $(@($remainingExternalWorkItems).Count) |",
+    "| External remaining blocking reasons | $remainingExternalBlockingReasonCount |",
+    "| External missing required files | $remainingExternalMissingFileCount |",
+    "| Local progress mail pending actions | $localProgressMailRemainingActionCount |",
+    "| Tracked remaining work items | $trackedRemainingWorkItemCount |",
+    "| Notification dispatch status | $(Format-MarkdownCell $notificationDispatchStatus) |",
+    "",
+    "## External Owner Work",
+    "",
+    "| Owner | Area | Blockers | Missing Files | Hard Validation |",
+    "| --- | --- | ---: | ---: | --- |"
+)
+foreach ($item in $remainingExternalWorkItems) {
+    $remainingWorkSnapshotLines += "| $(Format-MarkdownCell $item.owner) | $(Format-MarkdownCell $item.area) | $($item.remainingBlockingReasonCount) | $($item.missingFileCount) | $(Format-MarkdownCell $item.hardValidationCommand) |"
+}
+$remainingWorkSnapshotLines += @(
+    "",
+    "## Blocking Reasons",
+    ""
+)
+foreach ($item in $remainingExternalWorkItems) {
+    $remainingWorkSnapshotLines += "- $($item.area): $(Join-TextList $item.remainingBlockingReasons)"
+}
+$remainingWorkSnapshotLines += @(
+    "",
+    "## Local Progress Mail",
+    "",
+    "- Status: $notificationDispatchStatus",
+    "- Recipient: $ProgressRecipient",
+    "- Helper: ``release-progress-notification-outbox/send-progress-notification.ps1``",
+    "- Remaining actions: $(Join-TextList $localProgressMailWorkItem.remainingActions)",
+    "",
+    "## Boundary",
+    "",
+    "- Release pipeline does not send email.",
+    "- Real host-project evidence has not been accepted.",
+    "- Fixture evidence has not been promoted."
+)
+$remainingWorkSnapshotLines | Set-Content -Path $remainingWorkSnapshotMarkdownPath -Encoding UTF8
+
 $emailDraftLines = @(
     "To: $ProgressRecipient",
     "Subject: $notificationSubject",
@@ -310,6 +483,10 @@ $emailDraftLines = @(
     "- Notification trigger kind: $notificationTriggerKind",
     "- Small-node email suppression active: $smallNodeEmailSuppression",
     "- Suppressed small-node notification count: $suppressedSmallNodeCount",
+    "- Remaining work snapshot generated: true",
+    "- External remaining work areas: $(@($remainingExternalWorkItems).Count)",
+    "- External remaining blocking reasons: $remainingExternalBlockingReasonCount",
+    "- Local progress mail remaining actions: $localProgressMailRemainingActionCount",
     "- Release evidence boundary: repo-side package/gate evidence remains PASS; production completion still needs external owner input.",
     "- Owner input request status: $ownerInputRequestStatus",
     "- Owner unblock status: $ownerUnblockStatus",
@@ -339,6 +516,8 @@ $emailDraftLines = @(
     "- production-handoff-owner-response-bundle-kit.md",
     "- production-handoff-owner-response-bundle-kit.zip",
     "- release-progress-notification-outbox-manifest.json",
+    "- release-progress-notification-outbox/remaining-work-snapshot.json",
+    "- release-progress-notification-outbox/remaining-work-snapshot.md",
     "- release-progress-notification-outbox/",
     "",
     "Mail boundary:",
@@ -442,6 +621,7 @@ $readmeLines = @(
     "",
     "- ``notification-status.json``: machine-readable pending notification state.",
     "- ``notification-cadence-policy.json``: machine-readable big-node-only notification cadence policy.",
+    "- ``remaining-work-snapshot.json`` and ``remaining-work-snapshot.md``: machine-readable and owner-readable remaining work grouped by owner area plus the local progress-mail action.",
     "- ``big-node-progress-email.md``: prepared email body for ``$ProgressRecipient``.",
     "- ``send-progress-notification.ps1``: local helper for the agently-cli two-stage send flow.",
     "",
@@ -488,6 +668,12 @@ $reportLines = @(
     "| Big-node notification eligible | $bigNodeNotificationEligible |",
     "| Small-node email suppression | $smallNodeEmailSuppression |",
     "| Suppressed small-node notification count | $suppressedSmallNodeCount |",
+    "| Remaining work snapshot generated | $(Test-Path $remainingWorkSnapshotPath) |",
+    "| External remaining work items | $(@($remainingExternalWorkItems).Count) |",
+    "| External remaining blocking reasons | $remainingExternalBlockingReasonCount |",
+    "| External missing required files | $remainingExternalMissingFileCount |",
+    "| Local progress mail remaining actions | $localProgressMailRemainingActionCount |",
+    "| Tracked remaining work items | $trackedRemainingWorkItemCount |",
     "| Notification dispatch status | $(Format-MarkdownCell $notificationDispatchStatus) |",
     "| Owner input request status | $(Format-MarkdownCell $ownerInputRequestStatus) |",
     "| Missing owner contacts | $missingOwnerContactCount |",
@@ -512,12 +698,16 @@ $reportLines | Set-Content -Path $reportFullPath -Encoding UTF8
 
 $statusContent = Get-Content -Path $statusPath -Encoding UTF8 -Raw
 $cadencePolicyContent = Get-Content -Path $cadencePolicyPath -Encoding UTF8 -Raw
+$remainingWorkSnapshotContent = Get-Content -Path $remainingWorkSnapshotPath -Encoding UTF8 -Raw
+$remainingWorkSnapshotMarkdownContent = Get-Content -Path $remainingWorkSnapshotMarkdownPath -Encoding UTF8 -Raw
 $emailDraftContent = Get-Content -Path $emailDraftPath -Encoding UTF8 -Raw
 $sendHelperContent = Get-Content -Path $sendHelperPath -Encoding UTF8 -Raw
 $readmeContent = Get-Content -Path $readmePath -Encoding UTF8 -Raw
 $reportContent = Get-Content -Path $reportFullPath -Encoding UTF8 -Raw
 $noObjectLeakage = -not $statusContent.Contains("System.Collections") -and -not $statusContent.Contains("@{") -and
     -not $cadencePolicyContent.Contains("System.Collections") -and -not $cadencePolicyContent.Contains("@{") -and
+    -not $remainingWorkSnapshotContent.Contains("System.Collections") -and -not $remainingWorkSnapshotContent.Contains("@{") -and
+    -not $remainingWorkSnapshotMarkdownContent.Contains("System.Collections") -and -not $remainingWorkSnapshotMarkdownContent.Contains("@{") -and
     -not $emailDraftContent.Contains("System.Collections") -and -not $emailDraftContent.Contains("@{") -and
     -not $sendHelperContent.Contains("System.Collections") -and
     -not $readmeContent.Contains("System.Collections") -and -not $readmeContent.Contains("@{") -and
@@ -534,10 +724,24 @@ $cadencePolicyContentValidated = $cadencePolicyContent.Contains("release_progres
     $cadencePolicyContent.Contains($latestBigNodeName) -and
     $cadencePolicyContent.Contains("release_progress_notification_real_receipt_guard_probe") -and
     $noObjectLeakage
+$remainingWorkSnapshotContentValidated = $remainingWorkSnapshotContent.Contains("release_progress_notification_remaining_work_snapshot.v1") -and
+    $remainingWorkSnapshotContent.Contains($latestBigNodeName) -and
+    $remainingWorkSnapshotContent.Contains("production_driver_binding") -and
+    $remainingWorkSnapshotContent.Contains("production_lua_patch_evidence") -and
+    $remainingWorkSnapshotContent.Contains("live_model_endpoint_smoke") -and
+    $remainingWorkSnapshotContent.Contains("release_progress_notification_send") -and
+    $remainingWorkSnapshotContent.Contains("production_replay_integration_not_bound") -and
+    $remainingWorkSnapshotContent.Contains("real_production_lua_bundle_missing") -and
+    $remainingWorkSnapshotContent.Contains("real_live_model_endpoint_smoke_missing") -and
+    $remainingWorkSnapshotContent.Contains($notificationDispatchStatus) -and
+    $remainingWorkSnapshotMarkdownContent.Contains("AI TestPilot Remaining Work Snapshot") -and
+    $remainingWorkSnapshotMarkdownContent.Contains("Local Progress Mail") -and
+    $noObjectLeakage
 $emailDraftContentValidated = $emailDraftContent.Contains($ProgressRecipient) -and
     $emailDraftContent.Contains($notificationSubject) -and
     $emailDraftContent.Contains($latestBigNodeName) -and
     $emailDraftContent.Contains("Notification cadence policy: $notificationCadencePolicy") -and
+    $emailDraftContent.Contains("Remaining work snapshot generated: true") -and
     $emailDraftContent.Contains("Missing owner contacts: $missingOwnerContactCount") -and
     $emailDraftContent.Contains("prepared but not sent") -and
     $noObjectLeakage
@@ -566,8 +770,8 @@ $reportContentValidated = $reportContent.Contains("Release Progress Notification
 
 $checks = @()
 Add-OutboxCheck "progress_notification_sources_available" `
-    ($ownerInputRequestManifest.status -eq "PASS" -and $ownerContactExternalIntakeProbeManifest.status -eq "PASS" -and $sendDryRunProbeManifest.status -eq "PASS" -and $ownerResponseBundleProbeManifest.status -eq "PASS" -and $ownerResponseBundleKitManifest.status -eq "PASS" -and $ownerUnblockManifest.status -eq "PASS" -and $mailAuthReadinessManifest.status -eq "PASS" -and $sendReadinessManifest.status -eq "PASS") `
-    "Progress notification outbox must be based on passing owner input request, owner contact external intake, send dry-run, owner response bundle, owner response bundle kit, owner unblock, mail-auth readiness, and send readiness evidence."
+    ($ownerInputRequestManifest.status -eq "PASS" -and $ownerContactExternalIntakeProbeManifest.status -eq "PASS" -and $sendDryRunProbeManifest.status -eq "PASS" -and $ownerResponseBundleProbeManifest.status -eq "PASS" -and $ownerResponseBundleKitManifest.status -eq "PASS" -and $ownerUnblockManifest.status -eq "PASS" -and $mailAuthReadinessManifest.status -eq "PASS" -and $sendReadinessManifest.status -eq "PASS" -and $productionDriverReadinessManifest.status -eq "PASS" -and $productionLuaPatchReadinessManifest.status -eq "PASS" -and $productionExternalEvidenceInboxManifest.status -eq "PASS") `
+    "Progress notification outbox must be based on passing owner input request, owner contact external intake, send dry-run, owner response bundle, owner response bundle kit, owner unblock, mail-auth readiness, send readiness, production driver readiness, production Lua readiness, and external evidence inbox evidence."
 Add-OutboxCheck "progress_notification_latest_big_node_accepted" `
     ($latestBigNodeName -eq "production_handoff_owner_response_bundle_kit" -and
         $latestBigNodeStatus -eq "PASS" -and
@@ -595,11 +799,24 @@ Add-OutboxCheck "progress_notification_counts_match_owner_input" `
         $readySendCount -eq (Convert-ToInt (Get-JsonValue $sendReadinessManifest "readySendCount" -1))) `
     "Progress notification outbox counts must match the owner input and unblock source manifests."
 Add-OutboxCheck "progress_notification_files_generated" `
-    ((Test-Path $statusPath) -and (Test-Path $cadencePolicyPath) -and (Test-Path $emailDraftPath) -and (Test-Path $sendHelperPath) -and (Test-Path $readmePath) -and (Test-Path $reportFullPath)) `
-    "Progress notification outbox must generate status, cadence policy, email draft, send helper, README, and report files."
+    ((Test-Path $statusPath) -and (Test-Path $cadencePolicyPath) -and (Test-Path $remainingWorkSnapshotPath) -and (Test-Path $remainingWorkSnapshotMarkdownPath) -and (Test-Path $emailDraftPath) -and (Test-Path $sendHelperPath) -and (Test-Path $readmePath) -and (Test-Path $reportFullPath)) `
+    "Progress notification outbox must generate status, cadence policy, remaining-work snapshot, email draft, send helper, README, and report files."
 Add-OutboxCheck "progress_notification_content_validated" `
-    ($statusContentValidated -and $cadencePolicyContentValidated -and $emailDraftContentValidated -and $sendHelperContentValidated -and $readmeContentValidated -and $reportContentValidated) `
-    "Progress notification outbox files must contain recipient, subject, node, cadence policy, counts, agently-cli send flow, and not-sent boundary text."
+    ($statusContentValidated -and $cadencePolicyContentValidated -and $remainingWorkSnapshotContentValidated -and $emailDraftContentValidated -and $sendHelperContentValidated -and $readmeContentValidated -and $reportContentValidated) `
+    "Progress notification outbox files must contain recipient, subject, node, cadence policy, remaining-work snapshot, counts, agently-cli send flow, and not-sent boundary text."
+Add-OutboxCheck "progress_notification_remaining_work_snapshot" `
+    (@($remainingExternalWorkItems).Count -eq 3 -and
+        $remainingExternalBlockingReasonCount -eq $remainingBlockingReasonCount -and
+        $remainingExternalMissingFileCount -eq $missingRequiredFileCount -and
+        $localProgressMailRemainingActionCount -eq 1 -and
+        $trackedRemainingWorkItemCount -eq 4 -and
+        (Convert-ToInt (Get-JsonValue $productionDriverReadinessManifest "blockingReasonCount" 0)) -eq 5 -and
+        (Convert-ToInt (Get-JsonValue $productionLuaPatchReadinessManifest "blockingReasonCount" 0)) -eq 5 -and
+        -not (Convert-ToBool (Get-JsonValue $productionDriverReadinessManifest "readyForProductionDriverRelease" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $productionLuaPatchReadinessManifest "readyForProductionLuaPatchRelease" $true)) -and
+        (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "missingRequiredFileCount" 0)) -eq $missingRequiredFileCount -and
+        $remainingWorkSnapshotContentValidated) `
+    "Progress notification outbox must write a remaining-work snapshot covering three external owner areas, eleven canonical blocking reasons, nine missing files, and one local progress-mail action."
 Add-OutboxCheck "progress_notification_big_node_only_cadence" `
     ($notificationCadencePolicy -eq "BIG_NODE_ONLY" -and
         $notificationTriggerKind -eq "BIG_NODE" -and
@@ -632,6 +849,8 @@ $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $reportFullPath),
     (Convert-ToEvidenceRelativePath $statusPath),
     (Convert-ToEvidenceRelativePath $cadencePolicyPath),
+    (Convert-ToEvidenceRelativePath $remainingWorkSnapshotPath),
+    (Convert-ToEvidenceRelativePath $remainingWorkSnapshotMarkdownPath),
     (Convert-ToEvidenceRelativePath $emailDraftPath),
     (Convert-ToEvidenceRelativePath $sendHelperPath),
     (Convert-ToEvidenceRelativePath $readmePath)
@@ -644,7 +863,10 @@ $sourceFiles = @(
     "production-handoff-owner-response-bundle-kit-manifest.json",
     "production-handoff-owner-unblock-pack-manifest.json",
     "production-handoff-mail-auth-readiness-manifest.json",
-    "production-handoff-send-readiness-manifest.json"
+    "production-handoff-send-readiness-manifest.json",
+    "production-replay-driver-readiness-manifest.json",
+    "production-lua-patch-readiness-manifest.json",
+    "production-external-evidence-inbox-manifest.json"
 )
 
 $manifest = [ordered]@{
@@ -682,12 +904,15 @@ $manifest = [ordered]@{
     notificationDispatchStatus = $notificationDispatchStatus
     statusGenerated = (Test-Path $statusPath)
     cadencePolicyGenerated = (Test-Path $cadencePolicyPath)
+    remainingWorkSnapshotGenerated = (Test-Path $remainingWorkSnapshotPath)
+    remainingWorkSnapshotMarkdownGenerated = (Test-Path $remainingWorkSnapshotMarkdownPath)
     progressEmailDraftGenerated = (Test-Path $emailDraftPath)
     sendHelperGenerated = (Test-Path $sendHelperPath)
     readmeGenerated = (Test-Path $readmePath)
     reportGenerated = (Test-Path $reportFullPath)
     statusContentValidated = [bool]$statusContentValidated
     cadencePolicyContentValidated = [bool]$cadencePolicyContentValidated
+    remainingWorkSnapshotContentValidated = [bool]$remainingWorkSnapshotContentValidated
     progressEmailDraftContentValidated = [bool]$emailDraftContentValidated
     sendHelperContentValidated = [bool]$sendHelperContentValidated
     readmeContentValidated = [bool]$readmeContentValidated
@@ -697,6 +922,11 @@ $manifest = [ordered]@{
     pendingOwnerPacketCount = [int]$pendingOwnerPacketCount
     missingRequiredFileCount = [int]$missingRequiredFileCount
     remainingBlockingReasonCount = [int]$remainingBlockingReasonCount
+    externalRemainingWorkItemCount = [int]@($remainingExternalWorkItems).Count
+    externalRemainingBlockingReasonCount = [int]$remainingExternalBlockingReasonCount
+    externalRemainingMissingFileCount = [int]$remainingExternalMissingFileCount
+    localProgressMailRemainingActionCount = [int]$localProgressMailRemainingActionCount
+    trackedRemainingWorkItemCount = [int]$trackedRemainingWorkItemCount
     blockedSendCount = [int]$blockedSendCount
     readySendCount = [int]$readySendCount
     sendReadinessStatus = $sendReadinessStatus

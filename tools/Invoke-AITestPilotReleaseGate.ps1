@@ -2239,6 +2239,14 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
             [int]$releaseProgressNotificationOutboxManifest.suppressedSmallNodeCount -eq 6 -and
             [bool]$releaseProgressNotificationOutboxManifest.cadencePolicyGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.cadencePolicyContentValidated -and
+            [bool]$releaseProgressNotificationOutboxManifest.remainingWorkSnapshotGenerated -and
+            [bool]$releaseProgressNotificationOutboxManifest.remainingWorkSnapshotMarkdownGenerated -and
+            [bool]$releaseProgressNotificationOutboxManifest.remainingWorkSnapshotContentValidated -and
+            [int]$releaseProgressNotificationOutboxManifest.externalRemainingWorkItemCount -eq 3 -and
+            [int]$releaseProgressNotificationOutboxManifest.externalRemainingBlockingReasonCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.remainingBlockingReasonCount -and
+            [int]$releaseProgressNotificationOutboxManifest.externalRemainingMissingFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [int]$releaseProgressNotificationOutboxManifest.localProgressMailRemainingActionCount -eq 1 -and
+            [int]$releaseProgressNotificationOutboxManifest.trackedRemainingWorkItemCount -eq 4 -and
             $releaseProgressNotificationOutboxManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseProgressNotificationOutboxManifest.statusGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.progressEmailDraftGenerated -and
@@ -2269,7 +2277,7 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
             -not [bool]$releaseProgressNotificationOutboxManifest.externalEvidenceAccepted -and
             -not [bool]$releaseProgressNotificationOutboxManifest.fixtureEvidencePromoted -and
             $releaseProgressNotificationOutboxManifest.productionOutputBoundary -eq "release_progress_notification_outbox_only" -and
-            [int]$releaseProgressNotificationOutboxManifest.checkCount -eq 8 -and
+            [int]$releaseProgressNotificationOutboxManifest.checkCount -eq 9 -and
             [int]$releaseProgressNotificationOutboxManifest.failedCheckCount -eq 0) `
         "Release progress notification outbox must prepare the requested big-node email while preserving not-sent, local-auth, and two-stage confirmation boundaries."
 

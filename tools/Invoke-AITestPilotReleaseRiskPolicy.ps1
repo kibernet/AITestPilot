@@ -1277,6 +1277,16 @@ $releaseProgressNotificationOutboxAccepted = (
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "suppressedSmallNodeCount" 0)) -eq 6 -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "cadencePolicyGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "cadencePolicyContentValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingWorkSnapshotGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingWorkSnapshotMarkdownGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingWorkSnapshotContentValidated" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingBlockingReasonCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "remainingBlockingReasonCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingMissingFileCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "localProgressMailRemainingActionCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "trackedRemainingWorkItemCount" 0)) -eq 4 -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "statusGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "progressEmailDraftGenerated" $false)) -and
@@ -1314,7 +1324,7 @@ $releaseProgressNotificationOutboxAccepted = (
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "productionOutputBoundary" "") -eq "release_progress_notification_outbox_only" -and
-    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "checkCount" 0)) -eq 8 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "checkCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -1831,6 +1841,13 @@ $manifest = [ordered]@{
     releaseProgressNotificationTriggerKind = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationTriggerKind" "")
     releaseProgressNotificationSmallNodeEmailSuppression = (Get-JsonValue $releaseProgressNotificationOutboxManifest "smallNodeEmailSuppression" $false)
     releaseProgressNotificationSuppressedSmallNodeCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "suppressedSmallNodeCount" 0))
+    releaseProgressNotificationRemainingWorkSnapshotGenerated = (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingWorkSnapshotGenerated" $false)
+    releaseProgressNotificationRemainingWorkSnapshotContentValidated = (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingWorkSnapshotContentValidated" $false)
+    releaseProgressNotificationExternalRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingWorkItemCount" 0))
+    releaseProgressNotificationExternalRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingBlockingReasonCount" 0))
+    releaseProgressNotificationExternalRemainingMissingFileCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingMissingFileCount" 0))
+    releaseProgressNotificationLocalProgressMailRemainingActionCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "localProgressMailRemainingActionCount" 0))
+    releaseProgressNotificationTrackedRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "trackedRemainingWorkItemCount" 0))
     productionHandoffMailHelperAuthStatusProbeAccepted = [bool]$productionHandoffMailHelperAuthStatusProbeAccepted
     productionHandoffMailHelperOwnerBoundaryPassed = (Get-JsonValue $productionHandoffMailHelperAuthStatusProbeManifest "ownerPacketHelperAuthBoundaryPassed" $false)
     productionHandoffMailHelperProgressBoundaryPassed = (Get-JsonValue $productionHandoffMailHelperAuthStatusProbeManifest "progressNotificationHelperAuthBoundaryPassed" $false)
@@ -1931,6 +1948,13 @@ $reportLines = @(
     "- Release progress notification trigger kind: $($manifest.releaseProgressNotificationTriggerKind)",
     "- Release progress notification small-node email suppression: $($manifest.releaseProgressNotificationSmallNodeEmailSuppression)",
     "- Release progress notification suppressed small-node count: $($manifest.releaseProgressNotificationSuppressedSmallNodeCount)",
+    "- Release progress notification remaining-work snapshot generated: $($manifest.releaseProgressNotificationRemainingWorkSnapshotGenerated)",
+    "- Release progress notification remaining-work snapshot validated: $($manifest.releaseProgressNotificationRemainingWorkSnapshotContentValidated)",
+    "- Release progress notification external remaining work items: $($manifest.releaseProgressNotificationExternalRemainingWorkItemCount)",
+    "- Release progress notification external remaining blockers: $($manifest.releaseProgressNotificationExternalRemainingBlockingReasonCount)",
+    "- Release progress notification external missing files: $($manifest.releaseProgressNotificationExternalRemainingMissingFileCount)",
+    "- Release progress notification local mail remaining actions: $($manifest.releaseProgressNotificationLocalProgressMailRemainingActionCount)",
+    "- Release progress notification tracked remaining work items: $($manifest.releaseProgressNotificationTrackedRemainingWorkItemCount)",
     "- Production handoff mail helper auth-status probe accepted: $($manifest.productionHandoffMailHelperAuthStatusProbeAccepted)",
     "- Production handoff owner packet helper auth boundary: $($manifest.productionHandoffMailHelperOwnerBoundaryPassed)",
     "- Production handoff progress notification helper auth boundary: $($manifest.productionHandoffMailHelperProgressBoundaryPassed)",
