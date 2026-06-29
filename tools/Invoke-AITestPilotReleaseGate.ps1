@@ -148,6 +148,7 @@ $productionReplayIntegrationContractProbeManifest = Read-Manifest "production-re
 $productionDriverBindingKitManifest = Read-Manifest "production-driver-binding-kit-manifest.json"
 $productionReplayDriverReadinessManifest = Read-Manifest "production-replay-driver-readiness-manifest.json"
 $productionDriverEvidenceIntakeManifest = Read-Manifest "production-driver-evidence-intake-manifest.json"
+$productionDriverExternalBundleIntakeProbeManifest = Read-Manifest "production-driver-external-bundle-intake-probe-manifest.json"
 if ($RequireProductionReplayDriverBound) {
     $productionReplayDriverBoundFailureProbeManifest = $null
 }
@@ -883,6 +884,24 @@ if ($null -ne $productionDriverEvidenceIntakeManifest) {
     Test-ListedFiles $productionDriverEvidenceIntakeManifest "production_driver_evidence_intake"
 }
 
+if ($null -ne $productionDriverExternalBundleIntakeProbeManifest) {
+    Add-ReleaseCheck "production_driver_external_bundle_intake_probe" `
+        ($productionDriverExternalBundleIntakeProbeManifest.status -eq "PASS" -and
+            $productionDriverExternalBundleIntakeProbeManifest.schemaVersion -eq "aitestpilot.production_driver_external_bundle_intake_probe.v1" -and
+            -not [bool]$productionDriverExternalBundleIntakeProbeManifest.externalBundleUnderRepo -and
+            [int]$productionDriverExternalBundleIntakeProbeManifest.requiredFileCount -eq 4 -and
+            [bool]$productionDriverExternalBundleIntakeProbeManifest.expectedBlocked -and
+            [bool]$productionDriverExternalBundleIntakeProbeManifest.expectedBlockedPassed -and
+            [bool]$productionDriverExternalBundleIntakeProbeManifest.readinessCommandFailed -and
+            -not [bool]$productionDriverExternalBundleIntakeProbeManifest.intakeAccepted -and
+            -not [bool]$productionDriverExternalBundleIntakeProbeManifest.readyForProductionDriverRelease -and
+            $productionDriverExternalBundleIntakeProbeManifest.integrationChecklistStatus -eq "TEMPLATE_READY" -and
+            -not [bool]$productionDriverExternalBundleIntakeProbeManifest.realProjectBound) `
+        "Production driver external bundle intake probe must prove a repo-external evidence directory can be inspected while sample/unbound evidence remains blocked."
+
+    Test-ListedFiles $productionDriverExternalBundleIntakeProbeManifest "production_driver_external_bundle_intake_probe"
+}
+
 if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
     Add-ReleaseCheck "production_replay_driver_bound_failure_probe" `
         ($productionReplayDriverBoundFailureProbeManifest.status -eq "PASS" -and
@@ -1150,6 +1169,7 @@ $sourceManifests = @(
     "production-driver-binding-kit-manifest.json",
     "production-replay-driver-readiness-manifest.json",
     "production-driver-evidence-intake-manifest.json",
+    "production-driver-external-bundle-intake-probe-manifest.json",
     "model-endpoint-trace-manifest.json",
     "model-endpoint-provider-diagnostics-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",

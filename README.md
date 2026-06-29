@@ -181,6 +181,7 @@ To intake a real game project's production driver evidence bundle:
 ```
 
 That intake requires production-bound readiness and writes `production-driver-evidence-intake-manifest.json`. In the default repo pipeline it runs with `-ExpectBlocked`, proving the current sample/unbound bundle is rejected instead of accepted as production evidence.
+The evidence bundle may live outside this repository; the default release pipeline also runs `Invoke-AITestPilotProductionDriverExternalBundleIntakeProbe.ps1`, which copies the sample/unbound evidence to a system temp directory and proves that repo-external bundle paths are inspected while still blocked by production-bound policy.
 
 To prove the production-bound CI mode blocks the current sample/unbound evidence:
 
@@ -317,6 +318,7 @@ Implemented now:
 - Negative replay-driver failure probe with driver, handler, action, target, and step diagnostics.
 - Production replay driver readiness manifest separating package release readiness from real-project driver binding readiness.
 - Production driver evidence intake manifest for accepting real production-bound bundles or proving sample/unbound bundles are blocked.
+- Production driver external bundle intake probe proving standalone repo-external evidence directories can be inspected without accepting sample/unbound evidence.
 - Production-bound replay driver failure probe proving sample/unbound evidence fails when real production binding is required.
 - Repo-side release gate that blocks missing driver descriptor, missing negative probe, failed retest, or missing evidence files.
 - CI release pipeline wrapper with stable artifact output under `artifacts\ai-testpilot-release\latest`.

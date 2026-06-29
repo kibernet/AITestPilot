@@ -26,17 +26,13 @@ $requiredHandlerKeys = @(
     "game.play_fishing"
 )
 
-function Assert-PathUnderRepo {
+function Resolve-FullPath {
     param(
         [string]$Path,
         [string]$Label
     )
 
     $fullPath = [System.IO.Path]::GetFullPath($Path)
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "$Label must stay under repo root: $fullPath"
-    }
-
     return $fullPath
 }
 
@@ -92,8 +88,9 @@ function Get-OptionalBool {
     return $DefaultValue
 }
 
-$evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
-$manifestPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
+$evidenceBundlePath = Resolve-FullPath $EvidenceBundleDir "EvidenceBundleDir"
+$manifestPath = Resolve-FullPath $ManifestPath "ManifestPath"
+$EvidenceBundleDir = $evidenceBundlePath
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"

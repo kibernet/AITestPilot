@@ -282,6 +282,11 @@ try {
             -ExpectBlocked:(-not [bool]$RequireProductionReplayDriverBound)
     }
 
+    Invoke-PipelineStep "production_driver_external_bundle_intake_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionDriverExternalBundleIntakeProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     if (-not $RequireProductionReplayDriverBound) {
         Invoke-PipelineStep "production_replay_driver_bound_failure_probe" {
             & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1") `

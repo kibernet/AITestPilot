@@ -160,6 +160,7 @@ To validate only the production driver evidence package from a host game project
 ```
 
 The bundle must include `production-replay-integration-checklist.json`, `repair-retest-manifest.json`, `repair-driver-failure-manifest.json`, and `replay-profile-import-manifest.json`. The intake runs production readiness with `-RequireProductionBound` and rejects sample/unbound evidence.
+The bundle path can be outside the AI TestPilot repository. Package CI proves that with `Invoke-AITestPilotProductionDriverExternalBundleIntakeProbe.ps1`, which runs the same intake against a system temp copy of the sample/unbound bundle and expects it to remain blocked.
 
 The one-command CI wrapper exposes the same policy:
 

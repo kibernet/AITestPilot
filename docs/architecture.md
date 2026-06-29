@@ -81,6 +81,8 @@ Sample-scene validation validates that template and records `productionReplayInt
 
 `tools/Invoke-AITestPilotProductionDriverEvidenceIntake.ps1` is the narrower host-project evidence intake. It consumes a release-evidence directory containing the production replay checklist, targeted retest manifest, negative driver failure probe, and replay profile import manifest, then runs production readiness with `-RequireProductionBound`. In default package-release CI it runs with `-ExpectBlocked`, so the repository proves its sample/unbound evidence cannot be accepted as a real production driver bundle.
 
+`tools/Invoke-AITestPilotProductionDriverExternalBundleIntakeProbe.ps1` proves the same intake works against a repo-external evidence directory. It copies the current sample/unbound production evidence inputs to a system temp directory, runs the production driver evidence intake there with `-ExpectBlocked`, then copies the external intake/readiness manifests back into release evidence. This closes the path mismatch between package CI and a real host game project exporting evidence outside the AI TestPilot repository.
+
 ## Validation Boundary
 
 `tools/Validate-AITestPilot.ps1` proves the repo-side core behavior and package shape.
@@ -143,6 +145,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 - `production-replay-integration-contract-probe-manifest.json`: proof that the checklist validator distinguishes template, invalid flip, and bound fixture states without claiming real API calls.
 - `production-driver-binding-kit-manifest.json` and `production-driver-binding-kit/`: generated host-project starter kit with driver template, authoring checklist, and production-bound validation helper.
 - `production-driver-evidence-intake-manifest.json`: production driver evidence intake result for either a real accepted bundle or the expected sample/unbound rejection.
+- `production-driver-external-bundle-intake-probe-manifest.json`, `production-driver-external-bundle-intake-manifest.json`, and `production-driver-external-bundle-readiness-manifest.json`: proof that the intake path can inspect repo-external evidence directories while preserving the sample/unbound blocker.
 - Unity import and sample-scene validation logs.
 
 `tools/Invoke-AITestPilotRepairAgentPatchOutputImport.ps1` consumes `repair-agent-run.json`, validates `repair-agent.patch` and `repair-agent-summary.md`, and writes `repair-agent-patch-output-manifest.json`. The release pipeline runs it with `-GenerateSampleOutput`, so CI proves the import, manifest, and gate checks while preserving `externalAgentRun=false`. For non-sample output, the importer requires `-ConfirmExternalAgentCompleted` plus run evidence showing `status=EXTERNAL_AGENT_COMPLETED`, `agentLaunched=true`, `patchOutputStatus=PRODUCED`, required outputs marked produced, and a nonzero output count.
@@ -209,6 +212,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 - production driver binding kit manifest proving host-project starter files are generated while still marked as non-production-bound handoff material.
 - production replay driver readiness manifest proving either a real bound production driver or explicit sample/unbound blockers.
 - production driver evidence intake manifest proving real production-bound bundles are accepted or the sample/unbound bundle is blocked.
+- production driver external bundle intake probe manifest proving standalone host-project bundle paths outside the repo are supported without weakening production-bound checks.
 - model endpoint trace manifest, request/response artifacts, and persisted decision trace.
 - model endpoint provider diagnostics manifest with supported presets, request formats, selected preset, environment bindings, and no serialized secrets.
 - live model endpoint failure probe manifest proving auth failures are classified with remediation, retry/escalation policy, and a failed trace.
@@ -219,7 +223,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 
 `tools/Invoke-AITestPilotReleaseGateFailureProbe.ps1` copies the current bundle, removes the driver failure probe evidence, and expects the release gate to block that copy.
 
-`tools/Invoke-AITestPilotReleasePipeline.ps1` runs the full chain, including deterministic repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate probe, main worktree apply readiness, external task output directory acceptance, main worktree apply/retest/rollback through that accepted directory package, external patch safety preflight, unsafe-path failure probe, repository apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, sandbox patch apply/retest, production replay integration contract probe, production driver binding kit probe, production replay driver readiness, and production driver evidence intake, then copies the final evidence bundle to `artifacts/ai-testpilot-release/latest` with `pipeline-manifest.json`, giving CI one stable command and artifact directory. When run with `-UseCursorAgentExternalTaskOutput`, it inserts the optional headless Cursor Agent producer before acceptance and validates that optional manifest in the release gate.
+`tools/Invoke-AITestPilotReleasePipeline.ps1` runs the full chain, including deterministic repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate probe, main worktree apply readiness, external task output directory acceptance, main worktree apply/retest/rollback through that accepted directory package, external patch safety preflight, unsafe-path failure probe, repository apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, sandbox patch apply/retest, production replay integration contract probe, production driver binding kit probe, production replay driver readiness, production driver evidence intake, and repo-external production bundle intake probe, then copies the final evidence bundle to `artifacts/ai-testpilot-release/latest` with `pipeline-manifest.json`, giving CI one stable command and artifact directory. When run with `-UseCursorAgentExternalTaskOutput`, it inserts the optional headless Cursor Agent producer before acceptance and validates that optional manifest in the release gate.
 
 ## Replay Adapters
 
