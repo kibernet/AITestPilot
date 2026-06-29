@@ -108,6 +108,17 @@ function Join-MarkdownList {
     return ($Items | ForEach-Object { [string]$_ }) -join ", "
 }
 
+function Convert-ToSafeFileName {
+    param([string]$Value)
+
+    $fileName = if ([string]::IsNullOrWhiteSpace($Value)) { "unknown" } else { $Value.ToLowerInvariant() }
+    foreach ($invalidChar in [System.IO.Path]::GetInvalidFileNameChars()) {
+        $fileName = $fileName.Replace([string]$invalidChar, "_")
+    }
+
+    return ($fileName -replace "[^a-z0-9_.-]", "_")
+}
+
 function New-BlockerResolution {
     param(
         [object]$ActionItem,
@@ -427,6 +438,7 @@ This package is the host-project handoff entry point generated from release evid
 - ``action-plan.md``: owner-facing next steps for the remaining host-project work.
 - ``required-external-evidence.json``: machine-readable evidence contract for driver, Lua, and live model completion.
 - ``blocker-resolution-map.json`` and ``blocker-resolution-map.md``: owner, evidence, acceptance, and validation mapping for every remaining production blocker.
+- ``owner-packets/``: one executable packet per host-project owner, plus ``owner-packet-index.json``.
 - ``ci-commands.ps1``: copyable release-pipeline commands for hard production enforcement.
 - ``verify-external-evidence.ps1``: host-project preflight for checking required external evidence paths before hard validation.
 - ``accept-external-evidence.ps1``: host-project wrapper for running unified acceptance and writing the Markdown acceptance report before hard validation.
@@ -965,6 +977,8 @@ $ciCommandsPath = Join-Path $packagePath "ci-commands.ps1"
 $preflightScriptPath = Join-Path $packagePath "verify-external-evidence.ps1"
 $acceptanceWrapperScriptPath = Join-Path $packagePath "accept-external-evidence.ps1"
 $preflightSelfCheckPath = Join-Path $packagePath "external-evidence-preflight-self-check.json"
+$ownerPacketsDir = Join-Path $packagePath "owner-packets"
+$ownerPacketIndexPath = Join-Path $ownerPacketsDir "owner-packet-index.json"
 
 $readme | Set-Content -Path $readmePath -Encoding UTF8
 $actionPlanLines | Set-Content -Path $actionPlanPath -Encoding UTF8
@@ -974,6 +988,124 @@ $blockerResolutionLines | Set-Content -Path $blockerResolutionMarkdownPath -Enco
 $ciCommands | Set-Content -Path $ciCommandsPath -Encoding UTF8
 $preflightScript | Set-Content -Path $preflightScriptPath -Encoding UTF8
 $acceptanceWrapperScript | Set-Content -Path $acceptanceWrapperScriptPath -Encoding UTF8
+
+New-Item -ItemType Directory -Force $ownerPacketsDir | Out-Null
+$ownerPackets = @()
+$ownerPacketFullPaths = @()
+foreach ($item in $actionItems) {
+    $area = [string]$item["id"]
+    $owner = [string]$item["owner"]
+    $packetFileName = "$(Convert-ToSafeFileName $owner).md"
+    $packetRelativePath = "production-handoff-package/owner-packets/$packetFileName"
+    $packetFullPath = Join-Path $ownerPacketsDir $packetFileName
+    $ownerPacketFullPaths += $packetFullPath
+    $requiredFiles = @(Convert-ToArray $item["requiredEvidenceFiles"] | ForEach-Object { [string]$_ })
+    $blockingReasons = @(Convert-ToArray $item["remainingBlockingReasons"] | ForEach-Object { [string]$_ })
+    $areaResolutions = @($blockerResolutions | Where-Object { [string]$_["area"] -eq $area })
+    $ownerEvidenceDirPlaceholder = switch ($area) {
+        "production_driver_binding" { "path\to\production-driver-evidence" }
+        "production_lua_patch_evidence" { "path\to\production-lua-evidence" }
+        "live_model_endpoint_smoke" { "path\to\live-smoke-evidence" }
+        default { "path\to\external-evidence" }
+    }
+    $itemStatus = [string]$item["status"]
+    $preflightCommand = ".\production-handoff-package\verify-external-evidence.ps1 -ProductionDriverEvidenceDir `"path\to\production-driver-evidence`" -ProductionLuaEvidenceDir `"path\to\production-lua-evidence`" -LiveModelEndpointSmokeEvidenceDir `"path\to\live-smoke-evidence`" -RequireAllEvidence -RunIntake"
+    $acceptanceWrapperCommand = ".\production-handoff-package\accept-external-evidence.ps1 -ProductionDriverEvidenceDir `"path\to\production-driver-evidence`" -ProductionLuaEvidenceDir `"path\to\production-lua-evidence`" -LiveModelEndpointSmokeEvidenceDir `"path\to\live-smoke-evidence`" -RequireAllEvidence"
+    $hardValidationCommand = [string]$item["validationCommand"]
+
+    $packetLines = @(
+        "# Production Evidence Owner Packet: $owner",
+        "",
+        "Area: ``$area``",
+        "Status: ``$itemStatus``",
+        "Owner evidence directory: ``$ownerEvidenceDirPlaceholder``",
+        "",
+        "## Required Evidence",
+        ""
+    )
+
+    foreach ($fileName in $requiredFiles) {
+        $packetLines += "- ``$fileName``"
+    }
+
+    $packetLines += @(
+        "",
+        "## Remaining Blockers",
+        ""
+    )
+
+    foreach ($reason in $blockingReasons) {
+        $packetLines += "- ``$reason``"
+    }
+
+    $packetLines += @(
+        "",
+        "## Blocker Resolution",
+        "",
+        "| Blocker | Evidence files | Acceptance criteria | Remediation |",
+        "| --- | --- | --- | --- |"
+    )
+
+    foreach ($resolution in $areaResolutions) {
+        $resolutionBlockerReason = [string]$resolution["blockerReason"]
+        $resolutionEvidenceFiles = Join-MarkdownList @(Convert-ToArray $resolution["evidenceFiles"])
+        $resolutionAcceptanceCriteria = Join-MarkdownList @(Convert-ToArray $resolution["acceptanceCriteria"])
+        $resolutionRemediation = [string]$resolution["remediation"]
+        $packetLines += "| $resolutionBlockerReason | $resolutionEvidenceFiles | $resolutionAcceptanceCriteria | $resolutionRemediation |"
+    }
+
+    $packetLines += @(
+        "",
+        "## Validation Commands",
+        "",
+        '```powershell',
+        $preflightCommand,
+        "",
+        $acceptanceWrapperCommand,
+        "",
+        $hardValidationCommand,
+        '```',
+        "",
+        "## Evidence Boundary",
+        "",
+        "- Fixture contracts prove schemas only and must not be submitted as real host-project evidence.",
+        "- This packet is complete only after the owner evidence directory contains every required file and the validation commands pass.",
+        "- Use ``accept-external-evidence.ps1`` to generate the Markdown acceptance report before hard production validation."
+    )
+
+    $packetLines | Set-Content -Path $packetFullPath -Encoding UTF8
+    $ownerPackets += [ordered]@{
+        owner = $owner
+        area = $area
+        status = $itemStatus
+        packetPath = $packetRelativePath
+        ownerEvidenceDirPlaceholder = $ownerEvidenceDirPlaceholder
+        remainingBlockingReasonCount = [int]$blockingReasons.Count
+        remainingBlockingReasons = @($blockingReasons)
+        requiredEvidenceFiles = @($requiredFiles)
+        blockerResolutionCount = [int]$areaResolutions.Count
+        preflightCommand = $preflightCommand
+        acceptanceWrapperCommand = $acceptanceWrapperCommand
+        hardValidationCommand = $hardValidationCommand
+    }
+}
+
+$ownerPacketBlockingReasonCountMeasure = @($ownerPackets | ForEach-Object { [int]$_["remainingBlockingReasonCount"] } | Measure-Object -Sum)
+$ownerPacketBlockingReasonCount = if ($null -eq $ownerPacketBlockingReasonCountMeasure.Sum) { 0 } else { [int]$ownerPacketBlockingReasonCountMeasure.Sum }
+$ownerPacketIndex = [ordered]@{
+    schemaVersion = "aitestpilot.production_handoff_owner_packets.v1"
+    status = if ($ownerPackets.Count -eq $actionItems.Count -and $ownerPacketBlockingReasonCount -eq $hostProjectBlockingReasonCount) { "PASS" } else { "FAIL" }
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    ownerPacketCount = [int]$ownerPackets.Count
+    hostProjectActionItemCount = [int]$actionItems.Count
+    totalBlockingReasonCount = [int]$ownerPacketBlockingReasonCount
+    expectedBlockingReasonCount = [int]$hostProjectBlockingReasonCount
+    releasePipelineUsesFixture = $false
+    realHostProjectEvidenceAccepted = $false
+    productionOutputBoundary = "host_project_owner_packet_handoff_only"
+    packets = @($ownerPackets)
+}
+$ownerPacketIndex | ConvertTo-Json -Depth 12 | Set-Content -Path $ownerPacketIndexPath -Encoding UTF8
 
 & $preflightScriptPath -RepoRoot $repoRoot -EvidenceBundleDir $evidenceBundlePath -OutputPath $preflightSelfCheckPath | Out-Null
 
@@ -986,6 +1118,9 @@ $ciCommandsText = Get-Content -Path $ciCommandsPath -Encoding UTF8 -Raw
 $preflightScriptText = Get-Content -Path $preflightScriptPath -Encoding UTF8 -Raw
 $acceptanceWrapperScriptText = Get-Content -Path $acceptanceWrapperScriptPath -Encoding UTF8 -Raw
 $preflightSelfCheck = Get-Content -Path $preflightSelfCheckPath -Encoding UTF8 -Raw | ConvertFrom-Json
+$ownerPacketIndexText = Get-Content -Path $ownerPacketIndexPath -Encoding UTF8 -Raw
+$ownerPacketIndexSelfCheck = $ownerPacketIndexText | ConvertFrom-Json
+$ownerPacketMarkdownText = [string]::Join([Environment]::NewLine, @($ownerPacketFullPaths | ForEach-Object { Get-Content -Path $_ -Encoding UTF8 -Raw }))
 
 $expectedActionPlanSnippets = @()
 if ($actionItems.Count -eq 0) {
@@ -1072,8 +1207,46 @@ $acceptanceWrapperScriptContentValid = $acceptanceWrapperScriptText.Contains("ai
     $acceptanceWrapperScriptText.Contains("-RequireLiveModelEndpointSmoke") -and
     -not ($acceptanceWrapperScriptText -match "System\.Collections|OrderedDictionary")
 
-$generatedHandoffContentQualityAccepted = $actionPlanContentValid -and $requiredEvidenceContentValid -and $blockerResolutionMapContentValid -and $ciCommandsContentValid
+$expectedOwnerPacketSnippets = @(
+    "aitestpilot.production_handoff_owner_packets.v1",
+    "verify-external-evidence.ps1",
+    "accept-external-evidence.ps1",
+    "Invoke-AITestPilotReleasePipeline.ps1",
+    "```powershell",
+    "host_project_owner_packet_handoff_only"
+)
+foreach ($item in $actionItems) {
+    $expectedOwnerPacketSnippets += @(
+        [string]$item["id"],
+        [string]$item["owner"],
+        [string]$item["status"],
+        [string]$item["validationCommand"]
+    )
+    $expectedOwnerPacketSnippets += @(Convert-ToArray $item["remainingBlockingReasons"] | ForEach-Object { [string]$_ })
+    $expectedOwnerPacketSnippets += @(Convert-ToArray $item["requiredEvidenceFiles"] | ForEach-Object { [string]$_ })
+}
+
+$missingOwnerPacketSnippetCount = @($expectedOwnerPacketSnippets | Where-Object {
+    -not $ownerPacketIndexText.Contains($_) -and -not $ownerPacketMarkdownText.Contains($_)
+}).Count
+$ownerPacketsContentValid = $ownerPacketIndexSelfCheck.schemaVersion -eq "aitestpilot.production_handoff_owner_packets.v1" -and
+    $ownerPacketIndexSelfCheck.status -eq "PASS" -and
+    [int]$ownerPacketIndexSelfCheck.ownerPacketCount -eq [int]$actionItems.Count -and
+    [int]$ownerPacketIndexSelfCheck.hostProjectActionItemCount -eq [int]$actionItems.Count -and
+    [int]$ownerPacketIndexSelfCheck.totalBlockingReasonCount -eq [int]$hostProjectBlockingReasonCount -and
+    [int]$ownerPacketIndexSelfCheck.expectedBlockingReasonCount -eq [int]$hostProjectBlockingReasonCount -and
+    -not [bool]$ownerPacketIndexSelfCheck.releasePipelineUsesFixture -and
+    -not [bool]$ownerPacketIndexSelfCheck.realHostProjectEvidenceAccepted -and
+    $ownerPacketIndexSelfCheck.productionOutputBoundary -eq "host_project_owner_packet_handoff_only" -and
+    $missingOwnerPacketSnippetCount -eq 0 -and
+    -not ($ownerPacketIndexText -match "System\.Collections|OrderedDictionary") -and
+    -not ($ownerPacketMarkdownText -match "System\.Collections|OrderedDictionary")
+
+$generatedHandoffContentQualityAccepted = $actionPlanContentValid -and $requiredEvidenceContentValid -and $blockerResolutionMapContentValid -and $ciCommandsContentValid -and $ownerPacketsContentValid
 $externalEvidencePreflightAccepted = $preflightScriptContentValid -and $preflightSelfCheckValid
+
+$ownerPacketGeneratedFiles = @("production-handoff-package/owner-packets/owner-packet-index.json")
+$ownerPacketGeneratedFiles += @($ownerPackets | ForEach-Object { [string]$_["packetPath"] })
 
 $generatedFiles = @(
     "production-handoff-package/README.md",
@@ -1086,6 +1259,7 @@ $generatedFiles = @(
     "production-handoff-package/accept-external-evidence.ps1",
     "production-handoff-package/external-evidence-preflight-self-check.json"
 )
+$generatedFiles += @($ownerPacketGeneratedFiles)
 
 $checks = @()
 Add-HandoffCheck "production_driver_handoff_path" $driverHandoffReady "Production driver kit, accepted contract, and repo-external intake path must be ready."
@@ -1107,6 +1281,9 @@ Add-HandoffCheck "external_evidence_preflight_script" `
 Add-HandoffCheck "external_evidence_acceptance_wrapper" `
     $acceptanceWrapperScriptContentValid `
     "Generated handoff package must include a runnable external evidence acceptance wrapper that writes a Markdown report and can launch hard validation."
+Add-HandoffCheck "owner_action_packets" `
+    $ownerPacketsContentValid `
+    "Generated handoff package must include one owner packet per remaining action item with required evidence, blocker, preflight, acceptance, and hard-validation commands."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -1144,6 +1321,11 @@ $manifest = [ordered]@{
     generatedHandoffContentQualityAccepted = [bool]$generatedHandoffContentQualityAccepted
     actionPlanContentValidated = [bool]$actionPlanContentValid
     requiredEvidenceContentValidated = [bool]$requiredEvidenceContentValid
+    ownerPacketsGenerated = [bool](Test-Path $ownerPacketIndexPath)
+    ownerPacketsContentValidated = [bool]$ownerPacketsContentValid
+    ownerPacketCount = [int]$ownerPackets.Count
+    ownerPacketBlockingReasonCount = [int]$ownerPacketBlockingReasonCount
+    ownerPacketGeneratedFiles = @($ownerPacketGeneratedFiles)
     ciCommandsContentValidated = [bool]$ciCommandsContentValid
     externalEvidencePreflightAccepted = [bool]$externalEvidencePreflightAccepted
     preflightScriptContentValidated = [bool]$preflightScriptContentValid

@@ -640,16 +640,22 @@ $productionHandoffPackageAccepted = (
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "blockerResolutionMappedReasonCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "hostProjectBlockingReasonCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "blockerResolutionUnmappedReasonCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "ownerPacketsGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "ownerPacketsContentValidated" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "ownerPacketCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "hostProjectActionItemCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "ownerPacketBlockingReasonCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "hostProjectBlockingReasonCount" -2)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "externalEvidencePreflightAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "acceptanceWrapperScriptContentValidated" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "sourceManifestCount" 0)) -ge 12 -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 9 -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "checkCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 13 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "checkCount" 0)) -eq 10 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_handoff_package_policy" $productionHandoffPackageAccepted `
-    "Release evidence must include a production handoff package that consolidates driver, Lua, live-model, and CI host-project next steps without promoting fixture evidence." `
+    "Release evidence must include a production handoff package that consolidates driver, Lua, live-model, CI host-project next steps, and owner packets without promoting fixture evidence." `
     "production_handoff_package_not_accepted"
 
 $productionHandoffExternalEvidencePreflightAccepted = (
