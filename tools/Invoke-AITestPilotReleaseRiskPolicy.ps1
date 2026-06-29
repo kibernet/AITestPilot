@@ -179,6 +179,7 @@ $liveModelFailureProbeManifest = Read-PolicyJson "live-model-endpoint-failure-pr
 $liveModelSmokeManifest = Read-PolicyJson "live-model-endpoint-smoke-manifest.json" "Live model endpoint smoke manifest"
 $githubActionsProbeManifest = Read-PolicyJson "github-actions-release-workflow-probe-manifest.json" "GitHub Actions workflow probe manifest"
 $azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow-probe-manifest.json" "Azure Pipelines workflow probe manifest"
+$providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
 
 $runReports = @()
 if ($null -ne $sceneValidation) {
@@ -451,10 +452,23 @@ $azurePipelinesAccepted = (
     (Convert-ToBool (Get-JsonValue $azurePipelinesProbeManifest "ciExitCodeCheckConfigured" $false)) -and
     (Convert-ToInt (Get-JsonValue $azurePipelinesProbeManifest "failedCheckCount" 0)) -eq 0
 )
-$ciProviderEvidenceAccepted = $githubActionsAccepted -and $azurePipelinesAccepted
+$providerCiQualityAccepted = (
+    $null -ne $providerCiQualityProbeManifest -and
+    $providerCiQualityProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $providerCiQualityProbeManifest "schemaVersion" "") -eq "aitestpilot.provider_ci_quality_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $providerCiQualityProbeManifest "providerQualityAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $providerCiQualityProbeManifest "githubActionsQualityAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $providerCiQualityProbeManifest "azurePipelinesQualityAccepted" $false)) -and
+    (Convert-ToInt (Get-JsonValue $providerCiQualityProbeManifest "providerCount" 0)) -eq 2 -and
+    (Convert-ToInt (Get-JsonValue $providerCiQualityProbeManifest "buildCheckProviderCount" 0)) -eq 2 -and
+    (Convert-ToInt (Get-JsonValue $providerCiQualityProbeManifest "smokeTestProviderCount" 0)) -eq 2 -and
+    (Convert-ToInt (Get-JsonValue $providerCiQualityProbeManifest "visionCheckProviderCount" 0)) -eq 2 -and
+    (Convert-ToInt (Get-JsonValue $providerCiQualityProbeManifest "failedCheckCount" 0)) -eq 0
+)
+$ciProviderEvidenceAccepted = $githubActionsAccepted -and $azurePipelinesAccepted -and $providerCiQualityAccepted
 
 Add-PolicyCheck "ci_provider_release_controls" $ciProviderEvidenceAccepted `
-    "GitHub Actions and Azure Pipelines provider workflows must both expose release controls, run the release pipeline, enforce the manifest, and publish evidence." `
+    "GitHub Actions and Azure Pipelines provider workflows must expose release controls, provider build/test/vision checks, manifest enforcement, and evidence publishing." `
     "ci_provider_release_controls_not_accepted"
 
 $passedRiskPolicyCheckCount = @($riskPolicyChecks | Where-Object { [bool]$_.passed }).Count
@@ -491,7 +505,8 @@ $sourceFiles = @(
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
-    "azure-pipelines-release-workflow-probe-manifest.json"
+    "azure-pipelines-release-workflow-probe-manifest.json",
+    "provider-ci-quality-probe-manifest.json"
 )
 
 $manifest = [ordered]@{
@@ -527,6 +542,7 @@ $manifest = [ordered]@{
     ciProviderEvidenceAccepted = [bool]$ciProviderEvidenceAccepted
     githubActionsAccepted = [bool]$githubActionsAccepted
     azurePipelinesAccepted = [bool]$azurePipelinesAccepted
+    providerCiQualityAccepted = [bool]$providerCiQualityAccepted
     riskPolicyCheckCount = [int]$riskPolicyChecks.Count
     passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
     failedRiskPolicyCheckCount = [int]$failedRiskPolicyCheckCount

@@ -89,6 +89,7 @@ try {
         "tools\Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1",
         ".azure-pipelines\ai-testpilot-release.yml",
         "tools\Invoke-AITestPilotAzurePipelinesWorkflowProbe.ps1",
+        "tools\Invoke-AITestPilotProviderCiQualityProbe.ps1",
         "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1",
         "tools\Invoke-AITestPilotReplayDriverFailureProbe.ps1",
         "tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1",

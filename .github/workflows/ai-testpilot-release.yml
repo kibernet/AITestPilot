@@ -81,6 +81,16 @@ jobs:
 
           dotnet --info
 
+      - name: Provider build check
+        run: |
+          dotnet build .\AITestPilot.sln --nologo
+          dotnet build .\tools\Kibernet.AITestPilot.ModelEndpointProbe\Kibernet.AITestPilot.ModelEndpointProbe.csproj --nologo
+          dotnet build .\tools\Kibernet.AITestPilot.LuaStaticAnalysisProbe\Kibernet.AITestPilot.LuaStaticAnalysisProbe.csproj --nologo
+
+      - name: Provider smoke test check
+        run: |
+          dotnet run --project .\tests\Kibernet.AITestPilot.Core.SmokeTests\Kibernet.AITestPilot.Core.SmokeTests.csproj --no-build
+
       - name: Run release pipeline
         run: |
           function Test-Flag {
@@ -115,6 +125,23 @@ jobs:
           }
 
           & .\tools\Invoke-AITestPilotReleasePipeline.ps1 @pipelineArgs
+
+      - name: Provider vision evidence check
+        run: |
+          $scenePath = "artifacts\ai-testpilot-release\latest\scene-validation.json"
+          if (-not (Test-Path $scenePath)) {
+            throw "Scene validation evidence is missing: $scenePath"
+          }
+
+          $scene = Get-Content -Path $scenePath -Raw | ConvertFrom-Json
+          if ($scene.status -ne "PASS" -or $scene.snapshotSchemaVersion -ne "aitestpilot.snapshot.v1") {
+            throw "Scene validation evidence did not pass or did not include the expected snapshot schema."
+          }
+
+          $runReports = @($scene.runReports)
+          if ($runReports.Count -lt 4 -or [int]$scene.uiElementCount -lt 1 -or -not [bool]$scene.releaseEvidence.allowRelease) {
+            throw "Scene validation evidence did not include complete UI, run report, and release evidence."
+          }
 
       - name: Enforce release manifest
         run: |

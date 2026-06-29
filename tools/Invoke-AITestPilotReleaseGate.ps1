@@ -174,6 +174,7 @@ $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-fail
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
 $azurePipelinesReleaseWorkflowProbeManifest = Read-Manifest "azure-pipelines-release-workflow-probe-manifest.json"
+$providerCiQualityProbeManifest = Read-Manifest "provider-ci-quality-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
 
@@ -1461,6 +1462,24 @@ if ($null -ne $azurePipelinesReleaseWorkflowProbeManifest) {
     Test-ListedFiles $azurePipelinesReleaseWorkflowProbeManifest "azure_pipelines_release_workflow_probe"
 }
 
+if ($null -ne $providerCiQualityProbeManifest) {
+    Add-ReleaseCheck "provider_ci_quality_probe" `
+        ($providerCiQualityProbeManifest.status -eq "PASS" -and
+            $providerCiQualityProbeManifest.schemaVersion -eq "aitestpilot.provider_ci_quality_probe.v1" -and
+            [int]$providerCiQualityProbeManifest.providerCount -eq 2 -and
+            [int]$providerCiQualityProbeManifest.buildCheckProviderCount -eq 2 -and
+            [int]$providerCiQualityProbeManifest.smokeTestProviderCount -eq 2 -and
+            [int]$providerCiQualityProbeManifest.visionCheckProviderCount -eq 2 -and
+            [bool]$providerCiQualityProbeManifest.githubActionsQualityAccepted -and
+            [bool]$providerCiQualityProbeManifest.azurePipelinesQualityAccepted -and
+            [bool]$providerCiQualityProbeManifest.providerQualityAccepted -and
+            [int]$providerCiQualityProbeManifest.checkCount -eq 8 -and
+            [int]$providerCiQualityProbeManifest.failedCheckCount -eq 0) `
+        "Provider CI quality probe must prove GitHub Actions and Azure Pipelines both run explicit build, smoke test, and vision evidence checks."
+
+    Test-ListedFiles $providerCiQualityProbeManifest "provider_ci_quality_probe"
+}
+
 if ($null -ne $releaseRiskPolicyManifest) {
     $expectedDriverEvidenceStatus = if ($RequireProductionReplayDriverBound) { "PRODUCTION_BOUND_ACCEPTED" } else { "EXPLICIT_SAMPLE_BOUNDARY_ACCEPTED" }
     $expectedProductionLuaEvidenceStatus = if ($RequireProductionLuaPatched) { "PRODUCTION_LUA_PATCH_ACCEPTED" } else { "EXPLICIT_NO_PRODUCTION_LUA_BOUNDARY_ACCEPTED" }
@@ -1488,6 +1507,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.ciProviderEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.githubActionsAccepted -and
             [bool]$releaseRiskPolicyManifest.azurePipelinesAccepted -and
+            [bool]$releaseRiskPolicyManifest.providerCiQualityAccepted -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.missingOrInvalidSourceFileCount -eq 0) `
@@ -1532,6 +1552,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "live-model-endpoint-smoke-manifest.json",
         "github-actions-release-workflow-probe-manifest.json",
         "azure-pipelines-release-workflow-probe-manifest.json",
+        "provider-ci-quality-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )
 
@@ -1615,6 +1636,7 @@ $sourceManifests = @(
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
+    "provider-ci-quality-probe-manifest.json",
     "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"
 )

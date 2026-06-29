@@ -220,6 +220,7 @@ function Get-DefaultSourceManifestNames {
         "live-model-endpoint-smoke-manifest.json",
         "github-actions-release-workflow-probe-manifest.json",
         "azure-pipelines-release-workflow-probe-manifest.json",
+        "provider-ci-quality-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )
 

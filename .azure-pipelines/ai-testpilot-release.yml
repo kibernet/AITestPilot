@@ -70,6 +70,24 @@ steps:
         dotnet --info
 
   - task: PowerShell@2
+    displayName: Provider build check
+    inputs:
+      pwsh: true
+      targetType: inline
+      script: |
+        dotnet build .\AITestPilot.sln --nologo
+        dotnet build .\tools\Kibernet.AITestPilot.ModelEndpointProbe\Kibernet.AITestPilot.ModelEndpointProbe.csproj --nologo
+        dotnet build .\tools\Kibernet.AITestPilot.LuaStaticAnalysisProbe\Kibernet.AITestPilot.LuaStaticAnalysisProbe.csproj --nologo
+
+  - task: PowerShell@2
+    displayName: Provider smoke test check
+    inputs:
+      pwsh: true
+      targetType: inline
+      script: |
+        dotnet run --project .\tests\Kibernet.AITestPilot.Core.SmokeTests\Kibernet.AITestPilot.Core.SmokeTests.csproj --no-build
+
+  - task: PowerShell@2
     displayName: Run release pipeline
     env:
       AITESTPILOT_LIVE_MODEL_ENDPOINT: $(AITESTPILOT_LIVE_MODEL_ENDPOINT)
@@ -112,6 +130,27 @@ steps:
         }
 
         & .\tools\Invoke-AITestPilotReleasePipeline.ps1 @pipelineArgs
+
+  - task: PowerShell@2
+    displayName: Provider vision evidence check
+    inputs:
+      pwsh: true
+      targetType: inline
+      script: |
+        $scenePath = "artifacts\ai-testpilot-release\latest\scene-validation.json"
+        if (-not (Test-Path $scenePath)) {
+          throw "Scene validation evidence is missing: $scenePath"
+        }
+
+        $scene = Get-Content -Path $scenePath -Raw | ConvertFrom-Json
+        if ($scene.status -ne "PASS" -or $scene.snapshotSchemaVersion -ne "aitestpilot.snapshot.v1") {
+          throw "Scene validation evidence did not pass or did not include the expected snapshot schema."
+        }
+
+        $runReports = @($scene.runReports)
+        if ($runReports.Count -lt 4 -or [int]$scene.uiElementCount -lt 1 -or -not [bool]$scene.releaseEvidence.allowRelease) {
+          throw "Scene validation evidence did not include complete UI, run report, and release evidence."
+        }
 
   - task: PowerShell@2
     displayName: Enforce release manifest

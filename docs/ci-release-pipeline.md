@@ -42,6 +42,7 @@ The pipeline runs:
 - optional live model endpoint smoke.
 - GitHub Actions release workflow probe, proving provider-specific CI maps release-control inputs to the release pipeline and uploads evidence.
 - Azure Pipelines release workflow probe, proving a second provider maps release-control parameters to the release pipeline and publishes evidence.
+- provider CI quality probe, proving GitHub Actions and Azure Pipelines run explicit provider-level build, smoke test, and vision evidence checks.
 - release risk policy, aggregating AI exploration, high-risk graph, production driver, production Lua, live endpoint, and CI provider release blockers.
 - release evidence index, exporting a machine-readable source-manifest summary for CI, portal handoff, and audit consumers.
 - repo-side release gate.
@@ -53,7 +54,7 @@ By default, the pipeline copies the latest evidence bundle to:
 
 `artifacts/ai-testpilot-release/latest`
 
-That directory includes `pipeline-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
+That directory includes `pipeline-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, provider CI quality probe evidence, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
 
 `release-risk-policy-manifest.json` is the machine-readable release-blocker decision for downstream CI, portal, or audit tooling. It is generated before the release evidence index and records whether package release is allowed under the active production driver, production Lua, and live-model enforcement switches.
 
@@ -67,11 +68,15 @@ Manual dispatch exposes release-control inputs for `unity_path`, `game_replay_dr
 
 The release pipeline runs `Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1` before the release gate. That probe snapshots the workflow into the evidence bundle and proves the provider workflow still has the required triggers, self-hosted Windows Unity runner labels, read-only repository permission, pipeline switches, live endpoint secret bindings, manifest enforcement, and artifact upload.
 
+The GitHub Actions workflow also runs provider-level build and smoke test checks before invoking the release pipeline, then runs a provider vision evidence check against `scene-validation.json` before enforcing and uploading release evidence.
+
 ## Azure Pipelines
 
 `.azure-pipelines/ai-testpilot-release.yml` is the second provider-specific CI entry point. It targets a self-hosted `SelfHostedWindowsUnity` pool with a Windows agent demand, exposes matching release-control parameters, runs the same release pipeline wrapper with the same hardening switches, enforces `pipeline-manifest.json`, and publishes `artifacts\ai-testpilot-release\latest` as `ai-testpilot-release-evidence`.
 
 The release pipeline runs `Invoke-AITestPilotAzurePipelinesWorkflowProbe.ps1` before the release gate. That probe snapshots the Azure workflow into the evidence bundle and proves the provider workflow still has push/PR triggers, release-control parameters, PowerShell Core tasks, runner prerequisite checks, live endpoint variable bindings, manifest enforcement, and artifact publishing.
+
+The Azure Pipelines workflow mirrors the GitHub provider quality path with provider-level build and smoke test tasks before the release pipeline and a provider vision evidence task against `scene-validation.json` before manifest enforcement and artifact publishing.
 
 ## Cursor Agent Output
 
