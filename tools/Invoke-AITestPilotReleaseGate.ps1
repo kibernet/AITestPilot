@@ -185,6 +185,7 @@ $productionHandoffPackageManifest = Read-Manifest "production-handoff-package-ma
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-Manifest "production-handoff-external-evidence-preflight-probe-manifest.json"
 $productionHandoffExportManifest = Read-Manifest "production-handoff-export-manifest.json"
 $productionHandoffStatusManifest = Read-Manifest "production-handoff-status-manifest.json"
+$productionHandoffDispatchPlanManifest = Read-Manifest "production-handoff-dispatch-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -1746,6 +1747,37 @@ if ($null -ne $productionHandoffStatusManifest) {
     Test-ListedFiles $productionHandoffStatusManifest "production_handoff_status"
 }
 
+if ($null -ne $productionHandoffDispatchPlanManifest) {
+    Add-ReleaseCheck "production_handoff_dispatch_plan" `
+        ($productionHandoffDispatchPlanManifest.status -eq "PASS" -and
+            $productionHandoffDispatchPlanManifest.schemaVersion -eq "aitestpilot.production_handoff_dispatch_plan.v1" -and
+            [bool]$productionHandoffDispatchPlanManifest.dispatchQueueGenerated -and
+            [bool]$productionHandoffDispatchPlanManifest.dispatchReportGenerated -and
+            [bool]$productionHandoffDispatchPlanManifest.dispatchReportContentValidated -and
+            [bool]$productionHandoffDispatchPlanManifest.dispatchDraftsContentValidated -and
+            [bool]$productionHandoffDispatchPlanManifest.allOwnerPacketsMapped -and
+            [int]$productionHandoffDispatchPlanManifest.ownerPacketCount -eq [int]$productionHandoffDispatchPlanManifest.hostProjectActionItemCount -and
+            [int]$productionHandoffDispatchPlanManifest.dispatchDraftCount -eq [int]$productionHandoffDispatchPlanManifest.ownerPacketCount -and
+            [int]$productionHandoffDispatchPlanManifest.pendingDispatchCount -eq [int]$productionHandoffDispatchPlanManifest.ownerPacketCount -and
+            [int]$productionHandoffDispatchPlanManifest.sentDispatchCount -eq 0 -and
+            [int]$productionHandoffDispatchPlanManifest.pendingExternalEvidenceFileCount -eq 9 -and
+            [int]$productionHandoffDispatchPlanManifest.remainingBlockingReasonCount -eq [int]$productionHandoffStatusManifest.remainingBlockingReasonCount -and
+            [bool]$productionHandoffDispatchPlanManifest.exportZipAvailable -and
+            [bool]$productionHandoffDispatchPlanManifest.contactPlaceholdersExplicit -and
+            -not [bool]$productionHandoffDispatchPlanManifest.realOwnerEmailAddressesConfigured -and
+            -not [bool]$productionHandoffDispatchPlanManifest.automaticEmailSendReady -and
+            -not [bool]$productionHandoffDispatchPlanManifest.externalEvidenceCollectionComplete -and
+            -not [bool]$productionHandoffDispatchPlanManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffDispatchPlanManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffDispatchPlanManifest.fixtureEvidencePromoted -and
+            $productionHandoffDispatchPlanManifest.productionOutputBoundary -eq "host_project_owner_dispatch_plan_only" -and
+            [int]$productionHandoffDispatchPlanManifest.checkCount -eq 7 -and
+            [int]$productionHandoffDispatchPlanManifest.failedCheckCount -eq 0) `
+        "Production handoff dispatch plan must prepare one owner dispatch draft per packet while keeping real recipient and evidence boundaries explicit."
+
+    Test-ListedFiles $productionHandoffDispatchPlanManifest "production_handoff_dispatch_plan"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -1920,6 +1952,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.providerCiQualityAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffPackageAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExternalEvidencePreflightAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -1979,6 +2012,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-external-evidence-preflight-probe-manifest.json",
         "production-handoff-export-manifest.json",
         "production-handoff-status-manifest.json",
+        "production-handoff-dispatch-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2078,6 +2112,7 @@ $sourceManifests = @(
     "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-handoff-export-manifest.json",
     "production-handoff-status-manifest.json",
+    "production-handoff-dispatch-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",

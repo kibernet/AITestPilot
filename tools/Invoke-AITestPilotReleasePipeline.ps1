@@ -460,6 +460,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_handoff_dispatch_plan" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffDispatchPlan.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_hard_mode_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
