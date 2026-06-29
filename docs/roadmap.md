@@ -75,8 +75,9 @@
 - Provider-specific build, smoke test, and vision evidence checks for GitHub Actions and Azure Pipelines, with release-gated quality probe evidence.
 - Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence, with generated-content quality checks, a blocker-resolution map, per-owner action packets, a returned-evidence inbox and inbox contract probe, a compact production handoff export zip, owner-level evidence collection status, owner dispatch queue and email drafts, owner contact roster readiness and contact-readiness contract proof, guarded owner send readiness, local mail authorization readiness, owner unblock packaging and contract proof, runnable external-evidence preflight and acceptance-wrapper scripts, a stable repo-side external evidence acceptance command, accepted-fixture contract probes, and missing/partial evidence failure probes for owner-facing action plans.
 - Production hard-mode failure probe proving combined production driver, Lua, and live-model hard switches block current sample or missing evidence.
+- Production hard-mode success contract probe proving combined production driver, Lua, and live-model hard switches pass with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers.
-- Release-gated risk policy blocking failing AI exploration, unresolved high-risk graph nodes, missing production driver evidence, missing production Lua evidence, missing live endpoint policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure evidence.
+- Release-gated risk policy blocking failing AI exploration, unresolved high-risk graph nodes, missing production driver evidence, missing production Lua evidence, missing live endpoint policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure/success-contract evidence.
 
 ## V0.2 Unity Import Gate
 

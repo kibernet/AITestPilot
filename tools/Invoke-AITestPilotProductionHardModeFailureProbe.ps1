@@ -121,6 +121,36 @@ $selfPlaceholder = [ordered]@{
 }
 $selfPlaceholder | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $probeBundlePath "production-hard-mode-failure-probe-manifest.json") -Encoding UTF8
 
+$successContractPlaceholder = [ordered]@{
+    schemaVersion = "aitestpilot.production_hard_mode_success_contract_probe.v1"
+    status = "PASS"
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    placeholderFor = "production_hard_mode_failure_probe_dependency"
+    requireProductionReplayDriverBound = $true
+    requireProductionLuaPatched = $true
+    requireLiveModelEndpointSmoke = $true
+    hardModeContractAccepted = $true
+    acceptedFixtureSourcesCopied = $true
+    riskPolicyStatus = "PASS"
+    riskPolicyPassedAsExpected = $true
+    evidenceIndexStatus = "PASS"
+    evidenceIndexPassedAsExpected = $true
+    releaseGateStatus = "PASS"
+    releaseGatePassedAsExpected = $true
+    driverEvidenceStatus = "PRODUCTION_BOUND_ACCEPTED"
+    productionLuaEvidenceStatus = "PRODUCTION_LUA_PATCH_ACCEPTED"
+    liveModelPolicyStatus = "LIVE_MODEL_SMOKE_ACCEPTED"
+    sourceCanonicalEvidencePreserved = $true
+    releasePipelineUsesFixture = $false
+    realHostProjectEvidenceAccepted = $false
+    fixtureEvidencePromoted = $false
+    productionOutputBoundary = "hard_mode_success_contract_probe_only"
+    checkCount = 4
+    failedCheckCount = 0
+    files = @("production-hard-mode-success-contract-probe-manifest.json")
+}
+$successContractPlaceholder | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $probeBundlePath "production-hard-mode-success-contract-probe-manifest.json") -Encoding UTF8
+
 $riskManifestPath = Join-Path $probeBundlePath "release-risk-policy-hard-mode-manifest.json"
 $riskReportPath = Join-Path $probeBundlePath "release-risk-policy-hard-mode.md"
 $indexManifestPath = Join-Path $probeBundlePath "release-evidence-index-hard-mode-manifest.json"

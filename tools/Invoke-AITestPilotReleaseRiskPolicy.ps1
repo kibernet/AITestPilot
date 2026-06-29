@@ -202,6 +202,7 @@ $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "pro
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
 $productionExternalEvidenceInboxContractProbeManifest = Read-PolicyJson "production-external-evidence-inbox-contract-probe-manifest.json" "Production external evidence inbox contract probe manifest"
 $productionHardModeFailureProbeManifest = Read-PolicyJson "production-hard-mode-failure-probe-manifest.json" "Production hard-mode failure probe manifest"
+$productionHardModeSuccessContractProbeManifest = Read-PolicyJson "production-hard-mode-success-contract-probe-manifest.json" "Production hard-mode success contract probe manifest"
 
 $runReports = @()
 if ($null -ne $sceneValidation) {
@@ -1157,6 +1158,35 @@ Add-PolicyCheck "production_hard_mode_failure_policy" $productionHardModeFailure
     "Release evidence must prove combined production driver, production Lua, and live-model hard-mode switches block the current sample or missing-evidence state." `
     "production_hard_mode_failure_probe_not_accepted"
 
+$productionHardModeSuccessContractAccepted = (
+    $null -ne $productionHardModeSuccessContractProbeManifest -and
+    $productionHardModeSuccessContractProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "schemaVersion" "") -eq "aitestpilot.production_hard_mode_success_contract_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "requireProductionReplayDriverBound" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "requireProductionLuaPatched" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "requireLiveModelEndpointSmoke" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "acceptedFixtureSourcesCopied" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "riskPolicyPassedAsExpected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexPassedAsExpected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "releaseGatePassedAsExpected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "sourceCanonicalEvidencePreserved" $false)) -and
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "riskPolicyStatus" "") -eq "PASS" -and
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexStatus" "") -eq "PASS" -and
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "releaseGateStatus" "") -eq "PASS" -and
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "driverEvidenceStatus" "") -eq "PRODUCTION_BOUND_ACCEPTED" -and
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "productionLuaEvidenceStatus" "") -eq "PRODUCTION_LUA_PATCH_ACCEPTED" -and
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "liveModelPolicyStatus" "") -eq "LIVE_MODEL_SMOKE_ACCEPTED" -and
+    -not (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "productionOutputBoundary" "") -eq "hard_mode_success_contract_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHardModeSuccessContractProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_hard_mode_success_contract_policy" $productionHardModeSuccessContractAccepted `
+    "Release evidence must prove the combined hard-mode path can pass in an isolated accepted-fixture contract without promoting fixture data as production." `
+    "production_hard_mode_success_contract_not_accepted"
+
 $passedRiskPolicyCheckCount = @($riskPolicyChecks | Where-Object { [bool]$_.passed }).Count
 $failedRiskPolicyCheckCount = @($riskPolicyChecks | Where-Object { -not [bool]$_.passed }).Count
 $status = "PASS"
@@ -1214,7 +1244,8 @@ $sourceFiles = @(
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
     "production-external-evidence-inbox-contract-probe-manifest.json",
-    "production-hard-mode-failure-probe-manifest.json"
+    "production-hard-mode-failure-probe-manifest.json",
+    "production-hard-mode-success-contract-probe-manifest.json"
 )
 
 $manifest = [ordered]@{
@@ -1239,14 +1270,14 @@ $manifest = [ordered]@{
     productionDriverEvidenceContractAccepted = [bool]$productionDriverEvidenceContractAccepted
     driverEvidenceStatus = $driverEvidenceStatus
     productionDriverReady = [bool]$driverReadyForProduction
-    productionDriverBlockingReasonCount = [int]$driverBlockingReasons.Count
+    productionDriverBlockingReasonCount = [int]@($driverBlockingReasons).Count
     productionDriverBlockingReasons = @($driverBlockingReasons)
     productionLuaEvidenceAccepted = [bool]$productionLuaEvidenceAccepted
     productionLuaEvidenceKitAccepted = [bool]$productionLuaEvidenceKitAccepted
     productionLuaExternalBundleIntakeAccepted = [bool]$productionLuaExternalBundleIntakeAccepted
     productionLuaEvidenceStatus = $productionLuaEvidenceStatus
     productionLuaReady = [bool]$productionLuaReadyForProduction
-    productionLuaBlockingReasonCount = [int]$luaBlockingReasons.Count
+    productionLuaBlockingReasonCount = [int]@($luaBlockingReasons).Count
     productionLuaBlockingReasons = @($luaBlockingReasons)
     liveModelPolicyAccepted = [bool]$liveModelPolicyAccepted
     liveModelPolicyStatus = $liveModelPolicyStatus
@@ -1282,6 +1313,8 @@ $manifest = [ordered]@{
     productionExternalEvidenceAcceptanceContractAccepted = [bool]$productionExternalEvidenceAcceptanceContractAccepted
     productionExternalEvidenceAcceptanceFailureAccepted = [bool]$productionExternalEvidenceAcceptanceFailureAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
+    productionHardModeSuccessContractAccepted = [bool]$productionHardModeSuccessContractAccepted
+    productionHardModeSuccessContractStatus = (Get-JsonValue $productionHardModeSuccessContractProbeManifest "releaseGateStatus" "")
     riskPolicyCheckCount = [int]$riskPolicyChecks.Count
     passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
     failedRiskPolicyCheckCount = [int]$failedRiskPolicyCheckCount
@@ -1336,6 +1369,8 @@ $reportLines = @(
     "- Production external evidence acceptance contract accepted: $($manifest.productionExternalEvidenceAcceptanceContractAccepted)",
     "- Production external evidence acceptance failure accepted: $($manifest.productionExternalEvidenceAcceptanceFailureAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
+    "- Production hard-mode success contract accepted: $($manifest.productionHardModeSuccessContractAccepted)",
+    "- Production hard-mode success contract status: $($manifest.productionHardModeSuccessContractStatus)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",
     "## Boundary Summary",

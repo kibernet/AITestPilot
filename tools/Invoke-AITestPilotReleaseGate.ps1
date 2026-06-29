@@ -91,6 +91,29 @@ function Read-OptionalManifest {
     }
 }
 
+function Get-JsonValue {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [object]$DefaultValue = $null
+    )
+
+    if ($null -eq $Object) {
+        return $DefaultValue
+    }
+
+    if ($Object -is [System.Collections.IDictionary] -and $Object.Contains($Name)) {
+        return $Object[$Name]
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+
+    return $property.Value
+}
+
 function Test-ContainsAll {
     param(
         [object[]]$Actual,
@@ -197,6 +220,7 @@ $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "produ
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
 $productionExternalEvidenceInboxContractProbeManifest = Read-Manifest "production-external-evidence-inbox-contract-probe-manifest.json"
 $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
+$productionHardModeSuccessContractProbeManifest = Read-Manifest "production-hard-mode-success-contract-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
 
@@ -2125,6 +2149,34 @@ if ($null -ne $productionHardModeFailureProbeManifest) {
     Test-ListedFiles $productionHardModeFailureProbeManifest "production_hard_mode_failure_probe"
 }
 
+if ($null -ne $productionHardModeSuccessContractProbeManifest) {
+    Add-ReleaseCheck "production_hard_mode_success_contract_probe" `
+        ($productionHardModeSuccessContractProbeManifest.status -eq "PASS" -and
+            $productionHardModeSuccessContractProbeManifest.schemaVersion -eq "aitestpilot.production_hard_mode_success_contract_probe.v1" -and
+            [bool]$productionHardModeSuccessContractProbeManifest.requireProductionReplayDriverBound -and
+            [bool]$productionHardModeSuccessContractProbeManifest.requireProductionLuaPatched -and
+            [bool]$productionHardModeSuccessContractProbeManifest.requireLiveModelEndpointSmoke -and
+            [bool]$productionHardModeSuccessContractProbeManifest.acceptedFixtureSourcesCopied -and
+            [bool]$productionHardModeSuccessContractProbeManifest.riskPolicyPassedAsExpected -and
+            [bool]$productionHardModeSuccessContractProbeManifest.evidenceIndexPassedAsExpected -and
+            [bool]$productionHardModeSuccessContractProbeManifest.releaseGatePassedAsExpected -and
+            [bool]$productionHardModeSuccessContractProbeManifest.sourceCanonicalEvidencePreserved -and
+            $productionHardModeSuccessContractProbeManifest.riskPolicyStatus -eq "PASS" -and
+            $productionHardModeSuccessContractProbeManifest.evidenceIndexStatus -eq "PASS" -and
+            $productionHardModeSuccessContractProbeManifest.releaseGateStatus -eq "PASS" -and
+            $productionHardModeSuccessContractProbeManifest.driverEvidenceStatus -eq "PRODUCTION_BOUND_ACCEPTED" -and
+            $productionHardModeSuccessContractProbeManifest.productionLuaEvidenceStatus -eq "PRODUCTION_LUA_PATCH_ACCEPTED" -and
+            $productionHardModeSuccessContractProbeManifest.liveModelPolicyStatus -eq "LIVE_MODEL_SMOKE_ACCEPTED" -and
+            -not [bool]$productionHardModeSuccessContractProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHardModeSuccessContractProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHardModeSuccessContractProbeManifest.fixtureEvidencePromoted -and
+            $productionHardModeSuccessContractProbeManifest.productionOutputBoundary -eq "hard_mode_success_contract_probe_only" -and
+            [int]$productionHardModeSuccessContractProbeManifest.failedCheckCount -eq 0) `
+        "Production hard-mode success contract probe must prove combined hard-mode evidence can pass in an isolated accepted-fixture bundle without promoting fixture evidence."
+
+    Test-ListedFiles $productionHardModeSuccessContractProbeManifest "production_hard_mode_success_contract_probe"
+}
+
 if ($null -ne $releaseRiskPolicyManifest) {
     $expectedDriverEvidenceStatus = if ($RequireProductionReplayDriverBound) { "PRODUCTION_BOUND_ACCEPTED" } else { "EXPLICIT_SAMPLE_BOUNDARY_ACCEPTED" }
     $expectedProductionLuaEvidenceStatus = if ($RequireProductionLuaPatched) { "PRODUCTION_LUA_PATCH_ACCEPTED" } else { "EXPLICIT_NO_PRODUCTION_LUA_BOUNDARY_ACCEPTED" }
@@ -2172,6 +2224,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHardModeFailureAccepted -and
+            [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractAccepted" $false) -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.missingOrInvalidSourceFileCount -eq 0) `
@@ -2239,6 +2292,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-external-evidence-inbox-manifest.json",
         "production-external-evidence-inbox-contract-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
+        "production-hard-mode-success-contract-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )
 
@@ -2345,6 +2399,7 @@ $sourceManifests = @(
     "production-external-evidence-inbox-manifest.json",
     "production-external-evidence-inbox-contract-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
+    "production-hard-mode-success-contract-probe-manifest.json",
     "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"
 )
