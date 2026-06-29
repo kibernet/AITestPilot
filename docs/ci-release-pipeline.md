@@ -1,0 +1,81 @@
+# CI Release Pipeline
+
+Use the release pipeline wrapper when CI needs one command with stable artifacts and exit-code behavior.
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePipeline.ps1
+```
+
+The pipeline runs:
+
+- repo validation and smoke tests.
+- Unity package import and sample-scene validation.
+- repair-agent patch output import with deterministic sample patch/summary artifacts.
+- repair-agent external completion failure probe, proving pending runs cannot be promoted by patch files alone.
+- generic external repair-agent patch import probe, proving real external patches are not tied to the deterministic sample null-guard snippet.
+- source snapshot apply/validate/rollback probe, proving verified external patches can apply to a clean candidate made from the current source tree and pass repo validation.
+- main worktree apply readiness, proving whether real repository apply remains blocked by source baseline cleanliness or can proceed to the explicit external patch apply gate.
+- repair-agent external patch safety preflight and unsafe path-traversal failure probe.
+- repository patch apply guard with explicit-switch, clean-worktree, and rollback-plan evidence.
+- clean temporary repository apply/rollback probe for external-agent patch output.
+- clean temporary repository apply/retest/rollback probe for external-agent patch output.
+- sandbox patch apply/retest orchestration for imported repair-agent patch output.
+- negative replay-driver failure probe.
+- targeted repair retest with a selected game replay driver.
+- replay profile JSON import.
+- model endpoint trace probe.
+- model endpoint provider diagnostics.
+- deterministic live model endpoint failure probe.
+- optional live model endpoint smoke.
+- repo-side release gate.
+- release-gate failure probe.
+
+## Artifacts
+
+By default, the pipeline copies the latest evidence bundle to:
+
+`artifacts/ai-testpilot-release/latest`
+
+That directory includes `pipeline-manifest.json`, release gate manifests, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, model endpoint request/response/trace evidence, provider diagnostics, live endpoint failure-classification evidence, optional live model smoke evidence, and Unity logs.
+
+## Exit Code Contract
+
+- exit code `0`: every step passed and the release gate allowed release.
+- nonzero exit code: one or more steps failed. The pipeline still writes `pipeline-manifest.json` when it can export artifacts.
+
+## Production Driver
+
+Pass a production driver type when testing a real project:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePipeline.ps1 -GameReplayDriverType "Your.Game.Tests.ProductionReplayDriver"
+```
+
+The driver must satisfy the descriptor and failure-probe requirements described in `docs/integration/production-driver.md`.
+
+## Live Model Endpoint
+
+The pipeline always runs `Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1` before the optional real live smoke. That probe uses a deterministic HTTP 401 response and proves the release evidence can classify auth failures, emit remediation hints, and produce a non-retryable escalation policy without contacting an external provider.
+
+The pipeline always writes `live-model-endpoint-smoke-manifest.json`. Without live endpoint environment variables it records `status=SKIPPED` and release remains allowed.
+When a configured live smoke fails, the manifest records `failureCategory`, `failureMessage`, `failureRemediation`, and `failurePolicy`. Retryable failures are retried by the wrapper before the release gate runs, and the final manifest includes `attemptCount` plus `attempts[]`.
+Use `-LiveModelEndpointMaxPolicyRetries` and `-LiveModelEndpointMaxRetryBackoffSeconds` to cap live-smoke retry behavior through the release pipeline, or `-DisableLiveModelEndpointFailurePolicyRetry` when testing a single-attempt failure path. The lower-level live-smoke wrapper exposes the same controls as `-MaxPolicyRetries`, `-MaxRetryBackoffSeconds`, and `-DisableFailurePolicyRetry`.
+
+To require a real live model request in CI, set:
+
+- `AITESTPILOT_LIVE_MODEL_ENDPOINT`
+- `AI_TESTPILOT_MODEL_API_KEY`
+- `AITESTPILOT_LIVE_MODEL`
+- `AITESTPILOT_LIVE_MODEL_REQUEST_FORMAT` as `NativeJson` or `OpenAICompatibleChatCompletions` when the endpoint needs a specific request wrapper.
+
+Then run:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke
+```
+
+For local OpenAI-compatible gateways with no authentication, also pass:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke -AllowMissingModelApiKey
+```

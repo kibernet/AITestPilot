@@ -1,0 +1,16 @@
+{
+  "name": "Kibernet.AITestPilot.Runtime",
+  "rootNamespace": "Kibernet.AITestPilot.Unity",
+  "references": [
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

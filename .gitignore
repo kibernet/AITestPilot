@@ -1,0 +1,21 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+
+# Unity generated state
+Library/
+Temp/
+Logs/
+Build/
+Builds/
+artifacts/
+UserSettings/
+MemoryCaptures/
+Assembly-CSharp*.csproj
+*.sln.DotSettings.user
+
+# Keep the repo solution.
+!AITestPilot.sln

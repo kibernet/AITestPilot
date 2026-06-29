@@ -1,0 +1,76 @@
+# AI TestPilot Roadmap
+
+## V0.1 Repo Baseline
+
+- Buildable .NET core.
+- Smoke-tested decision loop.
+- Unity UPM SDK package.
+- Editor snapshot export and Cursor prompt bridge.
+- Unity batchmode sample-scene validation.
+- Multi-step `DecisionLoopRunner` validation with max-step boundary evidence.
+- Snapshot JSON schema regression check.
+- Durable run, retest, and release evidence documents.
+- Persisted bug package JSON/Markdown artifacts.
+- Persisted bug knowledge graph JSON/Markdown artifacts with module and failure-type risk ranking.
+- Structured repair task JSON/Markdown for a fixing agent.
+- Cursor-ready repair-agent handoff JSON/Markdown with launch command and required context files.
+- Repair-agent run tracking JSON/Markdown with explicit external-agent boundary and expected patch output slots.
+- Repair-agent patch output import manifest with deterministic sample patch/summary validation in the release pipeline.
+- Repair-agent external completion provenance guard and pending-run failure probe.
+- Generic external repair-agent patch import probe that is not tied to the deterministic sample null-guard snippet.
+- Source snapshot apply/validate/rollback probe for verified external-agent patches.
+- Main worktree apply-readiness evidence for dirty-baseline blockers and clean-baseline readiness.
+- External repair-agent patch safety preflight with target-path policy and negative path-traversal probe.
+- Repository patch apply guard with explicit apply switch, clean-worktree requirement, and rollback/no-mutation evidence.
+- Clean temporary repository apply/rollback probe for external-agent patch output.
+- Clean temporary repository apply/retest/rollback probe for external-agent patch output.
+- Repair-agent patch apply/retest manifest with sandbox patch application and post-patch retest evidence.
+- Targeted repair-task retest command.
+- Replay adapter registry for game-specific action playback.
+- Sample business replay path for scene entry, activity reward, and fishing action.
+- Persisted ScriptableObject replay profile plus JSON export.
+- Import-from-JSON profile tooling for non-Unity authoring workflows.
+- Runtime `IGameActionReplayDriver` contract for account setup, login, scene entry, activity reward, and fishing.
+- Driver registry plus batch retest type selection for production replay adapters.
+- Hooks-based production driver adapter, diagnostics, and copyable driver template.
+- Driver capability/configuration descriptor in repair retest evidence.
+- Negative replay-driver failure probe for CI diagnostics.
+- Repo-side release gate over scene, retest, driver descriptor, negative probe, and profile import evidence.
+- One-command release pipeline with stable CI artifact output.
+- Core HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.
+- Model endpoint trace probe enforced by the repo-side release gate.
+- Prior fix hints included in model endpoint requests and release evidence.
+- Unity model endpoint settings asset, editor creation flow, and offline request-contract evidence.
+- Optional live model endpoint smoke with a production CI enforcement switch.
+- OpenAI-compatible chat-completions request wrapper for generic model gateways.
+- Provider preset diagnostics for native, OpenAI, OpenAI-compatible, and local OpenAI-compatible model gateways.
+- Deterministic live endpoint failure probe with auth failure classification and trace evidence.
+- Live endpoint failure remediation hints for auth, rate limit, request/endpoint, provider outage, timeout, network, empty response, response contract, configuration, and unknown failures.
+- Live endpoint retry/escalation policy recorded in failure evidence.
+- Policy-driven live endpoint retry execution with per-attempt manifest evidence.
+- Production replay integration plan asset plus JSON/Markdown checklist evidence, explicitly marked unbound until real project APIs are wired.
+
+## V0.2 Unity Import Gate
+
+- Export release evidence into a stable CI artifact directory.
+- Replace the sample `IGameActionReplayDriver` and unbound production replay checklist with real project implementations for login, activity reward, fishing, and account setup.
+
+## V0.3 Model Bridge
+
+- Provider-specific live-smoke retry tuning and alert routing beyond the current bounded policy wrapper.
+
+## V0.4 Retest and Repair Loop
+
+- Ingest actual patch outputs from a completed real repair-agent run.
+- Run a real external repair-agent patch against the main product worktree, generate rollback evidence, and re-run the captured steps after a code or prefab change.
+
+## V0.5 Knowledge Graph Persistence
+
+- Feed prior fix hints into patch-result analysis after a repair agent runs.
+
+## V0.6 CI/CD Gate
+
+- Add provider-specific build/test/vision checks.
+- Promote the repo-side release gate into provider-specific CI.
+- Block release on failing AI exploration, missing driver evidence, or unresolved high-risk graph nodes.
+- Export machine-readable release evidence.

@@ -1,0 +1,40 @@
+# Changelog
+
+## 0.1.0
+
+- Initial Unity 2021.3 package.
+- Added snapshot capture, log collection, UI extraction, action execution, bug detection, bug graph asset, editor window, and Cursor prompt bridge.
+- Added multi-step `DecisionLoopRunner` batch validation evidence.
+- Added replay profiles, repair-task retest evidence, JSON profile import/export, snapshot schema checks, and the `IGameActionReplayDriver` contract for account, login, reward, and fishing flows.
+- Added game replay driver registry, batch retest driver type selection, and optional replay-state evidence reporting.
+- Added hooks-based production replay driver adapter and a copyable production driver template.
+- Added game replay driver capability/configuration descriptors in repair retest evidence.
+- Added negative replay-driver failure probe for CI diagnostics.
+- Added repo-side release gate and release-gate failure probe for incomplete driver evidence.
+- Added one-command release pipeline wrapper with stable artifact output.
+- Added a provider-neutral core model endpoint bridge with action schema validation and per-step decision traces.
+- Added a model endpoint trace probe that is exported into release evidence and enforced by the release gate.
+- Added Unity model endpoint settings, editor creation flow, request-contract builder, response parser, and batch evidence.
+- Added optional live model endpoint smoke evidence with a release-pipeline enforcement switch.
+- Added native and OpenAI-compatible chat-completions request formats for model endpoint settings.
+- Added production replay integration plan assets and JSON/Markdown checklist evidence, explicitly marked unbound until real game APIs are implemented.
+- Added model endpoint provider preset diagnostics for native, OpenAI, OpenAI-compatible, and local OpenAI-compatible gateway setup.
+- Added deterministic live model endpoint failure probe evidence for auth failure classification.
+- Added category-specific remediation hints to live model endpoint failure evidence.
+- Added retry/escalation policy fields to live model endpoint failure evidence.
+- Added policy-driven live model endpoint retry execution with per-attempt evidence.
+- Added persisted bug package JSON/Markdown evidence and release-gate checks for bug identity, risk, source, and reproduction steps.
+- Added persisted bug knowledge graph JSON/Markdown evidence and release-gate checks for graph schema, high-risk node count, module risk ranking, and module/failure-type risk ranking.
+- Added Cursor-ready repair-agent handoff JSON/Markdown evidence and release-gate checks for launch command, required context files, and retest command.
+- Added prior fix hints to model endpoint decision requests, OpenAI-compatible wrappers, offline Unity evidence, deterministic probe evidence, and release-gate checks.
+- Added repair-agent run tracking JSON/Markdown evidence and release-gate checks for external-agent boundary and expected patch output slots.
+- Added repair-agent patch output import evidence for patch/summary artifacts and release-gate checks for deterministic sample import.
+- Added repair-agent external completion provenance guard and pending-run failure probe.
+- Added generic external repair-agent patch import probe evidence independent from the deterministic sample null-guard snippet.
+- Added source snapshot apply/validate/rollback probe evidence for verified external-agent patches.
+- Added main worktree apply-readiness evidence for dirty-baseline blockers and clean-baseline readiness.
+- Added external repair-agent patch safety preflight evidence and an unsafe path-traversal failure probe.
+- Added repository patch apply guard evidence for explicit apply switch, clean-worktree requirement, external-source requirement, and rollback/no-mutation proof.
+- Added clean temporary repository apply/rollback probe evidence for external-agent patch output.
+- Added clean temporary repository apply/retest/rollback probe evidence for external-agent patch output.
+- Added repair-agent patch apply/retest evidence with sandbox patch application, explicit repository non-mutation, and release-gate checks.
