@@ -126,6 +126,7 @@ Produce exactly these three required output files in ${outputPath}:
 3. repair-agent-summary.md
    - Human-readable summary.
    - Include TaskId, BugId, suggested fix, patch file name, and retest command.
+   - Write the retest command exactly as plain text, without escaping backslashes: $retestCommand
 
 After writing files, respond with a concise confirmation and the exact files written.
 "@

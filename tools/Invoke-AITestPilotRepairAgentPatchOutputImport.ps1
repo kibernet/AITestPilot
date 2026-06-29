@@ -84,6 +84,20 @@ diff --git a/Assets/SampleModule/StartButton.cs b/Assets/SampleModule/StartButto
     Set-Content -Path $SummaryTarget -Value $summary -Encoding UTF8
 }
 
+function Test-SummaryContainsRetestCommand {
+    param(
+        [string]$SummaryText,
+        [string]$RetestCommand
+    )
+
+    if ($SummaryText -match [regex]::Escape($RetestCommand)) {
+        return $true
+    }
+
+    $markdownEscapedRetestCommand = $RetestCommand.Replace("\", "\\")
+    return $SummaryText -match [regex]::Escape($markdownEscapedRetestCommand)
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $repairAgentRunPath = Assert-PathUnderRepo $RepairAgentRunPath "RepairAgentRunPath"
 $patchPath = Assert-PathUnderRepo $PatchPath "PatchPath"
@@ -121,7 +135,9 @@ $sampleFixSnippet = "reward == null"
 $sampleFixSnippetRequired = [bool]$GenerateSampleOutput
 $patchContainsSampleFix = $patchText -match [regex]::Escape($sampleFixSnippet)
 $patchContainsExpectedFix = [bool]$patchContainsSampleFix
-$summaryContainsRetestCommand = $summaryText -match [regex]::Escape($repairAgentRun.postPatchRetestCommand)
+$summaryContainsRetestCommand = Test-SummaryContainsRetestCommand `
+    -SummaryText $summaryText `
+    -RetestCommand $repairAgentRun.postPatchRetestCommand
 
 if (-not $patchContainsDiffHeader) {
     throw "Repair agent patch output does not look like a unified diff."

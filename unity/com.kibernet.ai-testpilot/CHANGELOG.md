@@ -43,3 +43,4 @@
 - Added repair-agent patch apply/retest evidence with sandbox patch application, explicit repository non-mutation, and release-gate checks.
 - Added production replay driver readiness evidence separating package release readiness from real-project driver binding readiness.
 - Added production-bound replay driver failure-probe evidence plus release-pipeline/release-gate switches for CI that must require real project driver binding.
+- Accepted Markdown-escaped backslashes when validating external repair-agent retest commands.
