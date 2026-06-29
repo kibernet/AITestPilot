@@ -183,6 +183,7 @@ $azurePipelinesReleaseWorkflowProbeManifest = Read-Manifest "azure-pipelines-rel
 $providerCiQualityProbeManifest = Read-Manifest "provider-ci-quality-probe-manifest.json"
 $productionHandoffPackageManifest = Read-Manifest "production-handoff-package-manifest.json"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-Manifest "production-handoff-external-evidence-preflight-probe-manifest.json"
+$productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
@@ -1684,6 +1685,32 @@ if ($null -ne $productionHandoffExternalEvidencePreflightProbeManifest) {
     Test-ListedFiles $productionHandoffExternalEvidencePreflightProbeManifest "production_handoff_external_evidence_preflight_probe"
 }
 
+if ($null -ne $productionExternalEvidenceAcceptanceContractProbeManifest) {
+    Add-ReleaseCheck "production_external_evidence_acceptance_contract_probe" `
+        ($productionExternalEvidenceAcceptanceContractProbeManifest.status -eq "PASS" -and
+            $productionExternalEvidenceAcceptanceContractProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_acceptance_contract_probe.v1" -and
+            -not [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.externalBundleUnderRepo -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedFixtureDirsGenerated -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptancePassed -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceRequireAllEvidence -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceContractFixtureMode -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceAllRequiredFilesPresent -and
+            [int]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceMissingAreaCount -eq 0 -and
+            [int]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceFailedCount -eq 0 -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedProductionDriverEvidenceAccepted -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedProductionLuaEvidenceAccepted -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedLiveModelSmokeEvidenceAccepted -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAllExternalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.releasePipelineUsesFixture -and
+            $productionExternalEvidenceAcceptanceContractProbeManifest.productionOutputBoundary -eq "accepted_fixture_external_evidence_acceptance_contract_only" -and
+            [int]$productionExternalEvidenceAcceptanceContractProbeManifest.checkCount -eq 4 -and
+            [int]$productionExternalEvidenceAcceptanceContractProbeManifest.failedCheckCount -eq 0) `
+        "Production external evidence acceptance contract probe must prove the stable repo-side acceptance command accepts complete host-project-shaped evidence without promoting fixture data."
+
+    Test-ListedFiles $productionExternalEvidenceAcceptanceContractProbeManifest "production_external_evidence_acceptance_contract_probe"
+}
+
 if ($null -ne $productionHardModeFailureProbeManifest) {
     Add-ReleaseCheck "production_hard_mode_failure_probe" `
         ($productionHardModeFailureProbeManifest.status -eq "PASS" -and
@@ -1743,6 +1770,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.providerCiQualityAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffPackageAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExternalEvidencePreflightAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHardModeFailureAccepted -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
@@ -1797,6 +1825,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "provider-ci-quality-probe-manifest.json",
         "production-handoff-package-manifest.json",
         "production-handoff-external-evidence-preflight-probe-manifest.json",
+        "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )
@@ -1890,6 +1919,7 @@ $sourceManifests = @(
     "provider-ci-quality-probe-manifest.json",
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
+    "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"

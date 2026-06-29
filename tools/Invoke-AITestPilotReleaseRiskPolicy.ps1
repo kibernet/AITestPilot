@@ -188,6 +188,7 @@ $azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow
 $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
 $productionHandoffPackageManifest = Read-PolicyJson "production-handoff-package-manifest.json" "Production handoff package manifest"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-PolicyJson "production-handoff-external-evidence-preflight-probe-manifest.json" "Production handoff external evidence preflight probe manifest"
+$productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionHardModeFailureProbeManifest = Read-PolicyJson "production-hard-mode-failure-probe-manifest.json" "Production hard-mode failure probe manifest"
 
 $runReports = @()
@@ -673,6 +674,32 @@ Add-PolicyCheck "production_handoff_external_evidence_preflight_policy" $product
     "Production handoff evidence must prove the generated external evidence preflight accepts complete host-project-shaped fixture evidence without promoting fixture data." `
     "production_handoff_external_evidence_preflight_not_accepted"
 
+$productionExternalEvidenceAcceptanceContractAccepted = (
+    $null -ne $productionExternalEvidenceAcceptanceContractProbeManifest -and
+    $productionExternalEvidenceAcceptanceContractProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_acceptance_contract_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedFixtureDirsGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptancePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceRequireAllEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceContractFixtureMode" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceAllRequiredFilesPresent" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceMissingAreaCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceFailedCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedProductionDriverEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedProductionLuaEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedLiveModelSmokeEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAllExternalEvidenceAccepted" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "releasePipelineUsesFixture" $true)) -and
+    (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_external_evidence_acceptance_contract_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_acceptance_contract_policy" $productionExternalEvidenceAcceptanceContractAccepted `
+    "Production evidence must include a stable repo-side acceptance command contract for driver, Lua, and live model evidence without promoting fixture data." `
+    "production_external_evidence_acceptance_contract_not_accepted"
+
 $productionHardModeFailureAccepted = (
     $null -ne $productionHardModeFailureProbeManifest -and
     $productionHardModeFailureProbeManifest.status -eq "PASS" -and
@@ -737,6 +764,7 @@ $sourceFiles = @(
     "provider-ci-quality-probe-manifest.json",
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
+    "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json"
 )
 
@@ -782,6 +810,7 @@ $manifest = [ordered]@{
     providerCiQualityAccepted = [bool]$providerCiQualityAccepted
     productionHandoffPackageAccepted = [bool]$productionHandoffPackageAccepted
     productionHandoffExternalEvidencePreflightAccepted = [bool]$productionHandoffExternalEvidencePreflightAccepted
+    productionExternalEvidenceAcceptanceContractAccepted = [bool]$productionExternalEvidenceAcceptanceContractAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
     riskPolicyCheckCount = [int]$riskPolicyChecks.Count
     passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
@@ -814,6 +843,7 @@ $reportLines = @(
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
     "- Production handoff package accepted: $($manifest.productionHandoffPackageAccepted)",
     "- Production handoff external evidence preflight accepted: $($manifest.productionHandoffExternalEvidencePreflightAccepted)",
+    "- Production external evidence acceptance contract accepted: $($manifest.productionExternalEvidenceAcceptanceContractAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",

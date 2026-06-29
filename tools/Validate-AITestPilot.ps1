@@ -101,6 +101,8 @@ try {
         "tools\Invoke-AITestPilotProviderCiQualityProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffPackage.ps1",
         "tools\Invoke-AITestPilotProductionHandoffExternalEvidencePreflightProbe.ps1",
+        "tools\Invoke-AITestPilotProductionExternalEvidenceAcceptance.ps1",
+        "tools\Invoke-AITestPilotProductionExternalEvidenceAcceptanceContractProbe.ps1",
         "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1",
         "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1",
         "tools\Invoke-AITestPilotReplayDriverFailureProbe.ps1",
