@@ -206,6 +206,11 @@ try {
         }
     }
 
+    Invoke-PipelineStep "repair_agent_patch_result_analysis" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentPatchResultAnalysis.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "repair_agent_external_patch_preflight" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentExternalPatchPreflight.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

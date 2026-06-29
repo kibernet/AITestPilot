@@ -91,6 +91,14 @@ To run the release-gated external output directory intake acceptance:
 
 That acceptance script creates a deterministic external-output-directory fixture unless `-ExternalOutputDir` is provided, then calls the main worktree apply/retest/rollback probe with that directory. It writes `repair-agent-external-task-output-acceptance-manifest.json`, copies the accepted three-file package into release evidence, and proves the intake path used `inputPackageSource=external_output_directory` with `patchGeneratedByProbe=false`. This is an intake contract for external repair-agent output files; a real agent-produced package remains the next boundary.
 
+To analyze a repair-agent patch result against prior fix hints and retest evidence:
+
+```powershell
+.\tools\Invoke-AITestPilotRepairAgentPatchResultAnalysis.ps1
+```
+
+That analysis consumes the bug knowledge graph, repair task, accepted external task output, and main worktree apply/retest/rollback evidence. It writes `repair-agent-patch-result-analysis-manifest.json` plus Markdown, proving the prior fix hint was matched, the agent output referenced it, post-apply retest passed, rollback returned the worktree clean, and the knowledge graph outcome is `RETEST_PASSED_AFTER_PATCH`.
+
 To produce that external output directory with the installed headless Cursor Agent:
 
 ```powershell
@@ -309,6 +317,7 @@ Implemented now:
 - Generic external repair-agent patch import probe proving real external patch import is not tied to the deterministic sample null-guard snippet.
 - Source snapshot apply/validate/rollback probe proving verified external patches can apply to a clean candidate made from the current source tree, pass repo validation, and roll back newly added files.
 - External repair-agent task output directory intake acceptance for the main worktree apply/retest/rollback path.
+- Repair-agent patch result analysis connecting prior fix hints, accepted external output, post-apply retest, rollback, and knowledge graph outcome.
 - Optional headless Cursor Agent external output generation, with import/preflight evidence and no repository mutation before acceptance.
 - External repair-agent patch preflight manifest with target-path safety checks and a negative path-traversal failure probe.
 - Repository patch apply guard manifest with explicit apply switch, clean-worktree, external-agent source, and rollback-plan evidence.

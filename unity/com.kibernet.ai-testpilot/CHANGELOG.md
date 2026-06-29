@@ -56,3 +56,4 @@
 - Added a repo-external production driver evidence bundle intake probe for host-project evidence directories outside the AI TestPilot repo.
 - Added a GitHub Actions release workflow and release-gated workflow probe for self-hosted Windows Unity CI.
 - Added provider-specific live model endpoint retry policy and alert-routing evidence.
+- Added repair-agent patch result analysis evidence linking prior fix hints, accepted output, retest, rollback, and knowledge graph outcome.

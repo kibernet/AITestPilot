@@ -22,6 +22,7 @@
 - Main worktree apply-readiness evidence for dirty-baseline blockers and clean-baseline readiness.
 - Task-bound main worktree apply/retest/rollback evidence for the explicit external-agent guarded path.
 - External repair-agent task output directory intake acceptance for the main worktree apply/retest/rollback path.
+- Repair-agent patch result analysis that feeds prior fix hints into post-agent retest and knowledge graph outcome.
 - Optional headless Cursor Agent external output generation for replacing the acceptance fixture on authenticated developer machines.
 - External repair-agent patch safety preflight with target-path policy and negative path-traversal probe.
 - Repository patch apply guard with explicit apply switch, clean-worktree requirement, and rollback/no-mutation evidence.
@@ -77,7 +78,7 @@
 
 ## V0.5 Knowledge Graph Persistence
 
-- Feed prior fix hints into patch-result analysis after a repair agent runs.
+- Persist patch-result analysis across multi-bug historical runs and real production repair-agent output.
 
 ## V0.6 CI/CD Gate
 

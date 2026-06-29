@@ -135,6 +135,7 @@ $repairAgentMainWorktreeApplyReadinessManifest = Read-Manifest "repair-agent-mai
 $repairAgentMainWorktreeApplyRetestRollbackManifest = Read-Manifest "repair-agent-main-worktree-apply-retest-rollback-manifest.json"
 $repairAgentCursorAgentExternalOutputManifest = Read-OptionalManifest "repair-agent-cursor-agent-external-output-manifest.json"
 $repairAgentExternalTaskOutputAcceptanceManifest = Read-Manifest "repair-agent-external-task-output-acceptance-manifest.json"
+$repairAgentPatchResultAnalysisManifest = Read-Manifest "repair-agent-patch-result-analysis-manifest.json"
 $repairAgentExternalPatchPreflightManifest = Read-Manifest "repair-agent-external-patch-preflight-manifest.json"
 $repairAgentExternalPatchPreflightFailureProbeManifest = Read-Manifest "repair-agent-external-patch-preflight-failure-probe-manifest.json"
 $repairAgentRepositoryPatchApplyGuardManifest = Read-Manifest "repair-agent-repository-patch-apply-guard-manifest.json"
@@ -514,6 +515,39 @@ if ($null -ne $repairAgentExternalTaskOutputAcceptanceManifest) {
         "Repair-agent external task output acceptance must prove a task-bound external-output-directory package can drive main worktree apply/retest/rollback and roll back cleanly."
 
     Test-ListedFiles $repairAgentExternalTaskOutputAcceptanceManifest "repair_agent_external_task_output_acceptance"
+}
+
+if ($null -ne $repairAgentPatchResultAnalysisManifest) {
+    Add-ReleaseCheck "repair_agent_patch_result_analysis" `
+        ($repairAgentPatchResultAnalysisManifest.status -eq "PASS" -and
+            $repairAgentPatchResultAnalysisManifest.schemaVersion -eq "aitestpilot.repair_agent_patch_result_analysis.v1" -and
+            -not [string]::IsNullOrWhiteSpace($repairAgentPatchResultAnalysisManifest.taskId) -and
+            -not [string]::IsNullOrWhiteSpace($repairAgentPatchResultAnalysisManifest.bugId) -and
+            -not [string]::IsNullOrWhiteSpace($repairAgentPatchResultAnalysisManifest.priorFixHint) -and
+            [bool]$repairAgentPatchResultAnalysisManifest.priorFixHintMatched -and
+            ([bool]$repairAgentPatchResultAnalysisManifest.patchMentionsPriorFixHint -or [bool]$repairAgentPatchResultAnalysisManifest.summaryMentionsPriorFixHint) -and
+            [bool]$repairAgentPatchResultAnalysisManifest.externalTaskResultAccepted -and
+            [bool]$repairAgentPatchResultAnalysisManifest.postApplyRetestPassed -and
+            -not [bool]$repairAgentPatchResultAnalysisManifest.postApplyBugStillPresent -and
+            [bool]$repairAgentPatchResultAnalysisManifest.rollbackVerified -and
+            -not [bool]$repairAgentPatchResultAnalysisManifest.mainRepositoryPatchPersisted -and
+            $repairAgentPatchResultAnalysisManifest.patchOutputSource -eq "external_agent" -and
+            [bool]$repairAgentPatchResultAnalysisManifest.externalAgentRun -and
+            [bool]$repairAgentPatchResultAnalysisManifest.externalAgentCompletionVerified -and
+            [int]$repairAgentPatchResultAnalysisManifest.blockingReasonCount -eq 0) `
+        "Repair-agent patch result analysis must connect prior fix hints, external patch output, post-apply retest, rollback, and knowledge graph outcome."
+
+    Add-ReleaseCheck "repair_agent_patch_result_analysis_knowledge_graph" `
+        ($null -ne $repairAgentPatchResultAnalysisManifest.knowledgeGraphResult -and
+            $repairAgentPatchResultAnalysisManifest.knowledgeGraphResult.bugId -eq $repairAgentPatchResultAnalysisManifest.bugId -and
+            $repairAgentPatchResultAnalysisManifest.knowledgeGraphResult.priorFixHint -eq $repairAgentPatchResultAnalysisManifest.priorFixHint -and
+            [bool]$repairAgentPatchResultAnalysisManifest.knowledgeGraphResult.priorFixHintMatched -and
+            [int]$repairAgentPatchResultAnalysisManifest.knowledgeGraphResult.matchingNodeCount -ge 1 -and
+            [int]$repairAgentPatchResultAnalysisManifest.knowledgeGraphResult.matchingFixHintNodeCount -ge 1 -and
+            $repairAgentPatchResultAnalysisManifest.knowledgeGraphResult.outcome -eq "RETEST_PASSED_AFTER_PATCH") `
+        "Patch result analysis must feed the matched prior fix hint into a retest-passed knowledge graph outcome."
+
+    Test-ListedFiles $repairAgentPatchResultAnalysisManifest "repair_agent_patch_result_analysis"
 }
 
 if ($null -ne $repairAgentExternalPatchPreflightManifest) {
@@ -1233,6 +1267,7 @@ $sourceManifests = @(
     "repair-agent-main-worktree-apply-readiness-manifest.json",
     "repair-agent-main-worktree-apply-retest-rollback-manifest.json",
     "repair-agent-external-task-output-acceptance-manifest.json",
+    "repair-agent-patch-result-analysis-manifest.json",
     "repair-agent-external-patch-preflight-manifest.json",
     "repair-agent-external-patch-preflight-failure-probe-manifest.json",
     "repair-agent-repository-patch-apply-guard-manifest.json",
