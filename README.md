@@ -227,6 +227,7 @@ For CI, run the full pipeline wrapper:
 
 It runs the full chain and exports stable artifacts to `artifacts\ai-testpilot-release\latest`. See `docs\ci-release-pipeline.md`.
 Production CI that must block until real game APIs are wired can run the same wrapper with `-RequireProductionReplayDriverBound`; in that mode the release gate no longer accepts the sample/unbound package-release boundary.
+The repository also includes `.github\workflows\ai-testpilot-release.yml` for a self-hosted Windows Unity GitHub Actions runner. The workflow exposes production-bound driver, live model smoke, and Cursor Agent output toggles, runs the release pipeline, enforces `pipeline-manifest.json` status, and uploads the release evidence artifact. The release pipeline validates that workflow through `Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1`.
 
 For a real model endpoint, use the generic HTTP/JSON `ModelEndpointDecisionClient` in the core library. It posts the goal, snapshot, previous steps, prior fix hints, allowed action list, and action JSON schema to a configured endpoint, validates the returned action before execution, and can write per-step trace files. See `docs\model-endpoint.md`.
 The Unity package also includes a `ModelEndpointSettings` asset and editor entry under `Tools/Kibernet/AI TestPilot/Create Model Endpoint Settings`; sample-scene validation proves the settings asset, offline request contract, and action parser without calling an external provider.
@@ -322,6 +323,7 @@ Implemented now:
 - Production-bound replay driver failure probe proving sample/unbound evidence fails when real production binding is required.
 - Repo-side release gate that blocks missing driver descriptor, missing negative probe, failed retest, or missing evidence files.
 - CI release pipeline wrapper with stable artifact output under `artifacts\ai-testpilot-release\latest`.
+- GitHub Actions release workflow for self-hosted Windows Unity runners, with release-gated workflow probe and evidence artifact upload.
 - Generic HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.
 - Model endpoint trace probe included in release evidence and enforced by the repo-side release gate.
 - Unity `ModelEndpointSettings` asset, editor creation flow, request-contract builder, response parser, and batch evidence.
@@ -343,5 +345,5 @@ Not implemented yet:
 - Provider-specific retry tuning beyond the current bounded policy-driven wrapper.
 - Lua static analysis and automatic code patching.
 - Prefab mutation and retest orchestration across Unity editor restarts.
-- CI provider-specific release control.
+- Additional CI providers beyond the current GitHub Actions release workflow.
 - Real game-project driver implementation for production login, account preparation, activity, fishing, and other game systems.

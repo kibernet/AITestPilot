@@ -319,6 +319,11 @@ try {
             -MaxRetryBackoffSeconds $LiveModelEndpointMaxRetryBackoffSeconds
     }
 
+    Invoke-PipelineStep "ci_provider_release_workflow_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "release_gate" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseGate.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `

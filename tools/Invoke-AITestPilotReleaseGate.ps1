@@ -159,6 +159,7 @@ $modelEndpointManifest = Read-Manifest "model-endpoint-trace-manifest.json"
 $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provider-diagnostics-manifest.json"
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
+$githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
 
 if ($null -ne $sceneManifest) {
     Add-ReleaseCheck "scene_validation" `
@@ -1140,6 +1141,37 @@ if ($null -ne $liveModelEndpointManifest) {
     }
 }
 
+if ($null -ne $githubActionsReleaseWorkflowProbeManifest) {
+    Add-ReleaseCheck "github_actions_release_workflow_probe" `
+        ($githubActionsReleaseWorkflowProbeManifest.status -eq "PASS" -and
+            $githubActionsReleaseWorkflowProbeManifest.schemaVersion -eq "aitestpilot.github_actions_release_workflow_probe.v1" -and
+            $githubActionsReleaseWorkflowProbeManifest.provider -eq "github_actions" -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.workflowDispatchSupported -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.pushSupported -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.pullRequestSupported -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.selfHostedRunner -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.windowsRunner -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.unityRunner -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.releasePipelineCommandFound -and
+            [int]$githubActionsReleaseWorkflowProbeManifest.requiredInputCount -eq [int]$githubActionsReleaseWorkflowProbeManifest.requiredInputsFoundCount -and
+            [int]$githubActionsReleaseWorkflowProbeManifest.requiredSwitchCount -eq [int]$githubActionsReleaseWorkflowProbeManifest.requiredSwitchesFoundCount -and
+            [int]$githubActionsReleaseWorkflowProbeManifest.secretBindingCount -eq [int]$githubActionsReleaseWorkflowProbeManifest.secretBindingsFoundCount -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.artifactUploadConfigured -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.artifactPathConfigured -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.manifestStatusCheckConfigured -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.ciExitCodeCheckConfigured -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.permissionsReadOnly -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.pwshShellConfigured -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.checkoutConfigured -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.timeoutConfigured -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.concurrencyConfigured -and
+            [bool]$githubActionsReleaseWorkflowProbeManifest.continueOnErrorDisabled -and
+            [int]$githubActionsReleaseWorkflowProbeManifest.failedCheckCount -eq 0) `
+        "GitHub Actions release workflow must expose production-bound switches, run the release pipeline, enforce PASS artifacts, and upload evidence."
+
+    Test-ListedFiles $githubActionsReleaseWorkflowProbeManifest "github_actions_release_workflow_probe"
+}
+
 $allowRelease = $failedReasons.Count -eq 0
 if ($allowRelease) {
     $gateStatus = "PASS"
@@ -1173,7 +1205,8 @@ $sourceManifests = @(
     "model-endpoint-trace-manifest.json",
     "model-endpoint-provider-diagnostics-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
-    "live-model-endpoint-smoke-manifest.json"
+    "live-model-endpoint-smoke-manifest.json",
+    "github-actions-release-workflow-probe-manifest.json"
 )
 
 if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {

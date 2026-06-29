@@ -58,6 +58,7 @@
 - Production driver binding kit generator plus release-gated probe for host-project starter files.
 - Repo-external production driver evidence bundle intake probe for host-project release-evidence directories outside this repository.
 - Production-bound replay driver failure probe plus release-pipeline/release-gate switches that make real project binding a hard CI requirement when requested.
+- GitHub Actions release workflow for self-hosted Windows Unity runners, with workflow-dispatch release controls, evidence artifact upload, and release-gated workflow probe.
 
 ## V0.2 Unity Import Gate
 
@@ -79,7 +80,7 @@
 
 ## V0.6 CI/CD Gate
 
-- Add provider-specific build/test/vision checks.
-- Promote the repo-side release gate into provider-specific CI.
+- Add provider-specific build/test/vision checks beyond the current release workflow.
+- Extend provider-specific CI beyond the current GitHub Actions release workflow if other providers are required.
 - Block release on failing AI exploration, missing driver evidence, or unresolved high-risk graph nodes.
 - Export machine-readable release evidence.

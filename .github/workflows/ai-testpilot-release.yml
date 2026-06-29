@@ -1,0 +1,127 @@
+name: AI TestPilot Release Gate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      unity_path:
+        description: Path to Unity 2021.3 editor on the self-hosted Windows runner.
+        required: false
+        default: F:\Unity\2021_3_45_f2\Editor\Unity.exe
+      game_replay_driver_type:
+        description: Fully qualified IGameActionReplayDriver type for production-bound runs.
+        required: false
+        default: Kibernet.AITestPilot.Unity.Editor.SampleGameActionReplayDriver
+      require_production_replay_driver_bound:
+        description: Block unless production replay driver evidence is BOUND.
+        required: false
+        type: boolean
+        default: false
+      require_live_model_endpoint_smoke:
+        description: Block unless a configured live model endpoint smoke passes.
+        required: false
+        type: boolean
+        default: false
+      allow_missing_model_api_key:
+        description: Allow unauthenticated local OpenAI-compatible gateways during required live smoke.
+        required: false
+        type: boolean
+        default: false
+      use_cursor_agent_external_task_output:
+        description: Replace deterministic repair-agent output fixture with headless Cursor Agent output.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-testpilot-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-gate:
+    name: Release gate
+    runs-on: [self-hosted, Windows, Unity]
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      AI_TESTPILOT_UNITY_PATH: ${{ github.event_name == 'workflow_dispatch' && inputs.unity_path || 'F:\Unity\2021_3_45_f2\Editor\Unity.exe' }}
+      AI_TESTPILOT_GAME_REPLAY_DRIVER_TYPE: ${{ github.event_name == 'workflow_dispatch' && inputs.game_replay_driver_type || 'Kibernet.AITestPilot.Unity.Editor.SampleGameActionReplayDriver' }}
+      AI_TESTPILOT_REQUIRE_PRODUCTION_BOUND: ${{ github.event_name == 'workflow_dispatch' && inputs.require_production_replay_driver_bound || false }}
+      AI_TESTPILOT_REQUIRE_LIVE_MODEL_ENDPOINT_SMOKE: ${{ github.event_name == 'workflow_dispatch' && inputs.require_live_model_endpoint_smoke || false }}
+      AI_TESTPILOT_ALLOW_MISSING_MODEL_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_missing_model_api_key || false }}
+      AI_TESTPILOT_USE_CURSOR_AGENT_EXTERNAL_TASK_OUTPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.use_cursor_agent_external_task_output || false }}
+      AITESTPILOT_LIVE_MODEL_ENDPOINT: ${{ secrets.AITESTPILOT_LIVE_MODEL_ENDPOINT }}
+      AI_TESTPILOT_MODEL_API_KEY: ${{ secrets.AI_TESTPILOT_MODEL_API_KEY }}
+      AITESTPILOT_LIVE_MODEL: ${{ secrets.AITESTPILOT_LIVE_MODEL }}
+      AITESTPILOT_LIVE_MODEL_REQUEST_FORMAT: ${{ vars.AITESTPILOT_LIVE_MODEL_REQUEST_FORMAT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify runner prerequisites
+        run: |
+          if (-not (Test-Path $env:AI_TESTPILOT_UNITY_PATH)) {
+            throw "Unity executable not found: $env:AI_TESTPILOT_UNITY_PATH"
+          }
+
+          dotnet --info
+
+      - name: Run release pipeline
+        run: |
+          function Test-Flag {
+            param([string]$Value)
+            return $Value -ieq "true"
+          }
+
+          $pipelineArgs = @(
+            "-UnityPath", $env:AI_TESTPILOT_UNITY_PATH,
+            "-GameReplayDriverType", $env:AI_TESTPILOT_GAME_REPLAY_DRIVER_TYPE,
+            "-ArtifactDir", "artifacts\ai-testpilot-release\latest"
+          )
+
+          if (Test-Flag $env:AI_TESTPILOT_REQUIRE_PRODUCTION_BOUND) {
+            $pipelineArgs += "-RequireProductionReplayDriverBound"
+          }
+
+          if (Test-Flag $env:AI_TESTPILOT_REQUIRE_LIVE_MODEL_ENDPOINT_SMOKE) {
+            $pipelineArgs += "-RequireLiveModelEndpointSmoke"
+          }
+
+          if (Test-Flag $env:AI_TESTPILOT_ALLOW_MISSING_MODEL_API_KEY) {
+            $pipelineArgs += "-AllowMissingModelApiKey"
+          }
+
+          if (Test-Flag $env:AI_TESTPILOT_USE_CURSOR_AGENT_EXTERNAL_TASK_OUTPUT) {
+            $pipelineArgs += "-UseCursorAgentExternalTaskOutput"
+          }
+
+          & .\tools\Invoke-AITestPilotReleasePipeline.ps1 @pipelineArgs
+
+      - name: Enforce release manifest
+        run: |
+          $manifestPath = "artifacts\ai-testpilot-release\latest\pipeline-manifest.json"
+          if (-not (Test-Path $manifestPath)) {
+            throw "Pipeline manifest is missing: $manifestPath"
+          }
+
+          $manifest = Get-Content -Path $manifestPath -Raw | ConvertFrom-Json
+          if ($manifest.status -ne "PASS" -or [int]$manifest.ciExitCode -ne 0) {
+            throw "Release pipeline did not pass. status=$($manifest.status) ciExitCode=$($manifest.ciExitCode)"
+          }
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-testpilot-release-evidence
+          path: artifacts\ai-testpilot-release\latest
+          if-no-files-found: error
