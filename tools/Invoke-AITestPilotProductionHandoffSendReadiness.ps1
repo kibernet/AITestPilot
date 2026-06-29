@@ -270,6 +270,14 @@ $sendScriptLines = @(
     "    if (`$Value.Trim() -like 'replace-with-*-email') { return `$false }",
     "    return [bool](`$Value.Trim() -match '^[^@\s]+@[^@\s]+\.[^@\s]+$')",
     "}",
+    "function Read-JsonOutput {",
+    "    param([string[]]`$Lines)",
+    "    `$text = `$Lines -join [Environment]::NewLine",
+    "    `$start = `$text.IndexOf('{')",
+    "    `$end = `$text.LastIndexOf('}')",
+    "    if (`$start -lt 0 -or `$end -lt `$start) { throw 'Command output did not contain a JSON object.' }",
+    "    return `$text.Substring(`$start, `$end - `$start + 1) | ConvertFrom-Json",
+    "}",
     "`$queue = Read-JsonFile (Join-Path `$EvidenceBundleDir 'production-handoff-send/production-handoff-send-queue.json')",
     "`$contacts = Read-JsonFile `$ContactRosterPath",
     "`$tokens = @{}",
@@ -286,7 +294,7 @@ $sendScriptLines = @(
     "}",
     "",
     "`$authStatusRaw = & agently-cli auth status",
-    "`$authStatus = `$authStatusRaw | ConvertFrom-Json",
+    "`$authStatus = Read-JsonOutput `$authStatusRaw",
     "if (-not [bool]`$authStatus.data.logged_in) { throw 'agently-cli is not logged in. Run agently-cli auth login before preparing owner packet sends.' }",
     "& agently-cli +me | Out-Null",
     "",
@@ -338,6 +346,8 @@ $readmeLines | Set-Content -Path $readmePath -Encoding UTF8
 
 $sendScriptText = Get-Content -Path $sendScriptPath -Encoding UTF8 -Raw
 $sendScriptContentValidated = $sendScriptText.Contains("agently-cli auth status") -and
+    $sendScriptText.Contains("Read-JsonOutput") -and
+    $sendScriptText.Contains("Command output did not contain a JSON object.") -and
     $sendScriptText.Contains("agently-cli +me") -and
     $sendScriptText.Contains("message', '+send") -and
     $sendScriptText.Contains("--confirmation-token") -and

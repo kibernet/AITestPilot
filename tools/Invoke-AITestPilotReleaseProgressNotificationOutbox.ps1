@@ -322,7 +322,11 @@ $sendHelperLines = @(
     "",
     "function Read-JsonOutput {",
     "    param([string[]]`$Lines)",
-    "    return (`$Lines -join [Environment]::NewLine) | ConvertFrom-Json",
+    "    `$text = `$Lines -join [Environment]::NewLine",
+    "    `$start = `$text.IndexOf('{')",
+    "    `$end = `$text.LastIndexOf('}')",
+    "    if (`$start -lt 0 -or `$end -lt `$start) { throw 'Command output did not contain a JSON object.' }",
+    "    return `$text.Substring(`$start, `$end - `$start + 1) | ConvertFrom-Json",
     "}",
     "",
     "`$authStatusRaw = & agently-cli auth status",
@@ -441,6 +445,8 @@ $emailDraftContentValidated = $emailDraftContent.Contains($ProgressRecipient) -a
     $emailDraftContent.Contains("prepared but not sent") -and
     $noObjectLeakage
 $sendHelperContentValidated = $sendHelperContent.Contains("agently-cli auth status") -and
+    $sendHelperContent.Contains("Read-JsonOutput") -and
+    $sendHelperContent.Contains("Command output did not contain a JSON object.") -and
     $sendHelperContent.Contains("message', '+send") -and
     $sendHelperContent.Contains("--confirmation-token") -and
     $sendHelperContent.Contains("-PrepareConfirmation") -and

@@ -221,6 +221,7 @@ $productionHandoffSendDryRunProbeManifest = Read-Manifest "production-handoff-se
 $productionHandoffOwnerResponseBundleProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-probe-manifest.json"
 $productionHandoffOwnerResponseBundleKitManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-manifest.json"
 $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
+$productionHandoffMailHelperAuthStatusProbeManifest = Read-Manifest "production-handoff-mail-helper-auth-status-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2263,6 +2264,35 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
     Test-ListedFiles $releaseProgressNotificationOutboxManifest "release_progress_notification_outbox"
 }
 
+if ($null -ne $productionHandoffMailHelperAuthStatusProbeManifest) {
+    Add-ReleaseCheck "production_handoff_mail_helper_auth_status_probe" `
+        ($productionHandoffMailHelperAuthStatusProbeManifest.status -eq "PASS" -and
+            $productionHandoffMailHelperAuthStatusProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_mail_helper_auth_status_probe.v1" -and
+            [bool]$productionHandoffMailHelperAuthStatusProbeManifest.fakeAgentlyCliGenerated -and
+            [bool]$productionHandoffMailHelperAuthStatusProbeManifest.fakeAgentlyCliReturnsTipOutput -and
+            [bool]$productionHandoffMailHelperAuthStatusProbeManifest.ownerPacketHelperAuthBoundaryPassed -and
+            [bool]$productionHandoffMailHelperAuthStatusProbeManifest.progressNotificationHelperAuthBoundaryPassed -and
+            [int]$productionHandoffMailHelperAuthStatusProbeManifest.ownerPacketHelperAuthStatusCallCount -eq 1 -and
+            [int]$productionHandoffMailHelperAuthStatusProbeManifest.progressNotificationHelperAuthStatusCallCount -eq 1 -and
+            [int]$productionHandoffMailHelperAuthStatusProbeManifest.ownerPacketHelperMessageSendCallCount -eq 0 -and
+            [int]$productionHandoffMailHelperAuthStatusProbeManifest.progressNotificationHelperMessageSendCallCount -eq 0 -and
+            [int]$productionHandoffMailHelperAuthStatusProbeManifest.ownerPacketHelperMeCallCount -eq 0 -and
+            [int]$productionHandoffMailHelperAuthStatusProbeManifest.progressNotificationHelperMeCallCount -eq 0 -and
+            -not [bool]$productionHandoffMailHelperAuthStatusProbeManifest.confirmationTokenCreated -and
+            -not [bool]$productionHandoffMailHelperAuthStatusProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffMailHelperAuthStatusProbeManifest.emailSent -and
+            -not [bool]$productionHandoffMailHelperAuthStatusProbeManifest.mailAuthorizationCheckedByPipeline -and
+            -not [bool]$productionHandoffMailHelperAuthStatusProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffMailHelperAuthStatusProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffMailHelperAuthStatusProbeManifest.fixtureEvidencePromoted -and
+            $productionHandoffMailHelperAuthStatusProbeManifest.productionOutputBoundary -eq "mail_helper_auth_status_probe_only" -and
+            [int]$productionHandoffMailHelperAuthStatusProbeManifest.checkCount -eq 5 -and
+            [int]$productionHandoffMailHelperAuthStatusProbeManifest.failedCheckCount -eq 0) `
+        "Production handoff mail helper auth-status probe must prove generated mail helpers parse unauthenticated agently-cli JSON-plus-tip output and stop before +me, confirmation tokens, or send calls."
+
+    Test-ListedFiles $productionHandoffMailHelperAuthStatusProbeManifest "production_handoff_mail_helper_auth_status_probe"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2486,6 +2516,9 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitRequiredFileCount -gt 0 -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperAuthStatusProbeAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperOwnerBoundaryPassed -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperProgressBoundaryPassed -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2559,6 +2592,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-response-bundle-probe-manifest.json",
         "production-handoff-owner-response-bundle-kit-manifest.json",
         "release-progress-notification-outbox-manifest.json",
+        "production-handoff-mail-helper-auth-status-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
