@@ -150,6 +150,14 @@ That type must implement `IGameActionReplayDriver`; if it also implements `IGame
 For the hooks-based production adapter path, see `docs\integration\production-driver.md` and `unity\com.kibernet.ai-testpilot\Samples~\ProductionReplayDriver\ProductionReplayDriverTemplate.cs`.
 Scene validation also creates `Assets/AITestPilotGenerated/ProductionReplayIntegrationPlan.asset` and exports `production-replay-integration-checklist.json` plus `production-replay-integration-checklist.md` into the evidence bundle. That checklist is intentionally marked `TEMPLATE_READY` with `realProjectBound=false`; it is a handoff artifact for wiring real game APIs, not proof that a production game driver has already been implemented.
 
+To prove the package can distinguish template, invalid, and bound integration-plan states:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionReplayIntegrationContractProbe.ps1
+```
+
+That probe generates a contract fixture only: `TEMPLATE_READY` for the unbound template, `INVALID` when `realProjectBound` is flipped without bound hooks, and `BOUND` when all required hooks are marked bound with complete metadata. It records `realProjectApiCallsProven=false`; real production release still requires targeted retest evidence with a non-sample driver.
+
 To write a machine-readable production driver readiness boundary:
 
 ```powershell
@@ -287,6 +295,7 @@ Implemented now:
 - Runtime game replay driver registry and batch retest driver type selection.
 - Hooks-based production driver adapter and copyable integration template.
 - Production replay integration plan asset and release-evidence checklist for real game driver handoff.
+- Production replay integration contract probe for `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states.
 - Driver capability/configuration descriptor recorded in repair retest evidence.
 - Negative replay-driver failure probe with driver, handler, action, target, and step diagnostics.
 - Production replay driver readiness manifest separating package release readiness from real-project driver binding readiness.

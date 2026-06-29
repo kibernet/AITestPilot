@@ -144,6 +144,7 @@ $repairAgentPatchApplyRetestManifest = Read-Manifest "repair-agent-patch-apply-r
 $repairRetestManifest = Read-Manifest "repair-retest-manifest.json"
 $failureProbeManifest = Read-Manifest "repair-driver-failure-manifest.json"
 $profileImportManifest = Read-Manifest "replay-profile-import-manifest.json"
+$productionReplayIntegrationContractProbeManifest = Read-Manifest "production-replay-integration-contract-probe-manifest.json"
 $productionReplayDriverReadinessManifest = Read-Manifest "production-replay-driver-readiness-manifest.json"
 if ($RequireProductionReplayDriverBound) {
     $productionReplayDriverBoundFailureProbeManifest = $null
@@ -748,10 +749,32 @@ if ($null -ne $profileImportManifest) {
     Test-ListedFiles $profileImportManifest "replay_profile_import"
 }
 
+if ($null -ne $productionReplayIntegrationContractProbeManifest) {
+    Add-ReleaseCheck "production_replay_integration_contract_probe" `
+        ($productionReplayIntegrationContractProbeManifest.status -eq "PASS" -and
+            $productionReplayIntegrationContractProbeManifest.schemaVersion -eq "aitestpilot.production_replay_integration_contract_probe.v1" -and
+            [bool]$productionReplayIntegrationContractProbeManifest.fixtureGenerated -and
+            -not [bool]$productionReplayIntegrationContractProbeManifest.realProjectApiCallsProven -and
+            $productionReplayIntegrationContractProbeManifest.templateStatus -eq "TEMPLATE_READY" -and
+            $productionReplayIntegrationContractProbeManifest.invalidFlipStatus -eq "INVALID" -and
+            $productionReplayIntegrationContractProbeManifest.boundStatus -eq "BOUND" -and
+            [bool]$productionReplayIntegrationContractProbeManifest.boundRealProjectBound -and
+            [int]$productionReplayIntegrationContractProbeManifest.boundRequiredHookCount -eq 5 -and
+            [int]$productionReplayIntegrationContractProbeManifest.boundRequiredHookBoundCount -eq 5 -and
+            [int]$productionReplayIntegrationContractProbeManifest.boundUnresolvedRequiredHookCount -eq 0 -and
+            [bool]$productionReplayIntegrationContractProbeManifest.boundRequiredHandlerKeysPresent -and
+            [bool]$productionReplayIntegrationContractProbeManifest.boundAllRequiredHooksBound -and
+            [bool]$productionReplayIntegrationContractProbeManifest.boundRequiredBindingMetadataComplete) `
+        "Production replay integration contract probe must prove template, invalid flip, and bound checklist states without claiming real game API calls."
+}
+
 if ($null -ne $productionReplayDriverReadinessManifest) {
     $productionDriverReady = [bool]$productionReplayDriverReadinessManifest.readyForProductionDriverRelease -and
+        $productionReplayDriverReadinessManifest.integrationChecklistStatus -eq "BOUND" -and
         [bool]$productionReplayDriverReadinessManifest.realProjectBound -and
         [int]$productionReplayDriverReadinessManifest.unresolvedRequiredHookCount -eq 0 -and
+        [bool]$productionReplayDriverReadinessManifest.productionChecklistAllRequiredHooksBound -and
+        [bool]$productionReplayDriverReadinessManifest.productionChecklistRequiredBindingMetadataComplete -and
         -not [bool]$productionReplayDriverReadinessManifest.sampleGameReplayDriverUsed -and
         [bool]$productionReplayDriverReadinessManifest.externalProductionDriverSelected -and
         [bool]$productionReplayDriverReadinessManifest.retestPassed -and
@@ -764,6 +787,7 @@ if ($null -ne $productionReplayDriverReadinessManifest) {
         [int]$productionReplayDriverReadinessManifest.blockingReasonCount -eq 0
 
     $productionDriverExplicitlyBlocked = -not [bool]$productionReplayDriverReadinessManifest.readyForProductionDriverRelease -and
+        $productionReplayDriverReadinessManifest.integrationChecklistStatus -eq "TEMPLATE_READY" -and
         [bool]$productionReplayDriverReadinessManifest.packageReleaseAllowedWithoutProductionBinding -and
         -not [bool]$productionReplayDriverReadinessManifest.productionBindingRequiredForPackageRelease -and
         [int]$productionReplayDriverReadinessManifest.blockingReasonCount -ge 4 -and
@@ -1058,6 +1082,7 @@ $sourceManifests = @(
     "repair-retest-manifest.json",
     "repair-driver-failure-manifest.json",
     "replay-profile-import-manifest.json",
+    "production-replay-integration-contract-probe-manifest.json",
     "production-replay-driver-readiness-manifest.json",
     "model-endpoint-trace-manifest.json",
     "model-endpoint-provider-diagnostics-manifest.json",

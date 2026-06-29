@@ -66,6 +66,15 @@ Batch sample-scene validation creates the same template automatically and export
 Those files must show `status=TEMPLATE_READY`, `realProjectBound=false`, five required hooks, zero bound hooks, and five unresolved hooks. This is deliberate: the checklist proves that the handoff surface is complete and that the repo is not claiming real production APIs are already bound.
 
 Flip `realProjectBound=true` only after each required hook calls the real project API and verifies the resulting game state.
+When all required hooks are bound with complete owner, API surface, target, and verification-signal metadata, the exported checklist validates as `BOUND`. A plan that only flips `realProjectBound=true` while hooks remain unbound validates as `INVALID`.
+
+To prove the checklist validator distinguishes those states without claiming real game API calls:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionReplayIntegrationContractProbe.ps1
+```
+
+That probe writes `production-replay-integration-contract-probe-manifest.json` and records `realProjectApiCallsProven=false`.
 
 ## Required Hooks
 

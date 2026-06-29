@@ -11,7 +11,7 @@ Install the package from `unity/com.kibernet.ai-testpilot`.
 7. Create `ProductionReplayIntegrationPlan` from `Tools/Kibernet/AI TestPilot/Create Production Replay Integration Plan` when planning real game driver hook ownership.
 
 The first package version intentionally ships a deterministic rule client so the SDK can be validated without a paid AI endpoint. `ModelEndpointSettings` and `ModelEndpointDecisionClient` define the Unity-side model gateway contract, including native JSON and OpenAI-compatible chat-completions request formats plus prior fix hints, but live requests are disabled by default and API keys should be provided through environment variables.
-The production replay integration plan is a checklist artifact: generated validation evidence marks it `TEMPLATE_READY` and `realProjectBound=false` until the host game implements the required account, login, scene, reward, and fishing hooks against real project APIs.
+The production replay integration plan is a checklist artifact: generated validation evidence marks it `TEMPLATE_READY` and `realProjectBound=false` until the host game implements the required account, login, scene, reward, and fishing hooks against real project APIs. A real project checklist validates as `BOUND` only when all required hooks are bound with complete metadata; simply flipping `realProjectBound=true` remains `INVALID`.
 Batch validation also proves `DecisionLoopRunner` can execute a multi-step sample goal and stop at the configured max-step boundary.
 Batch validation also persists the source bug package as JSON/Markdown evidence before generating the repair task.
 Batch validation also persists the bug knowledge graph as JSON/Markdown evidence with module and failure-type risk ranking.

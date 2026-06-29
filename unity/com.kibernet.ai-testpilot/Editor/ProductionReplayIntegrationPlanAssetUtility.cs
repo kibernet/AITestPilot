@@ -11,6 +11,9 @@ namespace Kibernet.AITestPilot.Unity.Editor
     public static class ProductionReplayIntegrationPlanAssetUtility
     {
         public const string DefaultPlanAssetPath = "Assets/AITestPilotGenerated/ProductionReplayIntegrationPlan.asset";
+        public const string TemplateReadyStatus = "TEMPLATE_READY";
+        public const string BoundStatus = "BOUND";
+        public const string InvalidStatus = "INVALID";
 
         [MenuItem("Tools/Kibernet/AI TestPilot/Create Production Replay Integration Plan")]
         public static void CreateProductionReplayIntegrationPlanMenu()
@@ -52,6 +55,11 @@ namespace Kibernet.AITestPilot.Unity.Editor
 
         public static ProductionReplayIntegrationEvidence ValidateTemplatePlan(ProductionReplayIntegrationPlan plan)
         {
+            return ValidatePlan(plan);
+        }
+
+        public static ProductionReplayIntegrationEvidence ValidatePlan(ProductionReplayIntegrationPlan plan)
+        {
             if (plan == null)
             {
                 throw new ArgumentNullException("plan");
@@ -61,6 +69,7 @@ namespace Kibernet.AITestPilot.Unity.Editor
             var boundRequiredHookCount = 0;
             var unresolved = new List<string>();
             var handlerKeys = new List<string>();
+            var requiredBindingMetadataComplete = true;
 
             if (plan.hookBindings != null)
             {
@@ -83,6 +92,11 @@ namespace Kibernet.AITestPilot.Unity.Editor
                     }
 
                     requiredHookCount++;
+                    if (!HasCompleteRequiredBindingMetadata(binding))
+                    {
+                        requiredBindingMetadataComplete = false;
+                    }
+
                     if (binding.boundToRealGameApi)
                     {
                         boundRequiredHookCount++;
@@ -96,20 +110,37 @@ namespace Kibernet.AITestPilot.Unity.Editor
 
             var requiredHandlerKeysPresent = ContainsAllStandardHandlerKeys(handlerKeys);
             var unresolvedRequiredHookCount = requiredHookCount - boundRequiredHookCount;
-            var templateReady =
+            var basePlanComplete =
                 !string.IsNullOrWhiteSpace(plan.driverTypeName) &&
                 !string.IsNullOrWhiteSpace(plan.driverId) &&
                 !string.IsNullOrWhiteSpace(plan.qaAccountEnvironmentVariable) &&
                 !string.IsNullOrWhiteSpace(plan.serverEnvironmentVariable) &&
                 requiredHookCount == 5 &&
-                requiredHandlerKeysPresent &&
+                requiredHandlerKeysPresent;
+            var templateReady =
+                basePlanComplete &&
                 unresolvedRequiredHookCount == 5 &&
                 !plan.realProjectBound;
+            var boundReady =
+                basePlanComplete &&
+                plan.realProjectBound &&
+                boundRequiredHookCount == requiredHookCount &&
+                unresolvedRequiredHookCount == 0 &&
+                requiredBindingMetadataComplete;
+            var status = InvalidStatus;
+            if (boundReady)
+            {
+                status = BoundStatus;
+            }
+            else if (templateReady)
+            {
+                status = TemplateReadyStatus;
+            }
 
             return new ProductionReplayIntegrationEvidence
             {
                 schemaVersion = plan.schemaVersion,
-                status = templateReady ? "TEMPLATE_READY" : "INVALID",
+                status = status,
                 generatedAtUtc = DateTime.UtcNow.ToString("O"),
                 planAssetPath = AssetDatabase.GetAssetPath(plan),
                 driverTypeName = plan.driverTypeName,
@@ -121,6 +152,8 @@ namespace Kibernet.AITestPilot.Unity.Editor
                 boundRequiredHookCount = boundRequiredHookCount,
                 unresolvedRequiredHookCount = unresolvedRequiredHookCount,
                 requiredHandlerKeysPresent = requiredHandlerKeysPresent,
+                allRequiredHooksBound = requiredHookCount > 0 && boundRequiredHookCount == requiredHookCount,
+                requiredBindingMetadataComplete = requiredBindingMetadataComplete,
                 supportedHandlerKeys = handlerKeys,
                 unresolvedHookTargets = unresolved,
                 hookBindings = plan.hookBindings == null
@@ -158,6 +191,7 @@ namespace Kibernet.AITestPilot.Unity.Editor
             builder.AppendLine("- Required hooks: `" + evidence.requiredHookCount + "`");
             builder.AppendLine("- Bound required hooks: `" + evidence.boundRequiredHookCount + "`");
             builder.AppendLine("- Unresolved required hooks: `" + evidence.unresolvedRequiredHookCount + "`");
+            builder.AppendLine("- Required binding metadata complete: `" + evidence.requiredBindingMetadataComplete + "`");
             builder.AppendLine();
             builder.AppendLine("## Required Environment");
             builder.AppendLine();
@@ -263,6 +297,17 @@ namespace Kibernet.AITestPilot.Unity.Editor
             return true;
         }
 
+        private static bool HasCompleteRequiredBindingMetadata(ProductionReplayHookBinding binding)
+        {
+            return binding != null &&
+                !string.IsNullOrWhiteSpace(binding.action) &&
+                !string.IsNullOrWhiteSpace(binding.handlerKey) &&
+                !string.IsNullOrWhiteSpace(binding.exampleTarget) &&
+                !string.IsNullOrWhiteSpace(binding.gameApiOwner) &&
+                !string.IsNullOrWhiteSpace(binding.gameApiSurface) &&
+                !string.IsNullOrWhiteSpace(binding.verificationSignal);
+        }
+
         private static string NormalizeUnityAssetPath(string assetPath)
         {
             if (string.IsNullOrWhiteSpace(assetPath))
@@ -333,6 +378,8 @@ namespace Kibernet.AITestPilot.Unity.Editor
         public int boundRequiredHookCount;
         public int unresolvedRequiredHookCount;
         public bool requiredHandlerKeysPresent;
+        public bool allRequiredHooksBound;
+        public bool requiredBindingMetadataComplete;
         public List<string> supportedHandlerKeys;
         public List<string> unresolvedHookTargets;
         public List<ProductionReplayHookBinding> hookBindings;

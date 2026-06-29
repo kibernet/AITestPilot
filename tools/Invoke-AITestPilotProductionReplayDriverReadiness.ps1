@@ -78,6 +78,20 @@ function Add-BlockingReason {
     }
 }
 
+function Get-OptionalBool {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [bool]$DefaultValue
+    )
+
+    if ($null -ne $Object -and @($Object.PSObject.Properties.Name) -contains $Name) {
+        return [bool]$Object.$Name
+    }
+
+    return $DefaultValue
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $manifestPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
 
@@ -92,15 +106,21 @@ $replayProfileImport = Read-RequiredJson "replay-profile-import-manifest.json"
 
 $blockingReasons = @()
 
+$integrationChecklistStatus = [string]$productionChecklist.status
 $realProjectBound = [bool]$productionChecklist.realProjectBound
 $requiredHookCount = [int]$productionChecklist.requiredHookCount
 $boundRequiredHookCount = [int]$productionChecklist.boundRequiredHookCount
 $unresolvedRequiredHookCount = [int]$productionChecklist.unresolvedRequiredHookCount
 $checklistHandlerKeys = @($productionChecklist.supportedHandlerKeys)
 $checklistHasStandardHandlerKeys = Test-ContainsAll $checklistHandlerKeys $requiredHandlerKeys
+$checklistAllRequiredHooksBound = Get-OptionalBool $productionChecklist "allRequiredHooksBound" $false
+$checklistRequiredBindingMetadataComplete = Get-OptionalBool $productionChecklist "requiredBindingMetadataComplete" $false
 
 if (-not $realProjectBound) {
     Add-BlockingReason "production_replay_integration_not_bound"
+}
+elseif ($integrationChecklistStatus -ne "BOUND") {
+    Add-BlockingReason "production_replay_integration_not_bound_status"
 }
 
 if ($requiredHookCount -lt $requiredHandlerKeys.Count) {
@@ -117,6 +137,14 @@ if ($unresolvedRequiredHookCount -ne 0) {
 
 if (-not $checklistHasStandardHandlerKeys) {
     Add-BlockingReason "production_checklist_missing_standard_handler_keys"
+}
+
+if ($realProjectBound -and -not $checklistAllRequiredHooksBound) {
+    Add-BlockingReason "production_checklist_not_all_required_hooks_bound"
+}
+
+if ($realProjectBound -and -not $checklistRequiredBindingMetadataComplete) {
+    Add-BlockingReason "production_checklist_binding_metadata_incomplete"
 }
 
 $descriptor = $repairRetest.gameReplayDriverDescriptor
@@ -224,12 +252,14 @@ $manifest = [ordered]@{
     requireProductionBound = [bool]$RequireProductionBound
     blockingReasonCount = [int]$blockingReasons.Count
     blockingReasons = @($blockingReasons)
-    integrationChecklistStatus = $productionChecklist.status
+    integrationChecklistStatus = $integrationChecklistStatus
     realProjectBound = [bool]$realProjectBound
     requiredHookCount = [int]$requiredHookCount
     boundRequiredHookCount = [int]$boundRequiredHookCount
     unresolvedRequiredHookCount = [int]$unresolvedRequiredHookCount
     productionChecklistHasStandardHandlerKeys = [bool]$checklistHasStandardHandlerKeys
+    productionChecklistAllRequiredHooksBound = [bool]$checklistAllRequiredHooksBound
+    productionChecklistRequiredBindingMetadataComplete = [bool]$checklistRequiredBindingMetadataComplete
     repairRetestStatus = $repairRetest.status
     retestPassed = [bool]$retestPassed
     gameReplayDriverId = $driverId
