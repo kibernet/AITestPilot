@@ -180,7 +180,10 @@ function Test-TransientCursorAgentFailure {
 
     $text = @($Output) -join "`n"
     foreach ($pattern in @(
+        "Connection lost",
         "Client network socket disconnected",
+        "Retry attempt",
+        "Aborted",
         "ECONNRESET",
         "ETIMEDOUT",
         "EAI_AGAIN",
@@ -204,6 +207,16 @@ function Clear-CursorAgentOutputFiles {
     }
 }
 
+function Test-CursorAgentRequiredOutputsPresent {
+    foreach ($path in @($externalRunPath, $externalPatchPath, $externalSummaryPath)) {
+        if (-not (Test-Path $path)) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
 $cursorAgentRequestedModel = $CursorAgentModel
 $cursorAgentModelUsed = $CursorAgentModel
 $cursorAgentRetriedWithoutModel = $false
@@ -211,6 +224,7 @@ $cursorAgentOutput = @()
 $cursorAgentExitCode = 1
 $cursorAgentAttemptCount = 0
 $cursorAgentTransientRetryCount = 0
+$cursorAgentOutputContractRetryCount = 0
 $cursorAgentOutputLog = @()
 
 while ($cursorAgentAttemptCount -lt $CursorAgentMaxAttempts) {
@@ -223,6 +237,17 @@ while ($cursorAgentAttemptCount -lt $CursorAgentMaxAttempts) {
     ) + $attemptOutput
 
     if ($cursorAgentExitCode -eq 0) {
+        if (Test-CursorAgentRequiredOutputsPresent) {
+            break
+        }
+
+        $cursorAgentOutputLog += "Cursor Agent attempt $cursorAgentAttemptCount exited 0 but did not produce the required three-file output contract."
+        if ($cursorAgentAttemptCount -lt $CursorAgentMaxAttempts) {
+            $cursorAgentOutputContractRetryCount++
+            Start-Sleep -Seconds $CursorAgentRetryDelaySeconds
+            continue
+        }
+
         break
     }
 
@@ -349,6 +374,7 @@ $manifest = [ordered]@{
     cursorAgentRetriedWithoutModel = [bool]$cursorAgentRetriedWithoutModel
     cursorAgentAttemptCount = [int]$cursorAgentAttemptCount
     cursorAgentTransientRetryCount = [int]$cursorAgentTransientRetryCount
+    cursorAgentOutputContractRetryCount = [int]$cursorAgentOutputContractRetryCount
     cursorAgentMaxAttempts = [int]$CursorAgentMaxAttempts
     cursorAgentExitCode = [int]$cursorAgentExitCode
     outputDirectory = $outputPath

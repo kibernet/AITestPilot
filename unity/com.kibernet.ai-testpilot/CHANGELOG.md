@@ -50,3 +50,4 @@
 - Added bounded retry handling for transient headless Cursor Agent network/socket failures.
 - Added a production driver binding kit generator and release-gated probe for host-project replay driver starter files.
 - Accepted Markdown-escaped retest commands in the main worktree apply/retest/rollback probe file check.
+- Retried headless Cursor Agent runs that exit successfully but miss required output files.
