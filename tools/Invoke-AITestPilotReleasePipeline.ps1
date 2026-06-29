@@ -7,6 +7,8 @@ param(
     [string]$ReleaseGateFailureProbeDir,
     [string]$CursorAgentOutputDir,
     [string]$CursorAgentModel = "",
+    [int]$CursorAgentMaxAttempts = 3,
+    [int]$CursorAgentRetryDelaySeconds = 2,
     [switch]$UseCursorAgentExternalTaskOutput,
     [switch]$RequireProductionReplayDriverBound,
     [switch]$RequireLiveModelEndpointSmoke,
@@ -182,7 +184,9 @@ try {
             & (Join-Path $repoRoot "tools\Invoke-AITestPilotCursorAgentExternalTaskOutput.ps1") `
                 -EvidenceBundleDir $EvidenceBundleDir `
                 -OutputDir $CursorAgentOutputDir `
-                -CursorAgentModel $CursorAgentModel
+                -CursorAgentModel $CursorAgentModel `
+                -CursorAgentMaxAttempts $CursorAgentMaxAttempts `
+                -CursorAgentRetryDelaySeconds $CursorAgentRetryDelaySeconds
         }
     }
 

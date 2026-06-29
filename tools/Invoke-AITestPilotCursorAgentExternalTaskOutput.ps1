@@ -4,13 +4,23 @@ param(
     [string]$OutputDir,
     [string]$ManifestPath,
     [string]$CursorAgentCommand = "cursor-agent",
-    [string]$CursorAgentModel = ""
+    [string]$CursorAgentModel = "",
+    [int]$CursorAgentMaxAttempts = 3,
+    [int]$CursorAgentRetryDelaySeconds = 2
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+
+if ($CursorAgentMaxAttempts -lt 1) {
+    $CursorAgentMaxAttempts = 1
+}
+
+if ($CursorAgentRetryDelaySeconds -lt 0) {
+    $CursorAgentRetryDelaySeconds = 0
+}
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -163,29 +173,78 @@ function Invoke-CursorAgentPrint {
     }
 }
 
+function Test-TransientCursorAgentFailure {
+    param(
+        [object[]]$Output
+    )
+
+    $text = @($Output) -join "`n"
+    foreach ($pattern in @(
+        "Client network socket disconnected",
+        "ECONNRESET",
+        "ETIMEDOUT",
+        "EAI_AGAIN",
+        "ENOTFOUND",
+        "socket hang up",
+        "TLS connection"
+    )) {
+        if ($text -match [regex]::Escape($pattern)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Clear-CursorAgentOutputFiles {
+    foreach ($path in @($externalRunPath, $externalPatchPath, $externalSummaryPath)) {
+        if (Test-Path $path) {
+            Remove-Item -LiteralPath $path -Force
+        }
+    }
+}
+
 $cursorAgentRequestedModel = $CursorAgentModel
 $cursorAgentModelUsed = $CursorAgentModel
 $cursorAgentRetriedWithoutModel = $false
 $cursorAgentOutput = @()
 $cursorAgentExitCode = 1
+$cursorAgentAttemptCount = 0
+$cursorAgentTransientRetryCount = 0
+$cursorAgentOutputLog = @()
 
-Invoke-CursorAgentPrint -Model $CursorAgentModel
+while ($cursorAgentAttemptCount -lt $CursorAgentMaxAttempts) {
+    $cursorAgentAttemptCount++
+    Clear-CursorAgentOutputFiles
+    Invoke-CursorAgentPrint -Model $cursorAgentModelUsed
+    $attemptOutput = @($cursorAgentOutput)
+    $cursorAgentOutputLog += @(
+        "--- Cursor Agent attempt $cursorAgentAttemptCount, model='$cursorAgentModelUsed', exit=$cursorAgentExitCode ---"
+    ) + $attemptOutput
 
-if ($cursorAgentExitCode -ne 0 -and
-    -not [string]::IsNullOrWhiteSpace($CursorAgentModel) -and
-    (@($cursorAgentOutput) -join "`n") -match "Cannot use this model") {
-    $firstAttemptOutput = @($cursorAgentOutput)
-    $cursorAgentRetriedWithoutModel = $true
-    $cursorAgentModelUsed = ""
-    Invoke-CursorAgentPrint -Model ""
-    $cursorAgentOutput = @(
-        "First Cursor Agent attempt failed with requested model: $CursorAgentModel",
-        "--- first attempt output ---"
-    ) + $firstAttemptOutput + @(
-        "--- retry without --model output ---"
-    ) + @($cursorAgentOutput)
+    if ($cursorAgentExitCode -eq 0) {
+        break
+    }
+
+    $attemptText = $attemptOutput -join "`n"
+    if (-not [string]::IsNullOrWhiteSpace($cursorAgentModelUsed) -and
+        $attemptText -match "Cannot use this model") {
+        $cursorAgentRetriedWithoutModel = $true
+        $cursorAgentModelUsed = ""
+        continue
+    }
+
+    if ((Test-TransientCursorAgentFailure -Output $attemptOutput) -and
+        $cursorAgentAttemptCount -lt $CursorAgentMaxAttempts) {
+        $cursorAgentTransientRetryCount++
+        Start-Sleep -Seconds $CursorAgentRetryDelaySeconds
+        continue
+    }
+
+    break
 }
 
+$cursorAgentOutput = @($cursorAgentOutputLog)
 $cursorAgentOutput | Set-Content -Path $cursorAgentLogPath -Encoding UTF8
 
 if ($cursorAgentExitCode -ne 0) {
@@ -288,6 +347,9 @@ $manifest = [ordered]@{
     cursorAgentRequestedModel = $cursorAgentRequestedModel
     cursorAgentModel = $cursorAgentModelUsed
     cursorAgentRetriedWithoutModel = [bool]$cursorAgentRetriedWithoutModel
+    cursorAgentAttemptCount = [int]$cursorAgentAttemptCount
+    cursorAgentTransientRetryCount = [int]$cursorAgentTransientRetryCount
+    cursorAgentMaxAttempts = [int]$CursorAgentMaxAttempts
     cursorAgentExitCode = [int]$cursorAgentExitCode
     outputDirectory = $outputPath
     taskId = $taskId
