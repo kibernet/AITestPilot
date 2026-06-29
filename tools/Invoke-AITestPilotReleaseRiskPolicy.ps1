@@ -189,6 +189,7 @@ $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-man
 $productionHandoffPackageManifest = Read-PolicyJson "production-handoff-package-manifest.json" "Production handoff package manifest"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-PolicyJson "production-handoff-external-evidence-preflight-probe-manifest.json" "Production handoff external evidence preflight probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
+$productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionHardModeFailureProbeManifest = Read-PolicyJson "production-hard-mode-failure-probe-manifest.json" "Production hard-mode failure probe manifest"
 
 $runReports = @()
@@ -700,6 +701,36 @@ Add-PolicyCheck "production_external_evidence_acceptance_contract_policy" $produ
     "Production evidence must include a stable repo-side acceptance command contract for driver, Lua, and live model evidence without promoting fixture data." `
     "production_external_evidence_acceptance_contract_not_accepted"
 
+$productionExternalEvidenceAcceptanceFailureAccepted = (
+    $null -ne $productionExternalEvidenceAcceptanceFailureProbeManifest -and
+    $productionExternalEvidenceAcceptanceFailureProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_acceptance_failure_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "requireAllEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "contractFixtureMode" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllAcceptanceRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllCommandFailed" $false)) -and
+    (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllStatus" "") -eq "FAIL" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllMissingAreaCount" 0)) -eq 3 -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllExternalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllRealHostProjectEvidenceAccepted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyAcceptanceRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyCommandFailed" $false)) -and
+    (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyStatus" "") -eq "FAIL" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyMissingAreaCount" 0)) -eq 2 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyProductionDriverEvidenceAccepted" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyProductionLuaEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyLiveModelSmokeEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyExternalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyRealHostProjectEvidenceAccepted" $true)) -and
+    (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "productionOutputBoundary" "") -eq "external_evidence_acceptance_failure_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_acceptance_failure_policy" $productionExternalEvidenceAcceptanceFailureAccepted `
+    "Production evidence acceptance must prove missing and partial external evidence are rejected under RequireAllEvidence." `
+    "production_external_evidence_acceptance_failure_not_accepted"
+
 $productionHardModeFailureAccepted = (
     $null -ne $productionHardModeFailureProbeManifest -and
     $productionHardModeFailureProbeManifest.status -eq "PASS" -and
@@ -765,6 +796,7 @@ $sourceFiles = @(
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
+    "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json"
 )
 
@@ -811,6 +843,7 @@ $manifest = [ordered]@{
     productionHandoffPackageAccepted = [bool]$productionHandoffPackageAccepted
     productionHandoffExternalEvidencePreflightAccepted = [bool]$productionHandoffExternalEvidencePreflightAccepted
     productionExternalEvidenceAcceptanceContractAccepted = [bool]$productionExternalEvidenceAcceptanceContractAccepted
+    productionExternalEvidenceAcceptanceFailureAccepted = [bool]$productionExternalEvidenceAcceptanceFailureAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
     riskPolicyCheckCount = [int]$riskPolicyChecks.Count
     passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
@@ -844,6 +877,7 @@ $reportLines = @(
     "- Production handoff package accepted: $($manifest.productionHandoffPackageAccepted)",
     "- Production handoff external evidence preflight accepted: $($manifest.productionHandoffExternalEvidencePreflightAccepted)",
     "- Production external evidence acceptance contract accepted: $($manifest.productionExternalEvidenceAcceptanceContractAccepted)",
+    "- Production external evidence acceptance failure accepted: $($manifest.productionExternalEvidenceAcceptanceFailureAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",

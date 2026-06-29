@@ -184,6 +184,7 @@ $providerCiQualityProbeManifest = Read-Manifest "provider-ci-quality-probe-manif
 $productionHandoffPackageManifest = Read-Manifest "production-handoff-package-manifest.json"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-Manifest "production-handoff-external-evidence-preflight-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
+$productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
@@ -1711,6 +1712,36 @@ if ($null -ne $productionExternalEvidenceAcceptanceContractProbeManifest) {
     Test-ListedFiles $productionExternalEvidenceAcceptanceContractProbeManifest "production_external_evidence_acceptance_contract_probe"
 }
 
+if ($null -ne $productionExternalEvidenceAcceptanceFailureProbeManifest) {
+    Add-ReleaseCheck "production_external_evidence_acceptance_failure_probe" `
+        ($productionExternalEvidenceAcceptanceFailureProbeManifest.status -eq "PASS" -and
+            $productionExternalEvidenceAcceptanceFailureProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_acceptance_failure_probe.v1" -and
+            -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.externalBundleUnderRepo -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.requireAllEvidence -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.contractFixtureMode -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllAcceptanceRejected -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllCommandFailed -and
+            $productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllStatus -eq "FAIL" -and
+            [int]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllMissingAreaCount -eq 3 -and
+            -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllExternalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllRealHostProjectEvidenceAccepted -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyAcceptanceRejected -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyCommandFailed -and
+            $productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyStatus -eq "FAIL" -and
+            [int]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyMissingAreaCount -eq 2 -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyProductionDriverEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyProductionLuaEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyLiveModelSmokeEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyExternalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyRealHostProjectEvidenceAccepted -and
+            $productionExternalEvidenceAcceptanceFailureProbeManifest.productionOutputBoundary -eq "external_evidence_acceptance_failure_probe_only" -and
+            [int]$productionExternalEvidenceAcceptanceFailureProbeManifest.checkCount -eq 4 -and
+            [int]$productionExternalEvidenceAcceptanceFailureProbeManifest.failedCheckCount -eq 0) `
+        "Production external evidence acceptance failure probe must prove missing and partial host-project evidence cannot satisfy all production requirements."
+
+    Test-ListedFiles $productionExternalEvidenceAcceptanceFailureProbeManifest "production_external_evidence_acceptance_failure_probe"
+}
+
 if ($null -ne $productionHardModeFailureProbeManifest) {
     Add-ReleaseCheck "production_hard_mode_failure_probe" `
         ($productionHardModeFailureProbeManifest.status -eq "PASS" -and
@@ -1771,6 +1802,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffPackageAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExternalEvidencePreflightAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHardModeFailureAccepted -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
@@ -1826,6 +1858,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-package-manifest.json",
         "production-handoff-external-evidence-preflight-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
+        "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )
@@ -1920,6 +1953,7 @@ $sourceManifests = @(
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
+    "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"
