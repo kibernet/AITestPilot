@@ -232,6 +232,22 @@ function Test-TextContainsLiteralOrMarkdownEscaped {
     return $Text -match [regex]::Escape($markdownEscapedValue)
 }
 
+function Invoke-GitQuiet {
+    param(
+        [string[]]$Arguments
+    )
+
+    $previous = $ErrorActionPreference
+    try {
+        $script:ErrorActionPreference = "Continue"
+        $null = @(& git @Arguments 2>&1)
+        return $LASTEXITCODE
+    }
+    finally {
+        $script:ErrorActionPreference = $previous
+    }
+}
+
 function Test-CursorAgentPatchAppliesWithRequiredContext {
     if (-not (Test-Path $externalPatchPath)) {
         return $false
@@ -242,18 +258,15 @@ function Test-CursorAgentPatchAppliesWithRequiredContext {
     }
 
     New-Item -ItemType Directory -Force $contractCheckPath | Out-Null
-    & git -C $contractCheckPath init -q *> $null
-    if ($LASTEXITCODE -ne 0) {
+    if ((Invoke-GitQuiet @("-C", $contractCheckPath, "init", "-q")) -ne 0) {
         return $false
     }
 
-    & git -C $contractCheckPath apply --check $externalPatchPath *> $null
-    if ($LASTEXITCODE -ne 0) {
+    if ((Invoke-GitQuiet @("-C", $contractCheckPath, "apply", "--check", $externalPatchPath)) -ne 0) {
         return $false
     }
 
-    & git -C $contractCheckPath apply $externalPatchPath *> $null
-    if ($LASTEXITCODE -ne 0) {
+    if ((Invoke-GitQuiet @("-C", $contractCheckPath, "apply", $externalPatchPath)) -ne 0) {
         return $false
     }
 

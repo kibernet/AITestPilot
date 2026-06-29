@@ -52,3 +52,4 @@
 - Accepted Markdown-escaped retest commands in the main worktree apply/retest/rollback probe file check.
 - Retried headless Cursor Agent runs that exit successfully but miss required output files.
 - Retried headless Cursor Agent patches that do not apply with the required task-bound probe context.
+- Made Cursor Agent temporary patch-contract checks use git exit codes instead of PowerShell stderr exceptions.
