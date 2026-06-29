@@ -215,6 +215,7 @@ $productionHandoffSendReadinessManifest = Read-Manifest "production-handoff-send
 $productionHandoffMailAuthReadinessManifest = Read-Manifest "production-handoff-mail-auth-readiness-manifest.json"
 $productionHandoffOwnerUnblockPackManifest = Read-Manifest "production-handoff-owner-unblock-pack-manifest.json"
 $productionHandoffOwnerUnblockPackContractProbeManifest = Read-Manifest "production-handoff-owner-unblock-pack-contract-probe-manifest.json"
+$productionHandoffOwnerInputRequestPackManifest = Read-Manifest "production-handoff-owner-input-request-pack-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2011,6 +2012,57 @@ if ($null -ne $productionHandoffOwnerUnblockPackContractProbeManifest) {
     Test-ListedFiles $productionHandoffOwnerUnblockPackContractProbeManifest "production_handoff_owner_unblock_pack_contract_probe"
 }
 
+if ($null -ne $productionHandoffOwnerInputRequestPackManifest) {
+    Add-ReleaseCheck "production_handoff_owner_input_request_pack" `
+        ($productionHandoffOwnerInputRequestPackManifest.status -eq "PASS" -and
+            $productionHandoffOwnerInputRequestPackManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_input_request_pack.v1" -and
+            $productionHandoffOwnerInputRequestPackManifest.ownerInputRequestStatus -eq "AWAITING_EXTERNAL_OWNER_INPUT" -and
+            $productionHandoffOwnerInputRequestPackManifest.ownerUnblockStatus -eq "BLOCKED_EXTERNAL_OWNER_INPUT" -and
+            $productionHandoffOwnerInputRequestPackManifest.operatorProgressRecipient -eq "kibernet@sina.com" -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.requestPackGenerated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.summaryGenerated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.contactRosterTemplateGenerated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.ownerInputChecklistGenerated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.externalEvidenceReturnChecklistGenerated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.requestEmailDraftGenerated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.readmeGenerated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.reportGenerated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.summaryContentValidated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.contactRosterTemplateContentValidated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.ownerInputChecklistContentValidated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.externalEvidenceReturnChecklistContentValidated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.requestEmailDraftContentValidated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.readmeContentValidated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.reportContentValidated -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.ownerPacketCount -eq [int]$productionHandoffOwnerUnblockPackManifest.ownerPacketCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -eq [int]$productionHandoffOwnerUnblockPackManifest.ownerPacketCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.pendingOwnerPacketCount -eq [int]$productionHandoffOwnerUnblockPackManifest.pendingOwnerPacketCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.pendingOwnerPacketCount -eq [int]$productionHandoffStatusManifest.pendingOwnerPacketCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.pendingDispatchCount -eq [int]$productionHandoffOwnerUnblockPackManifest.pendingDispatchCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.pendingDispatchCount -eq [int]$productionHandoffDispatchPlanManifest.pendingDispatchCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.missingOwnerContactCount -eq [int]$productionHandoffContactReadinessManifest.missingOwnerContactCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -eq [int]$productionExternalEvidenceInboxManifest.missingRequiredFileCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.remainingBlockingReasonCount -eq [int]$productionHandoffStatusManifest.remainingBlockingReasonCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.blockedSendCount -eq [int]$productionHandoffSendReadinessManifest.blockedSendCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.readySendCount -eq [int]$productionHandoffSendReadinessManifest.readySendCount -and
+            $productionHandoffOwnerInputRequestPackManifest.sendReadinessStatus -eq "BLOCKED_MISSING_OWNER_EMAILS" -and
+            $productionHandoffOwnerInputRequestPackManifest.mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
+            -not [bool]$productionHandoffOwnerInputRequestPackManifest.automaticEmailSendReady -and
+            -not [bool]$productionHandoffOwnerInputRequestPackManifest.mailAuthorizationCheckedByPipeline -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.handoffExportZipAvailable -and
+            -not [bool]$productionHandoffOwnerInputRequestPackManifest.externalEvidenceCollectionComplete -and
+            -not [bool]$productionHandoffOwnerInputRequestPackManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffOwnerInputRequestPackManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerInputRequestPackManifest.externalEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerInputRequestPackManifest.fixtureEvidencePromoted -and
+            $productionHandoffOwnerInputRequestPackManifest.productionOutputBoundary -eq "host_project_owner_input_request_pack_only" -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.checkCount -eq 8 -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.failedCheckCount -eq 0) `
+        "Production handoff owner input request pack must route contacts, dispatches, returned evidence, and operator recipient details while preserving send and evidence boundaries."
+
+    Test-ListedFiles $productionHandoffOwnerInputRequestPackManifest "production_handoff_owner_input_request_pack"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2220,6 +2272,8 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffMailAuthReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerUnblockPackAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerUnblockPackContractAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerInputRequestPackAccepted -and
+            $releaseRiskPolicyManifest.productionHandoffOwnerInputRequestStatus -eq "AWAITING_EXTERNAL_OWNER_INPUT" -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2287,6 +2341,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-mail-auth-readiness-manifest.json",
         "production-handoff-owner-unblock-pack-manifest.json",
         "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
+        "production-handoff-owner-input-request-pack-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2394,6 +2449,7 @@ $sourceManifests = @(
     "production-handoff-mail-auth-readiness-manifest.json",
     "production-handoff-owner-unblock-pack-manifest.json",
     "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
+    "production-handoff-owner-input-request-pack-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",

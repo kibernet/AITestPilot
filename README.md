@@ -321,6 +321,12 @@ That script writes `production-handoff-owner-unblock-pack-manifest.json`, `produ
 
 That probe writes `production-handoff-owner-unblock-pack-contract-probe-manifest.json` and proves the unblock pack preserves the default missing-contact/missing-evidence state while a complete fixture contact roster plus complete fixture returned evidence moves the copied pack to `READY_FOR_CONFIRMATION_PENDING_REAL_ACCEPTANCE` without running OAuth login, sending email, or accepting fixture evidence as real host-project evidence.
 
+```powershell
+.\tools\Invoke-AITestPilotProductionHandoffOwnerInputRequestPack.ps1
+```
+
+That script writes `production-handoff-owner-input-request-pack-manifest.json`, `production-handoff-owner-input-request-pack.md`, and `production-handoff-owner-input-request-pack\`. It turns the remaining external-owner blockers into a fill-in contact roster template, owner input checklist, returned-evidence checklist, and request email draft for `kibernet@sina.com` while keeping `ownerInputRequestStatus=AWAITING_EXTERNAL_OWNER_INPUT`, `automaticEmailSendReady=false`, and all real-evidence acceptance flags false.
+
 To run the stable repo-side acceptance entry point after host-project owners return driver, Lua, and live-smoke evidence directories:
 
 ```powershell
