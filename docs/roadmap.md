@@ -55,6 +55,7 @@
 - Live endpoint retry/escalation policy recorded in failure evidence.
 - Policy-driven live endpoint retry execution with per-attempt manifest evidence.
 - Provider-specific live-smoke retry tuning and alert routing for native, OpenAI, OpenAI-compatible, and local gateways.
+- Live model endpoint configuration kit, static config intake, and release-gated repo-external pending-config rejection evidence without serializing secrets or claiming provider access.
 - Core Lua static analyzer and release-gated static-analysis evidence for replay repair candidates.
 - Release-gated Lua auto-patch sandbox evidence that clears deterministic fixture findings without mutating production Lua.
 - Production Lua patch readiness gate plus hard-bound failure probe for real production Lua analysis, patch, retest, and rollback evidence.

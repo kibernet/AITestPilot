@@ -187,6 +187,40 @@ Each matrix entry records:
 
 The manifest also publishes recommended production CI arguments for required live smoke. This probe does not call a provider and does not prove credentials or model access; it proves that release artifacts contain provider-specific handling for live endpoint failures before a real endpoint is made mandatory.
 
+## Endpoint Config Kit
+
+Host projects can prepare the live endpoint configuration contract before credentials or provider access are available:
+
+```powershell
+.\tools\New-AITestPilotLiveModelEndpointConfigKit.ps1
+```
+
+The kit writes:
+
+- `live-model-endpoint-config.json`
+- `live-model-endpoint-config-schema.md`
+- `live-model-endpoint-smoke-runbook.md`
+- `README.md`
+- `live-model-endpoint-config-kit-generated-manifest.json`
+
+The default generated config is intentionally pending. It records the expected provider preset, endpoint URL, model id, request format, API-key environment variable, secret reference, timeout, trace directory, and smoke command fields, but it does not contain a secret value and does not claim that a provider has been called.
+
+To ingest a host-project config directory:
+
+```powershell
+.\tools\Invoke-AITestPilotLiveModelEndpointConfigIntake.ps1 -ConfigDir "path\to\live-model-config"
+```
+
+`-RequireCompleteConfiguration` turns missing endpoint, model, API-key reference, request format, or completion flags into a hard failure. A complete static config can be marked `READY_FOR_LIVE_SMOKE`; that only means CI has enough non-secret configuration to run the live smoke. It still records `liveSmokeExecuted=false` until `Invoke-AITestPilotLiveModelEndpointSmoke.ps1 -RequireLive` succeeds.
+
+For release evidence, the pipeline runs:
+
+```powershell
+.\tools\Invoke-AITestPilotLiveModelEndpointConfigKitProbe.ps1
+```
+
+That probe stores the pending template in release evidence, runs an isolated accepted fixture through config intake to prove the schema, and then generates a pending config outside the repository under the system temp directory to prove repo-external configs are read and blocked when incomplete. Its manifest records `releasePipelineUsesFixture=false`, `secretsSerialized=false`, `liveSmokeExecuted=false`, and `productionLiveEndpointAccessProven=false`.
+
 ## Failure Classification
 
 Live smoke writes a classified `FAIL` manifest when a configured endpoint is reachable enough to execute the probe command but the request fails. The manifest includes `failureCategory`, `failureMessage`, `failureRemediation`, and `failurePolicy`.

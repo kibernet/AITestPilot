@@ -161,6 +161,7 @@ else {
 $modelEndpointManifest = Read-Manifest "model-endpoint-trace-manifest.json"
 $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provider-diagnostics-manifest.json"
 $modelEndpointProviderRetryPolicyManifest = Read-Manifest "model-endpoint-provider-retry-policy-manifest.json"
+$liveModelEndpointConfigKitProbeManifest = Read-Manifest "live-model-endpoint-config-kit-probe-manifest.json"
 $luaStaticAnalysisManifest = Read-Manifest "lua-static-analysis-manifest.json"
 $luaAutoPatchSandboxManifest = Read-Manifest "lua-auto-patch-sandbox-manifest.json"
 if ($RequireProductionLuaPatched) {
@@ -1144,6 +1145,34 @@ if ($null -ne $modelEndpointProviderRetryPolicyManifest) {
     Test-ListedFiles $modelEndpointProviderRetryPolicyManifest "model_endpoint_provider_retry_policy"
 }
 
+if ($null -ne $liveModelEndpointConfigKitProbeManifest) {
+    Add-ReleaseCheck "live_model_endpoint_config_kit_probe" `
+        ($liveModelEndpointConfigKitProbeManifest.status -eq "PASS" -and
+            $liveModelEndpointConfigKitProbeManifest.schemaVersion -eq "aitestpilot.live_model_endpoint_config_kit_probe.v1" -and
+            [bool]$liveModelEndpointConfigKitProbeManifest.templateKitGenerated -and
+            [bool]$liveModelEndpointConfigKitProbeManifest.templateOnly -and
+            [bool]$liveModelEndpointConfigKitProbeManifest.acceptedFixtureGenerated -and
+            [bool]$liveModelEndpointConfigKitProbeManifest.acceptedFixtureIntakePassed -and
+            [bool]$liveModelEndpointConfigKitProbeManifest.acceptedFixtureReadyForLiveEndpointSmoke -and
+            -not [bool]$liveModelEndpointConfigKitProbeManifest.acceptedFixtureProductionLiveAccessProven -and
+            -not [bool]$liveModelEndpointConfigKitProbeManifest.acceptedFixtureLiveSmokeExecuted -and
+            -not [bool]$liveModelEndpointConfigKitProbeManifest.externalConfigUnderRepo -and
+            [bool]$liveModelEndpointConfigKitProbeManifest.externalTemplateRead -and
+            [bool]$liveModelEndpointConfigKitProbeManifest.externalTemplateBlocked -and
+            [bool]$liveModelEndpointConfigKitProbeManifest.externalTemplateCommandFailed -and
+            -not [bool]$liveModelEndpointConfigKitProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$liveModelEndpointConfigKitProbeManifest.productionLiveEndpointAccessProven -and
+            [bool]$liveModelEndpointConfigKitProbeManifest.liveSmokeRequiredForProduction -and
+            -not [bool]$liveModelEndpointConfigKitProbeManifest.liveSmokeExecuted -and
+            -not [bool]$liveModelEndpointConfigKitProbeManifest.secretsSerialized -and
+            [int]$liveModelEndpointConfigKitProbeManifest.generatedFileCount -ge 5 -and
+            [int]$liveModelEndpointConfigKitProbeManifest.checkCount -eq 3 -and
+            [int]$liveModelEndpointConfigKitProbeManifest.failedCheckCount -eq 0) `
+        "Live model endpoint config kit probe must generate host configuration templates, prove static config intake, and block repo-external pending config without claiming provider access."
+
+    Test-ListedFiles $liveModelEndpointConfigKitProbeManifest "live_model_endpoint_config_kit_probe"
+}
+
 if ($null -ne $luaStaticAnalysisManifest) {
     Add-ReleaseCheck "lua_static_analysis_probe" `
         ($luaStaticAnalysisManifest.status -eq "PASS" -and
@@ -1556,6 +1585,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionLuaExternalBundleIntakeAccepted -and
             $releaseRiskPolicyManifest.productionLuaEvidenceStatus -eq $expectedProductionLuaEvidenceStatus -and
             [bool]$releaseRiskPolicyManifest.liveModelPolicyAccepted -and
+            [bool]$releaseRiskPolicyManifest.liveModelConfigKitAccepted -and
             $liveModelStatusAccepted -and
             [bool]$releaseRiskPolicyManifest.ciProviderEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.githubActionsAccepted -and
@@ -1598,6 +1628,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "model-endpoint-trace-manifest.json",
         "model-endpoint-provider-diagnostics-manifest.json",
         "model-endpoint-provider-retry-policy-manifest.json",
+        "live-model-endpoint-config-kit-probe-manifest.json",
         "lua-static-analysis-manifest.json",
         "lua-auto-patch-sandbox-manifest.json",
         "production-lua-patch-readiness-manifest.json",
@@ -1684,6 +1715,7 @@ $sourceManifests = @(
     "model-endpoint-trace-manifest.json",
     "model-endpoint-provider-diagnostics-manifest.json",
     "model-endpoint-provider-retry-policy-manifest.json",
+    "live-model-endpoint-config-kit-probe-manifest.json",
     "lua-static-analysis-manifest.json",
     "lua-auto-patch-sandbox-manifest.json",
     "production-lua-patch-readiness-manifest.json",

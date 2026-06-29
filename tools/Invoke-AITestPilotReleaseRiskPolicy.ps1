@@ -179,6 +179,7 @@ $productionLuaPatchEvidenceKitProbeManifest = Read-PolicyJson "production-lua-pa
 $productionLuaPatchExternalBundleIntakeProbeManifest = Read-PolicyJson "production-lua-patch-external-bundle-intake-probe-manifest.json" "Production Lua patch external bundle intake probe manifest"
 $liveModelFailureProbeManifest = Read-PolicyJson "live-model-endpoint-failure-probe-manifest.json" "Live model endpoint failure probe manifest"
 $liveModelSmokeManifest = Read-PolicyJson "live-model-endpoint-smoke-manifest.json" "Live model endpoint smoke manifest"
+$liveModelConfigKitProbeManifest = Read-PolicyJson "live-model-endpoint-config-kit-probe-manifest.json" "Live model endpoint config kit probe manifest"
 $githubActionsProbeManifest = Read-PolicyJson "github-actions-release-workflow-probe-manifest.json" "GitHub Actions workflow probe manifest"
 $azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow-probe-manifest.json" "Azure Pipelines workflow probe manifest"
 $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
@@ -483,6 +484,33 @@ Add-PolicyCheck "live_model_endpoint_policy" $liveModelPolicyAccepted `
     "Live model smoke must pass when required; otherwise the optional skip must be paired with deterministic failure-classification policy evidence." `
     "live_model_endpoint_policy_not_accepted"
 
+$liveModelConfigKitAccepted = (
+    $null -ne $liveModelConfigKitProbeManifest -and
+    $liveModelConfigKitProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $liveModelConfigKitProbeManifest "schemaVersion" "") -eq "aitestpilot.live_model_endpoint_config_kit_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "templateKitGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "templateOnly" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "acceptedFixtureGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "acceptedFixtureIntakePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "acceptedFixtureReadyForLiveEndpointSmoke" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "acceptedFixtureProductionLiveAccessProven" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "acceptedFixtureLiveSmokeExecuted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "externalConfigUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "externalTemplateRead" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "externalTemplateBlocked" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "externalTemplateCommandFailed" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "productionLiveEndpointAccessProven" $true)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "liveSmokeRequiredForProduction" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "liveSmokeExecuted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "secretsSerialized" $true)) -and
+    (Convert-ToInt (Get-JsonValue $liveModelConfigKitProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "live_model_endpoint_config_kit_policy" $liveModelConfigKitAccepted `
+    "Live model endpoint evidence must include static config kit and external pending-config intake proof without serializing secrets or claiming provider access." `
+    "live_model_endpoint_config_kit_not_accepted"
+
 $githubActionsAccepted = (
     $null -ne $githubActionsProbeManifest -and
     $githubActionsProbeManifest.status -eq "PASS" -and
@@ -555,6 +583,7 @@ $sourceFiles = @(
     "production-lua-patch-external-bundle-intake-probe-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
+    "live-model-endpoint-config-kit-probe-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json"
@@ -592,6 +621,7 @@ $manifest = [ordered]@{
     productionLuaBlockingReasons = @($luaBlockingReasons)
     liveModelPolicyAccepted = [bool]$liveModelPolicyAccepted
     liveModelPolicyStatus = $liveModelPolicyStatus
+    liveModelConfigKitAccepted = [bool]$liveModelConfigKitAccepted
     ciProviderEvidenceAccepted = [bool]$ciProviderEvidenceAccepted
     githubActionsAccepted = [bool]$githubActionsAccepted
     azurePipelinesAccepted = [bool]$azurePipelinesAccepted
@@ -620,6 +650,7 @@ $reportLines = @(
     "- Production Lua evidence kit accepted: $($manifest.productionLuaEvidenceKitAccepted)",
     "- Production Lua external bundle intake accepted: $($manifest.productionLuaExternalBundleIntakeAccepted)",
     "- Live model policy: $($manifest.liveModelPolicyStatus)",
+    "- Live model config kit accepted: $($manifest.liveModelConfigKitAccepted)",
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",

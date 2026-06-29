@@ -213,6 +213,7 @@ function Get-DefaultSourceManifestNames {
         "model-endpoint-trace-manifest.json",
         "model-endpoint-provider-diagnostics-manifest.json",
         "model-endpoint-provider-retry-policy-manifest.json",
+        "live-model-endpoint-config-kit-probe-manifest.json",
         "lua-static-analysis-manifest.json",
         "lua-auto-patch-sandbox-manifest.json",
         "production-lua-patch-readiness-manifest.json",
