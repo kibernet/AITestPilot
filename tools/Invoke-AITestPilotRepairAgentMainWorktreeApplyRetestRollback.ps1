@@ -304,9 +304,16 @@ try {
     }
 
     $patchedFileText = Get-Content -Raw $patchedFile
-    $patchedFileContainsProbeText = $patchedFileText -match [regex]::Escape("Main Worktree Apply Probe")
+    $patchedFileContainsTaskId = $patchedFileText -match [regex]::Escape($taskId)
+    $patchedFileContainsBugId = $patchedFileText -match [regex]::Escape($bugId)
+    $patchedFileContainsSuggestedFix = $patchedFileText -match [regex]::Escape($suggestedFix)
+    $patchedFileContainsRetestCommand = $patchedFileText -match [regex]::Escape($retestCommand)
+    $patchedFileContainsProbeText = $patchedFileContainsTaskId -and
+        $patchedFileContainsBugId -and
+        $patchedFileContainsSuggestedFix -and
+        $patchedFileContainsRetestCommand
     if (-not $patchedFileContainsProbeText) {
-        throw "Main worktree probe file does not contain expected probe text."
+        throw "Main worktree probe file does not contain the required repair task context."
     }
 
     $validationLogPath = Join-Path $probeBundlePath "main-worktree-apply-validate.log"
@@ -458,6 +465,10 @@ try {
         patchedFile = $patchedRelativePath
         patchedFilePresentBeforeRollback = [bool]$patchedFilePresentBeforeRollback
         patchedFileContainsProbeText = [bool]$patchedFileContainsProbeText
+        patchedFileContainsTaskId = [bool]$patchedFileContainsTaskId
+        patchedFileContainsBugId = [bool]$patchedFileContainsBugId
+        patchedFileContainsSuggestedFix = [bool]$patchedFileContainsSuggestedFix
+        patchedFileContainsRetestCommand = [bool]$patchedFileContainsRetestCommand
         postApplyValidationInvoked = $true
         postApplyValidationPassed = [bool]$postApplyValidationPassed
         postApplyRetestInvoked = [bool]$postApplyRetestInvoked

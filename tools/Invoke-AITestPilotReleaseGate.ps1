@@ -411,6 +411,10 @@ if ($null -ne $repairAgentMainWorktreeApplyRetestRollbackManifest) {
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.mainRepositoryPatchAppliedDuringProbe -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchedFilePresentBeforeRollback -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchedFileContainsProbeText -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchedFileContainsTaskId -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchedFileContainsBugId -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchedFileContainsSuggestedFix -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchedFileContainsRetestCommand -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.postApplyValidationInvoked -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.postApplyValidationPassed -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.postApplyRetestInvoked -and
