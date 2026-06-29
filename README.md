@@ -261,7 +261,7 @@ To generate the host-project production handoff package from the current release
 .\tools\Invoke-AITestPilotProductionHandoffPackage.ps1
 ```
 
-That package writes `production-handoff-package-manifest.json` plus `production-handoff-package\README.md`, `action-plan.md`, `required-external-evidence.json`, and `ci-commands.ps1`. It consolidates the remaining production driver, production Lua, live-model, and CI hard-mode steps without promoting fixture evidence as real host-project evidence.
+That package writes `production-handoff-package-manifest.json` plus `production-handoff-package\README.md`, `action-plan.md`, `required-external-evidence.json`, and `ci-commands.ps1`. It consolidates the remaining production driver, production Lua, live-model, and CI hard-mode steps without promoting fixture evidence as real host-project evidence, and its manifest validates that owner, kit, evidence, and command details render as concrete handoff content.
 
 To prove all production hard-mode switches block the current sample or missing-evidence state together:
 
@@ -479,7 +479,7 @@ Implemented now:
 - GitHub Actions release workflow for self-hosted Windows Unity runners, with release-gated workflow probe and evidence artifact upload.
 - Azure Pipelines release workflow for self-hosted Windows Unity pools, with release-gated workflow probe and evidence artifact publishing.
 - Provider-specific build, smoke test, and vision evidence checks for GitHub Actions and Azure Pipelines, with release-gated quality probe evidence.
-- Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence.
+- Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence, with generated-content quality checks for concrete owner, kit, evidence, and command details.
 - Production hard-mode failure probe proving combined driver, Lua, and live-model hard switches block the current sample or missing-evidence state.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers.
 - Release-gated risk policy manifest that blocks failed AI exploration, unresolved high-risk graph nodes, missing driver evidence, missing production Lua evidence, missing live-smoke policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure evidence while preserving explicit package-release boundaries.

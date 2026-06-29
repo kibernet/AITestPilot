@@ -1643,9 +1643,10 @@ if ($null -ne $productionHandoffPackageManifest) {
             [bool]$productionHandoffPackageManifest.liveModelHandoffReady -and
             [bool]$productionHandoffPackageManifest.ciReleaseControlsReady -and
             -not [bool]$productionHandoffPackageManifest.fixtureEvidencePromoted -and
+            [bool]$productionHandoffPackageManifest.generatedHandoffContentQualityAccepted -and
             [int]$productionHandoffPackageManifest.sourceManifestCount -ge 12 -and
             [int]$productionHandoffPackageManifest.generatedFileCount -ge 4 -and
-            [int]$productionHandoffPackageManifest.checkCount -eq 5 -and
+            [int]$productionHandoffPackageManifest.checkCount -eq 6 -and
             [int]$productionHandoffPackageManifest.failedCheckCount -eq 0) `
         "Production handoff package must consolidate host-project driver, Lua, live-model, and CI next steps without promoting fixture evidence."
 

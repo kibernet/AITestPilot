@@ -321,16 +321,23 @@ Keep this package with the release evidence bundle so external host-project owne
 $actionPlanLines = @(
     "# Production Handoff Action Plan",
     "",
-    "| Area | Status | Remaining blockers | Kit | Hard validation command |",
-    "| --- | --- | --- | --- | --- |"
+    "| Area | Owner | Status | Remaining blockers | Kit | Required evidence | Hard validation command |",
+    "| --- | --- | --- | --- | --- | --- | --- |"
 )
 
 foreach ($item in $actionItems) {
-    $actionPlanLines += "| $($item.id) | $($item.status) | $(Join-MarkdownList $item.remainingBlockingReasons) | `$($item.kitPath)` | ``$($item.validationCommand)`` |"
+    $area = [string]$item["id"]
+    $owner = [string]$item["owner"]
+    $itemStatus = [string]$item["status"]
+    $blockers = Join-MarkdownList @(Convert-ToArray $item["remainingBlockingReasons"])
+    $kitPath = [string]$item["kitPath"]
+    $requiredFiles = Join-MarkdownList @(Convert-ToArray $item["requiredEvidenceFiles"])
+    $validationCommand = [string]$item["validationCommand"]
+    $actionPlanLines += "| $area | $owner | $itemStatus | $blockers | " + '`' + $kitPath + '`' + " | $requiredFiles | " + '`' + $validationCommand + '`' + " |"
 }
 
 if ($actionItems.Count -eq 0) {
-    $actionPlanLines += "| production_handoff | DONE | none | n/a | n/a |"
+    $actionPlanLines += "| production_handoff | n/a | DONE | none | n/a | n/a | n/a |"
 }
 
 $actionPlanLines += @(
@@ -378,6 +385,45 @@ $actionPlanLines | Set-Content -Path $actionPlanPath -Encoding UTF8
 $requiredEvidence | ConvertTo-Json -Depth 10 | Set-Content -Path $requiredEvidencePath -Encoding UTF8
 $ciCommands | Set-Content -Path $ciCommandsPath -Encoding UTF8
 
+$actionPlanText = Get-Content -Path $actionPlanPath -Encoding UTF8 -Raw
+$requiredEvidenceText = Get-Content -Path $requiredEvidencePath -Encoding UTF8 -Raw
+$ciCommandsText = Get-Content -Path $ciCommandsPath -Encoding UTF8 -Raw
+
+$expectedActionPlanSnippets = @()
+if ($actionItems.Count -eq 0) {
+    $expectedActionPlanSnippets += @("production_handoff", "DONE")
+} else {
+    foreach ($item in $actionItems) {
+        $expectedActionPlanSnippets += @(
+            [string]$item["id"],
+            [string]$item["owner"],
+            [string]$item["status"],
+            [string]$item["kitPath"],
+            [string]$item["validationCommand"]
+        )
+        $expectedActionPlanSnippets += @(Convert-ToArray $item["remainingBlockingReasons"] | ForEach-Object { [string]$_ })
+        $expectedActionPlanSnippets += @(Convert-ToArray $item["requiredEvidenceFiles"] | ForEach-Object { [string]$_ })
+    }
+}
+
+$missingActionPlanSnippetCount = @($expectedActionPlanSnippets | Where-Object { -not $actionPlanText.Contains($_) }).Count
+$actionPlanContentValid = $missingActionPlanSnippetCount -eq 0 -and
+    -not ($actionPlanText -match "System\.Collections|OrderedDictionary")
+
+$requiredEvidenceContentValid = $requiredEvidenceText.Contains("aitestpilot.production_handoff_required_evidence.v1") -and
+    $requiredEvidenceText.Contains("production-replay-integration-checklist.json") -and
+    $requiredEvidenceText.Contains("production-lua-patch-evidence.json") -and
+    $requiredEvidenceText.Contains("live-model-endpoint-smoke-manifest.json") -and
+    -not ($requiredEvidenceText -match "System\.Collections|OrderedDictionary")
+
+$ciCommandsContentValid = $ciCommandsText.Contains("-RequireProductionReplayDriverBound") -and
+    $ciCommandsText.Contains("-RequireProductionLuaPatched") -and
+    $ciCommandsText.Contains("-RequireLiveModelEndpointSmoke") -and
+    $ciCommandsText.Contains("-LiveModelEndpointSmokeEvidenceDir") -and
+    -not ($ciCommandsText -match "System\.Collections|OrderedDictionary")
+
+$generatedHandoffContentQualityAccepted = $actionPlanContentValid -and $requiredEvidenceContentValid -and $ciCommandsContentValid
+
 $generatedFiles = @(
     "production-handoff-package/README.md",
     "production-handoff-package/action-plan.md",
@@ -393,6 +439,9 @@ Add-HandoffCheck "ci_release_controls" $ciReleaseControlsReady "GitHub Actions, 
 Add-HandoffCheck "generated_handoff_files" `
     ((Test-Path $readmePath) -and (Test-Path $actionPlanPath) -and (Test-Path $requiredEvidencePath) -and (Test-Path $ciCommandsPath)) `
     "Handoff package must generate README, action plan, required evidence JSON, and CI commands."
+Add-HandoffCheck "generated_handoff_content_quality" `
+    $generatedHandoffContentQualityAccepted `
+    "Generated handoff files must contain concrete owner, kit, evidence, and command details without serialized PowerShell object names."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -427,6 +476,10 @@ $manifest = [ordered]@{
     liveModelConfigKitPath = "live-model-endpoint-config-kit"
     ciReleaseControlsReady = [bool]$ciReleaseControlsReady
     fixtureEvidencePromoted = $false
+    generatedHandoffContentQualityAccepted = [bool]$generatedHandoffContentQualityAccepted
+    actionPlanContentValidated = [bool]$actionPlanContentValid
+    requiredEvidenceContentValidated = [bool]$requiredEvidenceContentValid
+    ciCommandsContentValidated = [bool]$ciCommandsContentValid
     hostProjectActionItemCount = [int]$actionItems.Count
     actionItems = @($actionItems)
     sourceManifestCount = [int]$sourceManifests.Count
