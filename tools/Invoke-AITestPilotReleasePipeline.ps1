@@ -169,8 +169,8 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
-    Invoke-PipelineStep "repair_agent_main_worktree_apply_retest_rollback" {
-        & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentMainWorktreeApplyRetestRollback.ps1") `
+    Invoke-PipelineStep "repair_agent_external_task_output_acceptance" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1") `
             -UnityPath $UnityPath `
             -GameReplayDriverType $GameReplayDriverType `
             -EvidenceBundleDir $EvidenceBundleDir

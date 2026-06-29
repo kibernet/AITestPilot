@@ -81,7 +81,15 @@ To prove the explicit apply/retest/rollback path against this main worktree:
 .\tools\Invoke-AITestPilotRepairAgentMainWorktreeApplyRetestRollback.ps1
 ```
 
-That probe requires the main worktree readiness manifest to be clean and ready. It imports a verified `external_agent` patch in an isolated evidence bundle, binds the patch and summary to the current `repair-task.json` `taskId`, `bugId`, and `suggestedFix`, preflights it, applies it to the real main worktree through `Invoke-AITestPilotRepairAgentRepositoryPatchApplyGuard.ps1 -ApplyToRepository`, runs repo validation and repair retest before rollback, applies the generated rollback patch, and verifies the main worktree is clean again. The manifest records `mainRepositoryPatchApplied=true` for the probe and `mainRepositoryPatchPersisted=false` after rollback.
+That probe requires the main worktree readiness manifest to be clean and ready. It can consume an external repair-agent output directory with `-ExternalOutputDir`, requiring `repair-agent-run.json`, `repair-agent.patch`, and `repair-agent-summary.md`, then imports that verified `external_agent` patch in an isolated evidence bundle. It binds the patch and summary to the current `repair-task.json` `taskId`, `bugId`, and `suggestedFix`, preflights it, applies it to the real main worktree through `Invoke-AITestPilotRepairAgentRepositoryPatchApplyGuard.ps1 -ApplyToRepository`, runs repo validation and repair retest before rollback, applies the generated rollback patch, and verifies the main worktree is clean again. The manifest records `inputPackageSource`, `patchGeneratedByProbe`, `mainRepositoryPatchApplied=true` for the probe, and `mainRepositoryPatchPersisted=false` after rollback.
+
+To run the release-gated external output directory intake acceptance:
+
+```powershell
+.\tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1
+```
+
+That acceptance script creates a deterministic external-output-directory fixture unless `-ExternalOutputDir` is provided, then calls the main worktree apply/retest/rollback probe with that directory. It writes `repair-agent-external-task-output-acceptance-manifest.json`, copies the accepted three-file package into release evidence, and proves the intake path used `inputPackageSource=external_output_directory` with `patchGeneratedByProbe=false`. This is an intake contract for external repair-agent output files; a real agent-produced package remains the next boundary.
 
 To preflight an imported repair-agent patch before any repository application:
 
@@ -155,7 +163,7 @@ To run the full repo-side release gate over the evidence bundle:
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -240,6 +248,7 @@ Implemented now:
 - Repair-agent external completion provenance guard and negative probe proving pending runs cannot be promoted by patch files alone.
 - Generic external repair-agent patch import probe proving real external patch import is not tied to the deterministic sample null-guard snippet.
 - Source snapshot apply/validate/rollback probe proving verified external patches can apply to a clean candidate made from the current source tree, pass repo validation, and roll back newly added files.
+- External repair-agent task output directory intake acceptance for the main worktree apply/retest/rollback path.
 - External repair-agent patch preflight manifest with target-path safety checks and a negative path-traversal failure probe.
 - Repository patch apply guard manifest with explicit apply switch, clean-worktree, external-agent source, and rollback-plan evidence.
 - Clean temporary repository apply/rollback probe proving the external-agent apply path and rollback patch mechanics without mutating the main repository.

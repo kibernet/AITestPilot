@@ -4,6 +4,7 @@ param(
     [string]$GameReplayDriverType = "Kibernet.AITestPilot.Unity.Editor.SampleGameActionReplayDriver",
     [string]$EvidenceBundleDir,
     [string]$ProbeBundleDir,
+    [string]$ExternalOutputDir,
     [string]$ManifestPath,
     [switch]$SkipRetest
 )
@@ -83,6 +84,13 @@ function Write-Utf8NoBomFile {
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $probeBundlePath = Assert-PathUnderRepo $ProbeBundleDir "ProbeBundleDir"
 $manifestPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
+$externalOutputDirProvided = -not [string]::IsNullOrWhiteSpace($ExternalOutputDir)
+if ($externalOutputDirProvided) {
+    $externalOutputPath = Assert-PathUnderRepo $ExternalOutputDir "ExternalOutputDir"
+}
+else {
+    $externalOutputPath = ""
+}
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -131,42 +139,66 @@ if (Test-Path $probeBundlePath) {
 New-Item -ItemType Directory -Force $probeBundlePath | Out-Null
 
 $probeRepairAgentRunPath = Join-Path $probeBundlePath "repair-agent-run.json"
-Copy-Item -LiteralPath $repairAgentRunSource -Destination $probeRepairAgentRunPath -Force
-
-$probeRepairAgentRun = Get-Content -Raw $probeRepairAgentRunPath | ConvertFrom-Json
-$probeRepairAgentRun.status = "EXTERNAL_AGENT_COMPLETED"
-$probeRepairAgentRun.agentLaunched = $true
-$probeRepairAgentRun.patchOutputStatus = "PRODUCED"
-$probeRepairAgentRun.patchOutputCount = 2
-foreach ($expectedOutput in @($probeRepairAgentRun.expectedPatchOutputs)) {
-    $expectedOutput.produced = $true
-}
-
-$probeRepairAgentRun | ConvertTo-Json -Depth 10 | Set-Content -Path $probeRepairAgentRunPath -Encoding UTF8
-
 $taskId = [string]$repairTask.taskId
 $bugId = [string]$repairTask.bugId
 $suggestedFix = [string]$repairTask.suggestedFix
 $retestCommand = [string]$repairTask.retestCommand
 $taskBoundTargetPath = "docs/repair-agent-main-worktree-apply-probe.md"
-$patchText = @(
-    "diff --git a/docs/repair-agent-main-worktree-apply-probe.md b/docs/repair-agent-main-worktree-apply-probe.md",
-    "new file mode 100644",
-    "--- /dev/null",
-    "+++ b/docs/repair-agent-main-worktree-apply-probe.md",
-    "@@ -0,0 +1,9 @@",
-    "+# Main Worktree Apply Probe",
-    "+",
-    "+TaskId: $taskId",
-    "+BugId: $bugId",
-    "+SuggestedFix: $suggestedFix",
-    "+RetestCommand: $retestCommand",
-    "+",
-    "+This temporary task-bound file proves a verified external-agent patch can apply to the main worktree, pass retest, and roll back cleanly.",
-    "+It must not persist after rollback."
-) -join "`n"
 
-$summaryText = @"
+$patchPath = Join-Path $probeBundlePath "repair-agent.patch"
+$summaryPath = Join-Path $probeBundlePath "repair-agent-summary.md"
+$inputPackageSource = "generated_task_bound_fixture"
+$patchGeneratedByProbe = $true
+
+if ($externalOutputDirProvided) {
+    $externalRunPath = Join-Path $externalOutputPath "repair-agent-run.json"
+    $externalPatchPath = Join-Path $externalOutputPath "repair-agent.patch"
+    $externalSummaryPath = Join-Path $externalOutputPath "repair-agent-summary.md"
+
+    foreach ($requiredExternalPath in @($externalRunPath, $externalPatchPath, $externalSummaryPath)) {
+        if (-not (Test-Path $requiredExternalPath)) {
+            throw "External repair-agent output is missing required file: $requiredExternalPath"
+        }
+    }
+
+    Copy-Item -LiteralPath $externalRunPath -Destination $probeRepairAgentRunPath -Force
+    Copy-Item -LiteralPath $externalPatchPath -Destination $patchPath -Force
+    Copy-Item -LiteralPath $externalSummaryPath -Destination $summaryPath -Force
+    $inputPackageSource = "external_output_directory"
+    $patchGeneratedByProbe = $false
+}
+else {
+    Copy-Item -LiteralPath $repairAgentRunSource -Destination $probeRepairAgentRunPath -Force
+
+    $probeRepairAgentRun = Get-Content -Raw $probeRepairAgentRunPath | ConvertFrom-Json
+    $probeRepairAgentRun.status = "EXTERNAL_AGENT_COMPLETED"
+    $probeRepairAgentRun.agentLaunched = $true
+    $probeRepairAgentRun.patchOutputStatus = "PRODUCED"
+    $probeRepairAgentRun.patchOutputCount = 2
+    foreach ($expectedOutput in @($probeRepairAgentRun.expectedPatchOutputs)) {
+        $expectedOutput.produced = $true
+    }
+
+    $probeRepairAgentRun | ConvertTo-Json -Depth 10 | Set-Content -Path $probeRepairAgentRunPath -Encoding UTF8
+
+    $patchText = @(
+        "diff --git a/docs/repair-agent-main-worktree-apply-probe.md b/docs/repair-agent-main-worktree-apply-probe.md",
+        "new file mode 100644",
+        "--- /dev/null",
+        "+++ b/docs/repair-agent-main-worktree-apply-probe.md",
+        "@@ -0,0 +1,9 @@",
+        "+# Main Worktree Apply Probe",
+        "+",
+        "+TaskId: $taskId",
+        "+BugId: $bugId",
+        "+SuggestedFix: $suggestedFix",
+        "+RetestCommand: $retestCommand",
+        "+",
+        "+This temporary task-bound file proves a verified external-agent patch can apply to the main worktree, pass retest, and roll back cleanly.",
+        "+It must not persist after rollback."
+    ) -join "`n"
+
+    $summaryText = @"
 # AI TestPilot Main Worktree Repair Agent Summary
 
 ## Result
@@ -178,10 +210,12 @@ $summaryText = @"
 - Post-patch retest command: $retestCommand
 "@
 
-$patchPath = Join-Path $probeBundlePath "repair-agent.patch"
-$summaryPath = Join-Path $probeBundlePath "repair-agent-summary.md"
-Write-Utf8NoBomFile $patchPath ($patchText + "`n")
-Write-Utf8NoBomFile $summaryPath ($summaryText + "`n")
+    Write-Utf8NoBomFile $patchPath ($patchText + "`n")
+    Write-Utf8NoBomFile $summaryPath ($summaryText + "`n")
+}
+
+$patchText = Get-Content -Raw $patchPath
+$summaryText = Get-Content -Raw $summaryPath
 
 $repositoryPatchAppliedDuringProbe = $false
 $rollbackApplied = $false
@@ -339,7 +373,9 @@ try {
     $rollbackPatchTarget = Join-Path $evidenceBundlePath "repair-agent-main-worktree-apply-retest-rollback.patch"
     $rollbackPlanTarget = Join-Path $evidenceBundlePath "repair-agent-main-worktree-apply-retest-rollback-plan.md"
     $preflightTarget = Join-Path $evidenceBundlePath "repair-agent-main-worktree-apply-retest-rollback-preflight-manifest.json"
+    $runTarget = Join-Path $evidenceBundlePath "repair-agent-main-worktree-apply-retest-rollback-input-run.json"
     $patchTarget = Join-Path $evidenceBundlePath "repair-agent-main-worktree-apply-retest-rollback-input.patch"
+    $summaryTarget = Join-Path $evidenceBundlePath "repair-agent-main-worktree-apply-retest-rollback-input-summary.md"
     $validationLogTarget = Join-Path $evidenceBundlePath "repair-agent-main-worktree-apply-retest-rollback-validate.log"
     $worktreeAfterRollbackTarget = Join-Path $evidenceBundlePath "repair-agent-main-worktree-apply-retest-rollback-worktree-after.txt"
 
@@ -347,7 +383,9 @@ try {
     Copy-Item -LiteralPath $rollbackPatchPath -Destination $rollbackPatchTarget -Force
     Copy-Item -LiteralPath (Join-Path $probeBundlePath "repair-agent-repository-patch-rollback-plan.md") -Destination $rollbackPlanTarget -Force
     Copy-Item -LiteralPath $preflightManifestPath -Destination $preflightTarget -Force
+    Copy-Item -LiteralPath $probeRepairAgentRunPath -Destination $runTarget -Force
     Copy-Item -LiteralPath $patchPath -Destination $patchTarget -Force
+    Copy-Item -LiteralPath $summaryPath -Destination $summaryTarget -Force
     Copy-Item -LiteralPath $validationLogPath -Destination $validationLogTarget -Force
     if ($sourceStatusAfterRollback.Count -eq 0) {
         @("(clean)") | Set-Content -Path $worktreeAfterRollbackTarget -Encoding UTF8
@@ -361,7 +399,9 @@ try {
         "repair-agent-main-worktree-apply-retest-rollback-preflight-manifest.json",
         "repair-agent-main-worktree-apply-retest-rollback.patch",
         "repair-agent-main-worktree-apply-retest-rollback-plan.md",
+        "repair-agent-main-worktree-apply-retest-rollback-input-run.json",
         "repair-agent-main-worktree-apply-retest-rollback-input.patch",
+        "repair-agent-main-worktree-apply-retest-rollback-input-summary.md",
         "repair-agent-main-worktree-apply-retest-rollback-validate.log",
         "repair-agent-main-worktree-apply-retest-rollback-worktree-after.txt"
     )
@@ -375,6 +415,10 @@ try {
         status = "PASS"
         generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
         mainRepositoryRoot = $repoRoot
+        externalOutputDirectoryProvided = [bool]$externalOutputDirProvided
+        externalOutputDirectory = $externalOutputPath
+        inputPackageSource = $inputPackageSource
+        patchGeneratedByProbe = [bool]$patchGeneratedByProbe
         repairTaskPresent = $true
         taskId = $taskId
         bugId = $bugId

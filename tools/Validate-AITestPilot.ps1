@@ -84,6 +84,7 @@ try {
         "tools\Invoke-AITestPilotRepairAgentRepositoryPatchApplyCleanRetest.ps1",
         "tools\Invoke-AITestPilotRepairAgentSourceSnapshotApplyValidate.ps1",
         "tools\Invoke-AITestPilotMainWorktreeApplyReadiness.ps1",
+        "tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1",
         "tools\Invoke-AITestPilotRepairAgentMainWorktreeApplyRetestRollback.ps1",
         "tools\Invoke-AITestPilotRepairAgentPatchApplyRetest.ps1",
         "tools\Invoke-AITestPilotReplayProfileImport.ps1"

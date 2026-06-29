@@ -112,6 +112,7 @@ $repairAgentGenericPatchImportProbeManifest = Read-Manifest "repair-agent-generi
 $repairAgentSourceSnapshotApplyValidateManifest = Read-Manifest "repair-agent-source-snapshot-apply-validate-manifest.json"
 $repairAgentMainWorktreeApplyReadinessManifest = Read-Manifest "repair-agent-main-worktree-apply-readiness-manifest.json"
 $repairAgentMainWorktreeApplyRetestRollbackManifest = Read-Manifest "repair-agent-main-worktree-apply-retest-rollback-manifest.json"
+$repairAgentExternalTaskOutputAcceptanceManifest = Read-Manifest "repair-agent-external-task-output-acceptance-manifest.json"
 $repairAgentExternalPatchPreflightManifest = Read-Manifest "repair-agent-external-patch-preflight-manifest.json"
 $repairAgentExternalPatchPreflightFailureProbeManifest = Read-Manifest "repair-agent-external-patch-preflight-failure-probe-manifest.json"
 $repairAgentRepositoryPatchApplyGuardManifest = Read-Manifest "repair-agent-repository-patch-apply-guard-manifest.json"
@@ -361,6 +362,9 @@ if ($null -ne $repairAgentMainWorktreeApplyRetestRollbackManifest) {
     Add-ReleaseCheck "repair_agent_main_worktree_apply_retest_rollback" `
         ($repairAgentMainWorktreeApplyRetestRollbackManifest.status -eq "PASS" -and
             $repairAgentMainWorktreeApplyRetestRollbackManifest.schemaVersion -eq "aitestpilot.repair_agent_main_worktree_apply_retest_rollback.v1" -and
+            [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.externalOutputDirectoryProvided -and
+            $repairAgentMainWorktreeApplyRetestRollbackManifest.inputPackageSource -eq "external_output_directory" -and
+            -not [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.patchGeneratedByProbe -and
             $mainWorktreeTaskBindingPassed -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.readinessManifestPresent -and
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.readyForMainRepositoryApplyBeforeProbe -and
@@ -401,9 +405,40 @@ if ($null -ne $repairAgentMainWorktreeApplyRetestRollbackManifest) {
             [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.mainRepositoryCleanAfterRollback -and
             [int]$repairAgentMainWorktreeApplyRetestRollbackManifest.sourceStatusAfterRollbackCount -eq 0 -and
             -not [bool]$repairAgentMainWorktreeApplyRetestRollbackManifest.mainRepositoryPatchPersisted) `
-        "Repair-agent main worktree apply/retest/rollback must prove task-bound explicit verified external patch application to the real main worktree, post-apply validation/retest before rollback, and clean rollback with no persistent patch."
+        "Repair-agent main worktree apply/retest/rollback must prove task-bound explicit verified external-directory patch application to the real main worktree, post-apply validation/retest before rollback, and clean rollback with no persistent patch."
 
     Test-ListedFiles $repairAgentMainWorktreeApplyRetestRollbackManifest "repair_agent_main_worktree_apply_retest_rollback"
+}
+
+if ($null -ne $repairAgentExternalTaskOutputAcceptanceManifest) {
+    $externalTaskOutputAcceptanceTaskBindingPassed = -not [string]::IsNullOrWhiteSpace($repairAgentExternalTaskOutputAcceptanceManifest.taskId) -and
+        -not [string]::IsNullOrWhiteSpace($repairAgentExternalTaskOutputAcceptanceManifest.bugId) -and
+        -not [string]::IsNullOrWhiteSpace($repairAgentExternalTaskOutputAcceptanceManifest.suggestedFix) -and
+        [bool]$repairAgentExternalTaskOutputAcceptanceManifest.taskBugMatchesPatchOutput -and
+        [bool]$repairAgentExternalTaskOutputAcceptanceManifest.patchMentionsTaskId -and
+        [bool]$repairAgentExternalTaskOutputAcceptanceManifest.patchMentionsBugId -and
+        [bool]$repairAgentExternalTaskOutputAcceptanceManifest.patchMentionsSuggestedFix -and
+        [bool]$repairAgentExternalTaskOutputAcceptanceManifest.summaryContainsTaskId -and
+        [bool]$repairAgentExternalTaskOutputAcceptanceManifest.summaryContainsBugId -and
+        [bool]$repairAgentExternalTaskOutputAcceptanceManifest.summaryContainsSuggestedFix
+
+    Add-ReleaseCheck "repair_agent_external_task_output_acceptance" `
+        ($repairAgentExternalTaskOutputAcceptanceManifest.status -eq "PASS" -and
+            $repairAgentExternalTaskOutputAcceptanceManifest.schemaVersion -eq "aitestpilot.repair_agent_external_task_output_acceptance.v1" -and
+            ([bool]$repairAgentExternalTaskOutputAcceptanceManifest.fixtureGenerated -or [bool]$repairAgentExternalTaskOutputAcceptanceManifest.externalOutputDirectoryInputProvided) -and
+            [bool]$repairAgentExternalTaskOutputAcceptanceManifest.externalOutputDirectoryProvided -and
+            $repairAgentExternalTaskOutputAcceptanceManifest.inputPackageSource -eq "external_output_directory" -and
+            -not [bool]$repairAgentExternalTaskOutputAcceptanceManifest.patchGeneratedByProbe -and
+            $externalTaskOutputAcceptanceTaskBindingPassed -and
+            $repairAgentExternalTaskOutputAcceptanceManifest.mainWorktreeApplyRetestRollbackStatus -eq "PASS" -and
+            [bool]$repairAgentExternalTaskOutputAcceptanceManifest.mainRepositoryPatchApplied -and
+            [bool]$repairAgentExternalTaskOutputAcceptanceManifest.postApplyRetestPassed -and
+            [bool]$repairAgentExternalTaskOutputAcceptanceManifest.rollbackApplied -and
+            [bool]$repairAgentExternalTaskOutputAcceptanceManifest.mainRepositoryCleanAfterRollback -and
+            -not [bool]$repairAgentExternalTaskOutputAcceptanceManifest.mainRepositoryPatchPersisted) `
+        "Repair-agent external task output acceptance must prove a task-bound external-output-directory package can drive main worktree apply/retest/rollback and roll back cleanly."
+
+    Test-ListedFiles $repairAgentExternalTaskOutputAcceptanceManifest "repair_agent_external_task_output_acceptance"
 }
 
 if ($null -ne $repairAgentExternalPatchPreflightManifest) {
@@ -888,6 +923,7 @@ $manifest = [ordered]@{
         "repair-agent-source-snapshot-apply-validate-manifest.json",
         "repair-agent-main-worktree-apply-readiness-manifest.json",
         "repair-agent-main-worktree-apply-retest-rollback-manifest.json",
+        "repair-agent-external-task-output-acceptance-manifest.json",
         "repair-agent-external-patch-preflight-manifest.json",
         "repair-agent-external-patch-preflight-failure-probe-manifest.json",
         "repair-agent-repository-patch-apply-guard-manifest.json",
