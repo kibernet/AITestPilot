@@ -189,6 +189,7 @@ $productionHandoffDispatchPlanManifest = Read-Manifest "production-handoff-dispa
 $productionHandoffContactReadinessManifest = Read-Manifest "production-handoff-contact-readiness-manifest.json"
 $productionHandoffContactReadinessContractProbeManifest = Read-Manifest "production-handoff-contact-readiness-contract-probe-manifest.json"
 $productionHandoffSendReadinessManifest = Read-Manifest "production-handoff-send-readiness-manifest.json"
+$productionHandoffMailAuthReadinessManifest = Read-Manifest "production-handoff-mail-auth-readiness-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -1874,6 +1875,38 @@ if ($null -ne $productionHandoffSendReadinessManifest) {
     Test-ListedFiles $productionHandoffSendReadinessManifest "production_handoff_send_readiness"
 }
 
+if ($null -ne $productionHandoffMailAuthReadinessManifest) {
+    Add-ReleaseCheck "production_handoff_mail_auth_readiness" `
+        ($productionHandoffMailAuthReadinessManifest.status -eq "PASS" -and
+            $productionHandoffMailAuthReadinessManifest.schemaVersion -eq "aitestpilot.production_handoff_mail_auth_readiness.v1" -and
+            $productionHandoffMailAuthReadinessManifest.mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
+            [bool]$productionHandoffMailAuthReadinessManifest.mailAuthKitGenerated -and
+            [bool]$productionHandoffMailAuthReadinessManifest.authCheckScriptGenerated -and
+            [bool]$productionHandoffMailAuthReadinessManifest.oauthLoginHelperGenerated -and
+            [bool]$productionHandoffMailAuthReadinessManifest.readmeGenerated -and
+            [bool]$productionHandoffMailAuthReadinessManifest.authCheckScriptContentValidated -and
+            [bool]$productionHandoffMailAuthReadinessManifest.oauthLoginHelperContentValidated -and
+            [bool]$productionHandoffMailAuthReadinessManifest.readmeContentValidated -and
+            [bool]$productionHandoffMailAuthReadinessManifest.reportGenerated -and
+            [bool]$productionHandoffMailAuthReadinessManifest.reportContentValidated -and
+            [bool]$productionHandoffMailAuthReadinessManifest.sendReadinessAccepted -and
+            [bool]$productionHandoffMailAuthReadinessManifest.defaultContactBoundaryPreserved -and
+            [bool]$productionHandoffMailAuthReadinessManifest.mailAuthorizationRequired -and
+            -not [bool]$productionHandoffMailAuthReadinessManifest.mailAuthorizationCheckedByPipeline -and
+            [bool]$productionHandoffMailAuthReadinessManifest.pipelineDoesNotRunOAuthLogin -and
+            [bool]$productionHandoffMailAuthReadinessManifest.twoStageConfirmationRequired -and
+            -not [bool]$productionHandoffMailAuthReadinessManifest.automaticEmailSendReady -and
+            -not [bool]$productionHandoffMailAuthReadinessManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffMailAuthReadinessManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffMailAuthReadinessManifest.fixtureEvidencePromoted -and
+            $productionHandoffMailAuthReadinessManifest.productionOutputBoundary -eq "host_project_owner_mail_auth_readiness_only" -and
+            [int]$productionHandoffMailAuthReadinessManifest.checkCount -eq 7 -and
+            [int]$productionHandoffMailAuthReadinessManifest.failedCheckCount -eq 0) `
+        "Production handoff mail auth readiness must provide local agently-cli authorization helpers while preserving OAuth, CI, and send boundaries."
+
+    Test-ListedFiles $productionHandoffMailAuthReadinessManifest "production_handoff_mail_auth_readiness"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2052,6 +2085,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffSendReadinessAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffMailAuthReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2115,6 +2149,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-contact-readiness-manifest.json",
         "production-handoff-contact-readiness-contract-probe-manifest.json",
         "production-handoff-send-readiness-manifest.json",
+        "production-handoff-mail-auth-readiness-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2218,6 +2253,7 @@ $sourceManifests = @(
     "production-handoff-contact-readiness-manifest.json",
     "production-handoff-contact-readiness-contract-probe-manifest.json",
     "production-handoff-send-readiness-manifest.json",
+    "production-handoff-mail-auth-readiness-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",

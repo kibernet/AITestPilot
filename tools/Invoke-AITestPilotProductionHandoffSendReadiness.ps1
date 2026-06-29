@@ -319,10 +319,10 @@ $readmeLines = @(
     "",
     "Workflow:",
     "",
-    "1. Fill `production-handoff-contact-roster.json` with real owner mailboxes.",
-    "2. Run `agently-cli auth login` and verify `agently-cli +me`.",
-    "3. Run `.\production-handoff-send\send-owner-packets.ps1 -PrepareConfirmation` to request CLI confirmation tokens.",
-    "4. After operator approval, pass those tokens through `-ConfirmationTokenMapPath` with `-Send`.",
+    "1. Fill ``production-handoff-contact-roster.json`` with real owner mailboxes.",
+    "2. Run ``agently-cli auth login`` and verify ``agently-cli +me``.",
+    "3. Run ``.\production-handoff-send\send-owner-packets.ps1 -PrepareConfirmation`` to request CLI confirmation tokens.",
+    "4. After operator approval, pass those tokens through ``-ConfirmationTokenMapPath`` with ``-Send``.",
     "",
     "The helper does not bypass agently-cli two-stage confirmation."
 )

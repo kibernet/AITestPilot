@@ -303,6 +303,12 @@ To generate the guarded owner-packet send queue and agently-cli helper:
 
 That script writes `production-handoff-send-readiness-manifest.json`, `production-handoff-send-readiness.md`, `production-handoff-send\production-handoff-send-queue.json`, `production-handoff-send\send-owner-packets.ps1`, and `production-handoff-send\README.md`. In the default package-release path it reports `sendReadinessStatus=BLOCKED_MISSING_OWNER_EMAILS`, keeps `automaticEmailSendReady=false`, and generates a helper that requires real contact roster entries, `agently-cli` authorization, and explicit two-stage confirmation tokens before any owner packet email can be sent.
 
+```powershell
+.\tools\Invoke-AITestPilotProductionHandoffMailAuthReadiness.ps1
+```
+
+That script writes `production-handoff-mail-auth-readiness-manifest.json`, `production-handoff-mail-auth-readiness.md`, and `production-handoff-mail-auth\`. It generates local helpers for `agently-cli auth login` and `agently-cli +me` checks while keeping OAuth login, local authorization, and email sending outside the default CI pipeline.
+
 To run the stable repo-side acceptance entry point after host-project owners return driver, Lua, and live-smoke evidence directories:
 
 ```powershell
