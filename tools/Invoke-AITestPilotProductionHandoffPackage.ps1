@@ -429,6 +429,7 @@ This package is the host-project handoff entry point generated from release evid
 - ``blocker-resolution-map.json`` and ``blocker-resolution-map.md``: owner, evidence, acceptance, and validation mapping for every remaining production blocker.
 - ``ci-commands.ps1``: copyable release-pipeline commands for hard production enforcement.
 - ``verify-external-evidence.ps1``: host-project preflight for checking required external evidence paths before hard validation.
+- ``accept-external-evidence.ps1``: host-project wrapper for running unified acceptance and writing the Markdown acceptance report before hard validation.
 
 Keep this package with the release evidence bundle so external host-project owners can generate the missing evidence and feed it back through the same intake commands.
 "@
@@ -761,6 +762,200 @@ Write-Output "External evidence preflight manifest: $outputFullPath"
 Write-Output "AI TestPilot production handoff external evidence preflight status: $status"
 '@
 
+$acceptanceWrapperScript = @'
+# AI TestPilot production handoff external evidence acceptance wrapper.
+[CmdletBinding()]
+param(
+    [string]$RepoRoot,
+    [string]$EvidenceBundleDir,
+    [string]$OutputDir,
+    [string]$ProductionDriverEvidenceDir,
+    [string]$ProductionLuaEvidenceDir,
+    [string]$LiveModelEndpointSmokeEvidenceDir,
+    [string]$GameReplayDriverType = "Your.Game.Tests.ProductionReplayDriver",
+    [switch]$RequireAllEvidence,
+    [switch]$ContractFixtureMode,
+    [switch]$RunHardValidation
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Find-RepoRoot {
+    param([string]$StartDir)
+
+    $current = Resolve-FullPath $StartDir
+    while ($true) {
+        if (Test-Path (Join-Path $current "tools\Invoke-AITestPilotReleasePipeline.ps1")) {
+            return $current
+        }
+
+        $parent = [System.IO.Directory]::GetParent($current)
+        if ($null -eq $parent) {
+            throw "Could not locate repo root from $StartDir. Pass -RepoRoot explicitly."
+        }
+
+        $parentPath = $parent.FullName
+        if ($parentPath -eq $current) {
+            throw "Could not locate repo root from $StartDir. Pass -RepoRoot explicitly."
+        }
+
+        $current = $parentPath
+    }
+}
+
+function Invoke-WrapperCommand {
+    param(
+        [string]$Name,
+        [scriptblock]$Command
+    )
+
+    $passed = $true
+    $message = "PASS"
+    try {
+        & $Command | Out-Null
+    } catch {
+        $passed = $false
+        $message = $_.Exception.Message
+    }
+
+    return [ordered]@{
+        name = $Name
+        passed = [bool]$passed
+        message = $message
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+    $RepoRoot = Find-RepoRoot $PSScriptRoot
+}
+$repoPath = Resolve-FullPath $RepoRoot
+
+if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
+    $EvidenceBundleDir = Join-Path $PSScriptRoot ".."
+}
+$evidencePath = Resolve-FullPath $EvidenceBundleDir
+
+if ([string]::IsNullOrWhiteSpace($OutputDir)) {
+    $OutputDir = Join-Path $PSScriptRoot "external-evidence-acceptance"
+}
+$outputPath = Resolve-FullPath $OutputDir
+$acceptanceBundlePath = Join-Path $outputPath "acceptance-bundle"
+$acceptanceManifestPath = Join-Path $outputPath "production-external-evidence-acceptance-manifest.json"
+$acceptanceReportPath = Join-Path $outputPath "production-external-evidence-acceptance.md"
+$wrapperManifestPath = Join-Path $outputPath "external-evidence-acceptance-wrapper-manifest.json"
+$pipelineManifestPath = Join-Path $repoPath "artifacts\ai-testpilot-release\latest\pipeline-manifest.json"
+
+New-Item -ItemType Directory -Force $outputPath | Out-Null
+
+$acceptanceResult = Invoke-WrapperCommand "production_external_evidence_acceptance" {
+    & (Join-Path $repoPath "tools\Invoke-AITestPilotProductionExternalEvidenceAcceptance.ps1") `
+        -EvidenceBundleDir $evidencePath `
+        -AcceptanceBundleDir $acceptanceBundlePath `
+        -ManifestPath $acceptanceManifestPath `
+        -ReportPath $acceptanceReportPath `
+        -ProductionDriverEvidenceDir $ProductionDriverEvidenceDir `
+        -ProductionLuaEvidenceDir $ProductionLuaEvidenceDir `
+        -LiveModelEndpointSmokeEvidenceDir $LiveModelEndpointSmokeEvidenceDir `
+        -GameReplayDriverType $GameReplayDriverType `
+        -RequireAllEvidence:$RequireAllEvidence `
+        -ContractFixtureMode:$ContractFixtureMode
+}
+
+if (-not (Test-Path $acceptanceManifestPath)) {
+    throw "Production external evidence acceptance manifest was not produced: $acceptanceManifestPath"
+}
+
+$acceptanceManifest = Get-Content -Path $acceptanceManifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+$acceptanceReportGenerated = (Test-Path $acceptanceReportPath) -and
+    [bool]$acceptanceManifest.reportGenerated -and
+    [bool]$acceptanceManifest.reportContentValidated
+
+$hardValidationResult = $null
+if ([bool]$RunHardValidation) {
+    $hardValidationResult = Invoke-WrapperCommand "hard_production_release_pipeline" {
+        & (Join-Path $repoPath "tools\Invoke-AITestPilotReleasePipeline.ps1") `
+            -GameReplayDriverType $GameReplayDriverType `
+            -ProductionLuaEvidenceDir $ProductionLuaEvidenceDir `
+            -RequireProductionReplayDriverBound `
+            -RequireProductionLuaPatched `
+            -RequireLiveModelEndpointSmoke `
+            -LiveModelEndpointSmokeEvidenceDir $LiveModelEndpointSmokeEvidenceDir
+    }
+}
+
+$wrapperStatus = if (-not [bool]$acceptanceResult.passed) {
+    "FAIL"
+} elseif ([bool]$RunHardValidation -and $null -ne $hardValidationResult -and -not [bool]$hardValidationResult.passed) {
+    "FAIL"
+} elseif ([string]$acceptanceManifest.status -eq "PASS" -and (-not [bool]$RunHardValidation -or ($null -ne $hardValidationResult -and [bool]$hardValidationResult.passed))) {
+    "PASS"
+} else {
+    [string]$acceptanceManifest.status
+}
+
+$wrapperCommandResults = @($acceptanceResult)
+if ($null -ne $hardValidationResult) {
+    $wrapperCommandResults += $hardValidationResult
+}
+
+$wrapperManifest = [ordered]@{
+    schemaVersion = "aitestpilot.production_handoff_external_evidence_acceptance_wrapper.v1"
+    status = $wrapperStatus
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    repoRoot = $repoPath
+    evidenceBundleDir = $evidencePath
+    outputDir = $outputPath
+    requireAllEvidence = [bool]$RequireAllEvidence
+    contractFixtureMode = [bool]$ContractFixtureMode
+    runHardValidation = [bool]$RunHardValidation
+    gameReplayDriverType = $GameReplayDriverType
+    productionDriverEvidenceDir = $ProductionDriverEvidenceDir
+    productionLuaEvidenceDir = $ProductionLuaEvidenceDir
+    liveModelEndpointSmokeEvidenceDir = $LiveModelEndpointSmokeEvidenceDir
+    acceptanceCommandPassed = [bool]$acceptanceResult.passed
+    acceptanceManifestPath = $acceptanceManifestPath
+    acceptanceReportPath = $acceptanceReportPath
+    acceptanceReportGenerated = [bool]$acceptanceReportGenerated
+    acceptanceStatus = [string]$acceptanceManifest.status
+    allExternalEvidenceAccepted = [bool]$acceptanceManifest.allExternalEvidenceAccepted
+    realHostProjectEvidenceAccepted = [bool]$acceptanceManifest.realHostProjectEvidenceAccepted
+    missingExternalEvidenceAreaCount = [int]$acceptanceManifest.missingExternalEvidenceAreaCount
+    hardValidationCommand = ".\tools\Invoke-AITestPilotReleasePipeline.ps1 -GameReplayDriverType `"$GameReplayDriverType`" -ProductionLuaEvidenceDir `"$ProductionLuaEvidenceDir`" -RequireProductionReplayDriverBound -RequireProductionLuaPatched -RequireLiveModelEndpointSmoke -LiveModelEndpointSmokeEvidenceDir `"$LiveModelEndpointSmokeEvidenceDir`""
+    hardValidationRun = [bool]$RunHardValidation
+    hardValidationPassed = ($null -ne $hardValidationResult -and [bool]$hardValidationResult.passed)
+    pipelineManifestPath = if ([bool]$RunHardValidation) { $pipelineManifestPath } else { "" }
+    commandResults = @($wrapperCommandResults)
+    productionOutputBoundary = if ([bool]$acceptanceManifest.realHostProjectEvidenceAccepted) {
+        "real_host_project_external_evidence_accepted"
+    } elseif ([bool]$ContractFixtureMode) {
+        "accepted_fixture_external_evidence_acceptance_wrapper_contract_only"
+    } else {
+        "external_evidence_acceptance_wrapper_only"
+    }
+    files = @(
+        "external-evidence-acceptance-wrapper-manifest.json",
+        "production-external-evidence-acceptance-manifest.json",
+        "production-external-evidence-acceptance.md"
+    )
+}
+
+$wrapperManifest | ConvertTo-Json -Depth 12 | Set-Content -Path $wrapperManifestPath -Encoding UTF8
+
+if ([bool]$RequireAllEvidence -and $wrapperStatus -ne "PASS") {
+    throw "Production external evidence acceptance wrapper failed. Manifest: $wrapperManifestPath"
+}
+
+Write-Output "Production external evidence acceptance wrapper manifest: $wrapperManifestPath"
+Write-Output "Production external evidence acceptance report: $acceptanceReportPath"
+Write-Output "AI TestPilot production external evidence acceptance wrapper status: $wrapperStatus"
+'@
+
 $readmePath = Join-Path $packagePath "README.md"
 $actionPlanPath = Join-Path $packagePath "action-plan.md"
 $requiredEvidencePath = Join-Path $packagePath "required-external-evidence.json"
@@ -768,6 +963,7 @@ $blockerResolutionJsonPath = Join-Path $packagePath "blocker-resolution-map.json
 $blockerResolutionMarkdownPath = Join-Path $packagePath "blocker-resolution-map.md"
 $ciCommandsPath = Join-Path $packagePath "ci-commands.ps1"
 $preflightScriptPath = Join-Path $packagePath "verify-external-evidence.ps1"
+$acceptanceWrapperScriptPath = Join-Path $packagePath "accept-external-evidence.ps1"
 $preflightSelfCheckPath = Join-Path $packagePath "external-evidence-preflight-self-check.json"
 
 $readme | Set-Content -Path $readmePath -Encoding UTF8
@@ -777,6 +973,7 @@ $blockerResolutionMap | ConvertTo-Json -Depth 12 | Set-Content -Path $blockerRes
 $blockerResolutionLines | Set-Content -Path $blockerResolutionMarkdownPath -Encoding UTF8
 $ciCommands | Set-Content -Path $ciCommandsPath -Encoding UTF8
 $preflightScript | Set-Content -Path $preflightScriptPath -Encoding UTF8
+$acceptanceWrapperScript | Set-Content -Path $acceptanceWrapperScriptPath -Encoding UTF8
 
 & $preflightScriptPath -RepoRoot $repoRoot -EvidenceBundleDir $evidenceBundlePath -OutputPath $preflightSelfCheckPath | Out-Null
 
@@ -787,6 +984,7 @@ $blockerResolutionMarkdownText = Get-Content -Path $blockerResolutionMarkdownPat
 $blockerResolutionSelfCheck = $blockerResolutionText | ConvertFrom-Json
 $ciCommandsText = Get-Content -Path $ciCommandsPath -Encoding UTF8 -Raw
 $preflightScriptText = Get-Content -Path $preflightScriptPath -Encoding UTF8 -Raw
+$acceptanceWrapperScriptText = Get-Content -Path $acceptanceWrapperScriptPath -Encoding UTF8 -Raw
 $preflightSelfCheck = Get-Content -Path $preflightSelfCheckPath -Encoding UTF8 -Raw | ConvertFrom-Json
 
 $expectedActionPlanSnippets = @()
@@ -865,6 +1063,15 @@ $preflightSelfCheckValid = $preflightSelfCheck.schemaVersion -eq "aitestpilot.pr
     [int]$preflightSelfCheck.missingExternalEvidenceAreaCount -eq 3 -and
     -not [bool]$preflightSelfCheck.allRequiredExternalEvidenceFilesPresent
 
+$acceptanceWrapperScriptContentValid = $acceptanceWrapperScriptText.Contains("aitestpilot.production_handoff_external_evidence_acceptance_wrapper.v1") -and
+    $acceptanceWrapperScriptText.Contains("Invoke-AITestPilotProductionExternalEvidenceAcceptance.ps1") -and
+    $acceptanceWrapperScriptText.Contains("production-external-evidence-acceptance.md") -and
+    $acceptanceWrapperScriptText.Contains("RunHardValidation") -and
+    $acceptanceWrapperScriptText.Contains("-RequireProductionReplayDriverBound") -and
+    $acceptanceWrapperScriptText.Contains("-RequireProductionLuaPatched") -and
+    $acceptanceWrapperScriptText.Contains("-RequireLiveModelEndpointSmoke") -and
+    -not ($acceptanceWrapperScriptText -match "System\.Collections|OrderedDictionary")
+
 $generatedHandoffContentQualityAccepted = $actionPlanContentValid -and $requiredEvidenceContentValid -and $blockerResolutionMapContentValid -and $ciCommandsContentValid
 $externalEvidencePreflightAccepted = $preflightScriptContentValid -and $preflightSelfCheckValid
 
@@ -876,6 +1083,7 @@ $generatedFiles = @(
     "production-handoff-package/blocker-resolution-map.md",
     "production-handoff-package/ci-commands.ps1",
     "production-handoff-package/verify-external-evidence.ps1",
+    "production-handoff-package/accept-external-evidence.ps1",
     "production-handoff-package/external-evidence-preflight-self-check.json"
 )
 
@@ -896,6 +1104,9 @@ Add-HandoffCheck "blocker_resolution_map" `
 Add-HandoffCheck "external_evidence_preflight_script" `
     $externalEvidencePreflightAccepted `
     "Generated handoff package must include a runnable external evidence preflight script with a pending self-check."
+Add-HandoffCheck "external_evidence_acceptance_wrapper" `
+    $acceptanceWrapperScriptContentValid `
+    "Generated handoff package must include a runnable external evidence acceptance wrapper that writes a Markdown report and can launch hard validation."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -936,6 +1147,7 @@ $manifest = [ordered]@{
     ciCommandsContentValidated = [bool]$ciCommandsContentValid
     externalEvidencePreflightAccepted = [bool]$externalEvidencePreflightAccepted
     preflightScriptContentValidated = [bool]$preflightScriptContentValid
+    acceptanceWrapperScriptContentValidated = [bool]$acceptanceWrapperScriptContentValid
     preflightSelfCheckValidated = [bool]$preflightSelfCheckValid
     preflightSelfCheckStatus = [string]$preflightSelfCheck.status
     preflightSelfCheckMissingAreaCount = [int]$preflightSelfCheck.missingExternalEvidenceAreaCount

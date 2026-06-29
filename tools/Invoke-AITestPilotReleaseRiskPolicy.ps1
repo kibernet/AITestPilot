@@ -641,8 +641,10 @@ $productionHandoffPackageAccepted = (
         (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "hostProjectBlockingReasonCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "blockerResolutionUnmappedReasonCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "externalEvidencePreflightAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "acceptanceWrapperScriptContentValidated" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "sourceManifestCount" 0)) -ge 12 -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 8 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 9 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "checkCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -665,14 +667,19 @@ $productionHandoffExternalEvidencePreflightAccepted = (
     (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightFailedIntakeCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightIntakePassed" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightRequiredFilesPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedWrapperPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedWrapperReportGenerated" $false)) -and
+    (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedWrapperAcceptanceStatus" "") -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedWrapperAllExternalEvidenceAccepted" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_preflight_contract_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "checkCount" 0)) -eq 6 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_handoff_external_evidence_preflight_policy" $productionHandoffExternalEvidencePreflightAccepted `
-    "Production handoff evidence must prove the generated external evidence preflight accepts complete host-project-shaped fixture evidence without promoting fixture data." `
+    "Production handoff evidence must prove the generated external evidence preflight and acceptance wrapper accept complete host-project-shaped fixture evidence without promoting fixture data." `
     "production_handoff_external_evidence_preflight_not_accepted"
 
 $productionExternalEvidenceAcceptanceContractAccepted = (

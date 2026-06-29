@@ -153,6 +153,10 @@ $preflightScriptPath = Join-Path $handoffPackageDir "verify-external-evidence.ps
 if (-not (Test-Path $preflightScriptPath)) {
     throw "Production handoff preflight script is missing: $preflightScriptPath"
 }
+$acceptanceWrapperScriptPath = Join-Path $handoffPackageDir "accept-external-evidence.ps1"
+if (-not (Test-Path $acceptanceWrapperScriptPath)) {
+    throw "Production handoff acceptance wrapper script is missing: $acceptanceWrapperScriptPath"
+}
 
 $driverAcceptedSourceDir = Resolve-FullPath ([string]$driverContract.acceptedFixtureBundleDir)
 $luaAcceptedSourceDir = Join-Path (Resolve-FullPath ([string]$luaContract.probeBundleDir)) "accepted-fixture-evidence"
@@ -162,7 +166,9 @@ $externalDriverDir = Join-Path $externalBundlePath "production-driver-evidence"
 $externalLuaDir = Join-Path $externalBundlePath "production-lua-evidence"
 $externalLiveDir = Join-Path $externalBundlePath "live-model-smoke-evidence"
 $preflightIntakeBundleDir = Join-Path $probeBundlePath "preflight-intake-bundle"
+$acceptanceWrapperOutputDir = Join-Path $probeBundlePath "acceptance-wrapper-output"
 New-Item -ItemType Directory -Force $preflightIntakeBundleDir | Out-Null
+New-Item -ItemType Directory -Force $acceptanceWrapperOutputDir | Out-Null
 
 Copy-RequiredFiles $driverAcceptedSourceDir $externalDriverDir $driverRequiredFiles "Accepted production driver fixture"
 Copy-RequiredFiles $luaAcceptedSourceDir $externalLuaDir $luaRequiredFiles "Accepted production Lua fixture"
@@ -193,6 +199,26 @@ $acceptedPreflightManifestPath = Join-Path $probeBundlePath $acceptedPreflightNa
 
 $acceptedPreflight = Read-JsonFile $acceptedPreflightManifestPath "Accepted external evidence preflight manifest"
 
+$acceptedWrapperName = "production-handoff-external-evidence-acceptance-wrapper-manifest.json"
+$acceptedWrapperAcceptanceName = "production-handoff-external-evidence-acceptance-manifest.json"
+$acceptedWrapperReportName = "production-handoff-external-evidence-acceptance.md"
+$acceptedWrapperManifestPath = Join-Path $acceptanceWrapperOutputDir "external-evidence-acceptance-wrapper-manifest.json"
+$acceptedWrapperAcceptanceManifestPath = Join-Path $acceptanceWrapperOutputDir "production-external-evidence-acceptance-manifest.json"
+$acceptedWrapperReportPath = Join-Path $acceptanceWrapperOutputDir "production-external-evidence-acceptance.md"
+
+& $acceptanceWrapperScriptPath `
+    -RepoRoot $repoRoot `
+    -EvidenceBundleDir $preflightIntakeBundleDir `
+    -OutputDir $acceptanceWrapperOutputDir `
+    -ProductionDriverEvidenceDir $externalDriverDir `
+    -ProductionLuaEvidenceDir $externalLuaDir `
+    -LiveModelEndpointSmokeEvidenceDir $externalLiveDir `
+    -GameReplayDriverType "Your.Game.Tests.AcceptedProductionReplayDriver" `
+    -RequireAllEvidence `
+    -ContractFixtureMode
+
+$acceptedWrapper = Read-JsonFile $acceptedWrapperManifestPath "Accepted external evidence acceptance wrapper manifest"
+
 $externalBundleUnderRepo = $externalBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
 $fixtureDirsGenerated = (Test-Path $externalDriverDir) -and (Test-Path $externalLuaDir) -and (Test-Path $externalLiveDir)
 $acceptedPreflightPassed = $acceptedPreflight.schemaVersion -eq "aitestpilot.production_handoff_external_evidence_preflight.v1" -and
@@ -207,6 +233,20 @@ $acceptedPreflightIntakePassed = @($acceptedPreflight.intakeResults).Count -eq 3
 $acceptedPreflightRequiredFilesPassed = [bool]$acceptedPreflight.productionDriverEvidence.allPresent -and
     [bool]$acceptedPreflight.productionLuaEvidence.allPresent -and
     [bool]$acceptedPreflight.liveModelEndpointEvidence.allPresent
+$acceptedWrapperPassed = $acceptedWrapper.schemaVersion -eq "aitestpilot.production_handoff_external_evidence_acceptance_wrapper.v1" -and
+    $acceptedWrapper.status -eq "PASS" -and
+    [bool]$acceptedWrapper.requireAllEvidence -and
+    [bool]$acceptedWrapper.contractFixtureMode -and
+    -not [bool]$acceptedWrapper.runHardValidation -and
+    [bool]$acceptedWrapper.acceptanceCommandPassed -and
+    [bool]$acceptedWrapper.acceptanceReportGenerated -and
+    $acceptedWrapper.acceptanceStatus -eq "PASS" -and
+    [bool]$acceptedWrapper.allExternalEvidenceAccepted -and
+    -not [bool]$acceptedWrapper.realHostProjectEvidenceAccepted -and
+    [int]$acceptedWrapper.missingExternalEvidenceAreaCount -eq 0 -and
+    $acceptedWrapper.productionOutputBoundary -eq "accepted_fixture_external_evidence_acceptance_wrapper_contract_only" -and
+    (Test-Path $acceptedWrapperAcceptanceManifestPath) -and
+    (Test-Path $acceptedWrapperReportPath)
 $handoffBoundaryPreserved = $handoffManifest.status -eq "PASS" -and
     [bool]$handoffManifest.externalEvidenceRequiredForProduction -and
     -not [bool]$handoffManifest.fixtureEvidencePromoted -and
@@ -220,15 +260,22 @@ Add-ProbeCheck "accepted_preflight_passed" $acceptedPreflightPassed "Generated h
 Add-ProbeCheck "accepted_preflight_intake_passed" $acceptedPreflightIntakePassed "Preflight RunIntake must pass driver, Lua, and live-model intake commands."
 Add-ProbeCheck "accepted_preflight_required_files" $acceptedPreflightRequiredFilesPassed "Preflight must see all required files for driver, Lua, and live-model evidence."
 Add-ProbeCheck "handoff_boundary_preserved" $handoffBoundaryPreserved "Accepted preflight fixture must not promote fixture data as real host-project evidence."
+Add-ProbeCheck "accepted_acceptance_wrapper_passed" $acceptedWrapperPassed "Generated handoff acceptance wrapper must produce a validated Markdown report without promoting fixture data."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
 
 Copy-Item -LiteralPath $acceptedPreflightManifestPath -Destination (Join-Path $evidenceBundlePath $acceptedPreflightName) -Force
+Copy-Item -LiteralPath $acceptedWrapperManifestPath -Destination (Join-Path $evidenceBundlePath $acceptedWrapperName) -Force
+Copy-Item -LiteralPath $acceptedWrapperAcceptanceManifestPath -Destination (Join-Path $evidenceBundlePath $acceptedWrapperAcceptanceName) -Force
+Copy-Item -LiteralPath $acceptedWrapperReportPath -Destination (Join-Path $evidenceBundlePath $acceptedWrapperReportName) -Force
 
 $files = @(
     "production-handoff-external-evidence-preflight-probe-manifest.json",
-    $acceptedPreflightName
+    $acceptedPreflightName,
+    $acceptedWrapperName,
+    $acceptedWrapperAcceptanceName,
+    $acceptedWrapperReportName
 )
 
 $manifest = [ordered]@{
@@ -240,7 +287,11 @@ $manifest = [ordered]@{
     probeBundleDir = $probeBundlePath
     externalBundleUnderRepo = [bool]$externalBundleUnderRepo
     handoffPreflightScriptPath = "production-handoff-package/verify-external-evidence.ps1"
+    handoffAcceptanceWrapperScriptPath = "production-handoff-package/accept-external-evidence.ps1"
     acceptedPreflightManifest = $acceptedPreflightName
+    acceptedWrapperManifest = $acceptedWrapperName
+    acceptedWrapperAcceptanceManifest = $acceptedWrapperAcceptanceName
+    acceptedWrapperReport = $acceptedWrapperReportName
     acceptedFixtureDirsGenerated = [bool]$fixtureDirsGenerated
     acceptedPreflightPassed = [bool]$acceptedPreflightPassed
     acceptedPreflightRunIntake = [bool]$acceptedPreflight.runIntake
@@ -251,6 +302,10 @@ $manifest = [ordered]@{
     acceptedPreflightFailedIntakeCount = [int]$acceptedPreflight.failedIntakeCount
     acceptedPreflightIntakePassed = [bool]$acceptedPreflightIntakePassed
     acceptedPreflightRequiredFilesPassed = [bool]$acceptedPreflightRequiredFilesPassed
+    acceptedWrapperPassed = [bool]$acceptedWrapperPassed
+    acceptedWrapperReportGenerated = [bool]$acceptedWrapper.acceptanceReportGenerated
+    acceptedWrapperAcceptanceStatus = [string]$acceptedWrapper.acceptanceStatus
+    acceptedWrapperAllExternalEvidenceAccepted = [bool]$acceptedWrapper.allExternalEvidenceAccepted
     releasePipelineUsesFixture = $false
     realHostProjectEvidenceAccepted = $false
     productionOutputBoundary = "accepted_fixture_preflight_contract_only"
