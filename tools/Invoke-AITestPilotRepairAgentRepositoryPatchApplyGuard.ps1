@@ -125,7 +125,7 @@ function Get-RollbackDiff {
 
     $diffLines = @($trackedDiff)
     foreach ($untrackedFile in @($untrackedFiles | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
-        $untrackedDiff = @(& git -C $repoRoot diff --binary --no-index -- /dev/null $untrackedFile 2>&1)
+        $untrackedDiff = @(& git -c core.autocrlf=false -c core.safecrlf=false -C $repoRoot diff --binary --no-index -- /dev/null $untrackedFile 2>&1)
         if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1) {
             throw "git diff --no-index failed for $($untrackedFile): $($untrackedDiff -join "`n")"
         }
