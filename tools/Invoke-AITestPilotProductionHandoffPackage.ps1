@@ -154,6 +154,7 @@ $providerQuality = Read-JsonFile "provider-ci-quality-probe-manifest.json" "Prov
 
 $driverBlockingReasons = Convert-ToArray (Get-JsonValue $driverReadiness "blockingReasons" $null)
 $luaBlockingReasons = Convert-ToArray (Get-JsonValue $luaReadiness "blockingReasons" $null)
+$liveBlockingReasons = @("real_live_model_endpoint_smoke_missing")
 
 $productionDriverReady = [bool](Get-JsonValue $driverReadiness "readyForProductionDriverRelease" $false)
 $productionLuaReady = [bool](Get-JsonValue $luaReadiness "readyForProductionLuaPatchRelease" $false)
@@ -258,8 +259,8 @@ if (-not $liveModelAccessProven) {
         id = "live_model_endpoint_smoke"
         status = "PENDING_PROVIDER_ACCESS"
         owner = "host_project_ai_platform"
-        remainingBlockingReasonCount = [int](Get-JsonValue $liveExternalSmoke "blockingReasonCount" 0)
-        remainingBlockingReasons = @("real_live_model_endpoint_smoke_missing")
+        remainingBlockingReasonCount = [int]$liveBlockingReasons.Count
+        remainingBlockingReasons = @($liveBlockingReasons)
         kitPath = "live-model-endpoint-config-kit"
         requiredEvidenceFiles = @($liveRequiredEvidence)
         validationCommand = '.\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"'
