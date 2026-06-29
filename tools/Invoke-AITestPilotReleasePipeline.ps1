@@ -304,6 +304,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "model_endpoint_provider_retry_policy" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotModelEndpointProviderRetryPolicyProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "live_model_endpoint_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

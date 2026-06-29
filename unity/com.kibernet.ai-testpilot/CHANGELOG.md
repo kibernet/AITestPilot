@@ -55,3 +55,4 @@
 - Made Cursor Agent temporary patch-contract checks use git exit codes instead of PowerShell stderr exceptions.
 - Added a repo-external production driver evidence bundle intake probe for host-project evidence directories outside the AI TestPilot repo.
 - Added a GitHub Actions release workflow and release-gated workflow probe for self-hosted Windows Unity CI.
+- Added provider-specific live model endpoint retry policy and alert-routing evidence.

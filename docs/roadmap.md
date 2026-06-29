@@ -52,6 +52,7 @@
 - Live endpoint failure remediation hints for auth, rate limit, request/endpoint, provider outage, timeout, network, empty response, response contract, configuration, and unknown failures.
 - Live endpoint retry/escalation policy recorded in failure evidence.
 - Policy-driven live endpoint retry execution with per-attempt manifest evidence.
+- Provider-specific live-smoke retry tuning and alert routing for native, OpenAI, OpenAI-compatible, and local gateways.
 - Production replay integration plan asset plus JSON/Markdown checklist evidence, explicitly marked unbound until real project APIs are wired.
 - Production replay integration contract probe proving `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states without claiming real game API calls.
 - Production driver evidence intake gate for standalone real-project evidence bundles, with default sample/unbound rejection evidence.
@@ -67,7 +68,7 @@
 
 ## V0.3 Model Bridge
 
-- Provider-specific live-smoke retry tuning and alert routing beyond the current bounded policy wrapper.
+- Real live endpoint credentials, provider access, and production smoke evidence for the selected deployment.
 
 ## V0.4 Retest and Repair Loop
 

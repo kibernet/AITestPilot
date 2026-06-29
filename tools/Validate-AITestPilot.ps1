@@ -69,6 +69,7 @@ try {
         "docs\model-endpoint.md",
         "tools\Invoke-AITestPilotModelEndpointTraceProbe.ps1",
         "tools\Invoke-AITestPilotModelEndpointProviderDiagnostics.ps1",
+        "tools\Invoke-AITestPilotModelEndpointProviderRetryPolicyProbe.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1",
         ".github\workflows\ai-testpilot-release.yml",

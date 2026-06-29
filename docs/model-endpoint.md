@@ -166,6 +166,27 @@ Supported `AITESTPILOT_MODEL_PROVIDER` values include:
 - `openai-compatible-gateway`
 - `local-openai-compatible`
 
+## Provider Retry Policy
+
+Provider-specific retry policy is validated offline:
+
+```powershell
+.\tools\Invoke-AITestPilotModelEndpointProviderRetryPolicyProbe.ps1
+```
+
+The probe reads `model-endpoint-provider-diagnostics-manifest.json` and writes `model-endpoint-provider-retry-policy-manifest.json`. It covers `native-json-gateway`, `openai-chat-completions`, `openai-compatible-gateway`, and `local-openai-compatible` across the live failure categories used by smoke manifests: `auth`, `rate_limit`, `request_or_endpoint`, `provider_unavailable`, `timeout`, `network`, `empty_response`, `response_contract`, `configuration`, and `unknown`.
+
+Each matrix entry records:
+
+- retryability.
+- recommended retry count.
+- first backoff and maximum backoff.
+- escalation owner.
+- alert route.
+- release-gate action.
+
+The manifest also publishes recommended production CI arguments for required live smoke. This probe does not call a provider and does not prove credentials or model access; it proves that release artifacts contain provider-specific handling for live endpoint failures before a real endpoint is made mandatory.
+
 ## Failure Classification
 
 Live smoke writes a classified `FAIL` manifest when a configured endpoint is reachable enough to execute the probe command but the request fails. The manifest includes `failureCategory`, `failureMessage`, `failureRemediation`, and `failurePolicy`.

@@ -157,6 +157,7 @@ else {
 }
 $modelEndpointManifest = Read-Manifest "model-endpoint-trace-manifest.json"
 $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provider-diagnostics-manifest.json"
+$modelEndpointProviderRetryPolicyManifest = Read-Manifest "model-endpoint-provider-retry-policy-manifest.json"
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
@@ -1011,6 +1012,50 @@ if ($null -ne $modelEndpointProviderDiagnosticsManifest) {
     Test-ListedFiles $modelEndpointProviderDiagnosticsManifest "model_endpoint_provider_diagnostics"
 }
 
+if ($null -ne $modelEndpointProviderRetryPolicyManifest) {
+    Add-ReleaseCheck "model_endpoint_provider_retry_policy" `
+        ($modelEndpointProviderRetryPolicyManifest.status -eq "PASS" -and
+            $modelEndpointProviderRetryPolicyManifest.schemaVersion -eq "aitestpilot.model_endpoint_provider_retry_policy.v1" -and
+            [int]$modelEndpointProviderRetryPolicyManifest.providerPolicyCount -ge 4 -and
+            [bool]$modelEndpointProviderRetryPolicyManifest.providerProfilesComplete -and
+            [int]$modelEndpointProviderRetryPolicyManifest.failureCategoryCount -ge 10 -and
+            [int]$modelEndpointProviderRetryPolicyManifest.policyMatrixEntryCount -eq [int]$modelEndpointProviderRetryPolicyManifest.expectedPolicyMatrixEntryCount -and
+            [int]$modelEndpointProviderRetryPolicyManifest.retryableEntryCount -gt 0 -and
+            [int]$modelEndpointProviderRetryPolicyManifest.nonRetryableEntryCount -gt 0 -and
+            [int]$modelEndpointProviderRetryPolicyManifest.alertRouteCount -ge 6 -and
+            [int]$modelEndpointProviderRetryPolicyManifest.escalationPathCount -ge 6 -and
+            -not [bool]$modelEndpointProviderRetryPolicyManifest.secretsSerialized) `
+        "Provider retry policy must define provider-specific retry, backoff, escalation, and alert routing without serializing secrets."
+
+    Add-ReleaseCheck "model_endpoint_provider_retry_policy_required_providers" `
+        ((Test-ContainsAll @($modelEndpointProviderRetryPolicyManifest.providerIds) @(
+            "native-json-gateway",
+            "openai-chat-completions",
+            "openai-compatible-gateway",
+            "local-openai-compatible")) -and
+            (Test-ContainsAll @($modelEndpointProviderRetryPolicyManifest.failureCategories) @(
+                "auth",
+                "rate_limit",
+                "request_or_endpoint",
+                "provider_unavailable",
+                "timeout",
+                "network",
+                "empty_response",
+                "response_contract",
+                "configuration",
+                "unknown"))) `
+        "Provider retry policy must cover required providers and failure categories."
+
+    Add-ReleaseCheck "model_endpoint_provider_retry_policy_ci_args" `
+        ($null -ne $modelEndpointProviderRetryPolicyManifest.ciRecommendedArgs -and
+            [int]$modelEndpointProviderRetryPolicyManifest.ciRecommendedArgs.productionMaxPolicyRetries -ge 3 -and
+            [int]$modelEndpointProviderRetryPolicyManifest.ciRecommendedArgs.productionMaxRetryBackoffSeconds -ge 60 -and
+            $modelEndpointProviderRetryPolicyManifest.ciRecommendedArgs.command -match "RequireLiveModelEndpointSmoke") `
+        "Provider retry policy must publish recommended CI live-smoke retry controls."
+
+    Test-ListedFiles $modelEndpointProviderRetryPolicyManifest "model_endpoint_provider_retry_policy"
+}
+
 if ($null -ne $liveModelEndpointFailureProbeManifest) {
     Add-ReleaseCheck "live_model_endpoint_failure_probe" `
         ($liveModelEndpointFailureProbeManifest.status -eq "PASS" -and
@@ -1204,6 +1249,7 @@ $sourceManifests = @(
     "production-driver-external-bundle-intake-probe-manifest.json",
     "model-endpoint-trace-manifest.json",
     "model-endpoint-provider-diagnostics-manifest.json",
+    "model-endpoint-provider-retry-policy-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json"

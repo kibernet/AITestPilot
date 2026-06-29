@@ -247,6 +247,14 @@ To generate provider preset diagnostics without making a live network request:
 ```
 
 The diagnostics manifest records supported presets for native JSON, OpenAI chat completions, OpenAI-compatible gateways, and local OpenAI-compatible gateways. It never serializes API key values; it records only whether the relevant environment variables are configured.
+To validate provider-specific live-smoke retry tuning and alert routing without calling a provider:
+
+```powershell
+.\tools\Invoke-AITestPilotModelEndpointProviderRetryPolicyProbe.ps1
+```
+
+The retry policy manifest covers the provider presets and live failure categories with provider-specific retry counts, backoff ceilings, escalation owners, alert routes, and recommended production CI live-smoke retry arguments. This is policy evidence; a real live endpoint still requires `Invoke-AITestPilotLiveModelEndpointSmoke.ps1 -RequireLive`.
+
 To prove live endpoint failures are classified before hitting a real provider:
 
 ```powershell
@@ -335,6 +343,7 @@ Implemented now:
 - Live model endpoint failure remediation hints for auth, rate limit, request/endpoint, provider outage, timeout, network, empty response, response contract, and configuration failures.
 - Live model endpoint retry/escalation policy in failure evidence.
 - Policy-driven live model endpoint retry execution with per-attempt evidence.
+- Provider-specific live-smoke retry tuning and alert routing manifest for native, OpenAI, OpenAI-compatible, and local gateways.
 - Sample business replay path covering account setup, login, `enter_scene`, activity reward, and `play_fishing`.
 - Persisted replay profile asset plus JSON export for CI evidence.
 - Replay profile JSON import back into an editable Unity `ActionReplayProfile` asset.
@@ -342,7 +351,6 @@ Implemented now:
 Not implemented yet:
 
 - Cloud/local cluster orchestration.
-- Provider-specific retry tuning beyond the current bounded policy-driven wrapper.
 - Lua static analysis and automatic code patching.
 - Prefab mutation and retest orchestration across Unity editor restarts.
 - Additional CI providers beyond the current GitHub Actions release workflow.
