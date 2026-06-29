@@ -188,6 +188,7 @@ $productionHandoffStatusManifest = Read-Manifest "production-handoff-status-mani
 $productionHandoffDispatchPlanManifest = Read-Manifest "production-handoff-dispatch-manifest.json"
 $productionHandoffContactReadinessManifest = Read-Manifest "production-handoff-contact-readiness-manifest.json"
 $productionHandoffContactReadinessContractProbeManifest = Read-Manifest "production-handoff-contact-readiness-contract-probe-manifest.json"
+$productionHandoffSendReadinessManifest = Read-Manifest "production-handoff-send-readiness-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -1839,6 +1840,40 @@ if ($null -ne $productionHandoffContactReadinessContractProbeManifest) {
     Test-ListedFiles $productionHandoffContactReadinessContractProbeManifest "production_handoff_contact_readiness_contract_probe"
 }
 
+if ($null -ne $productionHandoffSendReadinessManifest) {
+    Add-ReleaseCheck "production_handoff_send_readiness" `
+        ($productionHandoffSendReadinessManifest.status -eq "PASS" -and
+            $productionHandoffSendReadinessManifest.schemaVersion -eq "aitestpilot.production_handoff_send_readiness.v1" -and
+            $productionHandoffSendReadinessManifest.sendReadinessStatus -eq "BLOCKED_MISSING_OWNER_EMAILS" -and
+            [bool]$productionHandoffSendReadinessManifest.sendKitGenerated -and
+            [bool]$productionHandoffSendReadinessManifest.sendQueueGenerated -and
+            [bool]$productionHandoffSendReadinessManifest.sendScriptGenerated -and
+            [bool]$productionHandoffSendReadinessManifest.sendScriptContentValidated -and
+            [bool]$productionHandoffSendReadinessManifest.sendReportGenerated -and
+            [bool]$productionHandoffSendReadinessManifest.sendReportContentValidated -and
+            [int]$productionHandoffSendReadinessManifest.ownerContactCount -eq [int]$productionHandoffContactReadinessManifest.ownerContactCount -and
+            [int]$productionHandoffSendReadinessManifest.sendQueueEntryCount -eq [int]$productionHandoffContactReadinessManifest.ownerContactCount -and
+            [int]$productionHandoffSendReadinessManifest.readySendCount -eq 0 -and
+            [int]$productionHandoffSendReadinessManifest.blockedSendCount -eq [int]$productionHandoffContactReadinessManifest.ownerContactCount -and
+            [int]$productionHandoffSendReadinessManifest.missingOwnerContactCount -eq [int]$productionHandoffContactReadinessManifest.missingOwnerContactCount -and
+            [bool]$productionHandoffSendReadinessManifest.mailAuthorizationRequired -and
+            -not [bool]$productionHandoffSendReadinessManifest.mailAuthorizationCheckedByPipeline -and
+            [bool]$productionHandoffSendReadinessManifest.twoStageConfirmationRequired -and
+            -not [bool]$productionHandoffSendReadinessManifest.automaticEmailSendReady -and
+            [bool]$productionHandoffSendReadinessManifest.defaultContactBoundaryPreserved -and
+            [bool]$productionHandoffSendReadinessManifest.contactReadinessContractAccepted -and
+            [bool]$productionHandoffSendReadinessManifest.handoffExportZipAvailable -and
+            -not [bool]$productionHandoffSendReadinessManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffSendReadinessManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffSendReadinessManifest.fixtureEvidencePromoted -and
+            $productionHandoffSendReadinessManifest.productionOutputBoundary -eq "host_project_owner_send_readiness_only" -and
+            [int]$productionHandoffSendReadinessManifest.checkCount -eq 8 -and
+            [int]$productionHandoffSendReadinessManifest.failedCheckCount -eq 0) `
+        "Production handoff send readiness must provide a guarded owner-packet send queue while preserving missing-contact, mail-auth, and confirmation boundaries."
+
+    Test-ListedFiles $productionHandoffSendReadinessManifest "production_handoff_send_readiness"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2016,6 +2051,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffSendReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2078,6 +2114,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-dispatch-manifest.json",
         "production-handoff-contact-readiness-manifest.json",
         "production-handoff-contact-readiness-contract-probe-manifest.json",
+        "production-handoff-send-readiness-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2180,6 +2217,7 @@ $sourceManifests = @(
     "production-handoff-dispatch-manifest.json",
     "production-handoff-contact-readiness-manifest.json",
     "production-handoff-contact-readiness-contract-probe-manifest.json",
+    "production-handoff-send-readiness-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",

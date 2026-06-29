@@ -239,13 +239,13 @@ To export a machine-readable release evidence index:
 
 That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. The full release pipeline runs it before the release gate so CI and portal handoff can consume one stable evidence summary.
 
-To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint configuration, external live-smoke evidence intake, live-smoke accepted-contract proof, returned-evidence inbox contract proof, owner contact readiness contract proof, live endpoint policy, and CI provider controls:
+To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint configuration, external live-smoke evidence intake, live-smoke accepted-contract proof, returned-evidence inbox contract proof, owner contact readiness contract proof, owner send readiness proof, live endpoint policy, and CI provider controls:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseRiskPolicy.ps1
 ```
 
-That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries plus the production Lua evidence kit, live model endpoint configuration-kit, external live-smoke intake guard, accepted live-smoke evidence contract, returned-evidence inbox contract, and owner contact readiness contract; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, `-ProductionLuaEvidenceDir`, `-RequireLiveModelEndpointSmoke`, and `-LiveModelEndpointSmokeEvidenceDir`.
+That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries plus the production Lua evidence kit, live model endpoint configuration-kit, external live-smoke intake guard, accepted live-smoke evidence contract, returned-evidence inbox contract, owner contact readiness contract, and owner send readiness kit; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, `-ProductionLuaEvidenceDir`, `-RequireLiveModelEndpointSmoke`, and `-LiveModelEndpointSmokeEvidenceDir`.
 
 To prove provider-specific CI build, smoke test, and vision evidence checks are wired for GitHub Actions and Azure Pipelines:
 
@@ -294,6 +294,14 @@ To generate and validate the owner contact roster before dispatch:
 That script writes `production-handoff-contact-readiness-manifest.json`, `production-handoff-contact-readiness.md`, and `production-handoff-contact-roster.json`. In the default package-release path it creates one contact entry per owner packet but keeps the email fields empty, recording `missingOwnerContactCount=3`, `realOwnerEmailAddressesConfigured=false`, and `automaticEmailSendReady=false`.
 
 The release pipeline also runs `Invoke-AITestPilotProductionHandoffContactReadinessContractProbe.ps1`, which supplies a complete fixture contact roster with reserved `example.invalid` addresses and proves contact readiness accepts configured owner contacts while preserving `automaticEmailSendReady=false`, `realHostProjectEvidenceAccepted=false`, and the default missing-contact release boundary.
+
+To generate the guarded owner-packet send queue and agently-cli helper:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionHandoffSendReadiness.ps1
+```
+
+That script writes `production-handoff-send-readiness-manifest.json`, `production-handoff-send-readiness.md`, `production-handoff-send\production-handoff-send-queue.json`, `production-handoff-send\send-owner-packets.ps1`, and `production-handoff-send\README.md`. In the default package-release path it reports `sendReadinessStatus=BLOCKED_MISSING_OWNER_EMAILS`, keeps `automaticEmailSendReady=false`, and generates a helper that requires real contact roster entries, `agently-cli` authorization, and explicit two-stage confirmation tokens before any owner packet email can be sent.
 
 To run the stable repo-side acceptance entry point after host-project owners return driver, Lua, and live-smoke evidence directories:
 
