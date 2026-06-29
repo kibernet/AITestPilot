@@ -54,6 +54,7 @@
 - Policy-driven live endpoint retry execution with per-attempt manifest evidence.
 - Production replay integration plan asset plus JSON/Markdown checklist evidence, explicitly marked unbound until real project APIs are wired.
 - Production replay integration contract probe proving `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states without claiming real game API calls.
+- Production driver evidence intake gate for standalone real-project evidence bundles, with default sample/unbound rejection evidence.
 - Production-bound replay driver failure probe plus release-pipeline/release-gate switches that make real project binding a hard CI requirement when requested.
 
 ## V0.2 Unity Import Gate

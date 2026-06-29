@@ -143,6 +143,14 @@ To require a real production binding instead of accepting the package-release sa
 .\tools\Invoke-AITestPilotReleaseGate.ps1 -RequireProductionReplayDriverBound
 ```
 
+To validate only the production driver evidence package from a host game project, use the intake wrapper:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1 -EvidenceBundleDir "path\to\release-evidence"
+```
+
+The bundle must include `production-replay-integration-checklist.json`, `repair-retest-manifest.json`, `repair-driver-failure-manifest.json`, and `replay-profile-import-manifest.json`. The intake runs production readiness with `-RequireProductionBound` and rejects sample/unbound evidence.
+
 The one-command CI wrapper exposes the same policy:
 
 ```powershell

@@ -46,3 +46,4 @@
 - Accepted Markdown-escaped backslashes when validating external repair-agent retest commands.
 - Added production replay integration contract-probe evidence for `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states.
 - Made the headless Cursor Agent wrapper tolerate unavailable explicit model names by retrying with the account default model.
+- Added production driver evidence-intake evidence for standalone real-project bundles and sample/unbound rejection.

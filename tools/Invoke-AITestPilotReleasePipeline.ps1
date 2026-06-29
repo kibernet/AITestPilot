@@ -267,6 +267,12 @@ try {
             -RequireProductionBound:$RequireProductionReplayDriverBound
     }
 
+    Invoke-PipelineStep "production_driver_evidence_intake" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir `
+            -ExpectBlocked:(-not [bool]$RequireProductionReplayDriverBound)
+    }
+
     if (-not $RequireProductionReplayDriverBound) {
         Invoke-PipelineStep "production_replay_driver_bound_failure_probe" {
             & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1") `

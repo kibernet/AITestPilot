@@ -166,6 +166,14 @@ To write a machine-readable production driver readiness boundary:
 
 That script reads the production replay checklist, targeted retest, negative driver failure probe, and replay profile import evidence. It writes `production-replay-driver-readiness-manifest.json` with `readyForProductionDriverRelease=false` and explicit blockers while the repo still uses the sample driver and the checklist remains unbound. Passing `-RequireProductionBound` turns those blockers into a hard failure for real-project CI.
 
+To intake a real game project's production driver evidence bundle:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1 -EvidenceBundleDir "path\to\release-evidence"
+```
+
+That intake requires production-bound readiness and writes `production-driver-evidence-intake-manifest.json`. In the default repo pipeline it runs with `-ExpectBlocked`, proving the current sample/unbound bundle is rejected instead of accepted as production evidence.
+
 To prove the production-bound CI mode blocks the current sample/unbound evidence:
 
 ```powershell
@@ -299,6 +307,7 @@ Implemented now:
 - Driver capability/configuration descriptor recorded in repair retest evidence.
 - Negative replay-driver failure probe with driver, handler, action, target, and step diagnostics.
 - Production replay driver readiness manifest separating package release readiness from real-project driver binding readiness.
+- Production driver evidence intake manifest for accepting real production-bound bundles or proving sample/unbound bundles are blocked.
 - Production-bound replay driver failure probe proving sample/unbound evidence fails when real production binding is required.
 - Repo-side release gate that blocks missing driver descriptor, missing negative probe, failed retest, or missing evidence files.
 - CI release pipeline wrapper with stable artifact output under `artifacts\ai-testpilot-release\latest`.

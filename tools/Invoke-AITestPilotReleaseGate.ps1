@@ -146,6 +146,7 @@ $failureProbeManifest = Read-Manifest "repair-driver-failure-manifest.json"
 $profileImportManifest = Read-Manifest "replay-profile-import-manifest.json"
 $productionReplayIntegrationContractProbeManifest = Read-Manifest "production-replay-integration-contract-probe-manifest.json"
 $productionReplayDriverReadinessManifest = Read-Manifest "production-replay-driver-readiness-manifest.json"
+$productionDriverEvidenceIntakeManifest = Read-Manifest "production-driver-evidence-intake-manifest.json"
 if ($RequireProductionReplayDriverBound) {
     $productionReplayDriverBoundFailureProbeManifest = $null
 }
@@ -819,6 +820,45 @@ if ($null -ne $productionReplayDriverReadinessManifest) {
     Test-ListedFiles $productionReplayDriverReadinessManifest "production_replay_driver_readiness"
 }
 
+if ($null -ne $productionDriverEvidenceIntakeManifest) {
+    $productionDriverEvidenceIntakeAccepted = -not [bool]$productionDriverEvidenceIntakeManifest.expectedBlocked -and
+        -not [bool]$productionDriverEvidenceIntakeManifest.readinessCommandFailed -and
+        [bool]$productionDriverEvidenceIntakeManifest.intakeAccepted -and
+        [bool]$productionDriverEvidenceIntakeManifest.readyForProductionDriverRelease -and
+        $productionDriverEvidenceIntakeManifest.integrationChecklistStatus -eq "BOUND" -and
+        [bool]$productionDriverEvidenceIntakeManifest.realProjectBound -and
+        [int]$productionDriverEvidenceIntakeManifest.unresolvedRequiredHookCount -eq 0 -and
+        [bool]$productionDriverEvidenceIntakeManifest.productionChecklistAllRequiredHooksBound -and
+        [bool]$productionDriverEvidenceIntakeManifest.productionChecklistRequiredBindingMetadataComplete -and
+        -not [bool]$productionDriverEvidenceIntakeManifest.sampleGameReplayDriverUsed -and
+        [bool]$productionDriverEvidenceIntakeManifest.externalProductionDriverSelected -and
+        [bool]$productionDriverEvidenceIntakeManifest.retestPassed -and
+        [bool]$productionDriverEvidenceIntakeManifest.driverFailureProbePassed -and
+        [bool]$productionDriverEvidenceIntakeManifest.replayProfileImportPassed -and
+        [int]$productionDriverEvidenceIntakeManifest.blockingReasonCount -eq 0
+
+    $productionDriverEvidenceIntakeBlocked = [bool]$productionDriverEvidenceIntakeManifest.expectedBlocked -and
+        [bool]$productionDriverEvidenceIntakeManifest.readinessCommandFailed -and
+        -not [bool]$productionDriverEvidenceIntakeManifest.intakeAccepted -and
+        [bool]$productionDriverEvidenceIntakeManifest.expectedBlockedPassed -and
+        [bool]$productionDriverEvidenceIntakeManifest.expectedSampleBlockingReasonsFound -and
+        -not [bool]$productionDriverEvidenceIntakeManifest.readyForProductionDriverRelease -and
+        $productionDriverEvidenceIntakeManifest.integrationChecklistStatus -eq "TEMPLATE_READY" -and
+        -not [bool]$productionDriverEvidenceIntakeManifest.realProjectBound -and
+        [bool]$productionDriverEvidenceIntakeManifest.sampleGameReplayDriverUsed -and
+        -not [bool]$productionDriverEvidenceIntakeManifest.externalProductionDriverSelected
+
+    Add-ReleaseCheck "production_driver_evidence_intake" `
+        ($productionDriverEvidenceIntakeManifest.status -eq "PASS" -and
+            $productionDriverEvidenceIntakeManifest.schemaVersion -eq "aitestpilot.production_driver_evidence_intake.v1" -and
+            [bool]$productionDriverEvidenceIntakeManifest.requireProductionBound -and
+            (($RequireProductionReplayDriverBound -and $productionDriverEvidenceIntakeAccepted) -or
+                (-not [bool]$RequireProductionReplayDriverBound -and $productionDriverEvidenceIntakeBlocked))) `
+        "Production driver evidence intake must accept a real production-bound bundle or prove the current sample/unbound bundle is blocked."
+
+    Test-ListedFiles $productionDriverEvidenceIntakeManifest "production_driver_evidence_intake"
+}
+
 if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
     Add-ReleaseCheck "production_replay_driver_bound_failure_probe" `
         ($productionReplayDriverBoundFailureProbeManifest.status -eq "PASS" -and
@@ -1084,6 +1124,7 @@ $sourceManifests = @(
     "replay-profile-import-manifest.json",
     "production-replay-integration-contract-probe-manifest.json",
     "production-replay-driver-readiness-manifest.json",
+    "production-driver-evidence-intake-manifest.json",
     "model-endpoint-trace-manifest.json",
     "model-endpoint-provider-diagnostics-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
