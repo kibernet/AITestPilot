@@ -346,10 +346,20 @@ $defaultContactBoundaryPreserved = [int](Get-JsonValue $contactReadinessManifest
     [int](Get-JsonValue $contactReadinessManifest "configuredOwnerContactCount" -1) -eq 0 -and
     -not [bool](Get-JsonValue $contactReadinessManifest "realOwnerEmailAddressesConfigured" $true) -and
     -not [bool](Get-JsonValue $contactReadinessManifest "automaticEmailSendReady" $true)
+$configuredContactBoundaryPreserved = [int](Get-JsonValue $contactReadinessManifest "configuredOwnerContactCount" -1) -eq $ownerContactCount -and
+    [int](Get-JsonValue $contactReadinessManifest "missingOwnerContactCount" -1) -eq 0 -and
+    [bool](Get-JsonValue $contactReadinessManifest "realOwnerEmailAddressesConfigured" $false) -and
+    -not [bool](Get-JsonValue $contactReadinessManifest "automaticEmailSendReady" $true)
+$contactBoundaryPreserved = $defaultContactBoundaryPreserved -or $configuredContactBoundaryPreserved
 $contactContractAccepted = $contactReadinessContractManifest.status -eq "PASS" -and
     [bool](Get-JsonValue $contactReadinessContractManifest "acceptedContactReadinessPassed" $false) -and
     [int](Get-JsonValue $contactReadinessContractManifest "acceptedConfiguredOwnerContactCount" -1) -eq $ownerContactCount -and
     -not [bool](Get-JsonValue $contactReadinessContractManifest "acceptedAutomaticEmailSendReady" $true)
+$sendQueueStateAccepted = $sendQueueGenerated -and
+    [int]$sendQueue.sendQueueEntryCount -eq $ownerContactCount -and
+    ([int]$sendQueue.readySendCount + [int]$sendQueue.blockedSendCount) -eq $ownerContactCount -and
+    (($sendReadinessStatus -eq "BLOCKED_MISSING_OWNER_EMAILS" -and [int]$sendQueue.blockedSendCount -eq $ownerContactCount) -or
+        ($sendReadinessStatus -eq "READY_FOR_CONFIRMATION" -and [int]$sendQueue.readySendCount -eq $ownerContactCount))
 
 $reportLines = @(
     "# AI TestPilot Production Handoff Send Readiness",
@@ -400,7 +410,7 @@ New-Item -ItemType Directory -Force (Split-Path $reportFullPath -Parent) | Out-N
 $reportText | Set-Content -Path $reportFullPath -Encoding UTF8
 
 $reportContentValidated = $reportText.Contains("AI TestPilot Production Handoff Send Readiness") -and
-    $reportText.Contains("BLOCKED_MISSING_OWNER_EMAILS") -and
+    $reportText.Contains($sendReadinessStatus) -and
     $reportText.Contains("Two-stage confirmation required") -and
     $reportText.Contains("does not send email") -and
     $reportText.Contains("configured owner contacts") -and
@@ -412,8 +422,8 @@ Add-SendCheck "handoff_send_sources_available" `
     ($dispatchManifest.status -eq "PASS" -and $dispatchQueue.status -eq "PASS" -and $contactReadinessManifest.status -eq "PASS" -and $handoffExportManifest.status -eq "PASS" -and $handoffStatusManifest.status -eq "PASS") `
     "Send readiness must be based on passing dispatch, contact, export, and handoff status evidence."
 Add-SendCheck "send_queue_generated" `
-    ($sendQueueGenerated -and [int]$sendQueue.sendQueueEntryCount -eq $ownerContactCount -and [int]$sendQueue.blockedSendCount -eq $ownerContactCount) `
-    "Send queue must map every owner and preserve the default blocked state."
+    $sendQueueStateAccepted `
+    "Send queue must map every owner and preserve either the blocked or ready-for-confirmation state."
 Add-SendCheck "send_helper_generated" `
     ($sendScriptGenerated -and $sendScriptContentValidated -and $readmeGenerated) `
     "Send kit must include a guarded agently-cli helper with dry-run and two-stage confirmation paths."
@@ -421,8 +431,8 @@ Add-SendCheck "handoff_export_attachment_available" `
     $handoffExportZipAvailable `
     "Owner packet sends must have the handoff export zip available as the attachment."
 Add-SendCheck "contact_and_contract_boundaries" `
-    ($defaultContactBoundaryPreserved -and $contactContractAccepted) `
-    "Send readiness must keep default contacts blocked while proving configured contacts can pass readiness in contract mode."
+    ($contactBoundaryPreserved -and $contactContractAccepted) `
+    "Send readiness must preserve contact boundaries while proving configured contacts can pass readiness in contract mode."
 Add-SendCheck "mail_auth_boundary_preserved" `
     ($mailAuthorizationRequired -and -not $mailAuthorizationCheckedByPipeline -and $twoStageConfirmationRequired -and -not $automaticEmailSendReady) `
     "Release evidence must not claim local mail authorization or bypass two-stage confirmation."
@@ -480,6 +490,8 @@ $manifest = [ordered]@{
     twoStageConfirmationRequired = [bool]$twoStageConfirmationRequired
     automaticEmailSendReady = [bool]$automaticEmailSendReady
     defaultContactBoundaryPreserved = [bool]$defaultContactBoundaryPreserved
+    configuredContactBoundaryPreserved = [bool]$configuredContactBoundaryPreserved
+    contactBoundaryPreserved = [bool]$contactBoundaryPreserved
     contactReadinessContractAccepted = [bool]$contactContractAccepted
     handoffExportZipAvailable = [bool]$handoffExportZipAvailable
     releasePipelineUsesFixture = $false

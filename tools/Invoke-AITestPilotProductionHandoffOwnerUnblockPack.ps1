@@ -262,10 +262,22 @@ $blockedSendCount = Convert-ToInt (Get-JsonValue $sendReadinessManifest "blocked
 $readySendCount = Convert-ToInt (Get-JsonValue $sendReadinessManifest "readySendCount" 0)
 $mailAuthReadinessStatus = [string](Get-JsonValue $mailAuthReadinessManifest "mailAuthReadinessStatus" "")
 $sendReadinessStatus = [string](Get-JsonValue $sendReadinessManifest "sendReadinessStatus" "")
-$ownerUnblockStatus = "BLOCKED_EXTERNAL_OWNER_INPUT"
 $automaticEmailSendReady = $false
 $mailAuthorizationCheckedByPipeline = Convert-ToBool (Get-JsonValue $mailAuthReadinessManifest "mailAuthorizationCheckedByPipeline" $true)
 $handoffExportZipAvailable = Test-Path (Join-Path $evidenceBundlePath "production-handoff-export.zip")
+$externalEvidenceCollectionComplete = Convert-ToBool (Get-JsonValue $inboxManifest "externalEvidenceCollectionComplete" $false)
+$realHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $handoffStatusManifest "realHostProjectEvidenceAccepted" $false)
+$externalEvidenceAccepted = Convert-ToBool (Get-JsonValue $inboxManifest "externalEvidenceAccepted" $false)
+$ownerUnblockStatus = if ($ownerPacketCount -gt 0 -and
+    $missingOwnerContactCount -eq 0 -and
+    $readySendCount -eq $ownerPacketCount -and
+    $missingRequiredFileCount -eq 0 -and
+    $mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
+    -not $realHostProjectEvidenceAccepted) {
+    "READY_FOR_CONFIRMATION_PENDING_REAL_ACCEPTANCE"
+} else {
+    "BLOCKED_EXTERNAL_OWNER_INPUT"
+}
 
 $summaryPath = Join-Path $unblockPath "owner-unblock-summary.json"
 $matrixPath = Join-Path $unblockPath "owner-action-matrix.md"
@@ -289,7 +301,7 @@ $summary = [ordered]@{
     automaticEmailSendReady = [bool]$automaticEmailSendReady
     mailAuthorizationCheckedByPipeline = [bool]$mailAuthorizationCheckedByPipeline
     realHostProjectEvidenceAccepted = $false
-    externalEvidenceCollectionComplete = $false
+    externalEvidenceCollectionComplete = [bool]$externalEvidenceCollectionComplete
     ownerActions = @($ownerActions)
 }
 $summary | ConvertTo-Json -Depth 12 | Set-Content -Path $summaryPath -Encoding UTF8
@@ -346,6 +358,7 @@ $progressDraftLines = @(
     "- Release pipeline: PASS",
     "- Owner unblock pack: generated",
     "- Pipeline and release gate counts are recorded in the final pipeline-manifest and release-gate-manifest after the run completes.",
+    "- Owner unblock status: $ownerUnblockStatus",
     "- Pending owner packets: $pendingOwnerPacketCount",
     "- Missing owner contacts: $missingOwnerContactCount",
     "- Missing external evidence files: $missingRequiredFileCount",
@@ -468,8 +481,15 @@ Add-UnblockCheck "owner_unblock_sources_available" `
     ($handoffStatusManifest.status -eq "PASS" -and $dispatchManifest.status -eq "PASS" -and $contactReadinessManifest.status -eq "PASS" -and $sendReadinessManifest.status -eq "PASS" -and $mailAuthReadinessManifest.status -eq "PASS" -and $inboxManifest.status -eq "PASS" -and $handoffExportManifest.status -eq "PASS") `
     "Owner unblock pack must be based on passing status, dispatch, contact, send, mail-auth, inbox, and export evidence."
 Add-UnblockCheck "owner_unblock_counts_consistent" `
-    ($ownerActions.Count -eq $ownerPacketCount -and $pendingOwnerPacketCount -eq $ownerPacketCount -and $pendingDispatchCount -eq $ownerPacketCount -and $missingOwnerContactCount -eq $ownerPacketCount -and $blockedSendCount -eq $ownerPacketCount -and $missingRequiredFileCount -gt 0 -and $remainingBlockingReasonCount -gt 0) `
-    "Owner unblock counts must match the current blocked external-input state."
+    ($ownerActions.Count -eq $ownerPacketCount -and
+        $pendingOwnerPacketCount -le $ownerPacketCount -and
+        $pendingDispatchCount -le $ownerPacketCount -and
+        $missingOwnerContactCount -ge 0 -and
+        $missingOwnerContactCount -le $ownerPacketCount -and
+        ($blockedSendCount + $readySendCount) -eq $ownerPacketCount -and
+        $missingRequiredFileCount -ge 0 -and
+        $remainingBlockingReasonCount -ge 0) `
+    "Owner unblock counts must match the current contact, send, evidence, and blocker state."
 Add-UnblockCheck "owner_unblock_files_generated" `
     ((Test-Path $summaryPath) -and (Test-Path $matrixPath) -and (Test-Path $nextStepsPath) -and (Test-Path $progressDraftPath) -and (Test-Path $readmePath) -and (Test-Path $reportFullPath)) `
     "Owner unblock pack must generate summary, matrix, operator steps, progress draft, README, and report files."
@@ -480,10 +500,10 @@ Add-UnblockCheck "owner_unblock_operator_steps_validated" `
     ($nextStepsContentValidated -and $progressDraftContentValidated) `
     "Operator steps and progress draft must describe contact, mail auth, send, and evidence collection actions."
 Add-UnblockCheck "owner_unblock_send_boundary_preserved" `
-    ($sendReadinessStatus -eq "BLOCKED_MISSING_OWNER_EMAILS" -and $mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and -not $automaticEmailSendReady -and -not $mailAuthorizationCheckedByPipeline) `
+    (($sendReadinessStatus -eq "BLOCKED_MISSING_OWNER_EMAILS" -or $sendReadinessStatus -eq "READY_FOR_CONFIRMATION") -and $mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and -not $automaticEmailSendReady -and -not $mailAuthorizationCheckedByPipeline) `
     "Owner unblock pack must not claim configured contacts, local mail auth, or automatic send readiness."
 Add-UnblockCheck "owner_unblock_evidence_boundary_preserved" `
-    (-not (Convert-ToBool (Get-JsonValue $handoffStatusManifest "realHostProjectEvidenceAccepted" $true)) -and -not (Convert-ToBool (Get-JsonValue $inboxManifest "externalEvidenceAccepted" $true)) -and -not (Convert-ToBool (Get-JsonValue $inboxManifest "fixtureEvidencePromoted" $true))) `
+    (-not $realHostProjectEvidenceAccepted -and -not $externalEvidenceAccepted -and -not (Convert-ToBool (Get-JsonValue $inboxManifest "fixtureEvidencePromoted" $true))) `
     "Owner unblock pack must not promote fixture evidence or claim real host-project evidence."
 Add-UnblockCheck "owner_unblock_export_available" `
     ([bool]$handoffExportZipAvailable) `
@@ -546,9 +566,9 @@ $manifest = [ordered]@{
     automaticEmailSendReady = [bool]$automaticEmailSendReady
     mailAuthorizationCheckedByPipeline = [bool]$mailAuthorizationCheckedByPipeline
     handoffExportZipAvailable = [bool]$handoffExportZipAvailable
-    externalEvidenceCollectionComplete = $false
-    realHostProjectEvidenceAccepted = $false
-    externalEvidenceAccepted = $false
+    externalEvidenceCollectionComplete = [bool]$externalEvidenceCollectionComplete
+    realHostProjectEvidenceAccepted = [bool]$realHostProjectEvidenceAccepted
+    externalEvidenceAccepted = [bool]$externalEvidenceAccepted
     releasePipelineUsesFixture = $false
     fixtureEvidencePromoted = $false
     productionOutputBoundary = "host_project_owner_unblock_pack_only"

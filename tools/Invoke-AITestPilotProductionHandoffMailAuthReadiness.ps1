@@ -237,6 +237,11 @@ $sendReadinessAccepted = $sendReadinessManifest.status -eq "PASS" -and
 $defaultContactBoundaryPreserved = $contactReadinessManifest.status -eq "PASS" -and
     [int](Get-JsonValue $contactReadinessManifest "missingOwnerContactCount" -1) -eq [int](Get-JsonValue $contactReadinessManifest "ownerContactCount" -2) -and
     -not [bool](Get-JsonValue $contactReadinessManifest "automaticEmailSendReady" $true)
+$configuredContactBoundaryPreserved = $contactReadinessManifest.status -eq "PASS" -and
+    [int](Get-JsonValue $contactReadinessManifest "configuredOwnerContactCount" -1) -eq [int](Get-JsonValue $contactReadinessManifest "ownerContactCount" -2) -and
+    [int](Get-JsonValue $contactReadinessManifest "missingOwnerContactCount" -1) -eq 0 -and
+    -not [bool](Get-JsonValue $contactReadinessManifest "automaticEmailSendReady" $true)
+$contactBoundaryPreserved = $defaultContactBoundaryPreserved -or $configuredContactBoundaryPreserved
 $mailAuthReadinessStatus = "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE"
 $mailAuthorizationRequired = $true
 $mailAuthorizationCheckedByPipeline = $false
@@ -300,8 +305,8 @@ Add-MailAuthCheck "oauth_login_helper_content" `
     $oauthLoginHelperContentValidated `
     "OAuth login helper must start agently-cli auth login and verify +me."
 Add-MailAuthCheck "send_readiness_dependency" `
-    ($sendReadinessAccepted -and $defaultContactBoundaryPreserved) `
-    "Mail auth readiness must preserve send-readiness and default contact boundaries."
+    ($sendReadinessAccepted -and $contactBoundaryPreserved) `
+    "Mail auth readiness must preserve send-readiness and contact boundaries."
 Add-MailAuthCheck "mail_auth_boundary_preserved" `
     ($mailAuthorizationRequired -and -not $mailAuthorizationCheckedByPipeline -and $pipelineDoesNotRunOAuthLogin -and $twoStageConfirmationRequired -and -not $automaticEmailSendReady) `
     "Release evidence must not claim local mail authorization, OAuth login, or automatic email send readiness."
@@ -345,6 +350,8 @@ $manifest = [ordered]@{
     reportContentValidated = [bool]$reportContentValidated
     sendReadinessAccepted = [bool]$sendReadinessAccepted
     defaultContactBoundaryPreserved = [bool]$defaultContactBoundaryPreserved
+    configuredContactBoundaryPreserved = [bool]$configuredContactBoundaryPreserved
+    contactBoundaryPreserved = [bool]$contactBoundaryPreserved
     mailAuthorizationRequired = [bool]$mailAuthorizationRequired
     mailAuthorizationCheckedByPipeline = [bool]$mailAuthorizationCheckedByPipeline
     pipelineDoesNotRunOAuthLogin = [bool]$pipelineDoesNotRunOAuthLogin

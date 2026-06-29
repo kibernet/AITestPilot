@@ -237,6 +237,7 @@ function Get-DefaultSourceManifestNames {
         "production-handoff-send-readiness-manifest.json",
         "production-handoff-mail-auth-readiness-manifest.json",
         "production-handoff-owner-unblock-pack-manifest.json",
+        "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",

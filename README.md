@@ -315,6 +315,12 @@ That script writes `production-handoff-mail-auth-readiness-manifest.json`, `prod
 
 That script writes `production-handoff-owner-unblock-pack-manifest.json`, `production-handoff-owner-unblock-pack.md`, and `production-handoff-owner-unblock-pack\`. It consolidates the remaining owner contacts, blocked sends, mail authorization boundary, missing external evidence files, owner action matrix, operator next steps, and progress email draft without marking any email or host-project evidence as complete.
 
+```powershell
+.\tools\Invoke-AITestPilotProductionHandoffOwnerUnblockPackContractProbe.ps1
+```
+
+That probe writes `production-handoff-owner-unblock-pack-contract-probe-manifest.json` and proves the unblock pack preserves the default missing-contact/missing-evidence state while a complete fixture contact roster plus complete fixture returned evidence moves the copied pack to `READY_FOR_CONFIRMATION_PENDING_REAL_ACCEPTANCE` without running OAuth login, sending email, or accepting fixture evidence as real host-project evidence.
+
 To run the stable repo-side acceptance entry point after host-project owners return driver, Lua, and live-smoke evidence directories:
 
 ```powershell

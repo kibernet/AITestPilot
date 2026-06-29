@@ -196,6 +196,7 @@ $productionHandoffContactReadinessContractProbeManifest = Read-PolicyJson "produ
 $productionHandoffSendReadinessManifest = Read-PolicyJson "production-handoff-send-readiness-manifest.json" "Production handoff send readiness manifest"
 $productionHandoffMailAuthReadinessManifest = Read-PolicyJson "production-handoff-mail-auth-readiness-manifest.json" "Production handoff mail auth readiness manifest"
 $productionHandoffOwnerUnblockPackManifest = Read-PolicyJson "production-handoff-owner-unblock-pack-manifest.json" "Production handoff owner unblock pack manifest"
+$productionHandoffOwnerUnblockPackContractProbeManifest = Read-PolicyJson "production-handoff-owner-unblock-pack-contract-probe-manifest.json" "Production handoff owner unblock pack contract probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -979,6 +980,43 @@ Add-PolicyCheck "production_handoff_owner_unblock_pack_policy" $productionHandof
     "Production handoff evidence must include an owner unblock pack that consolidates remaining contact, send, mail-auth, and returned-evidence actions without claiming completion." `
     "production_handoff_owner_unblock_pack_not_accepted"
 
+$productionHandoffOwnerUnblockPackContractAccepted = (
+    $null -ne $productionHandoffOwnerUnblockPackContractProbeManifest -and
+    $productionHandoffOwnerUnblockPackContractProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_owner_unblock_pack_contract_probe.v1" -and
+    (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "defaultOwnerUnblockStatus" "") -eq "BLOCKED_EXTERNAL_OWNER_INPUT" -and
+    (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedOwnerUnblockStatus" "") -eq "READY_FOR_CONFIRMATION_PENDING_REAL_ACCEPTANCE" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedOwnerUnblockPackPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedContactsReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedSendReadyForConfirmation" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedInboxComplete" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedMissingOwnerContactCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedMissingRequiredFileCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedBlockedSendCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedReadySendCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerUnblockPackManifest "ownerPacketCount" -2)) -and
+    (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedSendReadinessStatus" "") -eq "READY_FOR_CONFIRMATION" -and
+    (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedMailAuthReadinessStatus" "") -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedExternalEvidenceCollectionComplete" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedRealHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedExternalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedAutomaticEmailSendReady" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedMailAuthorizationCheckedByPipeline" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedReleasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedFixtureEvidencePromoted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "mailAuthBoundaryPreserved" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_owner_unblock_pack_contract_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "checkCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_owner_unblock_pack_contract_policy" $productionHandoffOwnerUnblockPackContractAccepted `
+    "Production handoff evidence must prove the owner unblock pack handles complete fixture contacts and returned evidence while preserving mail-auth and real-evidence boundaries." `
+    "production_handoff_owner_unblock_pack_contract_not_accepted"
+
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
     $productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -1171,6 +1209,7 @@ $sourceFiles = @(
     "production-handoff-send-readiness-manifest.json",
     "production-handoff-mail-auth-readiness-manifest.json",
     "production-handoff-owner-unblock-pack-manifest.json",
+    "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
@@ -1231,6 +1270,8 @@ $manifest = [ordered]@{
     productionHandoffMailAuthReadinessStatus = (Get-JsonValue $productionHandoffMailAuthReadinessManifest "mailAuthReadinessStatus" "")
     productionHandoffOwnerUnblockPackAccepted = [bool]$productionHandoffOwnerUnblockPackAccepted
     productionHandoffOwnerUnblockStatus = (Get-JsonValue $productionHandoffOwnerUnblockPackManifest "ownerUnblockStatus" "")
+    productionHandoffOwnerUnblockPackContractAccepted = [bool]$productionHandoffOwnerUnblockPackContractAccepted
+    productionHandoffOwnerUnblockContractStatus = (Get-JsonValue $productionHandoffOwnerUnblockPackContractProbeManifest "acceptedOwnerUnblockStatus" "")
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
@@ -1283,6 +1324,8 @@ $reportLines = @(
     "- Production handoff mail auth readiness status: $($manifest.productionHandoffMailAuthReadinessStatus)",
     "- Production handoff owner unblock pack accepted: $($manifest.productionHandoffOwnerUnblockPackAccepted)",
     "- Production handoff owner unblock status: $($manifest.productionHandoffOwnerUnblockStatus)",
+    "- Production handoff owner unblock contract accepted: $($manifest.productionHandoffOwnerUnblockPackContractAccepted)",
+    "- Production handoff owner unblock contract status: $($manifest.productionHandoffOwnerUnblockContractStatus)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",
