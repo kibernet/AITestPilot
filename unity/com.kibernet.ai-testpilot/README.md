@@ -47,6 +47,7 @@ For game-project integration, implement `IGameActionReplayDriver` and call `Game
 Batch retests resolve a game replay driver in this order: `-aiTestPilotGameReplayDriverType`, `GameActionReplayDriverRegistry.Register(...)`, then the package sample fallback. A production driver can optionally implement `IGameActionReplayStateProvider` so retest evidence includes business-action counters.
 
 For most projects, inherit from `HookedGameActionReplayDriver` and implement `IGameActionReplayHooks`. A copyable template is available under `Samples~/ProductionReplayDriver/ProductionReplayDriverTemplate.cs`.
+From the repo root, `tools/New-AITestPilotProductionDriverBindingKit.ps1` can generate a customized host-project starter kit with the driver template, authoring checklist, and production-bound evidence helper.
 Production drivers should provide a `GameActionReplayDriverDescriptor` with supported handler keys and configuration requirements; repair retest evidence records and validates that descriptor.
 The repo wrapper `tools/Invoke-AITestPilotReplayDriverFailureProbe.ps1` runs a failing driver to verify that hook failures produce diagnostics with driver id, handler key, action, target, and step.
 

@@ -158,6 +158,14 @@ To prove the package can distinguish template, invalid, and bound integration-pl
 
 That probe generates a contract fixture only: `TEMPLATE_READY` for the unbound template, `INVALID` when `realProjectBound` is flipped without bound hooks, and `BOUND` when all required hooks are marked bound with complete metadata. It records `realProjectApiCallsProven=false`; real production release still requires targeted retest evidence with a non-sample driver.
 
+To generate a host-project production driver binding starter kit:
+
+```powershell
+.\tools\New-AITestPilotProductionDriverBindingKit.ps1 -OutputDir "Temp\production-driver-binding-kit\latest" -DriverTypeName "Your.Game.Tests.ProductionReplayDriver" -DriverId "your_game.production_replay"
+```
+
+The kit includes a customized `HookedGameActionReplayDriver` template, an authoring checklist, and a host CI helper that calls production-bound readiness plus evidence intake. The generated hooks intentionally return `Fail(...)` until the host project wires real APIs; the kit is handoff material, not production-bound evidence.
+
 To write a machine-readable production driver readiness boundary:
 
 ```powershell
@@ -304,6 +312,7 @@ Implemented now:
 - Hooks-based production driver adapter and copyable integration template.
 - Production replay integration plan asset and release-evidence checklist for real game driver handoff.
 - Production replay integration contract probe for `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states.
+- Production driver binding kit generator and release-gated probe for host-project production replay driver starter files.
 - Driver capability/configuration descriptor recorded in repair retest evidence.
 - Negative replay-driver failure probe with driver, handler, action, target, and step diagnostics.
 - Production replay driver readiness manifest separating package release readiness from real-project driver binding readiness.

@@ -25,6 +25,7 @@ The pipeline runs:
 - targeted repair retest with a selected game replay driver.
 - replay profile JSON import.
 - production replay integration contract probe, proving template, invalid flip, and bound checklist states.
+- production driver binding kit probe, proving the host-project starter kit can be generated without claiming production-bound evidence.
 - production replay driver readiness, separating package-release readiness from real-project driver binding readiness.
 - production driver evidence intake, accepting real production-bound bundles or proving the current sample/unbound bundle is blocked.
 - production-bound replay driver failure probe, proving the current sample/unbound evidence is rejected when production binding is required.
@@ -41,7 +42,7 @@ By default, the pipeline copies the latest evidence bundle to:
 
 `artifacts/ai-testpilot-release/latest`
 
-That directory includes `pipeline-manifest.json`, release gate manifests, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production replay driver readiness evidence, production driver evidence intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, live endpoint failure-classification evidence, optional live model smoke evidence, and Unity logs.
+That directory includes `pipeline-manifest.json`, release gate manifests, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, live endpoint failure-classification evidence, optional live model smoke evidence, and Unity logs.
 
 ## Cursor Agent Output
 
@@ -68,6 +69,14 @@ Pass a production driver type when testing a real project:
 ```
 
 The driver must satisfy the descriptor and failure-probe requirements described in `docs/integration/production-driver.md`.
+
+To generate the host-project starter kit before wiring real APIs:
+
+```powershell
+.\tools\New-AITestPilotProductionDriverBindingKit.ps1 -DriverTypeName "Your.Game.Tests.ProductionReplayDriver" -DriverId "your_game.production_replay"
+```
+
+The kit contains a customized driver template, an authoring checklist, and a host helper script. The release pipeline also runs `production_driver_binding_kit_probe`; the gate only accepts that proof when the kit is still marked as generated handoff material and `productionEvidenceAccepted=false`.
 
 To make production binding a hard release condition, run:
 

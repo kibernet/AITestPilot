@@ -145,6 +145,7 @@ $repairRetestManifest = Read-Manifest "repair-retest-manifest.json"
 $failureProbeManifest = Read-Manifest "repair-driver-failure-manifest.json"
 $profileImportManifest = Read-Manifest "replay-profile-import-manifest.json"
 $productionReplayIntegrationContractProbeManifest = Read-Manifest "production-replay-integration-contract-probe-manifest.json"
+$productionDriverBindingKitManifest = Read-Manifest "production-driver-binding-kit-manifest.json"
 $productionReplayDriverReadinessManifest = Read-Manifest "production-replay-driver-readiness-manifest.json"
 $productionDriverEvidenceIntakeManifest = Read-Manifest "production-driver-evidence-intake-manifest.json"
 if ($RequireProductionReplayDriverBound) {
@@ -769,6 +770,29 @@ if ($null -ne $productionReplayIntegrationContractProbeManifest) {
         "Production replay integration contract probe must prove template, invalid flip, and bound checklist states without claiming real game API calls."
 }
 
+if ($null -ne $productionDriverBindingKitManifest) {
+    Add-ReleaseCheck "production_driver_binding_kit_probe" `
+        ($productionDriverBindingKitManifest.status -eq "PASS" -and
+            $productionDriverBindingKitManifest.schemaVersion -eq "aitestpilot.production_driver_binding_kit_probe.v1" -and
+            [bool]$productionDriverBindingKitManifest.kitGenerated -and
+            [int]$productionDriverBindingKitManifest.generatedFileCount -ge 5 -and
+            [int]$productionDriverBindingKitManifest.requiredHookCount -eq 5 -and
+            [bool]$productionDriverBindingKitManifest.generatedHooksFailUntilBound -and
+            [bool]$productionDriverBindingKitManifest.hostValidationScriptIncludesProductionBoundIntake) `
+        "Production driver binding kit probe must generate a host-project starter kit with production-bound validation commands."
+
+    Add-ReleaseCheck "production_driver_binding_kit_boundary" `
+        ([bool]$productionDriverBindingKitManifest.generatedKitOnly -and
+            -not [bool]$productionDriverBindingKitManifest.readyForProductionDriverRelease -and
+            -not [bool]$productionDriverBindingKitManifest.productionEvidenceAccepted -and
+            $productionDriverBindingKitManifest.authoringChecklistStatus -eq "TEMPLATE_READY" -and
+            -not [bool]$productionDriverBindingKitManifest.authoringChecklistRealProjectBound -and
+            [int]$productionDriverBindingKitManifest.authoringChecklistUnresolvedRequiredHookCount -eq 5) `
+        "Production driver binding kit must remain explicit handoff material, not accepted production-bound evidence."
+
+    Test-ListedFiles $productionDriverBindingKitManifest "production_driver_binding_kit_probe"
+}
+
 if ($null -ne $productionReplayDriverReadinessManifest) {
     $productionDriverReady = [bool]$productionReplayDriverReadinessManifest.readyForProductionDriverRelease -and
         $productionReplayDriverReadinessManifest.integrationChecklistStatus -eq "BOUND" -and
@@ -1123,6 +1147,7 @@ $sourceManifests = @(
     "repair-driver-failure-manifest.json",
     "replay-profile-import-manifest.json",
     "production-replay-integration-contract-probe-manifest.json",
+    "production-driver-binding-kit-manifest.json",
     "production-replay-driver-readiness-manifest.json",
     "production-driver-evidence-intake-manifest.json",
     "model-endpoint-trace-manifest.json",

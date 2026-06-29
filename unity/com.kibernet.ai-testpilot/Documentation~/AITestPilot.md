@@ -9,6 +9,7 @@ Install the package from `unity/com.kibernet.ai-testpilot`.
 5. Create `ModelEndpointSettings` from `Tools/Kibernet/AI TestPilot/Create Model Endpoint Settings` when wiring a model gateway.
 6. Use `Tools/Kibernet/AI TestPilot/Create OpenAI-Compatible Model Endpoint Settings` when the gateway expects a chat-completions style request.
 7. Create `ProductionReplayIntegrationPlan` from `Tools/Kibernet/AI TestPilot/Create Production Replay Integration Plan` when planning real game driver hook ownership.
+8. From the repository root, use `tools/New-AITestPilotProductionDriverBindingKit.ps1` to generate a customized host-project driver starter kit before wiring real game APIs.
 
 The first package version intentionally ships a deterministic rule client so the SDK can be validated without a paid AI endpoint. `ModelEndpointSettings` and `ModelEndpointDecisionClient` define the Unity-side model gateway contract, including native JSON and OpenAI-compatible chat-completions request formats plus prior fix hints, but live requests are disabled by default and API keys should be provided through environment variables.
 The production replay integration plan is a checklist artifact: generated validation evidence marks it `TEMPLATE_READY` and `realProjectBound=false` until the host game implements the required account, login, scene, reward, and fishing hooks against real project APIs. A real project checklist validates as `BOUND` only when all required hooks are bound with complete metadata; simply flipping `realProjectBound=true` remains `INVALID`.

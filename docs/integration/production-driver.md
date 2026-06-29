@@ -2,6 +2,16 @@
 
 Use this integration path when a real Unity project needs AI TestPilot to replay business actions during repair retests.
 
+## Starter Kit
+
+Generate a host-project starter kit before wiring the real APIs:
+
+```powershell
+.\tools\New-AITestPilotProductionDriverBindingKit.ps1 -DriverTypeName "Your.Game.Tests.ProductionReplayDriver" -DriverId "your_game.production_replay"
+```
+
+The kit writes a customized driver source file, an authoring checklist, a README, and `Invoke-ProductionDriverEvidence.ps1`. The generated hooks intentionally return `GameActionReplayHookResult.Fail(...)`; replace each hook with real game API calls and state verification before marking the integration plan `BOUND`.
+
 ## Driver Shape
 
 Implement a parameterless type that inherits `HookedGameActionReplayDriver`:

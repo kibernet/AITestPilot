@@ -265,6 +265,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_driver_binding_kit_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionDriverBindingKitProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_replay_driver_readiness" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionReplayDriverReadiness.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `

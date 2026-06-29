@@ -48,3 +48,4 @@
 - Made the headless Cursor Agent wrapper tolerate unavailable explicit model names by retrying with the account default model.
 - Added production driver evidence-intake evidence for standalone real-project bundles and sample/unbound rejection.
 - Added bounded retry handling for transient headless Cursor Agent network/socket failures.
+- Added a production driver binding kit generator and release-gated probe for host-project replay driver starter files.

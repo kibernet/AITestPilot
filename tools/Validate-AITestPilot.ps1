@@ -73,6 +73,8 @@ try {
         "tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1",
         "tools\Invoke-AITestPilotReplayDriverFailureProbe.ps1",
         "tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1",
+        "tools\New-AITestPilotProductionDriverBindingKit.ps1",
+        "tools\Invoke-AITestPilotProductionDriverBindingKitProbe.ps1",
         "tools\Invoke-AITestPilotProductionReplayIntegrationContractProbe.ps1",
         "tools\Invoke-AITestPilotProductionReplayDriverReadiness.ps1",
         "tools\Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1",
