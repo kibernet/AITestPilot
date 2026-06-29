@@ -222,6 +222,7 @@ $productionHandoffOwnerResponseBundleProbeManifest = Read-Manifest "production-h
 $productionHandoffOwnerResponseBundleKitManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-manifest.json"
 $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
 $productionHandoffMailHelperAuthStatusProbeManifest = Read-Manifest "production-handoff-mail-helper-auth-status-probe-manifest.json"
+$releaseProgressNotificationConfirmationProbeManifest = Read-Manifest "release-progress-notification-confirmation-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2293,6 +2294,38 @@ if ($null -ne $productionHandoffMailHelperAuthStatusProbeManifest) {
     Test-ListedFiles $productionHandoffMailHelperAuthStatusProbeManifest "production_handoff_mail_helper_auth_status_probe"
 }
 
+if ($null -ne $releaseProgressNotificationConfirmationProbeManifest) {
+    Add-ReleaseCheck "release_progress_notification_confirmation_probe" `
+        ($releaseProgressNotificationConfirmationProbeManifest.status -eq "PASS" -and
+            $releaseProgressNotificationConfirmationProbeManifest.schemaVersion -eq "aitestpilot.release_progress_notification_confirmation_probe.v1" -and
+            [bool]$releaseProgressNotificationConfirmationProbeManifest.fakeAgentlyCliGenerated -and
+            [bool]$releaseProgressNotificationConfirmationProbeManifest.fakeLoggedInAuthReturned -and
+            [int]$releaseProgressNotificationConfirmationProbeManifest.prepareExitCode -eq 8 -and
+            [bool]$releaseProgressNotificationConfirmationProbeManifest.prepareConfirmationTokenReturned -and
+            [bool]$releaseProgressNotificationConfirmationProbeManifest.prepareConfirmationRequiredOutput -and
+            [int]$releaseProgressNotificationConfirmationProbeManifest.prepareMessageSendCallCount -eq 1 -and
+            -not [bool]$releaseProgressNotificationConfirmationProbeManifest.prepareMessageCallHasConfirmationToken -and
+            [int]$releaseProgressNotificationConfirmationProbeManifest.confirmationExitCode -eq 0 -and
+            [bool]$releaseProgressNotificationConfirmationProbeManifest.confirmationFakeSendSucceeded -and
+            [int]$releaseProgressNotificationConfirmationProbeManifest.confirmationMessageSendCallCount -eq 1 -and
+            [bool]$releaseProgressNotificationConfirmationProbeManifest.confirmationMessageCallHasConfirmationToken -and
+            -not [bool]$releaseProgressNotificationConfirmationProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$releaseProgressNotificationConfirmationProbeManifest.realEmailSent -and
+            -not [bool]$releaseProgressNotificationConfirmationProbeManifest.emailSent -and
+            -not [bool]$releaseProgressNotificationConfirmationProbeManifest.mailAuthorizationCheckedByPipeline -and
+            $releaseProgressNotificationConfirmationProbeManifest.canonicalOutboxDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            -not [bool]$releaseProgressNotificationConfirmationProbeManifest.canonicalOutboxEmailSent -and
+            -not [bool]$releaseProgressNotificationConfirmationProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$releaseProgressNotificationConfirmationProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$releaseProgressNotificationConfirmationProbeManifest.fixtureEvidencePromoted -and
+            $releaseProgressNotificationConfirmationProbeManifest.productionOutputBoundary -eq "progress_notification_confirmation_probe_fake_cli_only" -and
+            [int]$releaseProgressNotificationConfirmationProbeManifest.checkCount -eq 5 -and
+            [int]$releaseProgressNotificationConfirmationProbeManifest.failedCheckCount -eq 0) `
+        "Release progress notification confirmation probe must prove the generated helper requests a token first and sends only when a confirmation token is supplied, using fake CLI evidence only."
+
+    Test-ListedFiles $releaseProgressNotificationConfirmationProbeManifest "release_progress_notification_confirmation_probe"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2519,6 +2552,9 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperAuthStatusProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperOwnerBoundaryPassed -and
             [bool]$releaseRiskPolicyManifest.productionHandoffMailHelperProgressBoundaryPassed -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationConfirmationProbeAccepted -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationPrepareTokenReturned -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationConfirmationFakeSendSucceeded -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2593,6 +2629,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-response-bundle-kit-manifest.json",
         "release-progress-notification-outbox-manifest.json",
         "production-handoff-mail-helper-auth-status-probe-manifest.json",
+        "release-progress-notification-confirmation-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",

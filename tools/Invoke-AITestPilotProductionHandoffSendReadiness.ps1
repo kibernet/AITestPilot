@@ -316,7 +316,10 @@ $sendScriptLines = @(
     "            if (-not `$tokens.ContainsKey([string]`$entry.owner)) { throw `"Missing confirmation token for `$(`$entry.owner).`" }",
     "            `$args += @('--confirmation-token', `$tokens[[string]`$entry.owner])",
     "        }",
-        "        & agently-cli @args",
+        "        `$sendOutput = & agently-cli @args 2>&1",
+        "        `$sendExitCode = `$LASTEXITCODE",
+        "        `$sendOutput | ForEach-Object { Write-Output `$_ }",
+        "        if (`$sendExitCode -ne 0) { exit `$sendExitCode }",
     "    }",
     "}",
     "finally {",
@@ -352,6 +355,7 @@ $sendScriptContentValidated = $sendScriptText.Contains("agently-cli auth status"
     $sendScriptText.Contains("message', '+send") -and
     $sendScriptText.Contains("--confirmation-token") -and
     $sendScriptText.Contains("PrepareConfirmation") -and
+    $sendScriptText.Contains("sendExitCode") -and
     $sendScriptText.Contains("Dry run only") -and
     $sendScriptText.Contains("Blocked send command") -and
     $sendScriptText.Contains("return") -and

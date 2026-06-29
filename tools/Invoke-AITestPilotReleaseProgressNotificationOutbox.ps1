@@ -346,7 +346,10 @@ $sendHelperLines = @(
     "",
     "Push-Location `$EvidenceBundleDir",
     "try {",
-    "    & agently-cli @args",
+    "    `$sendOutput = & agently-cli @args 2>&1",
+    "    `$sendExitCode = `$LASTEXITCODE",
+    "    `$sendOutput | ForEach-Object { Write-Output `$_ }",
+    "    if (`$sendExitCode -ne 0) { exit `$sendExitCode }",
     "}",
     "finally {",
     "    Pop-Location",
@@ -450,6 +453,7 @@ $sendHelperContentValidated = $sendHelperContent.Contains("agently-cli auth stat
     $sendHelperContent.Contains("message', '+send") -and
     $sendHelperContent.Contains("--confirmation-token") -and
     $sendHelperContent.Contains("-PrepareConfirmation") -and
+    $sendHelperContent.Contains("sendExitCode") -and
     $noObjectLeakage
 $readmeContentValidated = $readmeContent.Contains("two-stage send flow") -and
     $readmeContent.Contains("does not send email") -and

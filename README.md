@@ -363,6 +363,12 @@ That script writes `release-progress-notification-outbox-manifest.json`, `releas
 
 That probe writes `production-handoff-mail-helper-auth-status-probe-manifest.json`, a Markdown report, and `production-handoff-mail-helper-auth-status-probe\`. It runs the generated owner-packet and progress-notification send helpers against a fake unauthenticated `agently-cli` that emits JSON followed by the real-world `tip:` line, proving the helpers stop at the local-auth boundary without calling `+me`, creating confirmation tokens, or sending email.
 
+```powershell
+.\tools\Invoke-AITestPilotReleaseProgressNotificationConfirmationProbe.ps1
+```
+
+That probe writes `release-progress-notification-confirmation-probe-manifest.json`, a Markdown report, and `release-progress-notification-confirmation-probe\`. It runs the progress notification helper against a fake logged-in `agently-cli`, proving `-PrepareConfirmation` requests a confirmation token and a later `-ConfirmationToken` run includes that token. The probe keeps `emailSent=false` and uses fake CLI evidence only; real delivery still requires local OAuth plus the actual CLI confirmation token.
+
 To run the stable repo-side acceptance entry point after host-project owners return driver, Lua, and live-smoke evidence directories:
 
 ```powershell
@@ -599,7 +605,7 @@ Implemented now:
 - GitHub Actions release workflow for self-hosted Windows Unity runners, with release-gated workflow probe and evidence artifact upload.
 - Azure Pipelines release workflow for self-hosted Windows Unity pools, with release-gated workflow probe and evidence artifact publishing.
 - Provider-specific build, smoke test, and vision evidence checks for GitHub Actions and Azure Pipelines, with release-gated quality probe evidence.
-- Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence, with generated-content quality checks, a blocker-resolution map, per-owner action packets, a returned-evidence inbox, a compact owner-facing handoff export zip, an owner-level evidence collection status report, an owner dispatch queue with email drafts, an owner contact roster readiness report, progress-notification send-helper auth-status parsing proof, a runnable external-evidence preflight script, a stable repo-side external evidence acceptance command, accepted-fixture contract probes, and missing/partial evidence failure probes for owner-facing action plans.
+- Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence, with generated-content quality checks, a blocker-resolution map, per-owner action packets, a returned-evidence inbox, a compact owner-facing handoff export zip, an owner-level evidence collection status report, an owner dispatch queue with email drafts, an owner contact roster readiness report, progress-notification send-helper auth-status parsing proof, fake-CLI two-stage confirmation proof, a runnable external-evidence preflight script, a stable repo-side external evidence acceptance command, accepted-fixture contract probes, and missing/partial evidence failure probes for owner-facing action plans.
 - Production hard-mode failure probe proving combined driver, Lua, and live-model hard switches block the current sample or missing-evidence state.
 - Production hard-mode success contract probe proving the combined hard-mode path passes with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers.
