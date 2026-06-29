@@ -211,6 +211,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "repair_agent_patch_result_history" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentPatchResultHistoryProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "repair_agent_external_patch_preflight" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentExternalPatchPreflight.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

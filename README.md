@@ -99,6 +99,14 @@ To analyze a repair-agent patch result against prior fix hints and retest eviden
 
 That analysis consumes the bug knowledge graph, repair task, accepted external task output, and main worktree apply/retest/rollback evidence. It writes `repair-agent-patch-result-analysis-manifest.json` plus Markdown, proving the prior fix hint was matched, the agent output referenced it, post-apply retest passed, rollback returned the worktree clean, and the knowledge graph outcome is `RETEST_PASSED_AFTER_PATCH`.
 
+To persist patch-result analysis across a multi-bug historical trend:
+
+```powershell
+.\tools\Invoke-AITestPilotRepairAgentPatchResultHistoryProbe.ps1
+```
+
+That history probe consumes the current patch-result analysis, writes `repair-agent-patch-result-history-manifest.json`, `repair-agent-patch-result-history.json`, and Markdown, then proves the current analysis is included in a multi-bug history with module, failure-type, and outcome aggregates. The default history rows are deterministic release fixtures, so the manifest explicitly records that real production repair-agent output is not being claimed.
+
 To produce that external output directory with the installed headless Cursor Agent:
 
 ```powershell
@@ -221,7 +229,7 @@ To run the full repo-side release gate over the evidence bundle:
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -318,6 +326,7 @@ Implemented now:
 - Source snapshot apply/validate/rollback probe proving verified external patches can apply to a clean candidate made from the current source tree, pass repo validation, and roll back newly added files.
 - External repair-agent task output directory intake acceptance for the main worktree apply/retest/rollback path.
 - Repair-agent patch result analysis connecting prior fix hints, accepted external output, post-apply retest, rollback, and knowledge graph outcome.
+- Repair-agent patch result history aggregating multi-bug outcomes with module, failure-type, retest, rollback, and production-output boundary evidence.
 - Optional headless Cursor Agent external output generation, with import/preflight evidence and no repository mutation before acceptance.
 - External repair-agent patch preflight manifest with target-path safety checks and a negative path-traversal failure probe.
 - Repository patch apply guard manifest with explicit apply switch, clean-worktree, external-agent source, and rollback-plan evidence.

@@ -57,3 +57,4 @@
 - Added a GitHub Actions release workflow and release-gated workflow probe for self-hosted Windows Unity CI.
 - Added provider-specific live model endpoint retry policy and alert-routing evidence.
 - Added repair-agent patch result analysis evidence linking prior fix hints, accepted output, retest, rollback, and knowledge graph outcome.
+- Added repair-agent patch result history evidence for multi-bug outcome persistence, trend aggregates, and production-output boundary checks.

@@ -98,6 +98,7 @@ try {
         "tools\Invoke-AITestPilotCursorAgentExternalTaskOutput.ps1",
         "tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1",
         "tools\Invoke-AITestPilotRepairAgentPatchResultAnalysis.ps1",
+        "tools\Invoke-AITestPilotRepairAgentPatchResultHistoryProbe.ps1",
         "tools\Invoke-AITestPilotRepairAgentMainWorktreeApplyRetestRollback.ps1",
         "tools\Invoke-AITestPilotRepairAgentPatchApplyRetest.ps1",
         "tools\Invoke-AITestPilotReplayProfileImport.ps1"

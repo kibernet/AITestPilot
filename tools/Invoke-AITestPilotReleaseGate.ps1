@@ -136,6 +136,7 @@ $repairAgentMainWorktreeApplyRetestRollbackManifest = Read-Manifest "repair-agen
 $repairAgentCursorAgentExternalOutputManifest = Read-OptionalManifest "repair-agent-cursor-agent-external-output-manifest.json"
 $repairAgentExternalTaskOutputAcceptanceManifest = Read-Manifest "repair-agent-external-task-output-acceptance-manifest.json"
 $repairAgentPatchResultAnalysisManifest = Read-Manifest "repair-agent-patch-result-analysis-manifest.json"
+$repairAgentPatchResultHistoryManifest = Read-Manifest "repair-agent-patch-result-history-manifest.json"
 $repairAgentExternalPatchPreflightManifest = Read-Manifest "repair-agent-external-patch-preflight-manifest.json"
 $repairAgentExternalPatchPreflightFailureProbeManifest = Read-Manifest "repair-agent-external-patch-preflight-failure-probe-manifest.json"
 $repairAgentRepositoryPatchApplyGuardManifest = Read-Manifest "repair-agent-repository-patch-apply-guard-manifest.json"
@@ -548,6 +549,43 @@ if ($null -ne $repairAgentPatchResultAnalysisManifest) {
         "Patch result analysis must feed the matched prior fix hint into a retest-passed knowledge graph outcome."
 
     Test-ListedFiles $repairAgentPatchResultAnalysisManifest "repair_agent_patch_result_analysis"
+}
+
+if ($null -ne $repairAgentPatchResultHistoryManifest) {
+    Add-ReleaseCheck "repair_agent_patch_result_history" `
+        ($repairAgentPatchResultHistoryManifest.status -eq "PASS" -and
+            $repairAgentPatchResultHistoryManifest.schemaVersion -eq "aitestpilot.repair_agent_patch_result_history.v1" -and
+            $repairAgentPatchResultHistoryManifest.currentAnalysisStatus -eq "PASS" -and
+            [bool]$repairAgentPatchResultHistoryManifest.currentAnalysisIncluded -and
+            [int]$repairAgentPatchResultHistoryManifest.recordCount -ge 4 -and
+            [int]$repairAgentPatchResultHistoryManifest.uniqueBugCount -ge 4 -and
+            [int]$repairAgentPatchResultHistoryManifest.uniqueModuleCount -ge 3 -and
+            [int]$repairAgentPatchResultHistoryManifest.uniqueFailureTypeCount -ge 3 -and
+            [int]$repairAgentPatchResultHistoryManifest.retestPassedCount -eq [int]$repairAgentPatchResultHistoryManifest.recordCount -and
+            [int]$repairAgentPatchResultHistoryManifest.rollbackVerifiedCount -eq [int]$repairAgentPatchResultHistoryManifest.recordCount -and
+            [int]$repairAgentPatchResultHistoryManifest.invalidRecordCount -eq 0 -and
+            [int]$repairAgentPatchResultHistoryManifest.unresolvedHighRiskCount -eq 0 -and
+            [int]$repairAgentPatchResultHistoryManifest.blockingReasonCount -eq 0) `
+        "Repair-agent patch result history must persist multiple bug outcomes, include the current analysis, and prove retest/rollback closure."
+
+    Add-ReleaseCheck "repair_agent_patch_result_history_boundary" `
+        ($repairAgentPatchResultHistoryManifest.source -eq "current_release_analysis_plus_deterministic_history_fixture" -and
+            -not [bool]$repairAgentPatchResultHistoryManifest.realProductionOutputIncluded -and
+            $repairAgentPatchResultHistoryManifest.productionOutputBoundary -eq "real_production_repair_agent_output_not_claimed") `
+        "Patch result history must preserve the boundary that deterministic history fixtures are not real production repair-agent output."
+
+    Add-ReleaseCheck "repair_agent_patch_result_history_trends" `
+        ($null -ne $repairAgentPatchResultHistoryManifest.moduleCounts -and
+            $null -ne $repairAgentPatchResultHistoryManifest.failureTypeCounts -and
+            $null -ne $repairAgentPatchResultHistoryManifest.outcomeCounts -and
+            @($repairAgentPatchResultHistoryManifest.moduleCounts).Count -ge 3 -and
+            @($repairAgentPatchResultHistoryManifest.failureTypeCounts).Count -ge 3 -and
+            @($repairAgentPatchResultHistoryManifest.outcomeCounts | Where-Object {
+                    $_.name -eq "RETEST_PASSED_AFTER_PATCH" -and [int]$_.count -eq [int]$repairAgentPatchResultHistoryManifest.recordCount
+                }).Count -eq 1) `
+        "Patch result history must expose module, failure-type, and outcome aggregates for historical trend analysis."
+
+    Test-ListedFiles $repairAgentPatchResultHistoryManifest "repair_agent_patch_result_history"
 }
 
 if ($null -ne $repairAgentExternalPatchPreflightManifest) {
@@ -1268,6 +1306,7 @@ $sourceManifests = @(
     "repair-agent-main-worktree-apply-retest-rollback-manifest.json",
     "repair-agent-external-task-output-acceptance-manifest.json",
     "repair-agent-patch-result-analysis-manifest.json",
+    "repair-agent-patch-result-history-manifest.json",
     "repair-agent-external-patch-preflight-manifest.json",
     "repair-agent-external-patch-preflight-failure-probe-manifest.json",
     "repair-agent-repository-patch-apply-guard-manifest.json",
