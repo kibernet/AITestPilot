@@ -273,7 +273,7 @@ To run the stable repo-side acceptance entry point after host-project owners ret
     -RequireAllEvidence
 ```
 
-That command runs the production driver intake, production Lua readiness, and live-smoke evidence intake into an isolated acceptance bundle, then writes `production-external-evidence-acceptance-manifest.json`. The release pipeline also runs `Invoke-AITestPilotProductionExternalEvidenceAcceptanceContractProbe.ps1`, which proves this stable entry point accepts complete host-project-shaped fixture evidence while recording `realHostProjectEvidenceAccepted=false`. It also runs `Invoke-AITestPilotProductionExternalEvidenceAcceptanceFailureProbe.ps1`, proving fully missing evidence and driver-only partial evidence fail under `-RequireAllEvidence`.
+That command runs the production driver intake, production Lua readiness, and live-smoke evidence intake into an isolated acceptance bundle, then writes `production-external-evidence-acceptance-manifest.json` and a Markdown report summarizing status, missing files, command results, and the fixture boundary. The release pipeline also runs `Invoke-AITestPilotProductionExternalEvidenceAcceptanceContractProbe.ps1`, which proves this stable entry point accepts complete host-project-shaped fixture evidence while recording `realHostProjectEvidenceAccepted=false` and a validated Markdown report. It also runs `Invoke-AITestPilotProductionExternalEvidenceAcceptanceFailureProbe.ps1`, proving fully missing evidence and driver-only partial evidence fail under `-RequireAllEvidence` while still producing owner-readable rejection reports.
 
 To prove all production hard-mode switches block the current sample or missing-evidence state together:
 

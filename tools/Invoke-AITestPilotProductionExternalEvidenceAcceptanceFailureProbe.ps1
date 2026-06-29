@@ -97,6 +97,7 @@ function Invoke-AcceptanceExpectFailure {
     param(
         [string]$AcceptanceBundleDir,
         [string]$ManifestPath,
+        [string]$ReportPath,
         [string]$ProductionDriverEvidenceDir = "",
         [string]$ProductionLuaEvidenceDir = "",
         [string]$LiveModelEndpointSmokeEvidenceDir = ""
@@ -109,6 +110,7 @@ function Invoke-AcceptanceExpectFailure {
             -EvidenceBundleDir $script:evidenceBundlePath `
             -AcceptanceBundleDir $AcceptanceBundleDir `
             -ManifestPath $ManifestPath `
+            -ReportPath $ReportPath `
             -ProductionDriverEvidenceDir $ProductionDriverEvidenceDir `
             -ProductionLuaEvidenceDir $ProductionLuaEvidenceDir `
             -LiveModelEndpointSmokeEvidenceDir $LiveModelEndpointSmokeEvidenceDir `
@@ -178,24 +180,36 @@ Copy-RequiredFiles $driverAcceptedSourceDir $partialDriverDir $driverRequiredFil
 
 $missingAllAcceptanceDir = Join-Path $probeBundlePath "missing-all"
 $missingAllManifestPath = Join-Path $missingAllAcceptanceDir "production-external-evidence-acceptance-manifest.json"
+$missingAllReportPath = Join-Path $missingAllAcceptanceDir "production-external-evidence-acceptance-missing-all.md"
 $partialDriverAcceptanceDir = Join-Path $probeBundlePath "driver-only"
 $partialDriverManifestPath = Join-Path $partialDriverAcceptanceDir "production-external-evidence-acceptance-manifest.json"
+$partialDriverReportPath = Join-Path $partialDriverAcceptanceDir "production-external-evidence-acceptance-driver-only.md"
 
 $missingAllResult = Invoke-AcceptanceExpectFailure `
     -AcceptanceBundleDir $missingAllAcceptanceDir `
-    -ManifestPath $missingAllManifestPath
+    -ManifestPath $missingAllManifestPath `
+    -ReportPath $missingAllReportPath
 
 $partialDriverResult = Invoke-AcceptanceExpectFailure `
     -AcceptanceBundleDir $partialDriverAcceptanceDir `
     -ManifestPath $partialDriverManifestPath `
+    -ReportPath $partialDriverReportPath `
     -ProductionDriverEvidenceDir $partialDriverDir
 
 $missingAll = $missingAllResult.manifest
 $partialDriver = $partialDriverResult.manifest
+$missingAllReportGenerated = (Test-Path $missingAllReportPath) -and
+    [bool]$missingAll.reportGenerated -and
+    [bool]$missingAll.reportContentValidated
+$partialDriverReportGenerated = (Test-Path $partialDriverReportPath) -and
+    [bool]$partialDriver.reportGenerated -and
+    [bool]$partialDriver.reportContentValidated
 
 $missingAllRejected = [bool]$missingAllResult.commandFailed -and
     $missingAll.schemaVersion -eq "aitestpilot.production_external_evidence_acceptance.v1" -and
     $missingAll.status -eq "FAIL" -and
+    [bool]$missingAll.reportGenerated -and
+    [bool]$missingAll.reportContentValidated -and
     [bool]$missingAll.requireAllEvidence -and
     [bool]$missingAll.contractFixtureMode -and
     -not [bool]$missingAll.allRequiredExternalEvidenceFilesPresent -and
@@ -210,6 +224,8 @@ $missingAllRejected = [bool]$missingAllResult.commandFailed -and
 $partialDriverRejected = [bool]$partialDriverResult.commandFailed -and
     $partialDriver.schemaVersion -eq "aitestpilot.production_external_evidence_acceptance.v1" -and
     $partialDriver.status -eq "FAIL" -and
+    [bool]$partialDriver.reportGenerated -and
+    [bool]$partialDriver.reportContentValidated -and
     [bool]$partialDriver.requireAllEvidence -and
     [bool]$partialDriver.contractFixtureMode -and
     -not [bool]$partialDriver.allRequiredExternalEvidenceFilesPresent -and
@@ -223,6 +239,8 @@ $partialDriverRejected = [bool]$partialDriverResult.commandFailed -and
 
 Copy-Item -LiteralPath $missingAllManifestPath -Destination (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-missing-all-manifest.json") -Force
 Copy-Item -LiteralPath $partialDriverManifestPath -Destination (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-driver-only-manifest.json") -Force
+Copy-Item -LiteralPath $missingAllReportPath -Destination (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-missing-all.md") -Force
+Copy-Item -LiteralPath $partialDriverReportPath -Destination (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-driver-only.md") -Force
 
 $externalBundleUnderRepo = $externalBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
 
@@ -235,6 +253,9 @@ Add-ProbeCheck "fixture_boundary_preserved" `
 Add-ProbeCheck "external_partial_bundle_outside_repo" `
     (-not [bool]$externalBundleUnderRepo -and (Test-Path $partialDriverDir)) `
     "Partial fixture input must be generated outside the repository."
+Add-ProbeCheck "rejection_markdown_reports_generated" `
+    ([bool]$missingAllReportGenerated -and [bool]$partialDriverReportGenerated) `
+    "Rejected evidence scenarios must generate validated Markdown reports for host-project owners."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -242,7 +263,9 @@ $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
 $files = @(
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-acceptance-missing-all-manifest.json",
-    "production-external-evidence-acceptance-driver-only-manifest.json"
+    "production-external-evidence-acceptance-missing-all.md",
+    "production-external-evidence-acceptance-driver-only-manifest.json",
+    "production-external-evidence-acceptance-driver-only.md"
 )
 
 $manifest = [ordered]@{
@@ -258,12 +281,16 @@ $manifest = [ordered]@{
     missingAllAcceptanceRejected = [bool]$missingAllRejected
     missingAllCommandFailed = [bool]$missingAllResult.commandFailed
     missingAllStatus = [string]$missingAll.status
+    missingAllReportGenerated = [bool]$missingAll.reportGenerated
+    missingAllReportContentValidated = [bool]$missingAll.reportContentValidated
     missingAllMissingAreaCount = [int]$missingAll.missingExternalEvidenceAreaCount
     missingAllExternalEvidenceAccepted = [bool]$missingAll.allExternalEvidenceAccepted
     missingAllRealHostProjectEvidenceAccepted = [bool]$missingAll.realHostProjectEvidenceAccepted
     driverOnlyAcceptanceRejected = [bool]$partialDriverRejected
     driverOnlyCommandFailed = [bool]$partialDriverResult.commandFailed
     driverOnlyStatus = [string]$partialDriver.status
+    driverOnlyReportGenerated = [bool]$partialDriver.reportGenerated
+    driverOnlyReportContentValidated = [bool]$partialDriver.reportContentValidated
     driverOnlyMissingAreaCount = [int]$partialDriver.missingExternalEvidenceAreaCount
     driverOnlyProductionDriverEvidenceAccepted = [bool]$partialDriver.productionDriverEvidenceAccepted
     driverOnlyProductionLuaEvidenceAccepted = [bool]$partialDriver.productionLuaEvidenceAccepted

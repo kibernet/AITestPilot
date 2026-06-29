@@ -3,6 +3,7 @@ param(
     [string]$EvidenceBundleDir,
     [string]$AcceptanceBundleDir,
     [string]$ManifestPath,
+    [string]$ReportPath,
     [string]$ProductionDriverEvidenceDir,
     [string]$ProductionLuaEvidenceDir,
     [string]$LiveModelEndpointSmokeEvidenceDir,
@@ -26,6 +27,10 @@ if ([string]::IsNullOrWhiteSpace($AcceptanceBundleDir)) {
 
 if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
     $ManifestPath = Join-Path $EvidenceBundleDir "production-external-evidence-acceptance-manifest.json"
+}
+
+if ([string]::IsNullOrWhiteSpace($ReportPath)) {
+    $ReportPath = [System.IO.Path]::ChangeExtension($ManifestPath, ".md")
 }
 
 function Resolve-FullPath {
@@ -131,9 +136,81 @@ function Add-AcceptanceCheck {
     }
 }
 
+function Get-ReportValue {
+    param(
+        [object]$Map,
+        [string]$Name,
+        [object]$Default = $null
+    )
+
+    if ($null -eq $Map) {
+        return $Default
+    }
+
+    if ($Map -is [System.Collections.IDictionary] -and $Map.Contains($Name)) {
+        return $Map[$Name]
+    }
+
+    $property = $Map.PSObject.Properties[$Name]
+    if ($null -ne $property) {
+        return $property.Value
+    }
+
+    return $Default
+}
+
+function Format-MarkdownCell {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return "(none)"
+    }
+
+    $text = ([string]$Value).Trim()
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return "(none)"
+    }
+
+    return $text.Replace("`r", " ").Replace("`n", " ").Replace("|", "\|")
+}
+
+function Format-MissingFiles {
+    param([object]$Evidence)
+
+    $missingFiles = @(Get-ReportValue $Evidence "missingFiles" @())
+    if ($missingFiles.Count -eq 0) {
+        return "(none)"
+    }
+
+    return [string]::Join(", ", @($missingFiles | ForEach-Object { [string]$_ }))
+}
+
+function Get-CommandResultSummary {
+    param(
+        [object[]]$Results,
+        [string]$Name
+    )
+
+    foreach ($result in @($Results)) {
+        if (([string](Get-ReportValue $result "name" "")) -ne $Name) {
+            continue
+        }
+
+        if ([bool](Get-ReportValue $result "passed" $false)) {
+            return "PASS"
+        }
+
+        $message = [string](Get-ReportValue $result "message" "")
+        return "FAIL: $message"
+    }
+
+    return "not_run"
+}
+
 $evidenceBundlePath = Resolve-FullPath $EvidenceBundleDir
 $acceptanceBundlePath = Assert-PathUnderRepo $AcceptanceBundleDir "AcceptanceBundleDir"
 $manifestPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
+$reportPath = Assert-PathUnderRepo $ReportPath "ReportPath"
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -258,7 +335,6 @@ Add-AcceptanceCheck "production_lua_evidence_accepted" $luaAccepted "Production 
 Add-AcceptanceCheck "live_model_smoke_evidence_accepted" $liveAccepted "Live model smoke intake must accept PASS smoke and trace evidence."
 Add-AcceptanceCheck "fixture_boundary_preserved" ((-not [bool]$ContractFixtureMode) -or (-not [bool]$realHostProjectEvidenceAccepted)) "Contract fixture mode must not claim real host-project evidence."
 
-$failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($allExternalEvidenceAccepted) {
     "PASS"
 } elseif ([bool]$RequireAllEvidence) {
@@ -267,7 +343,91 @@ $status = if ($allExternalEvidenceAccepted) {
     "PENDING_EXTERNAL_EVIDENCE"
 }
 
-$files = @("production-external-evidence-acceptance-manifest.json")
+$generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+$reportLines = @(
+    "# Production External Evidence Acceptance",
+    "",
+    "Schema: ``aitestpilot.production_external_evidence_acceptance.v1``",
+    "Generated at UTC: $generatedAtUtc",
+    "",
+    "## Summary",
+    "",
+    "| Field | Value |",
+    "| --- | --- |",
+    "| Status | $(Format-MarkdownCell $status) |",
+    "| Require all evidence | $(Format-MarkdownCell ([bool]$RequireAllEvidence)) |",
+    "| Contract fixture mode | $(Format-MarkdownCell ([bool]$ContractFixtureMode)) |",
+    "| All external evidence accepted | $(Format-MarkdownCell $allExternalEvidenceAccepted) |",
+    "| Real host-project evidence accepted | $(Format-MarkdownCell $realHostProjectEvidenceAccepted) |",
+    "| Missing external evidence areas | $(Format-MarkdownCell $missingExternalEvidenceAreaCount) |",
+    "| Failed acceptance commands | $(Format-MarkdownCell $failedAcceptanceCount) |",
+    "",
+    "## Evidence Areas",
+    "",
+    "| Area | Required files present | Accepted | Missing files | Command result |",
+    "| --- | --- | --- | --- | --- |"
+)
+
+$reportAreas = @(
+    [ordered]@{
+        Area = "production_driver_binding"
+        Evidence = $driverEvidence
+        Accepted = $driverAccepted
+        Command = "production_driver_evidence_intake"
+    },
+    [ordered]@{
+        Area = "production_lua_patch_evidence"
+        Evidence = $luaEvidence
+        Accepted = $luaAccepted
+        Command = "production_lua_patch_readiness"
+    },
+    [ordered]@{
+        Area = "live_model_endpoint_smoke"
+        Evidence = $liveModelEvidence
+        Accepted = $liveAccepted
+        Command = "live_model_endpoint_smoke_evidence_intake"
+    }
+)
+
+foreach ($area in $reportAreas) {
+    $evidence = $area["Evidence"]
+    $areaName = $area["Area"]
+    $areaAccepted = [bool]$area["Accepted"]
+    $commandName = $area["Command"]
+    $requiredFilesPresent = [bool](Get-ReportValue $evidence "allPresent" $false)
+    $missingFiles = Format-MissingFiles $evidence
+    $commandResult = Get-CommandResultSummary @($commandResults) $commandName
+    $reportLines += "| $(Format-MarkdownCell $areaName) | $(Format-MarkdownCell $requiredFilesPresent) | $(Format-MarkdownCell $areaAccepted) | $(Format-MarkdownCell $missingFiles) | $(Format-MarkdownCell $commandResult) |"
+}
+
+$reportLines += @(
+    "",
+    "## Evidence Boundary",
+    "",
+    "- Contract fixture mode is acceptance-contract proof only and never claims real host-project evidence.",
+    "- Real host-project evidence is accepted only when driver, Lua, and live-smoke evidence all pass with ContractFixtureMode=false.",
+    "- Fixture evidence is not used by the release pipeline as production evidence."
+)
+
+$reportText = [string]::Join([Environment]::NewLine, $reportLines) + [Environment]::NewLine
+$reportContentValidated = $reportText.Contains("# Production External Evidence Acceptance") -and
+    $reportText.Contains("production_driver_binding") -and
+    $reportText.Contains("production_lua_patch_evidence") -and
+    $reportText.Contains("live_model_endpoint_smoke") -and
+    $reportText.Contains("Real host-project evidence accepted") -and
+    -not $reportText.Contains("System.Collections") -and
+    -not $reportText.Contains("@{")
+
+New-Item -ItemType Directory -Force (Split-Path $reportPath -Parent) | Out-Null
+$reportText | Set-Content -Path $reportPath -Encoding UTF8
+$reportGenerated = Test-Path $reportPath
+Add-AcceptanceCheck "markdown_report_content" ([bool]$reportGenerated -and [bool]$reportContentValidated) "Markdown report must summarize status, evidence areas, and fixture boundary without serialized object dumps."
+
+$failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
+
+$manifestFileName = Split-Path $manifestPath -Leaf
+$reportFileName = Split-Path $reportPath -Leaf
+$files = @($manifestFileName, $reportFileName)
 foreach ($fileName in @(
     "production-driver-evidence-intake-manifest.json",
     "production-driver-evidence-intake-readiness-manifest.json",
@@ -285,9 +445,12 @@ foreach ($fileName in @(
 $manifest = [ordered]@{
     schemaVersion = "aitestpilot.production_external_evidence_acceptance.v1"
     status = $status
-    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    generatedAtUtc = $generatedAtUtc
     sourceEvidenceBundleDir = $evidenceBundlePath
     acceptanceBundleDir = $acceptanceBundlePath
+    reportPath = $reportPath
+    reportGenerated = [bool]$reportGenerated
+    reportContentValidated = [bool]$reportContentValidated
     requireAllEvidence = [bool]$RequireAllEvidence
     contractFixtureMode = [bool]$ContractFixtureMode
     gameReplayDriverType = $GameReplayDriverType

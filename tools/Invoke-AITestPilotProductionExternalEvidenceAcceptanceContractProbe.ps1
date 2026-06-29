@@ -160,13 +160,16 @@ Copy-RequiredFiles $luaAcceptedSourceDir $externalLuaDir $luaRequiredFiles "Acce
 Copy-RequiredFiles $liveAcceptedSourceDir $externalLiveDir $liveModelRequiredFiles "Accepted live model smoke fixture"
 
 $acceptedAcceptanceName = "production-external-evidence-acceptance-contract-manifest.json"
+$acceptedAcceptanceReportName = "production-external-evidence-acceptance-contract.md"
 $acceptedAcceptanceManifestPath = Join-Path $probeBundlePath $acceptedAcceptanceName
+$acceptedAcceptanceReportPath = Join-Path $probeBundlePath $acceptedAcceptanceReportName
 $acceptedAcceptanceBundlePath = Join-Path $probeBundlePath "acceptance-bundle"
 
 & (Join-Path $PSScriptRoot "Invoke-AITestPilotProductionExternalEvidenceAcceptance.ps1") `
     -EvidenceBundleDir $evidenceBundlePath `
     -AcceptanceBundleDir $acceptedAcceptanceBundlePath `
     -ManifestPath $acceptedAcceptanceManifestPath `
+    -ReportPath $acceptedAcceptanceReportPath `
     -ProductionDriverEvidenceDir $externalDriverDir `
     -ProductionLuaEvidenceDir $externalLuaDir `
     -LiveModelEndpointSmokeEvidenceDir $externalLiveDir `
@@ -176,11 +179,17 @@ $acceptedAcceptanceBundlePath = Join-Path $probeBundlePath "acceptance-bundle"
 
 $acceptedAcceptance = Read-JsonFile $acceptedAcceptanceManifestPath "Accepted external evidence acceptance manifest"
 Copy-Item -LiteralPath $acceptedAcceptanceManifestPath -Destination (Join-Path $evidenceBundlePath $acceptedAcceptanceName) -Force
+Copy-Item -LiteralPath $acceptedAcceptanceReportPath -Destination (Join-Path $evidenceBundlePath $acceptedAcceptanceReportName) -Force
 
 $externalBundleUnderRepo = $externalBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
 $fixtureDirsGenerated = (Test-Path $externalDriverDir) -and (Test-Path $externalLuaDir) -and (Test-Path $externalLiveDir)
+$acceptedReportGenerated = (Test-Path $acceptedAcceptanceReportPath) -and
+    [bool]$acceptedAcceptance.reportGenerated -and
+    [bool]$acceptedAcceptance.reportContentValidated
 $acceptedContractPassed = $acceptedAcceptance.schemaVersion -eq "aitestpilot.production_external_evidence_acceptance.v1" -and
     $acceptedAcceptance.status -eq "PASS" -and
+    [bool]$acceptedAcceptance.reportGenerated -and
+    [bool]$acceptedAcceptance.reportContentValidated -and
     [bool]$acceptedAcceptance.requireAllEvidence -and
     [bool]$acceptedAcceptance.contractFixtureMode -and
     [bool]$acceptedAcceptance.allRequiredExternalEvidenceFilesPresent -and
@@ -203,13 +212,15 @@ Add-ProbeCheck "driver_lua_live_accepted" `
 Add-ProbeCheck "fixture_boundary_preserved" `
     (-not [bool]$acceptedAcceptance.realHostProjectEvidenceAccepted -and -not [bool]$acceptedAcceptance.releasePipelineUsesFixture) `
     "Accepted fixture contract must not be promoted as real host-project evidence."
+Add-ProbeCheck "accepted_markdown_report_generated" $acceptedReportGenerated "Accepted fixture contract must generate a validated Markdown report for host-project owners."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
 
 $files = @(
     "production-external-evidence-acceptance-contract-probe-manifest.json",
-    $acceptedAcceptanceName
+    $acceptedAcceptanceName,
+    $acceptedAcceptanceReportName
 )
 
 $manifest = [ordered]@{
@@ -222,7 +233,10 @@ $manifest = [ordered]@{
     externalBundleUnderRepo = [bool]$externalBundleUnderRepo
     acceptedFixtureDirsGenerated = [bool]$fixtureDirsGenerated
     acceptedAcceptanceManifest = $acceptedAcceptanceName
+    acceptedAcceptanceReport = $acceptedAcceptanceReportName
     acceptedAcceptancePassed = [bool]$acceptedContractPassed
+    acceptedAcceptanceReportGenerated = [bool]$acceptedAcceptance.reportGenerated
+    acceptedAcceptanceReportContentValidated = [bool]$acceptedAcceptance.reportContentValidated
     acceptedAcceptanceRequireAllEvidence = [bool]$acceptedAcceptance.requireAllEvidence
     acceptedAcceptanceContractFixtureMode = [bool]$acceptedAcceptance.contractFixtureMode
     acceptedAcceptanceAllRequiredFilesPresent = [bool]$acceptedAcceptance.allRequiredExternalEvidenceFilesPresent

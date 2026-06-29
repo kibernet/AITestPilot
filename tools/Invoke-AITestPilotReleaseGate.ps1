@@ -1693,6 +1693,8 @@ if ($null -ne $productionExternalEvidenceAcceptanceContractProbeManifest) {
             -not [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.externalBundleUnderRepo -and
             [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedFixtureDirsGenerated -and
             [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptancePassed -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceReportGenerated -and
+            [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceReportContentValidated -and
             [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceRequireAllEvidence -and
             [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceContractFixtureMode -and
             [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.acceptedAcceptanceAllRequiredFilesPresent -and
@@ -1705,7 +1707,7 @@ if ($null -ne $productionExternalEvidenceAcceptanceContractProbeManifest) {
             -not [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAcceptanceContractProbeManifest.releasePipelineUsesFixture -and
             $productionExternalEvidenceAcceptanceContractProbeManifest.productionOutputBoundary -eq "accepted_fixture_external_evidence_acceptance_contract_only" -and
-            [int]$productionExternalEvidenceAcceptanceContractProbeManifest.checkCount -eq 4 -and
+            [int]$productionExternalEvidenceAcceptanceContractProbeManifest.checkCount -eq 5 -and
             [int]$productionExternalEvidenceAcceptanceContractProbeManifest.failedCheckCount -eq 0) `
         "Production external evidence acceptance contract probe must prove the stable repo-side acceptance command accepts complete host-project-shaped evidence without promoting fixture data."
 
@@ -1722,12 +1724,16 @@ if ($null -ne $productionExternalEvidenceAcceptanceFailureProbeManifest) {
             [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllAcceptanceRejected -and
             [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllCommandFailed -and
             $productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllStatus -eq "FAIL" -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllReportGenerated -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllReportContentValidated -and
             [int]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllMissingAreaCount -eq 3 -and
             -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllExternalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.missingAllRealHostProjectEvidenceAccepted -and
             [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyAcceptanceRejected -and
             [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyCommandFailed -and
             $productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyStatus -eq "FAIL" -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyReportGenerated -and
+            [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyReportContentValidated -and
             [int]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyMissingAreaCount -eq 2 -and
             [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyProductionDriverEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyProductionLuaEvidenceAccepted -and
@@ -1735,7 +1741,7 @@ if ($null -ne $productionExternalEvidenceAcceptanceFailureProbeManifest) {
             -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyExternalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAcceptanceFailureProbeManifest.driverOnlyRealHostProjectEvidenceAccepted -and
             $productionExternalEvidenceAcceptanceFailureProbeManifest.productionOutputBoundary -eq "external_evidence_acceptance_failure_probe_only" -and
-            [int]$productionExternalEvidenceAcceptanceFailureProbeManifest.checkCount -eq 4 -and
+            [int]$productionExternalEvidenceAcceptanceFailureProbeManifest.checkCount -eq 5 -and
             [int]$productionExternalEvidenceAcceptanceFailureProbeManifest.failedCheckCount -eq 0) `
         "Production external evidence acceptance failure probe must prove missing and partial host-project evidence cannot satisfy all production requirements."
 

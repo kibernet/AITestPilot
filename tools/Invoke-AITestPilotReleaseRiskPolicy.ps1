@@ -682,6 +682,8 @@ $productionExternalEvidenceAcceptanceContractAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "externalBundleUnderRepo" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedFixtureDirsGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptancePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceReportGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceReportContentValidated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceRequireAllEvidence" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceContractFixtureMode" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "acceptedAcceptanceAllRequiredFilesPresent" $false)) -and
@@ -694,6 +696,7 @@ $productionExternalEvidenceAcceptanceContractAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "releasePipelineUsesFixture" $true)) -and
     (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_external_evidence_acceptance_contract_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "checkCount" 0)) -eq 5 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceContractProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -711,12 +714,16 @@ $productionExternalEvidenceAcceptanceFailureAccepted = (
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllAcceptanceRejected" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllCommandFailed" $false)) -and
     (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllStatus" "") -eq "FAIL" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllReportGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllReportContentValidated" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllMissingAreaCount" 0)) -eq 3 -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllExternalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "missingAllRealHostProjectEvidenceAccepted" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyAcceptanceRejected" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyCommandFailed" $false)) -and
     (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyStatus" "") -eq "FAIL" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyReportGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyReportContentValidated" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyMissingAreaCount" 0)) -eq 2 -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyProductionDriverEvidenceAccepted" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyProductionLuaEvidenceAccepted" $true)) -and
@@ -724,6 +731,7 @@ $productionExternalEvidenceAcceptanceFailureAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyExternalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "driverOnlyRealHostProjectEvidenceAccepted" $true)) -and
     (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "productionOutputBoundary" "") -eq "external_evidence_acceptance_failure_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "checkCount" 0)) -eq 5 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAcceptanceFailureProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
