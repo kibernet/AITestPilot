@@ -130,14 +130,21 @@ Produce exactly these three required output files in ${outputPath}:
 After writing files, respond with a concise confirmation and the exact files written.
 "@
 
-$cursorAgentOutput = @(& $CursorAgentCommand `
-    --print `
-    --trust `
-    --force `
-    --model $CursorAgentModel `
-    --workspace $repoRoot `
-    $prompt 2>&1)
-$cursorAgentExitCode = $LASTEXITCODE
+$previousErrorActionPreference = $ErrorActionPreference
+try {
+    $ErrorActionPreference = "Continue"
+    $cursorAgentOutput = @(& $CursorAgentCommand `
+        --print `
+        --trust `
+        --force `
+        --model $CursorAgentModel `
+        --workspace $repoRoot `
+        $prompt 2>&1)
+    $cursorAgentExitCode = $LASTEXITCODE
+}
+finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+}
 $cursorAgentOutput | Set-Content -Path $cursorAgentLogPath -Encoding UTF8
 
 if ($cursorAgentExitCode -ne 0) {
