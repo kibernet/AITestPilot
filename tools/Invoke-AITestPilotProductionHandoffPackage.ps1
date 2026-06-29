@@ -108,6 +108,95 @@ function Join-MarkdownList {
     return ($Items | ForEach-Object { [string]$_ }) -join ", "
 }
 
+function New-BlockerResolution {
+    param(
+        [object]$ActionItem,
+        [string]$BlockingReason
+    )
+
+    $area = [string]$ActionItem["id"]
+    $owner = [string]$ActionItem["owner"]
+    $requiredFiles = @(Convert-ToArray $ActionItem["requiredEvidenceFiles"] | ForEach-Object { [string]$_ })
+    $validationCommand = [string]$ActionItem["validationCommand"]
+    $evidenceFiles = @($requiredFiles)
+    $acceptanceCriteria = @("Run the hard validation command and replace this blocker with PASS evidence.")
+    $remediation = "Produce the required host-project evidence files and rerun the hard validation command."
+    $mapped = $true
+
+    switch ($BlockingReason) {
+        "production_replay_integration_not_bound" {
+            $evidenceFiles = @("production-replay-integration-checklist.json")
+            $acceptanceCriteria = @("Checklist status is BOUND.", "realProjectBound is true.")
+            $remediation = "Wire the production replay integration checklist to real host-game APIs."
+        }
+        "required_hooks_not_all_bound" {
+            $evidenceFiles = @("production-replay-integration-checklist.json")
+            $acceptanceCriteria = @("Every required hook is marked bound.", "boundHookCount equals requiredHookCount.")
+            $remediation = "Implement each generated hook in the production driver binding kit."
+        }
+        "unresolved_required_hooks" {
+            $evidenceFiles = @("production-replay-integration-checklist.json")
+            $acceptanceCriteria = @("unresolvedRequiredHookCount is 0.", "No unresolved hook names remain.")
+            $remediation = "Close every unresolved hook listed by the production replay checklist."
+        }
+        "sample_game_replay_driver_used" {
+            $evidenceFiles = @("repair-retest-manifest.json", "repair-driver-failure-manifest.json", "replay-profile-import-manifest.json")
+            $acceptanceCriteria = @("GameReplayDriverType is a host-project production driver.", "Sample driver evidence is not used for the hard release run.")
+            $remediation = "Run the release pipeline with a non-sample production replay driver type."
+        }
+        "external_production_driver_not_selected" {
+            $evidenceFiles = @("production-replay-integration-checklist.json", "repair-retest-manifest.json")
+            $acceptanceCriteria = @("The release command includes the host production GameReplayDriverType.", "Production driver readiness is evaluated against that driver.")
+            $remediation = "Select the external host-project production driver in the hard release command."
+        }
+        "real_production_lua_bundle_missing" {
+            $evidenceFiles = @("production-lua-patch-evidence.json")
+            $acceptanceCriteria = @("ProductionLuaEvidenceDir points to the host-project Lua evidence directory.", "production-lua-patch-evidence.json exists in that directory.")
+            $remediation = "Export the real host-project Lua patch evidence bundle."
+        }
+        "real_production_lua_not_analyzed" {
+            $evidenceFiles = @("production-lua-patch-evidence.json")
+            $acceptanceCriteria = @("Real production Lua analysis is recorded.", "Analysis results are tied to the production Lua bundle.")
+            $remediation = "Run Lua static analysis over the real production Lua sources and record the result."
+        }
+        "real_production_lua_not_patched" {
+            $evidenceFiles = @("production-lua-patch-evidence.json")
+            $acceptanceCriteria = @("Real production Lua patch application is recorded.", "Remaining production findings are 0.")
+            $remediation = "Apply the validated patch to the real production Lua bundle and capture the evidence."
+        }
+        "production_lua_retest_evidence_missing" {
+            $evidenceFiles = @("production-lua-patch-retest-template.md", "production-lua-patch-evidence.json")
+            $acceptanceCriteria = @("Host retest command and result are recorded.", "Retest evidence passes after the Lua patch.")
+            $remediation = "Run the host-project Lua retest and record the command, result, and evidence path."
+        }
+        "real_production_patch_rollback_missing" {
+            $evidenceFiles = @("production-lua-patch-rollback-plan-template.md", "production-lua-patch-evidence.json")
+            $acceptanceCriteria = @("Rollback command or plan is recorded.", "Source-control cleanup after validation is recorded.")
+            $remediation = "Capture a production rollback plan and source-control cleanup evidence for the Lua patch."
+        }
+        "real_live_model_endpoint_smoke_missing" {
+            $evidenceFiles = @("live-model-endpoint-smoke-manifest.json", "live-model-endpoint-decision-trace.json")
+            $acceptanceCriteria = @("Live smoke manifest status is PASS.", "Decision trace is from the selected real provider endpoint.")
+            $remediation = "Run a real live model endpoint smoke test or import a passing host-project live-smoke evidence directory."
+        }
+        default {
+            $mapped = $false
+        }
+    }
+
+    return [ordered]@{
+        area = $area
+        owner = $owner
+        blockerReason = $BlockingReason
+        status = [string]$ActionItem["status"]
+        mapped = [bool]$mapped
+        remediation = $remediation
+        evidenceFiles = @($evidenceFiles)
+        acceptanceCriteria = @($acceptanceCriteria)
+        validationCommand = $validationCommand
+    }
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $packagePath = Assert-PathUnderRepo $PackageDir "PackageDir"
 $manifestPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
@@ -267,6 +356,15 @@ if (-not $liveModelAccessProven) {
     }
 }
 
+$blockerResolutions = @()
+foreach ($item in $actionItems) {
+    foreach ($reason in @(Convert-ToArray $item["remainingBlockingReasons"])) {
+        $blockerResolutions += New-BlockerResolution $item ([string]$reason)
+    }
+}
+$unmappedBlockerCount = @($blockerResolutions | Where-Object { -not [bool]$_["mapped"] }).Count
+$hostProjectBlockingReasonCount = [int]$blockerResolutions.Count
+
 $requiredEvidence = [ordered]@{
     schemaVersion = "aitestpilot.production_handoff_required_evidence.v1"
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
@@ -295,6 +393,21 @@ $requiredEvidence = [ordered]@{
     }
 }
 
+$blockerResolutionMap = [ordered]@{
+    schemaVersion = "aitestpilot.production_handoff_blocker_resolution_map.v1"
+    status = if ($unmappedBlockerCount -eq 0) { "PASS" } else { "FAIL" }
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    hostProjectActionItemCount = [int]$actionItems.Count
+    totalBlockingReasonCount = [int]$hostProjectBlockingReasonCount
+    mappedBlockingReasonCount = [int]($hostProjectBlockingReasonCount - $unmappedBlockerCount)
+    unmappedBlockingReasonCount = [int]$unmappedBlockerCount
+    ownerCount = [int](@($actionItems | ForEach-Object { [string]$_["owner"] } | Sort-Object -Unique).Count)
+    releasePipelineUsesFixture = $false
+    realHostProjectEvidenceAccepted = $false
+    productionOutputBoundary = "host_project_blocker_resolution_only"
+    resolutions = @($blockerResolutions)
+}
+
 $readme = @"
 # AI TestPilot Production Handoff Package
 
@@ -313,6 +426,7 @@ This package is the host-project handoff entry point generated from release evid
 
 - ``action-plan.md``: owner-facing next steps for the remaining host-project work.
 - ``required-external-evidence.json``: machine-readable evidence contract for driver, Lua, and live model completion.
+- ``blocker-resolution-map.json`` and ``blocker-resolution-map.md``: owner, evidence, acceptance, and validation mapping for every remaining production blocker.
 - ``ci-commands.ps1``: copyable release-pipeline commands for hard production enforcement.
 - ``verify-external-evidence.ps1``: host-project preflight for checking required external evidence paths before hard validation.
 
@@ -350,6 +464,31 @@ $actionPlanLines += @(
     "- Production Lua completion requires real Lua analysis, patch, validation, retest, rollback, and clean source-control evidence.",
     "- Live model completion requires a real PASS smoke manifest and decision trace from the selected provider."
 )
+
+$blockerResolutionLines = @(
+    "# Production Blocker Resolution Map",
+    "",
+    "Schema: aitestpilot.production_handoff_blocker_resolution_map.v1",
+    "",
+    "Each row maps one current blocker to the owner, evidence file, acceptance condition, and hard validation command that clears it.",
+    "",
+    "| Area | Blocker | Owner | Evidence files | Acceptance criteria | Validation command |",
+    "| --- | --- | --- | --- | --- | --- |"
+)
+
+foreach ($resolution in $blockerResolutions) {
+    $criteria = Join-MarkdownList @(Convert-ToArray $resolution["acceptanceCriteria"])
+    $evidenceFiles = Join-MarkdownList @(Convert-ToArray $resolution["evidenceFiles"])
+    $area = [string]$resolution["area"]
+    $reason = [string]$resolution["blockerReason"]
+    $owner = [string]$resolution["owner"]
+    $validationCommand = [string]$resolution["validationCommand"]
+    $blockerResolutionLines += "| $area | $reason | $owner | $evidenceFiles | $criteria | " + '`' + $validationCommand + '`' + " |"
+}
+
+if ($blockerResolutions.Count -eq 0) {
+    $blockerResolutionLines += "| production_handoff | none | n/a | n/a | No blockers remain. | n/a |"
+}
 
 $ciCommands = @'
 # AI TestPilot hard production validation commands.
@@ -625,6 +764,8 @@ Write-Output "AI TestPilot production handoff external evidence preflight status
 $readmePath = Join-Path $packagePath "README.md"
 $actionPlanPath = Join-Path $packagePath "action-plan.md"
 $requiredEvidencePath = Join-Path $packagePath "required-external-evidence.json"
+$blockerResolutionJsonPath = Join-Path $packagePath "blocker-resolution-map.json"
+$blockerResolutionMarkdownPath = Join-Path $packagePath "blocker-resolution-map.md"
 $ciCommandsPath = Join-Path $packagePath "ci-commands.ps1"
 $preflightScriptPath = Join-Path $packagePath "verify-external-evidence.ps1"
 $preflightSelfCheckPath = Join-Path $packagePath "external-evidence-preflight-self-check.json"
@@ -632,6 +773,8 @@ $preflightSelfCheckPath = Join-Path $packagePath "external-evidence-preflight-se
 $readme | Set-Content -Path $readmePath -Encoding UTF8
 $actionPlanLines | Set-Content -Path $actionPlanPath -Encoding UTF8
 $requiredEvidence | ConvertTo-Json -Depth 10 | Set-Content -Path $requiredEvidencePath -Encoding UTF8
+$blockerResolutionMap | ConvertTo-Json -Depth 12 | Set-Content -Path $blockerResolutionJsonPath -Encoding UTF8
+$blockerResolutionLines | Set-Content -Path $blockerResolutionMarkdownPath -Encoding UTF8
 $ciCommands | Set-Content -Path $ciCommandsPath -Encoding UTF8
 $preflightScript | Set-Content -Path $preflightScriptPath -Encoding UTF8
 
@@ -639,6 +782,9 @@ $preflightScript | Set-Content -Path $preflightScriptPath -Encoding UTF8
 
 $actionPlanText = Get-Content -Path $actionPlanPath -Encoding UTF8 -Raw
 $requiredEvidenceText = Get-Content -Path $requiredEvidencePath -Encoding UTF8 -Raw
+$blockerResolutionText = Get-Content -Path $blockerResolutionJsonPath -Encoding UTF8 -Raw
+$blockerResolutionMarkdownText = Get-Content -Path $blockerResolutionMarkdownPath -Encoding UTF8 -Raw
+$blockerResolutionSelfCheck = $blockerResolutionText | ConvertFrom-Json
 $ciCommandsText = Get-Content -Path $ciCommandsPath -Encoding UTF8 -Raw
 $preflightScriptText = Get-Content -Path $preflightScriptPath -Encoding UTF8 -Raw
 $preflightSelfCheck = Get-Content -Path $preflightSelfCheckPath -Encoding UTF8 -Raw | ConvertFrom-Json
@@ -670,6 +816,36 @@ $requiredEvidenceContentValid = $requiredEvidenceText.Contains("aitestpilot.prod
     $requiredEvidenceText.Contains("live-model-endpoint-smoke-manifest.json") -and
     -not ($requiredEvidenceText -match "System\.Collections|OrderedDictionary")
 
+$expectedBlockerResolutionSnippets = @(
+    "aitestpilot.production_handoff_blocker_resolution_map.v1",
+    "host_project_gameplay_qa",
+    "host_project_lua_owner",
+    "host_project_ai_platform",
+    "production-replay-integration-checklist.json",
+    "production-lua-patch-evidence.json",
+    "live-model-endpoint-smoke-manifest.json",
+    "-RequireProductionReplayDriverBound",
+    "-RequireProductionLuaPatched",
+    "-RequireLiveModelEndpointSmoke"
+)
+$expectedBlockerResolutionSnippets += @($blockerResolutions | ForEach-Object { [string]$_["blockerReason"] })
+
+$missingBlockerResolutionSnippetCount = @($expectedBlockerResolutionSnippets | Where-Object {
+    -not $blockerResolutionText.Contains($_) -or -not $blockerResolutionMarkdownText.Contains($_)
+}).Count
+
+$blockerResolutionMapContentValid = $blockerResolutionSelfCheck.schemaVersion -eq "aitestpilot.production_handoff_blocker_resolution_map.v1" -and
+    $blockerResolutionSelfCheck.status -eq "PASS" -and
+    [int]$blockerResolutionSelfCheck.totalBlockingReasonCount -eq [int]$hostProjectBlockingReasonCount -and
+    [int]$blockerResolutionSelfCheck.mappedBlockingReasonCount -eq [int]$hostProjectBlockingReasonCount -and
+    [int]$blockerResolutionSelfCheck.unmappedBlockingReasonCount -eq 0 -and
+    -not [bool]$blockerResolutionSelfCheck.releasePipelineUsesFixture -and
+    -not [bool]$blockerResolutionSelfCheck.realHostProjectEvidenceAccepted -and
+    $blockerResolutionSelfCheck.productionOutputBoundary -eq "host_project_blocker_resolution_only" -and
+    $missingBlockerResolutionSnippetCount -eq 0 -and
+    -not ($blockerResolutionText -match "System\.Collections|OrderedDictionary") -and
+    -not ($blockerResolutionMarkdownText -match "System\.Collections|OrderedDictionary")
+
 $ciCommandsContentValid = $ciCommandsText.Contains("-RequireProductionReplayDriverBound") -and
     $ciCommandsText.Contains("-RequireProductionLuaPatched") -and
     $ciCommandsText.Contains("-RequireLiveModelEndpointSmoke") -and
@@ -689,13 +865,15 @@ $preflightSelfCheckValid = $preflightSelfCheck.schemaVersion -eq "aitestpilot.pr
     [int]$preflightSelfCheck.missingExternalEvidenceAreaCount -eq 3 -and
     -not [bool]$preflightSelfCheck.allRequiredExternalEvidenceFilesPresent
 
-$generatedHandoffContentQualityAccepted = $actionPlanContentValid -and $requiredEvidenceContentValid -and $ciCommandsContentValid
+$generatedHandoffContentQualityAccepted = $actionPlanContentValid -and $requiredEvidenceContentValid -and $blockerResolutionMapContentValid -and $ciCommandsContentValid
 $externalEvidencePreflightAccepted = $preflightScriptContentValid -and $preflightSelfCheckValid
 
 $generatedFiles = @(
     "production-handoff-package/README.md",
     "production-handoff-package/action-plan.md",
     "production-handoff-package/required-external-evidence.json",
+    "production-handoff-package/blocker-resolution-map.json",
+    "production-handoff-package/blocker-resolution-map.md",
     "production-handoff-package/ci-commands.ps1",
     "production-handoff-package/verify-external-evidence.ps1",
     "production-handoff-package/external-evidence-preflight-self-check.json"
@@ -712,6 +890,9 @@ Add-HandoffCheck "generated_handoff_files" `
 Add-HandoffCheck "generated_handoff_content_quality" `
     $generatedHandoffContentQualityAccepted `
     "Generated handoff files must contain concrete owner, kit, evidence, and command details without serialized PowerShell object names."
+Add-HandoffCheck "blocker_resolution_map" `
+    $blockerResolutionMapContentValid `
+    "Generated handoff package must map every remaining production blocker to owner, evidence files, acceptance criteria, and validation commands."
 Add-HandoffCheck "external_evidence_preflight_script" `
     $externalEvidencePreflightAccepted `
     "Generated handoff package must include a runnable external evidence preflight script with a pending self-check."
@@ -759,6 +940,11 @@ $manifest = [ordered]@{
     preflightSelfCheckStatus = [string]$preflightSelfCheck.status
     preflightSelfCheckMissingAreaCount = [int]$preflightSelfCheck.missingExternalEvidenceAreaCount
     hostProjectActionItemCount = [int]$actionItems.Count
+    hostProjectBlockingReasonCount = [int]$hostProjectBlockingReasonCount
+    blockerResolutionMapGenerated = [bool]((Test-Path $blockerResolutionJsonPath) -and (Test-Path $blockerResolutionMarkdownPath))
+    blockerResolutionMapContentValidated = [bool]$blockerResolutionMapContentValid
+    blockerResolutionMappedReasonCount = [int]$blockerResolutionSelfCheck.mappedBlockingReasonCount
+    blockerResolutionUnmappedReasonCount = [int]$blockerResolutionSelfCheck.unmappedBlockingReasonCount
     actionItems = @($actionItems)
     sourceManifestCount = [int]$sourceManifests.Count
     sourceManifests = @($sourceManifests)

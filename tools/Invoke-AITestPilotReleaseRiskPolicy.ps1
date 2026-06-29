@@ -633,9 +633,14 @@ $productionHandoffPackageAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "ciReleaseControlsReady" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "fixtureEvidencePromoted" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "generatedHandoffContentQualityAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "blockerResolutionMapGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "blockerResolutionMapContentValidated" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "blockerResolutionMappedReasonCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "hostProjectBlockingReasonCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "blockerResolutionUnmappedReasonCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "externalEvidencePreflightAccepted" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "sourceManifestCount" 0)) -ge 12 -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 8 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "failedCheckCount" 1)) -eq 0
 )
 

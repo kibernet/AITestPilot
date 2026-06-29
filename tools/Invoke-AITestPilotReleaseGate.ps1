@@ -1645,10 +1645,14 @@ if ($null -ne $productionHandoffPackageManifest) {
             [bool]$productionHandoffPackageManifest.ciReleaseControlsReady -and
             -not [bool]$productionHandoffPackageManifest.fixtureEvidencePromoted -and
             [bool]$productionHandoffPackageManifest.generatedHandoffContentQualityAccepted -and
+            [bool]$productionHandoffPackageManifest.blockerResolutionMapGenerated -and
+            [bool]$productionHandoffPackageManifest.blockerResolutionMapContentValidated -and
+            [int]$productionHandoffPackageManifest.blockerResolutionMappedReasonCount -eq [int]$productionHandoffPackageManifest.hostProjectBlockingReasonCount -and
+            [int]$productionHandoffPackageManifest.blockerResolutionUnmappedReasonCount -eq 0 -and
             [bool]$productionHandoffPackageManifest.externalEvidencePreflightAccepted -and
             [int]$productionHandoffPackageManifest.sourceManifestCount -ge 12 -and
-            [int]$productionHandoffPackageManifest.generatedFileCount -ge 6 -and
-            [int]$productionHandoffPackageManifest.checkCount -eq 7 -and
+            [int]$productionHandoffPackageManifest.generatedFileCount -ge 8 -and
+            [int]$productionHandoffPackageManifest.checkCount -eq 8 -and
             [int]$productionHandoffPackageManifest.failedCheckCount -eq 0) `
         "Production handoff package must consolidate host-project driver, Lua, live-model, and CI next steps without promoting fixture evidence."
 
