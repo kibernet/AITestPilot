@@ -152,6 +152,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 - `production-driver-external-bundle-intake-probe-manifest.json`, `production-driver-external-bundle-intake-manifest.json`, and `production-driver-external-bundle-readiness-manifest.json`: proof that the intake path can inspect repo-external evidence directories while preserving the sample/unbound blocker.
 - `github-actions-release-workflow-probe-manifest.json` and `github-actions-ai-testpilot-release-workflow.yml`: proof that the GitHub Actions provider workflow maps release-control inputs to the release pipeline, enforces the generated pipeline manifest, and uploads release evidence.
 - `model-endpoint-provider-retry-policy-manifest.json`: provider-specific live-smoke retry, backoff, escalation, and alert-routing policy evidence.
+- `lua-static-analysis-manifest.json`, `lua-static-analysis-report.json`, `lua-static-analysis-report.md`, `lua-static-analysis-patch-plan.md`, and `lua-static-analysis-fixtures/`: deterministic Lua static-analysis evidence for repair candidates, including rule coverage and a package-side production boundary.
 - Unity import and sample-scene validation logs.
 
 `tools/Invoke-AITestPilotRepairAgentPatchOutputImport.ps1` consumes `repair-agent-run.json`, validates `repair-agent.patch` and `repair-agent-summary.md`, and writes `repair-agent-patch-output-manifest.json`. The release pipeline runs it with `-GenerateSampleOutput`, so CI proves the import, manifest, and gate checks while preserving `externalAgentRun=false`. For non-sample output, the importer requires `-ConfirmExternalAgentCompleted` plus run evidence showing `status=EXTERNAL_AGENT_COMPLETED`, `agentLaunched=true`, `patchOutputStatus=PRODUCED`, required outputs marked produced, and a nonzero output count.
@@ -198,6 +199,8 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 - `imported-replay-profile.normalized.json`: JSON exported from the imported asset.
 - Unity import and replay-profile import logs.
 
+`tools/Invoke-AITestPilotLuaStaticAnalysisProbe.ps1` runs the package-side Lua static-analysis proof. The probe builds deterministic Lua fixtures, calls the core `LuaStaticAnalyzer`, and writes `lua-static-analysis-manifest.json`, JSON/Markdown reports, a patch-plan Markdown artifact, and fixture sources. The release gate requires coverage for unguarded field access, global writes, dynamic `require`, and unprotected game API calls, while also proving the safe fixture is clean and that real production Lua has not yet been claimed as analyzed.
+
 `tools/Invoke-AITestPilotReleaseGate.ps1` is the repo-side release gate over the evidence bundle. It requires:
 
 - scene validation manifest with release allowed and no unverified high-risk bugs.
@@ -228,6 +231,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 - model endpoint trace manifest, request/response artifacts, and persisted decision trace.
 - model endpoint provider diagnostics manifest with supported presets, request formats, selected preset, environment bindings, and no serialized secrets.
 - model endpoint provider retry policy manifest with provider-specific retry tuning and alert routing.
+- Lua static analysis manifest with rule coverage for repair-risk patterns, safe-fixture validation, patch-plan generation, and production Lua boundary evidence.
 - live model endpoint failure probe manifest proving auth failures are classified with remediation, retry/escalation policy, and a failed trace.
 - live model endpoint smoke manifest, skipped/pass/fail status, policy-driven retry attempts, and persisted live decision trace when explicitly configured.
 - GitHub Actions release workflow probe manifest proving provider-specific CI wiring for self-hosted Windows Unity runners.
@@ -237,7 +241,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 
 `tools/Invoke-AITestPilotReleaseGateFailureProbe.ps1` copies the current bundle, removes the driver failure probe evidence, and expects the release gate to block that copy.
 
-`tools/Invoke-AITestPilotReleasePipeline.ps1` runs the full chain, including deterministic repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate probe, main worktree apply readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback through that accepted directory package, external patch safety preflight, unsafe-path failure probe, repository apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, sandbox patch apply/retest, production replay integration contract probe, production driver binding kit probe, production replay driver readiness, production driver evidence intake, repo-external production bundle intake probe, provider retry policy probe, and GitHub Actions workflow probe, then copies the final evidence bundle to `artifacts/ai-testpilot-release/latest` with `pipeline-manifest.json`, giving CI one stable command and artifact directory. When run with `-UseCursorAgentExternalTaskOutput`, it inserts the optional headless Cursor Agent producer before acceptance and validates that optional manifest in the release gate.
+`tools/Invoke-AITestPilotReleasePipeline.ps1` runs the full chain, including deterministic repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate probe, main worktree apply readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback through that accepted directory package, external patch safety preflight, unsafe-path failure probe, repository apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, sandbox patch apply/retest, production replay integration contract probe, production driver binding kit probe, production replay driver readiness, production driver evidence intake, repo-external production bundle intake probe, provider retry policy probe, Lua static analysis probe, and GitHub Actions workflow probe, then copies the final evidence bundle to `artifacts/ai-testpilot-release/latest` with `pipeline-manifest.json`, giving CI one stable command and artifact directory. When run with `-UseCursorAgentExternalTaskOutput`, it inserts the optional headless Cursor Agent producer before acceptance and validates that optional manifest in the release gate.
 
 ## Replay Adapters
 

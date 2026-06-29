@@ -229,7 +229,7 @@ To run the full repo-side release gate over the evidence bundle:
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -270,6 +270,14 @@ To validate provider-specific live-smoke retry tuning and alert routing without 
 ```
 
 The retry policy manifest covers the provider presets and live failure categories with provider-specific retry counts, backoff ceilings, escalation owners, alert routes, and recommended production CI live-smoke retry arguments. This is policy evidence; a real live endpoint still requires `Invoke-AITestPilotLiveModelEndpointSmoke.ps1 -RequireLive`.
+
+To prove Lua static analysis and patch-plan evidence for replay repair candidates:
+
+```powershell
+.\tools\Invoke-AITestPilotLuaStaticAnalysisProbe.ps1
+```
+
+The Lua static analyzer scans deterministic Lua fixtures for unguarded field access, global writes, dynamic `require`, and unprotected game API calls. It writes `lua-static-analysis-manifest.json`, a JSON/Markdown report, a patch-plan Markdown artifact, and fixture files into release evidence. The default probe is a package-side contract and explicitly records that real production Lua has not been analyzed yet.
 
 To prove live endpoint failures are classified before hitting a real provider:
 
@@ -362,6 +370,7 @@ Implemented now:
 - Live model endpoint retry/escalation policy in failure evidence.
 - Policy-driven live model endpoint retry execution with per-attempt evidence.
 - Provider-specific live-smoke retry tuning and alert routing manifest for native, OpenAI, OpenAI-compatible, and local gateways.
+- Core Lua static analyzer plus release-gated Lua static analysis manifest for unguarded field access, global writes, dynamic `require`, unprotected game API calls, safe-fixture checks, and patch-plan evidence.
 - Sample business replay path covering account setup, login, `enter_scene`, activity reward, and `play_fishing`.
 - Persisted replay profile asset plus JSON export for CI evidence.
 - Replay profile JSON import back into an editable Unity `ActionReplayProfile` asset.
@@ -369,7 +378,7 @@ Implemented now:
 Not implemented yet:
 
 - Cloud/local cluster orchestration.
-- Lua static analysis and automatic code patching.
+- Automatic Lua code patching against real production Lua.
 - Prefab mutation and retest orchestration across Unity editor restarts.
 - Additional CI providers beyond the current GitHub Actions release workflow.
 - Real game-project driver implementation for production login, account preparation, activity, fishing, and other game systems.

@@ -58,3 +58,4 @@
 - Added provider-specific live model endpoint retry policy and alert-routing evidence.
 - Added repair-agent patch result analysis evidence linking prior fix hints, accepted output, retest, rollback, and knowledge graph outcome.
 - Added repair-agent patch result history evidence for multi-bug outcome persistence, trend aggregates, and production-output boundary checks.
+- Added core Lua static analysis and release-gated Lua fixture evidence with patch-plan output.

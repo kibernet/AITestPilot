@@ -160,6 +160,7 @@ else {
 $modelEndpointManifest = Read-Manifest "model-endpoint-trace-manifest.json"
 $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provider-diagnostics-manifest.json"
 $modelEndpointProviderRetryPolicyManifest = Read-Manifest "model-endpoint-provider-retry-policy-manifest.json"
+$luaStaticAnalysisManifest = Read-Manifest "lua-static-analysis-manifest.json"
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
@@ -1128,6 +1129,39 @@ if ($null -ne $modelEndpointProviderRetryPolicyManifest) {
     Test-ListedFiles $modelEndpointProviderRetryPolicyManifest "model_endpoint_provider_retry_policy"
 }
 
+if ($null -ne $luaStaticAnalysisManifest) {
+    Add-ReleaseCheck "lua_static_analysis_probe" `
+        ($luaStaticAnalysisManifest.status -eq "PASS" -and
+            $luaStaticAnalysisManifest.schemaVersion -eq "aitestpilot.lua_static_analysis.v1" -and
+            $luaStaticAnalysisManifest.source -eq "deterministic_lua_fixture" -and
+            [int]$luaStaticAnalysisManifest.sourceFileCount -ge 3 -and
+            [int]$luaStaticAnalysisManifest.analyzedLineCount -ge 10 -and
+            [int]$luaStaticAnalysisManifest.findingCount -ge 5 -and
+            [int]$luaStaticAnalysisManifest.highRiskFindingCount -ge 2 -and
+            [int]$luaStaticAnalysisManifest.autoPatchCandidateCount -ge 4 -and
+            [int]$luaStaticAnalysisManifest.blockingReasonCount -eq 0) `
+        "Lua static analysis probe must scan deterministic Lua fixtures and produce high-risk findings plus patch candidates."
+
+    Add-ReleaseCheck "lua_static_analysis_rule_coverage" `
+        ([int]$luaStaticAnalysisManifest.requiredRuleCount -eq 4 -and
+            [int]$luaStaticAnalysisManifest.requiredRuleIdsFoundCount -eq [int]$luaStaticAnalysisManifest.requiredRuleCount -and
+            (Test-ContainsAll @($luaStaticAnalysisManifest.ruleIds) @(
+                "lua.dynamic_require",
+                "lua.global_write",
+                "lua.unguarded_field_access",
+                "lua.unprotected_game_api_call"))) `
+        "Lua static analysis must cover nil-risk field access, global writes, dynamic require, and unprotected game API calls."
+
+    Add-ReleaseCheck "lua_static_analysis_boundary" `
+        ([int]$luaStaticAnalysisManifest.safeFixtureFindingCount -eq 0 -and
+            -not [bool]$luaStaticAnalysisManifest.realProductionLuaAnalyzed -and
+            $luaStaticAnalysisManifest.productionBoundary -eq "deterministic_lua_fixture_only" -and
+            [bool]$luaStaticAnalysisManifest.patchPlanGenerated) `
+        "Lua static analysis must keep deterministic fixtures separate from real production Lua and emit a patch-plan artifact."
+
+    Test-ListedFiles $luaStaticAnalysisManifest "lua_static_analysis_probe"
+}
+
 if ($null -ne $liveModelEndpointFailureProbeManifest) {
     Add-ReleaseCheck "live_model_endpoint_failure_probe" `
         ($liveModelEndpointFailureProbeManifest.status -eq "PASS" -and
@@ -1324,6 +1358,7 @@ $sourceManifests = @(
     "model-endpoint-trace-manifest.json",
     "model-endpoint-provider-diagnostics-manifest.json",
     "model-endpoint-provider-retry-policy-manifest.json",
+    "lua-static-analysis-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "github-actions-release-workflow-probe-manifest.json"

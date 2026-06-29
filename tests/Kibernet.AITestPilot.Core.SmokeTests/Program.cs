@@ -9,6 +9,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("action whitelist accepts business replay actions", ActionWhitelistAcceptsBusinessReplayActions),
     ("decision loop executes click then finish", DecisionLoopExecutesClickThenFinish),
     ("bug detector packages exception logs", BugDetectorPackagesExceptionLogs),
+    ("Lua static analyzer finds risky replay repair patterns", LuaStaticAnalyzerFindsRiskyReplayRepairPatterns),
     ("knowledge graph reuses previous fixes", KnowledgeGraphReusesPreviousFixes),
     ("release gate blocks failed checks", ReleaseGateBlocksFailedChecks),
     ("run report summarizes loop result", RunReportSummarizesLoopResult),
@@ -121,6 +122,44 @@ static Task BugDetectorPackagesExceptionLogs()
     AssertEqual("NullReference", package.Type, "bug type");
     AssertEqual(BugRisk.High, package.Risk, "bug risk");
     AssertEqual(5, package.Steps.Count, "bug steps");
+    return Task.CompletedTask;
+}
+
+static Task LuaStaticAnalyzerFindsRiskyReplayRepairPatterns()
+{
+    var result = LuaStaticAnalyzer.Analyze(new[]
+    {
+        new LuaSourceFile
+        {
+            Path = "RewardFlow.lua",
+            Text = """
+                   local reward = GameApi.ClaimDailyReward(playerId)
+                   local itemId = reward.itemId
+                   lastRewardItemId = itemId
+                   """,
+        },
+        new LuaSourceFile
+        {
+            Path = "SafeRewardFlow.lua",
+            Text = """
+                   local ok, reward = pcall(GameApi.ClaimDailyReward, playerId)
+                   if not ok then return nil end
+                   if reward == nil then return nil end
+                   local itemId = reward.itemId
+                   local lastRewardItemId = itemId
+                   return lastRewardItemId
+                   """,
+        },
+    });
+
+    AssertEqual(2, result.SourceFileCount, "lua source file count");
+    AssertEqual(true, result.FindingCount >= 3, "lua finding count");
+    AssertEqual(true, result.HighRiskFindingCount >= 1, "lua high risk finding count");
+    AssertEqual(true, result.AutoPatchCandidateCount >= 2, "lua auto patch candidates");
+    AssertEqual(true, result.RuleIds.Contains("lua.unguarded_field_access"), "lua unguarded access rule");
+    AssertEqual(true, result.RuleIds.Contains("lua.global_write"), "lua global write rule");
+    AssertEqual(true, result.RuleIds.Contains("lua.unprotected_game_api_call"), "lua game api rule");
+    AssertEqual(0, result.Findings.Count(finding => finding.FilePath == "SafeRewardFlow.lua"), "safe lua finding count");
     return Task.CompletedTask;
 }
 

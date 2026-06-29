@@ -29,6 +29,12 @@ try {
         ".\tools\Kibernet.AITestPilot.ModelEndpointProbe\Kibernet.AITestPilot.ModelEndpointProbe.csproj",
         "--nologo")
 
+    Write-Host "==> Lua static analysis probe build"
+    Invoke-CheckedNative "dotnet" @(
+        "build",
+        ".\tools\Kibernet.AITestPilot.LuaStaticAnalysisProbe\Kibernet.AITestPilot.LuaStaticAnalysisProbe.csproj",
+        "--nologo")
+
     Write-Host "==> smoke tests"
     Invoke-CheckedNative "dotnet" @("run", "--project", ".\tests\Kibernet.AITestPilot.Core.SmokeTests\Kibernet.AITestPilot.Core.SmokeTests.csproj", "--no-build")
 
@@ -62,14 +68,18 @@ try {
         "unity\com.kibernet.ai-testpilot\Samples~\ProductionReplayDriver\ProductionReplayDriverTemplate.cs",
         "src\Kibernet.AITestPilot.Core\DecisionActionSchema.cs",
         "src\Kibernet.AITestPilot.Core\DecisionTrace.cs",
+        "src\Kibernet.AITestPilot.Core\LuaStaticAnalysis.cs",
         "src\Kibernet.AITestPilot.Core\ModelEndpointDecisionClient.cs",
         "tools\Kibernet.AITestPilot.ModelEndpointProbe\Kibernet.AITestPilot.ModelEndpointProbe.csproj",
         "tools\Kibernet.AITestPilot.ModelEndpointProbe\Program.cs",
+        "tools\Kibernet.AITestPilot.LuaStaticAnalysisProbe\Kibernet.AITestPilot.LuaStaticAnalysisProbe.csproj",
+        "tools\Kibernet.AITestPilot.LuaStaticAnalysisProbe\Program.cs",
         "docs\integration\production-driver.md",
         "docs\model-endpoint.md",
         "tools\Invoke-AITestPilotModelEndpointTraceProbe.ps1",
         "tools\Invoke-AITestPilotModelEndpointProviderDiagnostics.ps1",
         "tools\Invoke-AITestPilotModelEndpointProviderRetryPolicyProbe.ps1",
+        "tools\Invoke-AITestPilotLuaStaticAnalysisProbe.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1",
         "tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1",
         ".github\workflows\ai-testpilot-release.yml",

@@ -319,6 +319,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "lua_static_analysis_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotLuaStaticAnalysisProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "live_model_endpoint_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
