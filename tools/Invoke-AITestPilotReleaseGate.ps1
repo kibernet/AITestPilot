@@ -187,6 +187,7 @@ $productionHandoffExportManifest = Read-Manifest "production-handoff-export-mani
 $productionHandoffStatusManifest = Read-Manifest "production-handoff-status-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
+$productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
 $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
@@ -1706,6 +1707,7 @@ if ($null -ne $productionHandoffExportManifest) {
             [int]$productionHandoffExportManifest.ownerPacketCount -eq [int]$productionHandoffExportManifest.hostProjectActionItemCount -and
             [int]$productionHandoffExportManifest.ownerPacketBlockingReasonCount -eq [int]$productionHandoffExportManifest.hostProjectBlockingReasonCount -and
             [int]$productionHandoffExportManifest.kitDirectoryCount -eq 4 -and
+            [bool]$productionHandoffExportManifest.externalEvidenceInboxIncluded -and
             [int]$productionHandoffExportManifest.contractEvidenceFileCount -ge 14 -and
             [int]$productionHandoffExportManifest.exportFileCount -ge 40 -and
             [bool]$productionHandoffExportManifest.zipGenerated -and
@@ -1713,7 +1715,7 @@ if ($null -ne $productionHandoffExportManifest) {
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 5 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 6 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 
@@ -1741,6 +1743,30 @@ if ($null -ne $productionHandoffStatusManifest) {
         "Production handoff status must summarize owner evidence collection, remaining blockers, and fixture boundary without claiming real host-project evidence."
 
     Test-ListedFiles $productionHandoffStatusManifest "production_handoff_status"
+}
+
+if ($null -ne $productionExternalEvidenceInboxManifest) {
+    Add-ReleaseCheck "production_external_evidence_inbox" `
+        ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
+            $productionExternalEvidenceInboxManifest.schemaVersion -eq "aitestpilot.production_external_evidence_inbox.v1" -and
+            [bool]$productionExternalEvidenceInboxManifest.inboxTemplateGenerated -and
+            [bool]$productionExternalEvidenceInboxManifest.acceptanceWrapperGenerated -and
+            [bool]$productionExternalEvidenceInboxManifest.reportGenerated -and
+            [bool]$productionExternalEvidenceInboxManifest.reportContentValidated -and
+            [int]$productionExternalEvidenceInboxManifest.ownerPacketCount -eq 3 -and
+            [int]$productionExternalEvidenceInboxManifest.evidenceAreaCount -eq 3 -and
+            [int]$productionExternalEvidenceInboxManifest.requiredEvidenceFileCount -eq 9 -and
+            [int]$productionExternalEvidenceInboxManifest.missingRequiredFileCount -le [int]$productionExternalEvidenceInboxManifest.requiredEvidenceFileCount -and
+            -not [bool]$productionExternalEvidenceInboxManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceInboxManifest.externalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceInboxManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionExternalEvidenceInboxManifest.fixtureEvidencePromoted -and
+            $productionExternalEvidenceInboxManifest.productionOutputBoundary -eq "host_project_external_evidence_inbox_inspection_only" -and
+            [int]$productionExternalEvidenceInboxManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceInboxManifest.failedCheckCount -eq 0) `
+        "Production external evidence inbox must provide a returned-evidence directory layout and acceptance wrapper without claiming production evidence."
+
+    Test-ListedFiles $productionExternalEvidenceInboxManifest "production_external_evidence_inbox"
 }
 
 if ($null -ne $productionExternalEvidenceAcceptanceContractProbeManifest) {
@@ -1924,6 +1950,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-status-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
+        "production-external-evidence-inbox-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "release-risk-policy-manifest.json"
     )
@@ -2021,6 +2048,7 @@ $sourceManifests = @(
     "production-handoff-status-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
+    "production-external-evidence-inbox-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "release-risk-policy-manifest.json",
     "release-evidence-index-manifest.json"

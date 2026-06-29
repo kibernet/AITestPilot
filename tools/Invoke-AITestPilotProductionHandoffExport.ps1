@@ -148,6 +148,8 @@ foreach ($directory in $requiredDirectories) {
     Copy-ExportDirectory $directory
 }
 
+Copy-ExportDirectory "production-external-evidence-inbox"
+
 $requiredFiles = @(
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
@@ -162,7 +164,9 @@ $requiredFiles = @(
     "production-external-evidence-acceptance-missing-all-manifest.json",
     "production-external-evidence-acceptance-missing-all.md",
     "production-external-evidence-acceptance-driver-only-manifest.json",
-    "production-external-evidence-acceptance-driver-only.md"
+    "production-external-evidence-acceptance-driver-only.md",
+    "production-external-evidence-inbox-manifest.json",
+    "production-external-evidence-inbox.md"
 )
 
 foreach ($fileName in $requiredFiles) {
@@ -183,13 +187,16 @@ $exportReadmeLines = @(
     "",
     "1. Open `production-handoff-package\\owner-packets\\owner-packet-index.json`.",
     "2. Send each `production-handoff-package\\owner-packets\\*.md` packet to the listed owner.",
-    "3. Owners fill the required evidence directories and run `production-handoff-package\\verify-external-evidence.ps1`.",
-    "4. Run `production-handoff-package\\accept-external-evidence.ps1` to generate the Markdown acceptance report.",
+    "3. Owners copy returned evidence into `production-external-evidence-inbox\\production-driver-evidence`, `production-external-evidence-inbox\\production-lua-evidence`, and `production-external-evidence-inbox\\live-smoke-evidence`.",
+    "4. Run `production-external-evidence-inbox\\accept-returned-evidence.ps1` to generate the Markdown acceptance report.",
     "5. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`.",
     "",
     "## Contents",
     "",
     "- `production-handoff-package/`: owner packets, preflight script, acceptance wrapper, CI commands, and blocker maps.",
+    "- `production-handoff-package/verify-external-evidence.ps1`: optional preflight for explicit evidence directories.",
+    "- `production-handoff-package/accept-external-evidence.ps1`: optional wrapper for explicit evidence directories.",
+    "- `production-external-evidence-inbox/`: returned-evidence directory layout and wrapper for accepting owner evidence.",
     "- `production-driver-binding-kit/`: host-project production replay driver binding kit.",
     "- `production-lua-patch-evidence-kit/`: host-project production Lua evidence template kit.",
     "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit.",
@@ -223,6 +230,8 @@ $requiredExportSnippets = @(
     "production-driver-binding-kit",
     "production-lua-patch-evidence-kit",
     "live-model-endpoint-config-kit",
+    "production-external-evidence-inbox",
+    "accept-returned-evidence.ps1",
     "contract-evidence",
     "Real host-project evidence accepted: False"
 )
@@ -236,6 +245,11 @@ $requiredExportPaths = @(
     "production-handoff-export\production-handoff-package\accept-external-evidence.ps1",
     "production-handoff-export\production-driver-binding-kit\README.md",
     "production-handoff-export\production-lua-patch-evidence-kit\README.md",
+    "production-handoff-export\production-external-evidence-inbox\README.md",
+    "production-handoff-export\production-external-evidence-inbox\accept-returned-evidence.ps1",
+    "production-handoff-export\production-external-evidence-inbox\production-driver-evidence\README.md",
+    "production-handoff-export\production-external-evidence-inbox\production-lua-evidence\README.md",
+    "production-handoff-export\production-external-evidence-inbox\live-smoke-evidence\README.md",
     "production-handoff-export\live-model-endpoint-config-kit\README.md",
     "production-handoff-export\contract-evidence\production-external-evidence-acceptance-contract.md",
     "production-handoff-export\contract-evidence\production-external-evidence-acceptance-missing-all.md",
@@ -268,6 +282,11 @@ $checks = @(
         name = "failure_contract_reports"
         passed = ($acceptanceFailureProbeManifest.status -eq "PASS" -and [bool]$acceptanceFailureProbeManifest.missingAllReportContentValidated -and [bool]$acceptanceFailureProbeManifest.driverOnlyReportContentValidated)
         message = "Export must include validated rejection reports for missing and partial evidence."
+    },
+    [ordered]@{
+        name = "external_evidence_inbox"
+        passed = ($missingExportPathCount -eq 0 -and $exportFiles -contains "production-handoff-export\production-external-evidence-inbox\accept-returned-evidence.ps1")
+        message = "Export must include the returned external evidence inbox and acceptance wrapper."
     }
 )
 
@@ -293,6 +312,7 @@ $manifest = [ordered]@{
     hostProjectBlockingReasonCount = [int]$hostProjectBlockingReasonCount
     ownerPacketsContentValidated = [bool]$handoffManifest.ownerPacketsContentValidated
     kitDirectoryCount = [int]$requiredDirectories.Count
+    externalEvidenceInboxIncluded = $true
     contractEvidenceFileCount = [int]$requiredFiles.Count
     exportFileCount = [int]$exportFiles.Count
     zipGenerated = $true
