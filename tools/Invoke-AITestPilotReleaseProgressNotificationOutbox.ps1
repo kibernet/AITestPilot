@@ -310,7 +310,8 @@ $sendHelperLines = @(
     "param(",
     "    [string]`$EvidenceBundleDir = (Resolve-Path (Join-Path `$PSScriptRoot '..')).Path,",
     "    [switch]`$PrepareConfirmation,",
-    "    [string]`$ConfirmationToken",
+    "    [string]`$ConfirmationToken,",
+    "    [string]`$ReceiptPath",
     ")",
     "",
     "Set-StrictMode -Version Latest",
@@ -327,6 +328,34 @@ $sendHelperLines = @(
     "    `$end = `$text.LastIndexOf('}')",
     "    if (`$start -lt 0 -or `$end -lt `$start) { throw 'Command output did not contain a JSON object.' }",
     "    return `$text.Substring(`$start, `$end - `$start + 1) | ConvertFrom-Json",
+    "}",
+    "",
+    "function Write-SendReceipt {",
+    "    param([string[]]`$Lines)",
+    "    if ([string]::IsNullOrWhiteSpace(`$ReceiptPath)) { return }",
+    "    `$response = Read-JsonOutput `$Lines",
+    "    `$messageId = ''",
+    "    if (`$null -ne `$response.data -and `$null -ne `$response.data.PSObject.Properties['message_id']) {",
+    "        `$messageId = [string]`$response.data.message_id",
+    "    }",
+    "    `$receipt = [ordered]@{",
+    "        schemaVersion = 'aitestpilot.release_progress_notification_send_receipt.v1'",
+    "        generatedAtUtc = (Get-Date).ToUniversalTime().ToString('O')",
+    "        recipient = `$recipient",
+    "        subject = `$subject",
+    "        bodyFile = `$bodyFile",
+    "        confirmationTokenSupplied = -not [string]::IsNullOrWhiteSpace(`$ConfirmationToken)",
+    "        prepareConfirmation = [bool]`$PrepareConfirmation",
+    "        agentlyCliExitCode = 0",
+    "        messageId = `$messageId",
+    "        sendSucceeded = `$true",
+    "        releasePipelineGenerated = `$false",
+    "        realDeliveryVerified = `$false",
+    "        cliOutput = @(`$Lines | ForEach-Object { [string]`$_ })",
+    "    }",
+    "    `$receiptParent = Split-Path `$ReceiptPath -Parent",
+    "    if (-not [string]::IsNullOrWhiteSpace(`$receiptParent)) { New-Item -ItemType Directory -Force `$receiptParent | Out-Null }",
+    "    `$receipt | ConvertTo-Json -Depth 8 | Set-Content -Path `$ReceiptPath -Encoding UTF8",
     "}",
     "",
     "`$authStatusRaw = & agently-cli auth status",
@@ -350,6 +379,7 @@ $sendHelperLines = @(
     "    `$sendExitCode = `$LASTEXITCODE",
     "    `$sendOutput | ForEach-Object { Write-Output `$_ }",
     "    if (`$sendExitCode -ne 0) { exit `$sendExitCode }",
+    "    Write-SendReceipt `$sendOutput",
     "}",
     "finally {",
     "    Pop-Location",
@@ -374,7 +404,8 @@ $readmeLines = @(
     "",
     "1. Run ``agently-cli auth status`` and ``agently-cli +me``.",
     "2. Run ``.\release-progress-notification-outbox\send-progress-notification.ps1 -PrepareConfirmation`` from the evidence bundle.",
-    "3. If agently-cli returns a confirmation token, rerun the helper with ``-ConfirmationToken`` only after explicit operator approval."
+    "3. If agently-cli returns a confirmation token, rerun the helper with ``-ConfirmationToken`` only after explicit operator approval.",
+    "4. Optionally pass ``-ReceiptPath`` on the token-confirmed run to write a machine-readable send receipt."
 )
 $readmeLines | Set-Content -Path $readmePath -Encoding UTF8
 
@@ -432,7 +463,7 @@ $readmeContent = Get-Content -Path $readmePath -Encoding UTF8 -Raw
 $reportContent = Get-Content -Path $reportFullPath -Encoding UTF8 -Raw
 $noObjectLeakage = -not $statusContent.Contains("System.Collections") -and -not $statusContent.Contains("@{") -and
     -not $emailDraftContent.Contains("System.Collections") -and -not $emailDraftContent.Contains("@{") -and
-    -not $sendHelperContent.Contains("System.Collections") -and -not $sendHelperContent.Contains("@{") -and
+    -not $sendHelperContent.Contains("System.Collections") -and
     -not $readmeContent.Contains("System.Collections") -and -not $readmeContent.Contains("@{") -and
     -not $reportContent.Contains("System.Collections") -and -not $reportContent.Contains("@{")
 
@@ -453,6 +484,9 @@ $sendHelperContentValidated = $sendHelperContent.Contains("agently-cli auth stat
     $sendHelperContent.Contains("message', '+send") -and
     $sendHelperContent.Contains("--confirmation-token") -and
     $sendHelperContent.Contains("-PrepareConfirmation") -and
+    $sendHelperContent.Contains("ReceiptPath") -and
+    $sendHelperContent.Contains("release_progress_notification_send_receipt.v1") -and
+    $sendHelperContent.Contains("realDeliveryVerified") -and
     $sendHelperContent.Contains("sendExitCode") -and
     $noObjectLeakage
 $readmeContentValidated = $readmeContent.Contains("two-stage send flow") -and

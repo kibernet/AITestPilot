@@ -223,6 +223,7 @@ $productionHandoffOwnerResponseBundleKitManifest = Read-Manifest "production-han
 $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
 $productionHandoffMailHelperAuthStatusProbeManifest = Read-Manifest "production-handoff-mail-helper-auth-status-probe-manifest.json"
 $releaseProgressNotificationConfirmationProbeManifest = Read-Manifest "release-progress-notification-confirmation-probe-manifest.json"
+$releaseProgressNotificationReceiptProbeManifest = Read-Manifest "release-progress-notification-receipt-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2326,6 +2327,41 @@ if ($null -ne $releaseProgressNotificationConfirmationProbeManifest) {
     Test-ListedFiles $releaseProgressNotificationConfirmationProbeManifest "release_progress_notification_confirmation_probe"
 }
 
+if ($null -ne $releaseProgressNotificationReceiptProbeManifest) {
+    Add-ReleaseCheck "release_progress_notification_receipt_probe" `
+        ($releaseProgressNotificationReceiptProbeManifest.status -eq "PASS" -and
+            $releaseProgressNotificationReceiptProbeManifest.schemaVersion -eq "aitestpilot.release_progress_notification_receipt_probe.v1" -and
+            [bool]$releaseProgressNotificationReceiptProbeManifest.helperSupportsReceiptPath -and
+            [bool]$releaseProgressNotificationReceiptProbeManifest.fakeAgentlyCliGenerated -and
+            [bool]$releaseProgressNotificationReceiptProbeManifest.fakeLoggedInAuthReturned -and
+            [int]$releaseProgressNotificationReceiptProbeManifest.helperExitCode -eq 0 -and
+            [int]$releaseProgressNotificationReceiptProbeManifest.messageSendCallCount -eq 1 -and
+            [bool]$releaseProgressNotificationReceiptProbeManifest.messageCallHasConfirmationToken -and
+            [bool]$releaseProgressNotificationReceiptProbeManifest.receiptGenerated -and
+            [bool]$releaseProgressNotificationReceiptProbeManifest.receiptSchemaVersionAccepted -and
+            $releaseProgressNotificationReceiptProbeManifest.receiptRecipient -eq "kibernet@sina.com" -and
+            $releaseProgressNotificationReceiptProbeManifest.receiptMessageId -eq "msg_fake_receipt_001" -and
+            [bool]$releaseProgressNotificationReceiptProbeManifest.receiptConfirmationTokenSupplied -and
+            [bool]$releaseProgressNotificationReceiptProbeManifest.receiptSendSucceeded -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.receiptReleasePipelineGenerated -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.receiptRealDeliveryVerified -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.realEmailSent -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.emailSent -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.mailAuthorizationCheckedByPipeline -and
+            $releaseProgressNotificationReceiptProbeManifest.canonicalOutboxDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.canonicalOutboxEmailSent -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$releaseProgressNotificationReceiptProbeManifest.fixtureEvidencePromoted -and
+            $releaseProgressNotificationReceiptProbeManifest.productionOutputBoundary -eq "progress_notification_receipt_probe_fake_cli_only" -and
+            [int]$releaseProgressNotificationReceiptProbeManifest.checkCount -eq 5 -and
+            [int]$releaseProgressNotificationReceiptProbeManifest.failedCheckCount -eq 0) `
+        "Release progress notification receipt probe must prove token-confirmed helper success writes a fake-only receipt without claiming real delivery."
+
+    Test-ListedFiles $releaseProgressNotificationReceiptProbeManifest "release_progress_notification_receipt_probe"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2555,6 +2591,10 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationConfirmationProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationPrepareTokenReturned -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationConfirmationFakeSendSucceeded -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationReceiptProbeAccepted -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationReceiptGenerated -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationReceiptMessageId -eq "msg_fake_receipt_001" -and
+            -not [bool]$releaseRiskPolicyManifest.releaseProgressNotificationReceiptRealDeliveryVerified -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2630,6 +2670,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "release-progress-notification-outbox-manifest.json",
         "production-handoff-mail-helper-auth-status-probe-manifest.json",
         "release-progress-notification-confirmation-probe-manifest.json",
+        "release-progress-notification-receipt-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2741,6 +2782,9 @@ $sourceManifests = @(
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "production-handoff-send-dry-run-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
+    "production-handoff-mail-helper-auth-status-probe-manifest.json",
+    "release-progress-notification-confirmation-probe-manifest.json",
+    "release-progress-notification-receipt-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
