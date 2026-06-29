@@ -206,6 +206,7 @@ $releaseProgressNotificationOutboxManifest = Read-PolicyJson "release-progress-n
 $productionHandoffMailHelperAuthStatusProbeManifest = Read-PolicyJson "production-handoff-mail-helper-auth-status-probe-manifest.json" "Production handoff mail helper auth-status probe manifest"
 $releaseProgressNotificationConfirmationProbeManifest = Read-PolicyJson "release-progress-notification-confirmation-probe-manifest.json" "Release progress notification confirmation probe manifest"
 $releaseProgressNotificationReceiptProbeManifest = Read-PolicyJson "release-progress-notification-receipt-probe-manifest.json" "Release progress notification receipt probe manifest"
+$releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-PolicyJson "release-progress-notification-dispatch-receipt-intake-probe-manifest.json" "Release progress notification dispatch receipt intake probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -1411,6 +1412,30 @@ Add-PolicyCheck "release_progress_notification_receipt_probe_policy" $releasePro
     "Release progress notification evidence must prove token-confirmed helper success writes a machine-readable send receipt under a fake CLI boundary without claiming real delivery." `
     "release_progress_notification_receipt_probe_not_accepted"
 
+$releaseProgressNotificationDispatchReceiptIntakeProbeAccepted = (
+    $null -ne $releaseProgressNotificationDispatchReceiptIntakeProbeManifest -and
+    $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_dispatch_receipt_intake_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "fakeReceiptRejected" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "fakeReceiptEmailSent" $true)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractReceiptAccepted" $false)) -and
+    (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractReceiptMessageId" "") -eq "msg_contract_receipt_001" -and
+    (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractNotificationDispatchStatus" "") -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractRealEmailSentAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "releasePipelineSendsEmail" $true)) -and
+    (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "canonicalOutboxDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "canonicalOutboxEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "productionOutputBoundary" "") -eq "progress_notification_dispatch_receipt_intake_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "checkCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "release_progress_notification_dispatch_receipt_intake_probe_policy" $releaseProgressNotificationDispatchReceiptIntakeProbeAccepted `
+    "Release progress notification evidence must prove real-send receipt intake rejects fake probe receipts and accepts contract-shaped receipts without claiming a real email send." `
+    "release_progress_notification_dispatch_receipt_intake_probe_not_accepted"
+
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
     $productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -1642,6 +1667,7 @@ $sourceFiles = @(
     "production-handoff-mail-helper-auth-status-probe-manifest.json",
     "release-progress-notification-confirmation-probe-manifest.json",
     "release-progress-notification-receipt-probe-manifest.json",
+    "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
@@ -1731,6 +1757,10 @@ $manifest = [ordered]@{
     releaseProgressNotificationReceiptGenerated = (Get-JsonValue $releaseProgressNotificationReceiptProbeManifest "receiptGenerated" $false)
     releaseProgressNotificationReceiptMessageId = (Get-JsonValue $releaseProgressNotificationReceiptProbeManifest "receiptMessageId" "")
     releaseProgressNotificationReceiptRealDeliveryVerified = (Get-JsonValue $releaseProgressNotificationReceiptProbeManifest "receiptRealDeliveryVerified" $true)
+    releaseProgressNotificationDispatchReceiptIntakeProbeAccepted = [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeAccepted
+    releaseProgressNotificationDispatchReceiptFakeRejected = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "fakeReceiptRejected" $false)
+    releaseProgressNotificationDispatchReceiptContractAccepted = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractReceiptAccepted" $false)
+    releaseProgressNotificationDispatchReceiptContractRealEmailSentAccepted = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractRealEmailSentAccepted" $true)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
@@ -1813,6 +1843,10 @@ $reportLines = @(
     "- Release progress notification receipt generated: $($manifest.releaseProgressNotificationReceiptGenerated)",
     "- Release progress notification receipt message id: $($manifest.releaseProgressNotificationReceiptMessageId)",
     "- Release progress notification receipt real delivery verified: $($manifest.releaseProgressNotificationReceiptRealDeliveryVerified)",
+    "- Release progress notification dispatch receipt intake probe accepted: $($manifest.releaseProgressNotificationDispatchReceiptIntakeProbeAccepted)",
+    "- Release progress notification dispatch receipt fake rejected: $($manifest.releaseProgressNotificationDispatchReceiptFakeRejected)",
+    "- Release progress notification dispatch receipt contract accepted: $($manifest.releaseProgressNotificationDispatchReceiptContractAccepted)",
+    "- Release progress notification dispatch receipt contract real email sent accepted: $($manifest.releaseProgressNotificationDispatchReceiptContractRealEmailSentAccepted)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",

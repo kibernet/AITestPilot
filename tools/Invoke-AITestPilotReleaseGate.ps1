@@ -224,6 +224,7 @@ $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-not
 $productionHandoffMailHelperAuthStatusProbeManifest = Read-Manifest "production-handoff-mail-helper-auth-status-probe-manifest.json"
 $releaseProgressNotificationConfirmationProbeManifest = Read-Manifest "release-progress-notification-confirmation-probe-manifest.json"
 $releaseProgressNotificationReceiptProbeManifest = Read-Manifest "release-progress-notification-receipt-probe-manifest.json"
+$releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-Manifest "release-progress-notification-dispatch-receipt-intake-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2362,6 +2363,29 @@ if ($null -ne $releaseProgressNotificationReceiptProbeManifest) {
     Test-ListedFiles $releaseProgressNotificationReceiptProbeManifest "release_progress_notification_receipt_probe"
 }
 
+if ($null -ne $releaseProgressNotificationDispatchReceiptIntakeProbeManifest) {
+    Add-ReleaseCheck "release_progress_notification_dispatch_receipt_intake_probe" `
+        ($releaseProgressNotificationDispatchReceiptIntakeProbeManifest.status -eq "PASS" -and
+            $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.schemaVersion -eq "aitestpilot.release_progress_notification_dispatch_receipt_intake_probe.v1" -and
+            [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.fakeReceiptRejected -and
+            -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.fakeReceiptEmailSent -and
+            [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.contractReceiptAccepted -and
+            $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.contractReceiptMessageId -eq "msg_contract_receipt_001" -and
+            $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.contractNotificationDispatchStatus -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
+            -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.contractRealEmailSentAccepted -and
+            -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.contractEmailSent -and
+            -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.releasePipelineSendsEmail -and
+            $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.canonicalOutboxDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.canonicalOutboxEmailSent -and
+            -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.fixtureEvidencePromoted -and
+            $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.productionOutputBoundary -eq "progress_notification_dispatch_receipt_intake_probe_only" -and
+            [int]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.checkCount -eq 5 -and
+            [int]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.failedCheckCount -eq 0) `
+        "Release progress notification dispatch receipt intake probe must reject fake receipt ids and accept contract-shaped receipts without claiming real email."
+
+    Test-ListedFiles $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "release_progress_notification_dispatch_receipt_intake_probe"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2595,6 +2619,10 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationReceiptGenerated -and
             $releaseRiskPolicyManifest.releaseProgressNotificationReceiptMessageId -eq "msg_fake_receipt_001" -and
             -not [bool]$releaseRiskPolicyManifest.releaseProgressNotificationReceiptRealDeliveryVerified -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationDispatchReceiptIntakeProbeAccepted -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationDispatchReceiptFakeRejected -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationDispatchReceiptContractAccepted -and
+            -not [bool]$releaseRiskPolicyManifest.releaseProgressNotificationDispatchReceiptContractRealEmailSentAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2671,6 +2699,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-mail-helper-auth-status-probe-manifest.json",
         "release-progress-notification-confirmation-probe-manifest.json",
         "release-progress-notification-receipt-probe-manifest.json",
+        "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2785,6 +2814,7 @@ $sourceManifests = @(
     "production-handoff-mail-helper-auth-status-probe-manifest.json",
     "release-progress-notification-confirmation-probe-manifest.json",
     "release-progress-notification-receipt-probe-manifest.json",
+    "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",

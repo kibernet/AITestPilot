@@ -122,6 +122,8 @@ try {
         "tools\Invoke-AITestPilotProductionHandoffMailHelperAuthStatusProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationConfirmationProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationReceiptProbe.ps1",
+        "tools\Invoke-AITestPilotReleaseProgressNotificationDispatchReceiptIntake.ps1",
+        "tools\Invoke-AITestPilotReleaseProgressNotificationDispatchReceiptIntakeProbe.ps1",
         "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1",
         "tools\Invoke-AITestPilotProductionHardModeSuccessContractProbe.ps1",
         "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1",

@@ -247,6 +247,7 @@ function Get-DefaultSourceManifestNames {
         "production-handoff-mail-helper-auth-status-probe-manifest.json",
         "release-progress-notification-confirmation-probe-manifest.json",
         "release-progress-notification-receipt-probe-manifest.json",
+        "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
