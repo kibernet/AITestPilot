@@ -221,6 +221,29 @@ For release evidence, the pipeline runs:
 
 That probe stores the pending template in release evidence, runs an isolated accepted fixture through config intake to prove the schema, and then generates a pending config outside the repository under the system temp directory to prove repo-external configs are read and blocked when incomplete. Its manifest records `releasePipelineUsesFixture=false`, `secretsSerialized=false`, `liveSmokeExecuted=false`, and `productionLiveEndpointAccessProven=false`.
 
+## External Smoke Evidence Intake
+
+When a host project has already run the live smoke and exported evidence, CI can ingest that directory instead of requiring this repository process to hold provider credentials:
+
+```powershell
+.\tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1 -SmokeEvidenceDir "path\to\live-smoke-evidence" -RequireLiveModelEndpointSmoke -PromoteToCanonical
+```
+
+The evidence directory must contain:
+
+- `live-model-endpoint-smoke-manifest.json`
+- `live-model-endpoint-decision-trace.json`
+
+Accepted evidence must be a real `status=PASS` live HTTP endpoint smoke using `ModelEndpointDecisionClient`, with endpoint and model configured, API key accepted or explicitly not required, action schema and allowed-action evidence present, response validation passing, a parsed action, at least one attempt, and a `LIVE-MODEL-ENDPOINT-SMOKE` trace with request and response JSON. `-PromoteToCanonical` copies the accepted manifest and trace into the canonical release-gate filenames.
+
+The default release pipeline also runs:
+
+```powershell
+.\tools\Invoke-AITestPilotLiveModelEndpointExternalSmokeIntakeProbe.ps1
+```
+
+That probe writes a deterministic SKIPPED smoke manifest outside the repository, runs intake with `-RequireLiveModelEndpointSmoke`, and expects it to fail. It proves the external handoff path is inspected and that skipped evidence cannot satisfy required live smoke.
+
 ## Failure Classification
 
 Live smoke writes a classified `FAIL` manifest when a configured endpoint is reachable enough to execute the probe command but the request fails. The manifest includes `failureCategory`, `failureMessage`, `failureRemediation`, and `failurePolicy`.

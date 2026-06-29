@@ -74,6 +74,7 @@ $requiredParameters = @(
     "requireProductionReplayDriverBound",
     "requireProductionLuaPatched",
     "productionLuaEvidenceDir",
+    "liveModelEndpointSmokeEvidenceDir",
     "requireLiveModelEndpointSmoke",
     "allowMissingModelApiKey",
     "useCursorAgentExternalTaskOutput"
@@ -86,6 +87,7 @@ $requiredSwitches = @(
     "-RequireProductionReplayDriverBound",
     "-RequireProductionLuaPatched",
     "-ProductionLuaEvidenceDir",
+    "-LiveModelEndpointSmokeEvidenceDir",
     "-RequireLiveModelEndpointSmoke",
     "-AllowMissingModelApiKey",
     "-UseCursorAgentExternalTaskOutput"

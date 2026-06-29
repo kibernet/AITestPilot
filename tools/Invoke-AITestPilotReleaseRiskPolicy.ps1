@@ -180,6 +180,7 @@ $productionLuaPatchExternalBundleIntakeProbeManifest = Read-PolicyJson "producti
 $liveModelFailureProbeManifest = Read-PolicyJson "live-model-endpoint-failure-probe-manifest.json" "Live model endpoint failure probe manifest"
 $liveModelSmokeManifest = Read-PolicyJson "live-model-endpoint-smoke-manifest.json" "Live model endpoint smoke manifest"
 $liveModelConfigKitProbeManifest = Read-PolicyJson "live-model-endpoint-config-kit-probe-manifest.json" "Live model endpoint config kit probe manifest"
+$liveModelExternalSmokeIntakeProbeManifest = Read-PolicyJson "live-model-endpoint-external-smoke-intake-probe-manifest.json" "Live model endpoint external smoke intake probe manifest"
 $githubActionsProbeManifest = Read-PolicyJson "github-actions-release-workflow-probe-manifest.json" "GitHub Actions workflow probe manifest"
 $azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow-probe-manifest.json" "Azure Pipelines workflow probe manifest"
 $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
@@ -511,6 +512,26 @@ Add-PolicyCheck "live_model_endpoint_config_kit_policy" $liveModelConfigKitAccep
     "Live model endpoint evidence must include static config kit and external pending-config intake proof without serializing secrets or claiming provider access." `
     "live_model_endpoint_config_kit_not_accepted"
 
+$liveModelExternalSmokeIntakeAccepted = (
+    $null -ne $liveModelExternalSmokeIntakeProbeManifest -and
+    $liveModelExternalSmokeIntakeProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "schemaVersion" "") -eq "aitestpilot.live_model_endpoint_external_smoke_intake_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "expectedBlocked" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "expectedBlockedPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "intakeCommandFailed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "externalSmokeRead" $false)) -and
+    (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "externalSmokeStatus" "") -eq "SKIPPED" -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "smokeEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "productionLiveEndpointAccessProven" $true)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "requireLiveModelEndpointSmoke" $false)) -and
+    (Convert-ToInt (Get-JsonValue $liveModelExternalSmokeIntakeProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "live_model_endpoint_external_smoke_intake_policy" $liveModelExternalSmokeIntakeAccepted `
+    "Live model endpoint smoke evidence intake must prove repo-external smoke evidence is inspected and skipped evidence is blocked when live smoke is required." `
+    "live_model_endpoint_external_smoke_intake_not_accepted"
+
 $githubActionsAccepted = (
     $null -ne $githubActionsProbeManifest -and
     $githubActionsProbeManifest.status -eq "PASS" -and
@@ -584,6 +605,7 @@ $sourceFiles = @(
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
     "live-model-endpoint-config-kit-probe-manifest.json",
+    "live-model-endpoint-external-smoke-intake-probe-manifest.json",
     "github-actions-release-workflow-probe-manifest.json",
     "azure-pipelines-release-workflow-probe-manifest.json",
     "provider-ci-quality-probe-manifest.json"
@@ -622,6 +644,7 @@ $manifest = [ordered]@{
     liveModelPolicyAccepted = [bool]$liveModelPolicyAccepted
     liveModelPolicyStatus = $liveModelPolicyStatus
     liveModelConfigKitAccepted = [bool]$liveModelConfigKitAccepted
+    liveModelExternalSmokeIntakeAccepted = [bool]$liveModelExternalSmokeIntakeAccepted
     ciProviderEvidenceAccepted = [bool]$ciProviderEvidenceAccepted
     githubActionsAccepted = [bool]$githubActionsAccepted
     azurePipelinesAccepted = [bool]$azurePipelinesAccepted
@@ -651,6 +674,7 @@ $reportLines = @(
     "- Production Lua external bundle intake accepted: $($manifest.productionLuaExternalBundleIntakeAccepted)",
     "- Live model policy: $($manifest.liveModelPolicyStatus)",
     "- Live model config kit accepted: $($manifest.liveModelConfigKitAccepted)",
+    "- Live model external smoke intake accepted: $($manifest.liveModelExternalSmokeIntakeAccepted)",
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",

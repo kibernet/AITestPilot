@@ -162,6 +162,7 @@ $modelEndpointManifest = Read-Manifest "model-endpoint-trace-manifest.json"
 $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provider-diagnostics-manifest.json"
 $modelEndpointProviderRetryPolicyManifest = Read-Manifest "model-endpoint-provider-retry-policy-manifest.json"
 $liveModelEndpointConfigKitProbeManifest = Read-Manifest "live-model-endpoint-config-kit-probe-manifest.json"
+$liveModelEndpointExternalSmokeIntakeProbeManifest = Read-Manifest "live-model-endpoint-external-smoke-intake-probe-manifest.json"
 $luaStaticAnalysisManifest = Read-Manifest "lua-static-analysis-manifest.json"
 $luaAutoPatchSandboxManifest = Read-Manifest "lua-auto-patch-sandbox-manifest.json"
 if ($RequireProductionLuaPatched) {
@@ -1173,6 +1174,26 @@ if ($null -ne $liveModelEndpointConfigKitProbeManifest) {
     Test-ListedFiles $liveModelEndpointConfigKitProbeManifest "live_model_endpoint_config_kit_probe"
 }
 
+if ($null -ne $liveModelEndpointExternalSmokeIntakeProbeManifest) {
+    Add-ReleaseCheck "live_model_endpoint_external_smoke_intake_probe" `
+        ($liveModelEndpointExternalSmokeIntakeProbeManifest.status -eq "PASS" -and
+            $liveModelEndpointExternalSmokeIntakeProbeManifest.schemaVersion -eq "aitestpilot.live_model_endpoint_external_smoke_intake_probe.v1" -and
+            -not [bool]$liveModelEndpointExternalSmokeIntakeProbeManifest.externalBundleUnderRepo -and
+            [bool]$liveModelEndpointExternalSmokeIntakeProbeManifest.expectedBlocked -and
+            [bool]$liveModelEndpointExternalSmokeIntakeProbeManifest.expectedBlockedPassed -and
+            [bool]$liveModelEndpointExternalSmokeIntakeProbeManifest.intakeCommandFailed -and
+            [bool]$liveModelEndpointExternalSmokeIntakeProbeManifest.externalSmokeRead -and
+            $liveModelEndpointExternalSmokeIntakeProbeManifest.externalSmokeStatus -eq "SKIPPED" -and
+            -not [bool]$liveModelEndpointExternalSmokeIntakeProbeManifest.smokeEvidenceAccepted -and
+            -not [bool]$liveModelEndpointExternalSmokeIntakeProbeManifest.productionLiveEndpointAccessProven -and
+            [bool]$liveModelEndpointExternalSmokeIntakeProbeManifest.requireLiveModelEndpointSmoke -and
+            [int]$liveModelEndpointExternalSmokeIntakeProbeManifest.checkCount -eq 3 -and
+            [int]$liveModelEndpointExternalSmokeIntakeProbeManifest.failedCheckCount -eq 0) `
+        "Live model endpoint external smoke intake probe must read repo-external smoke evidence and block skipped evidence when live smoke is required."
+
+    Test-ListedFiles $liveModelEndpointExternalSmokeIntakeProbeManifest "live_model_endpoint_external_smoke_intake_probe"
+}
+
 if ($null -ne $luaStaticAnalysisManifest) {
     Add-ReleaseCheck "lua_static_analysis_probe" `
         ($luaStaticAnalysisManifest.status -eq "PASS" -and
@@ -1586,6 +1607,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             $releaseRiskPolicyManifest.productionLuaEvidenceStatus -eq $expectedProductionLuaEvidenceStatus -and
             [bool]$releaseRiskPolicyManifest.liveModelPolicyAccepted -and
             [bool]$releaseRiskPolicyManifest.liveModelConfigKitAccepted -and
+            [bool]$releaseRiskPolicyManifest.liveModelExternalSmokeIntakeAccepted -and
             $liveModelStatusAccepted -and
             [bool]$releaseRiskPolicyManifest.ciProviderEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.githubActionsAccepted -and

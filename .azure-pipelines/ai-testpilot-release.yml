@@ -31,6 +31,10 @@ parameters:
     displayName: Directory containing production-lua-patch-evidence.json
     type: string
     default: ''
+  - name: liveModelEndpointSmokeEvidenceDir
+    displayName: Directory containing live model endpoint smoke evidence
+    type: string
+    default: ''
   - name: requireLiveModelEndpointSmoke
     displayName: Require live model endpoint smoke
     type: boolean
@@ -55,6 +59,7 @@ variables:
   AI_TESTPILOT_REQUIRE_PRODUCTION_BOUND: ${{ parameters.requireProductionReplayDriverBound }}
   AI_TESTPILOT_REQUIRE_PRODUCTION_LUA_PATCHED: ${{ parameters.requireProductionLuaPatched }}
   AI_TESTPILOT_PRODUCTION_LUA_EVIDENCE_DIR: ${{ parameters.productionLuaEvidenceDir }}
+  AI_TESTPILOT_LIVE_MODEL_ENDPOINT_SMOKE_EVIDENCE_DIR: ${{ parameters.liveModelEndpointSmokeEvidenceDir }}
   AI_TESTPILOT_REQUIRE_LIVE_MODEL_ENDPOINT_SMOKE: ${{ parameters.requireLiveModelEndpointSmoke }}
   AI_TESTPILOT_ALLOW_MISSING_MODEL_API_KEY: ${{ parameters.allowMissingModelApiKey }}
   AI_TESTPILOT_USE_CURSOR_AGENT_EXTERNAL_TASK_OUTPUT: ${{ parameters.useCursorAgentExternalTaskOutput }}
@@ -124,6 +129,10 @@ steps:
 
         if (-not [string]::IsNullOrWhiteSpace("$(AI_TESTPILOT_PRODUCTION_LUA_EVIDENCE_DIR)")) {
           $pipelineArgs += @("-ProductionLuaEvidenceDir", "$(AI_TESTPILOT_PRODUCTION_LUA_EVIDENCE_DIR)")
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace("$(AI_TESTPILOT_LIVE_MODEL_ENDPOINT_SMOKE_EVIDENCE_DIR)")) {
+          $pipelineArgs += @("-LiveModelEndpointSmokeEvidenceDir", "$(AI_TESTPILOT_LIVE_MODEL_ENDPOINT_SMOKE_EVIDENCE_DIR)")
         }
 
         if (Test-Flag "$(AI_TESTPILOT_REQUIRE_LIVE_MODEL_ENDPOINT_SMOKE)") {

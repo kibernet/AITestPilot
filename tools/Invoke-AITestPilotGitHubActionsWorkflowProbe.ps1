@@ -74,6 +74,7 @@ $requiredInputs = @(
     "require_production_replay_driver_bound",
     "require_production_lua_patched",
     "production_lua_evidence_dir",
+    "live_model_endpoint_smoke_evidence_dir",
     "require_live_model_endpoint_smoke",
     "allow_missing_model_api_key",
     "use_cursor_agent_external_task_output"
@@ -86,6 +87,7 @@ $requiredSwitches = @(
     "-RequireProductionReplayDriverBound",
     "-RequireProductionLuaPatched",
     "-ProductionLuaEvidenceDir",
+    "-LiveModelEndpointSmokeEvidenceDir",
     "-RequireLiveModelEndpointSmoke",
     "-AllowMissingModelApiKey",
     "-UseCursorAgentExternalTaskOutput"

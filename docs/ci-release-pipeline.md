@@ -36,6 +36,7 @@ The pipeline runs:
 - model endpoint provider diagnostics.
 - model endpoint provider retry policy probe.
 - live model endpoint config kit probe, proving host-project endpoint configuration templates, accepted static intake, and blocked repo-external pending config without serializing secrets or claiming live provider access.
+- live model endpoint external smoke intake probe, proving repo-external skipped live-smoke evidence is read and blocked when live smoke is required.
 - Lua static analysis probe, proving repair-risk rule coverage, safe-fixture behavior, and patch-plan evidence.
 - Lua auto-patch sandbox probe, proving deterministic fixture patches clear findings without mutating production Lua.
 - production Lua patch readiness and hard-bound failure probe, proving real production Lua evidence is required when production Lua patching is enforced.
@@ -57,7 +58,7 @@ By default, the pipeline copies the latest evidence bundle to:
 
 `artifacts/ai-testpilot-release/latest`
 
-That directory includes `pipeline-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, provider CI quality probe evidence, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, live model endpoint config kit and intake evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, production Lua evidence kit evidence, production Lua external bundle intake evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
+That directory includes `pipeline-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, provider CI quality probe evidence, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, live model endpoint config kit and intake evidence, external live-smoke intake evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, production Lua evidence kit evidence, production Lua external bundle intake evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
 
 `release-risk-policy-manifest.json` is the machine-readable release-blocker decision for downstream CI, portal, or audit tooling. It is generated before the release evidence index and records whether package release is allowed under the active production driver, production Lua, and live-model enforcement switches.
 
@@ -166,6 +167,8 @@ The pipeline always runs `Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1` b
 
 The pipeline also runs `Invoke-AITestPilotLiveModelEndpointConfigKitProbe.ps1`. It writes a pending host-project config kit into release evidence, proves an isolated accepted static config can pass intake, and proves an incomplete config from a repo-external temp directory is read and blocked. This step validates non-secret endpoint configuration handoff only; it records `liveSmokeExecuted=false` and `productionLiveEndpointAccessProven=false`.
 
+The pipeline also runs `Invoke-AITestPilotLiveModelEndpointExternalSmokeIntakeProbe.ps1`. It creates a SKIPPED live-smoke fixture under system temp, runs smoke evidence intake with `-RequireLiveModelEndpointSmoke`, and expects rejection. This proves host-project smoke evidence directories are inspected without allowing skipped evidence to satisfy a required live smoke.
+
 The pipeline always writes `live-model-endpoint-smoke-manifest.json`. Without live endpoint environment variables it records `status=SKIPPED` and release remains allowed.
 When a configured live smoke fails, the manifest records `failureCategory`, `failureMessage`, `failureRemediation`, and `failurePolicy`. Retryable failures are retried by the wrapper before the release gate runs, and the final manifest includes `attemptCount` plus `attempts[]`.
 Use `-LiveModelEndpointMaxPolicyRetries` and `-LiveModelEndpointMaxRetryBackoffSeconds` to cap live-smoke retry behavior through the release pipeline, or `-DisableLiveModelEndpointFailurePolicyRetry` when testing a single-attempt failure path. The lower-level live-smoke wrapper exposes the same controls as `-MaxPolicyRetries`, `-MaxRetryBackoffSeconds`, and `-DisableFailurePolicyRetry`.
@@ -182,6 +185,12 @@ Then run:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke
+```
+
+If a host project has already exported passing live-smoke evidence, provide that directory instead:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"
 ```
 
 For local OpenAI-compatible gateways with no authentication, also pass:

@@ -7,6 +7,7 @@ param(
     [string]$ReleaseGateFailureProbeDir,
     [string]$CursorAgentOutputDir,
     [string]$ProductionLuaEvidenceDir,
+    [string]$LiveModelEndpointSmokeEvidenceDir,
     [string]$CursorAgentModel = "",
     [int]$CursorAgentMaxAttempts = 3,
     [int]$CursorAgentRetryDelaySeconds = 2,
@@ -366,14 +367,32 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    $requireDirectLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke -and
+        [string]::IsNullOrWhiteSpace($LiveModelEndpointSmokeEvidenceDir)
+
     Invoke-PipelineStep "live_model_endpoint_smoke" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `
-            -RequireLive:$RequireLiveModelEndpointSmoke `
+            -RequireLive:$requireDirectLiveModelEndpointSmoke `
             -AllowMissingApiKey:$AllowMissingModelApiKey `
             -DisableFailurePolicyRetry:$DisableLiveModelEndpointFailurePolicyRetry `
             -MaxPolicyRetries $LiveModelEndpointMaxPolicyRetries `
             -MaxRetryBackoffSeconds $LiveModelEndpointMaxRetryBackoffSeconds
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($LiveModelEndpointSmokeEvidenceDir)) {
+        Invoke-PipelineStep "live_model_endpoint_smoke_evidence_intake" {
+            & (Join-Path $repoRoot "tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1") `
+                -EvidenceBundleDir $EvidenceBundleDir `
+                -SmokeEvidenceDir $LiveModelEndpointSmokeEvidenceDir `
+                -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke `
+                -PromoteToCanonical
+        }
+    }
+
+    Invoke-PipelineStep "live_model_endpoint_external_smoke_intake_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotLiveModelEndpointExternalSmokeIntakeProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
     }
 
     Invoke-PipelineStep "ci_provider_release_workflow_probe" {
