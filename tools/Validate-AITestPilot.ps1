@@ -111,6 +111,7 @@ try {
         "tools\Invoke-AITestPilotProductionHandoffContactReadinessContractProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffSendReadiness.ps1",
         "tools\Invoke-AITestPilotProductionHandoffMailAuthReadiness.ps1",
+        "tools\Invoke-AITestPilotProductionHandoffOwnerUnblockPack.ps1",
         "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1",
         "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1",
         "tools\Invoke-AITestPilotReplayDriverFailureProbe.ps1",

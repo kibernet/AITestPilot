@@ -309,6 +309,12 @@ That script writes `production-handoff-send-readiness-manifest.json`, `productio
 
 That script writes `production-handoff-mail-auth-readiness-manifest.json`, `production-handoff-mail-auth-readiness.md`, and `production-handoff-mail-auth\`. It generates local helpers for `agently-cli auth login` and `agently-cli +me` checks while keeping OAuth login, local authorization, and email sending outside the default CI pipeline.
 
+```powershell
+.\tools\Invoke-AITestPilotProductionHandoffOwnerUnblockPack.ps1
+```
+
+That script writes `production-handoff-owner-unblock-pack-manifest.json`, `production-handoff-owner-unblock-pack.md`, and `production-handoff-owner-unblock-pack\`. It consolidates the remaining owner contacts, blocked sends, mail authorization boundary, missing external evidence files, owner action matrix, operator next steps, and progress email draft without marking any email or host-project evidence as complete.
+
 To run the stable repo-side acceptance entry point after host-project owners return driver, Lua, and live-smoke evidence directories:
 
 ```powershell

@@ -190,6 +190,7 @@ $productionHandoffContactReadinessManifest = Read-Manifest "production-handoff-c
 $productionHandoffContactReadinessContractProbeManifest = Read-Manifest "production-handoff-contact-readiness-contract-probe-manifest.json"
 $productionHandoffSendReadinessManifest = Read-Manifest "production-handoff-send-readiness-manifest.json"
 $productionHandoffMailAuthReadinessManifest = Read-Manifest "production-handoff-mail-auth-readiness-manifest.json"
+$productionHandoffOwnerUnblockPackManifest = Read-Manifest "production-handoff-owner-unblock-pack-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -1907,6 +1908,49 @@ if ($null -ne $productionHandoffMailAuthReadinessManifest) {
     Test-ListedFiles $productionHandoffMailAuthReadinessManifest "production_handoff_mail_auth_readiness"
 }
 
+if ($null -ne $productionHandoffOwnerUnblockPackManifest) {
+    Add-ReleaseCheck "production_handoff_owner_unblock_pack" `
+        ($productionHandoffOwnerUnblockPackManifest.status -eq "PASS" -and
+            $productionHandoffOwnerUnblockPackManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_unblock_pack.v1" -and
+            $productionHandoffOwnerUnblockPackManifest.ownerUnblockStatus -eq "BLOCKED_EXTERNAL_OWNER_INPUT" -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.unblockPackGenerated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.summaryGenerated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.matrixGenerated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.operatorNextStepsGenerated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.progressEmailDraftGenerated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.readmeGenerated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.reportGenerated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.summaryContentValidated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.matrixContentValidated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.operatorNextStepsContentValidated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.progressEmailDraftContentValidated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.readmeContentValidated -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.reportContentValidated -and
+            [int]$productionHandoffOwnerUnblockPackManifest.ownerPacketCount -eq [int]$productionHandoffStatusManifest.ownerPacketCount -and
+            [int]$productionHandoffOwnerUnblockPackManifest.pendingOwnerPacketCount -eq [int]$productionHandoffStatusManifest.pendingOwnerPacketCount -and
+            [int]$productionHandoffOwnerUnblockPackManifest.pendingDispatchCount -eq [int]$productionHandoffContactReadinessManifest.pendingDispatchCount -and
+            [int]$productionHandoffOwnerUnblockPackManifest.missingOwnerContactCount -eq [int]$productionHandoffContactReadinessManifest.missingOwnerContactCount -and
+            [int]$productionHandoffOwnerUnblockPackManifest.missingRequiredFileCount -eq [int]$productionExternalEvidenceInboxManifest.missingRequiredFileCount -and
+            [int]$productionHandoffOwnerUnblockPackManifest.remainingBlockingReasonCount -eq [int]$productionHandoffStatusManifest.remainingBlockingReasonCount -and
+            [int]$productionHandoffOwnerUnblockPackManifest.blockedSendCount -eq [int]$productionHandoffSendReadinessManifest.blockedSendCount -and
+            $productionHandoffOwnerUnblockPackManifest.sendReadinessStatus -eq "BLOCKED_MISSING_OWNER_EMAILS" -and
+            $productionHandoffOwnerUnblockPackManifest.mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
+            -not [bool]$productionHandoffOwnerUnblockPackManifest.automaticEmailSendReady -and
+            -not [bool]$productionHandoffOwnerUnblockPackManifest.mailAuthorizationCheckedByPipeline -and
+            [bool]$productionHandoffOwnerUnblockPackManifest.handoffExportZipAvailable -and
+            -not [bool]$productionHandoffOwnerUnblockPackManifest.externalEvidenceCollectionComplete -and
+            -not [bool]$productionHandoffOwnerUnblockPackManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerUnblockPackManifest.externalEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerUnblockPackManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffOwnerUnblockPackManifest.fixtureEvidencePromoted -and
+            $productionHandoffOwnerUnblockPackManifest.productionOutputBoundary -eq "host_project_owner_unblock_pack_only" -and
+            [int]$productionHandoffOwnerUnblockPackManifest.checkCount -eq 8 -and
+            [int]$productionHandoffOwnerUnblockPackManifest.failedCheckCount -eq 0) `
+        "Production handoff owner unblock pack must consolidate remaining contact, send, mail-auth, and returned-evidence actions without claiming completion."
+
+    Test-ListedFiles $productionHandoffOwnerUnblockPackManifest "production_handoff_owner_unblock_pack"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2086,6 +2130,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffSendReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffMailAuthReadinessAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerUnblockPackAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
@@ -2150,6 +2195,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-contact-readiness-contract-probe-manifest.json",
         "production-handoff-send-readiness-manifest.json",
         "production-handoff-mail-auth-readiness-manifest.json",
+        "production-handoff-owner-unblock-pack-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
@@ -2254,6 +2300,7 @@ $sourceManifests = @(
     "production-handoff-contact-readiness-contract-probe-manifest.json",
     "production-handoff-send-readiness-manifest.json",
     "production-handoff-mail-auth-readiness-manifest.json",
+    "production-handoff-owner-unblock-pack-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
