@@ -183,6 +183,7 @@ $azurePipelinesReleaseWorkflowProbeManifest = Read-Manifest "azure-pipelines-rel
 $providerCiQualityProbeManifest = Read-Manifest "provider-ci-quality-probe-manifest.json"
 $productionHandoffPackageManifest = Read-Manifest "production-handoff-package-manifest.json"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-Manifest "production-handoff-external-evidence-preflight-probe-manifest.json"
+$productionHandoffExportManifest = Read-Manifest "production-handoff-export-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
@@ -1695,6 +1696,29 @@ if ($null -ne $productionHandoffExternalEvidencePreflightProbeManifest) {
     Test-ListedFiles $productionHandoffExternalEvidencePreflightProbeManifest "production_handoff_external_evidence_preflight_probe"
 }
 
+if ($null -ne $productionHandoffExportManifest) {
+    Add-ReleaseCheck "production_handoff_export" `
+        ($productionHandoffExportManifest.status -eq "PASS" -and
+            $productionHandoffExportManifest.schemaVersion -eq "aitestpilot.production_handoff_export.v1" -and
+            [bool]$productionHandoffExportManifest.handoffPackageIncluded -and
+            [bool]$productionHandoffExportManifest.ownerPacketsContentValidated -and
+            [int]$productionHandoffExportManifest.ownerPacketCount -eq [int]$productionHandoffExportManifest.hostProjectActionItemCount -and
+            [int]$productionHandoffExportManifest.ownerPacketBlockingReasonCount -eq [int]$productionHandoffExportManifest.hostProjectBlockingReasonCount -and
+            [int]$productionHandoffExportManifest.kitDirectoryCount -eq 4 -and
+            [int]$productionHandoffExportManifest.contractEvidenceFileCount -ge 14 -and
+            [int]$productionHandoffExportManifest.exportFileCount -ge 40 -and
+            [bool]$productionHandoffExportManifest.zipGenerated -and
+            -not [bool]$productionHandoffExportManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
+            $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
+            [int]$productionHandoffExportManifest.checkCount -eq 5 -and
+            [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
+        "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
+
+    Test-ListedFiles $productionHandoffExportManifest "production_handoff_export"
+}
+
 if ($null -ne $productionExternalEvidenceAcceptanceContractProbeManifest) {
     Add-ReleaseCheck "production_external_evidence_acceptance_contract_probe" `
         ($productionExternalEvidenceAcceptanceContractProbeManifest.status -eq "PASS" -and
@@ -1872,6 +1896,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "provider-ci-quality-probe-manifest.json",
         "production-handoff-package-manifest.json",
         "production-handoff-external-evidence-preflight-probe-manifest.json",
+        "production-handoff-export-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
@@ -1967,6 +1992,7 @@ $sourceManifests = @(
     "provider-ci-quality-probe-manifest.json",
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
+    "production-handoff-export-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",

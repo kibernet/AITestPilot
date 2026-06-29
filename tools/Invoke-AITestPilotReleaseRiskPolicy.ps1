@@ -188,6 +188,7 @@ $azurePipelinesProbeManifest = Read-PolicyJson "azure-pipelines-release-workflow
 $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-manifest.json" "Provider CI quality probe manifest"
 $productionHandoffPackageManifest = Read-PolicyJson "production-handoff-package-manifest.json" "Production handoff package manifest"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-PolicyJson "production-handoff-external-evidence-preflight-probe-manifest.json" "Production handoff external evidence preflight probe manifest"
+$productionHandoffExportManifest = Read-PolicyJson "production-handoff-export-manifest.json" "Production handoff export manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionHardModeFailureProbeManifest = Read-PolicyJson "production-hard-mode-failure-probe-manifest.json" "Production hard-mode failure probe manifest"
@@ -688,6 +689,32 @@ Add-PolicyCheck "production_handoff_external_evidence_preflight_policy" $product
     "Production handoff evidence must prove the generated external evidence preflight and acceptance wrapper accept complete host-project-shaped fixture evidence without promoting fixture data." `
     "production_handoff_external_evidence_preflight_not_accepted"
 
+$productionHandoffExportAccepted = (
+    $null -ne $productionHandoffExportManifest -and
+    $productionHandoffExportManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffExportManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_export.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "handoffPackageIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerPacketsContentValidated" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerPacketCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "hostProjectActionItemCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerPacketBlockingReasonCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "hostProjectBlockingReasonCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "kitDirectoryCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "contractEvidenceFileCount" 0)) -ge 14 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "exportFileCount" 0)) -ge 40 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "zipGenerated" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffExportManifest "productionOutputBoundary" "") -eq "host_project_external_handoff_export_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_export_policy" $productionHandoffExportAccepted `
+    "Production handoff evidence must include a compact owner-facing export zip with handoff package, owner packets, kits, and contract reports without promoting fixture data." `
+    "production_handoff_export_not_accepted"
+
 $productionExternalEvidenceAcceptanceContractAccepted = (
     $null -ne $productionExternalEvidenceAcceptanceContractProbeManifest -and
     $productionExternalEvidenceAcceptanceContractProbeManifest.status -eq "PASS" -and
@@ -816,6 +843,7 @@ $sourceFiles = @(
     "provider-ci-quality-probe-manifest.json",
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
+    "production-handoff-export-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json"
@@ -863,6 +891,7 @@ $manifest = [ordered]@{
     providerCiQualityAccepted = [bool]$providerCiQualityAccepted
     productionHandoffPackageAccepted = [bool]$productionHandoffPackageAccepted
     productionHandoffExternalEvidencePreflightAccepted = [bool]$productionHandoffExternalEvidencePreflightAccepted
+    productionHandoffExportAccepted = [bool]$productionHandoffExportAccepted
     productionExternalEvidenceAcceptanceContractAccepted = [bool]$productionExternalEvidenceAcceptanceContractAccepted
     productionExternalEvidenceAcceptanceFailureAccepted = [bool]$productionExternalEvidenceAcceptanceFailureAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
@@ -897,6 +926,7 @@ $reportLines = @(
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
     "- Production handoff package accepted: $($manifest.productionHandoffPackageAccepted)",
     "- Production handoff external evidence preflight accepted: $($manifest.productionHandoffExternalEvidencePreflightAccepted)",
+    "- Production handoff export accepted: $($manifest.productionHandoffExportAccepted)",
     "- Production external evidence acceptance contract accepted: $($manifest.productionExternalEvidenceAcceptanceContractAccepted)",
     "- Production external evidence acceptance failure accepted: $($manifest.productionExternalEvidenceAcceptanceFailureAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
