@@ -349,6 +349,13 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "release_evidence_index" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir `
+            -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+            -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
+    }
+
     Invoke-PipelineStep "release_gate" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseGate.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `

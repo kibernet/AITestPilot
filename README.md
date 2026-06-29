@@ -223,13 +223,21 @@ To import a replay profile JSON back into an editable Unity asset:
 
 By default it reads `Temp\release-evidence\latest\sample-business-replay-profile.json`, imports it to `Assets/AITestPilotGenerated/ImportedReplayProfile.asset` inside the temporary Unity project, exports a normalized JSON copy, and writes `replay-profile-import-manifest.json` into the evidence bundle.
 
+To export a machine-readable release evidence index:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1
+```
+
+That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. The full release pipeline runs it before the release gate so CI and portal handoff can consume one stable evidence summary.
+
 To run the full repo-side release gate over the evidence bundle:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, release evidence index coverage, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -366,6 +374,7 @@ Implemented now:
 - Repo-side release gate that blocks missing driver descriptor, missing negative probe, failed retest, or missing evidence files.
 - CI release pipeline wrapper with stable artifact output under `artifacts\ai-testpilot-release\latest`.
 - GitHub Actions release workflow for self-hosted Windows Unity runners, with release-gated workflow probe and evidence artifact upload.
+- Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers.
 - Generic HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.
 - Model endpoint trace probe included in release evidence and enforced by the repo-side release gate.
 - Unity `ModelEndpointSettings` asset, editor creation flow, request-contract builder, response parser, and batch evidence.

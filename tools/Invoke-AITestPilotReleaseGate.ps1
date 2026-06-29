@@ -165,6 +165,7 @@ $luaAutoPatchSandboxManifest = Read-Manifest "lua-auto-patch-sandbox-manifest.js
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
 $liveModelEndpointManifest = Read-Manifest "live-model-endpoint-smoke-manifest.json"
 $githubActionsReleaseWorkflowProbeManifest = Read-Manifest "github-actions-release-workflow-probe-manifest.json"
+$releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
 
 if ($null -ne $sceneManifest) {
     Add-ReleaseCheck "scene_validation" `
@@ -1351,6 +1352,76 @@ if ($null -ne $githubActionsReleaseWorkflowProbeManifest) {
     Test-ListedFiles $githubActionsReleaseWorkflowProbeManifest "github_actions_release_workflow_probe"
 }
 
+if ($null -ne $releaseEvidenceIndexManifest) {
+    $requiredIndexedManifests = @(
+        "manifest.json",
+        "repair-agent-patch-output-manifest.json",
+        "repair-agent-external-completion-failure-probe-manifest.json",
+        "repair-agent-generic-patch-import-probe-manifest.json",
+        "repair-agent-source-snapshot-apply-validate-manifest.json",
+        "repair-agent-main-worktree-apply-readiness-manifest.json",
+        "repair-agent-main-worktree-apply-retest-rollback-manifest.json",
+        "repair-agent-external-task-output-acceptance-manifest.json",
+        "repair-agent-patch-result-analysis-manifest.json",
+        "repair-agent-patch-result-history-manifest.json",
+        "repair-agent-external-patch-preflight-manifest.json",
+        "repair-agent-external-patch-preflight-failure-probe-manifest.json",
+        "repair-agent-repository-patch-apply-guard-manifest.json",
+        "repair-agent-repository-patch-apply-clean-probe-manifest.json",
+        "repair-agent-repository-patch-apply-clean-retest-manifest.json",
+        "repair-agent-patch-apply-retest-manifest.json",
+        "repair-retest-manifest.json",
+        "repair-driver-failure-manifest.json",
+        "replay-profile-import-manifest.json",
+        "production-replay-integration-contract-probe-manifest.json",
+        "production-driver-binding-kit-manifest.json",
+        "production-replay-driver-readiness-manifest.json",
+        "production-driver-evidence-intake-manifest.json",
+        "production-driver-external-bundle-intake-probe-manifest.json",
+        "model-endpoint-trace-manifest.json",
+        "model-endpoint-provider-diagnostics-manifest.json",
+        "model-endpoint-provider-retry-policy-manifest.json",
+        "lua-static-analysis-manifest.json",
+        "lua-auto-patch-sandbox-manifest.json",
+        "live-model-endpoint-failure-probe-manifest.json",
+        "live-model-endpoint-smoke-manifest.json",
+        "github-actions-release-workflow-probe-manifest.json"
+    )
+
+    if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
+        $requiredIndexedManifests += "repair-agent-cursor-agent-external-output-manifest.json"
+    }
+
+    if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
+        $requiredIndexedManifests += "production-replay-driver-bound-failure-probe-manifest.json"
+    }
+
+    Add-ReleaseCheck "release_evidence_index" `
+        ($releaseEvidenceIndexManifest.status -eq "PASS" -and
+            $releaseEvidenceIndexManifest.schemaVersion -eq "aitestpilot.release_evidence_index.v1" -and
+            [bool]$releaseEvidenceIndexManifest.machineReadable -and
+            [bool]$releaseEvidenceIndexManifest.portalHandoffReady -and
+            [bool]$releaseEvidenceIndexManifest.releaseGateManifestExpected -and
+            [bool]$releaseEvidenceIndexManifest.pipelineManifestExpected -and
+            [int]$releaseEvidenceIndexManifest.requiredSourceManifestCount -ge 30 -and
+            [int]$releaseEvidenceIndexManifest.indexedSourceManifestCount -eq [int]$releaseEvidenceIndexManifest.requiredSourceManifestCount -and
+            [int]$releaseEvidenceIndexManifest.sourceManifestCoverageCount -eq [int]$releaseEvidenceIndexManifest.requiredSourceManifestCount -and
+            [int]$releaseEvidenceIndexManifest.missingSourceManifestCount -eq 0 -and
+            [int]$releaseEvidenceIndexManifest.unparseableSourceManifestCount -eq 0 -and
+            [int]$releaseEvidenceIndexManifest.failedSourceManifestCount -eq 0 -and
+            [int]$releaseEvidenceIndexManifest.blockedSourceManifestCount -eq 0 -and
+            [int]$releaseEvidenceIndexManifest.unacceptedSourceManifestStatusCount -eq 0 -and
+            [int]$releaseEvidenceIndexManifest.missingListedFileCount -eq 0 -and
+            [int]$releaseEvidenceIndexManifest.blockingReasonCount -eq 0) `
+        "Release evidence index must summarize all source manifests as machine-readable, portal-ready evidence with no missing, unparseable, failed, blocked, unaccepted, or missing-file entries."
+
+    Add-ReleaseCheck "release_evidence_index_primary_manifest_coverage" `
+        (Test-ContainsAll @($releaseEvidenceIndexManifest.sourceManifestNames) $requiredIndexedManifests) `
+        "Release evidence index must include all primary release-gate source manifests."
+
+    Test-ListedFiles $releaseEvidenceIndexManifest "release_evidence_index"
+}
+
 $allowRelease = $failedReasons.Count -eq 0
 if ($allowRelease) {
     $gateStatus = "PASS"
@@ -1390,7 +1461,8 @@ $sourceManifests = @(
     "lua-auto-patch-sandbox-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",
     "live-model-endpoint-smoke-manifest.json",
-    "github-actions-release-workflow-probe-manifest.json"
+    "github-actions-release-workflow-probe-manifest.json",
+    "release-evidence-index-manifest.json"
 )
 
 if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {

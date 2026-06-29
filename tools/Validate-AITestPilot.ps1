@@ -93,6 +93,7 @@ try {
         "tools\Invoke-AITestPilotProductionReplayIntegrationContractProbe.ps1",
         "tools\Invoke-AITestPilotProductionReplayDriverReadiness.ps1",
         "tools\Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1",
+        "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1",
         "tools\Invoke-AITestPilotReleaseGate.ps1",
         "tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1",
         "tools\Invoke-AITestPilotReleasePipeline.ps1",
