@@ -270,17 +270,28 @@ $sendScriptLines = @(
     "    if (`$Value.Trim() -like 'replace-with-*-email') { return `$false }",
     "    return [bool](`$Value.Trim() -match '^[^@\s]+@[^@\s]+\.[^@\s]+$')",
     "}",
+    "`$queue = Read-JsonFile (Join-Path `$EvidenceBundleDir 'production-handoff-send/production-handoff-send-queue.json')",
+    "`$contacts = Read-JsonFile `$ContactRosterPath",
+    "`$tokens = @{}",
+    "if (-not `$PrepareConfirmation -and -not `$Send) {",
+    "    foreach (`$entry in @(`$queue.entries)) {",
+    "        `$contact = @(`$contacts.entries | Where-Object { `$_.owner -eq `$entry.owner -and `$_.area -eq `$entry.area }) | Select-Object -First 1",
+    "        if (`$null -eq `$contact -or -not [bool]`$contact.configured -or -not (Test-EmailAddress ([string]`$contact.emailAddress))) {",
+    "            Write-Output ('Blocked send command for ' + `$entry.owner + ': owner contact is not configured.')",
+    "        } else {",
+    "            Write-Output ('Prepared send command for ' + `$entry.owner + ' -> ' + `$contact.emailAddress)",
+    "        }",
+    "    }",
+    "    return",
+    "}",
     "",
     "`$authStatusRaw = & agently-cli auth status",
     "`$authStatus = `$authStatusRaw | ConvertFrom-Json",
     "if (-not [bool]`$authStatus.data.logged_in) { throw 'agently-cli is not logged in. Run agently-cli auth login before preparing owner packet sends.' }",
     "& agently-cli +me | Out-Null",
     "",
-    "`$queue = Read-JsonFile (Join-Path `$EvidenceBundleDir 'production-handoff-send/production-handoff-send-queue.json')",
-    "`$contacts = Read-JsonFile `$ContactRosterPath",
-    "`$tokens = @{}",
     "if (`$Send) {",
-    "    if ([string]::IsNullOrWhiteSpace(`$ConfirmationTokenMapPath)) { throw '-Send requires -ConfirmationTokenMapPath.' }",
+        "    if ([string]::IsNullOrWhiteSpace(`$ConfirmationTokenMapPath)) { throw '-Send requires -ConfirmationTokenMapPath.' }",
     "    `$tokenJson = Read-JsonFile `$ConfirmationTokenMapPath",
     "    foreach (`$entry in @(`$tokenJson.entries)) { `$tokens[[string]`$entry.owner] = [string]`$entry.confirmationToken }",
     "}",
@@ -297,11 +308,7 @@ $sendScriptLines = @(
     "            if (-not `$tokens.ContainsKey([string]`$entry.owner)) { throw `"Missing confirmation token for `$(`$entry.owner).`" }",
     "            `$args += @('--confirmation-token', `$tokens[[string]`$entry.owner])",
     "        }",
-    "        if (`$PrepareConfirmation -or `$Send) {",
-    "            & agently-cli @args",
-    "        } else {",
-    "            Write-Output ('Prepared send command for ' + `$entry.owner + ' -> ' + `$contact.emailAddress)",
-    "        }",
+        "        & agently-cli @args",
     "    }",
     "}",
     "finally {",
@@ -319,10 +326,11 @@ $readmeLines = @(
     "",
     "Workflow:",
     "",
-    "1. Fill ``production-handoff-contact-roster.json`` with real owner mailboxes.",
-    "2. Run ``agently-cli auth login`` and verify ``agently-cli +me``.",
-    "3. Run ``.\production-handoff-send\send-owner-packets.ps1 -PrepareConfirmation`` to request CLI confirmation tokens.",
-    "4. After operator approval, pass those tokens through ``-ConfirmationTokenMapPath`` with ``-Send``.",
+    "1. Run ``.\production-handoff-send\send-owner-packets.ps1`` to preview the current queue without requiring agently-cli authorization.",
+    "2. Fill ``production-handoff-contact-roster.json`` with real owner mailboxes.",
+    "3. Run ``agently-cli auth login`` and verify ``agently-cli +me``.",
+    "4. Run ``.\production-handoff-send\send-owner-packets.ps1 -PrepareConfirmation`` to request CLI confirmation tokens.",
+    "5. After operator approval, pass those tokens through ``-ConfirmationTokenMapPath`` with ``-Send``.",
     "",
     "The helper does not bypass agently-cli two-stage confirmation."
 )
@@ -335,6 +343,8 @@ $sendScriptContentValidated = $sendScriptText.Contains("agently-cli auth status"
     $sendScriptText.Contains("--confirmation-token") -and
     $sendScriptText.Contains("PrepareConfirmation") -and
     $sendScriptText.Contains("Dry run only") -and
+    $sendScriptText.Contains("Blocked send command") -and
+    $sendScriptText.Contains("return") -and
     -not $sendScriptText.Contains("System.Collections")
 
 $sendQueueGenerated = Test-Path $sendQueuePath

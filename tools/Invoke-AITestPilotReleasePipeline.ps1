@@ -505,6 +505,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_handoff_send_dry_run_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffSendDryRunProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "release_progress_notification_outbox" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

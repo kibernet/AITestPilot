@@ -217,6 +217,7 @@ $productionHandoffOwnerUnblockPackManifest = Read-Manifest "production-handoff-o
 $productionHandoffOwnerUnblockPackContractProbeManifest = Read-Manifest "production-handoff-owner-unblock-pack-contract-probe-manifest.json"
 $productionHandoffOwnerInputRequestPackManifest = Read-Manifest "production-handoff-owner-input-request-pack-manifest.json"
 $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-Manifest "production-handoff-owner-contact-external-intake-probe-manifest.json"
+$productionHandoffSendDryRunProbeManifest = Read-Manifest "production-handoff-send-dry-run-probe-manifest.json"
 $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
@@ -2105,15 +2106,42 @@ if ($null -ne $productionHandoffOwnerContactExternalIntakeProbeManifest) {
     Test-ListedFiles $productionHandoffOwnerContactExternalIntakeProbeManifest "production_handoff_owner_contact_external_intake_probe"
 }
 
+if ($null -ne $productionHandoffSendDryRunProbeManifest) {
+    Add-ReleaseCheck "production_handoff_send_dry_run_probe" `
+        ($productionHandoffSendDryRunProbeManifest.status -eq "PASS" -and
+            $productionHandoffSendDryRunProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_send_dry_run_probe.v1" -and
+            [bool]$productionHandoffSendDryRunProbeManifest.defaultDryRunSucceeded -and
+            [bool]$productionHandoffSendDryRunProbeManifest.acceptedContactDryRunSucceeded -and
+            [int]$productionHandoffSendDryRunProbeManifest.ownerContactCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendDryRunProbeManifest.defaultBlockedPreviewCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendDryRunProbeManifest.acceptedContactPreparedPreviewCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [bool]$productionHandoffSendDryRunProbeManifest.authorizationNotRequiredForDryRun -and
+            [bool]$productionHandoffSendDryRunProbeManifest.dryRunDoesNotCreateConfirmationToken -and
+            -not [bool]$productionHandoffSendDryRunProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffSendDryRunProbeManifest.emailSent -and
+            -not [bool]$productionHandoffSendDryRunProbeManifest.confirmationTokenCreated -and
+            -not [bool]$productionHandoffSendDryRunProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffSendDryRunProbeManifest.fixtureEvidencePromoted -and
+            $productionHandoffSendDryRunProbeManifest.productionOutputBoundary -eq "owner_send_dry_run_preview_only" -and
+            [int]$productionHandoffSendDryRunProbeManifest.checkCount -eq 6 -and
+            [int]$productionHandoffSendDryRunProbeManifest.failedCheckCount -eq 0) `
+        "Production handoff send dry-run probe must prove send previews work without local mail authorization and do not create tokens or send email."
+
+    Test-ListedFiles $productionHandoffSendDryRunProbeManifest "production_handoff_send_dry_run_probe"
+}
+
 if ($null -ne $releaseProgressNotificationOutboxManifest) {
     Add-ReleaseCheck "release_progress_notification_outbox" `
         ($releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
             $releaseProgressNotificationOutboxManifest.schemaVersion -eq "aitestpilot.release_progress_notification_outbox.v1" -and
             $releaseProgressNotificationOutboxManifest.recipient -eq "kibernet@sina.com" -and
-            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_contact_external_intake_probe" -and
+            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_send_dry_run_probe" -and
             $releaseProgressNotificationOutboxManifest.latestBigNodeStatus -eq "PASS" -and
             [bool]$releaseProgressNotificationOutboxManifest.externalContactIntakeAccepted -and
             [bool]$releaseProgressNotificationOutboxManifest.externalSendReadyForConfirmation -and
+            [bool]$releaseProgressNotificationOutboxManifest.sendDryRunAuthorizationFree -and
+            [int]$releaseProgressNotificationOutboxManifest.defaultDryRunBlockedPreviewCount -gt 0 -and
+            [int]$releaseProgressNotificationOutboxManifest.acceptedContactDryRunPreparedPreviewCount -gt 0 -and
             $releaseProgressNotificationOutboxManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseProgressNotificationOutboxManifest.statusGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.progressEmailDraftGenerated -and
@@ -2364,6 +2392,8 @@ if ($null -ne $releaseRiskPolicyManifest) {
             $releaseRiskPolicyManifest.productionHandoffOwnerInputRequestStatus -eq "AWAITING_EXTERNAL_OWNER_INPUT" -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerContactExternalIntakeProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerContactExternalSendReady -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffSendDryRunProbeAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffSendDryRunAuthorizationFree -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
@@ -2435,6 +2465,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
         "production-handoff-owner-input-request-pack-manifest.json",
         "production-handoff-owner-contact-external-intake-probe-manifest.json",
+        "production-handoff-send-dry-run-probe-manifest.json",
         "release-progress-notification-outbox-manifest.json",
         "production-external-evidence-acceptance-contract-probe-manifest.json",
         "production-external-evidence-acceptance-failure-probe-manifest.json",
@@ -2545,6 +2576,7 @@ $sourceManifests = @(
     "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
     "production-handoff-owner-input-request-pack-manifest.json",
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
+    "production-handoff-send-dry-run-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",

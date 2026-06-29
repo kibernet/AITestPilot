@@ -334,6 +334,12 @@ That script writes `production-handoff-owner-input-request-pack-manifest.json`, 
 That probe writes `production-handoff-owner-contact-external-intake-probe-manifest.json` and a Markdown report. It starts with a repo-external contact roster fixture, imports it into an isolated bundle, proves contact readiness accepts all owner contacts, and proves send readiness moves to `READY_FOR_CONFIRMATION` while the default bundle still records missing contacts and `emailSent=false`.
 
 ```powershell
+.\tools\Invoke-AITestPilotProductionHandoffSendDryRunProbe.ps1
+```
+
+That probe writes `production-handoff-send-dry-run-probe-manifest.json` and a Markdown report. It proves the generated `send-owner-packets.ps1` dry run works without local `agently-cli` authorization: the default bundle previews three blocked sends, and the external-contact intake bundle previews three prepared sends, without creating confirmation tokens or sending email.
+
+```powershell
 .\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1
 ```
 

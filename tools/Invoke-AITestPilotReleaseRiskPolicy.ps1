@@ -199,6 +199,7 @@ $productionHandoffOwnerUnblockPackManifest = Read-PolicyJson "production-handoff
 $productionHandoffOwnerUnblockPackContractProbeManifest = Read-PolicyJson "production-handoff-owner-unblock-pack-contract-probe-manifest.json" "Production handoff owner unblock pack contract probe manifest"
 $productionHandoffOwnerInputRequestPackManifest = Read-PolicyJson "production-handoff-owner-input-request-pack-manifest.json" "Production handoff owner input request pack manifest"
 $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-PolicyJson "production-handoff-owner-contact-external-intake-probe-manifest.json" "Production handoff owner contact external intake probe manifest"
+$productionHandoffSendDryRunProbeManifest = Read-PolicyJson "production-handoff-send-dry-run-probe-manifest.json" "Production handoff send dry-run probe manifest"
 $releaseProgressNotificationOutboxManifest = Read-PolicyJson "release-progress-notification-outbox-manifest.json" "Release progress notification outbox manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
@@ -1130,15 +1131,46 @@ Add-PolicyCheck "production_handoff_owner_contact_external_intake_probe_policy" 
     "Production handoff evidence must prove repo-external owner contacts can be imported into an isolated bundle and move sends to ready-for-confirmation without sending email." `
     "production_handoff_owner_contact_external_intake_probe_not_accepted"
 
+$productionHandoffSendDryRunProbeAccepted = (
+    $null -ne $productionHandoffSendDryRunProbeManifest -and
+    $productionHandoffSendDryRunProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffSendDryRunProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_send_dry_run_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffSendDryRunProbeManifest "defaultDryRunSucceeded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffSendDryRunProbeManifest "acceptedContactDryRunSucceeded" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendDryRunProbeManifest "ownerContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendDryRunProbeManifest "defaultBlockedPreviewCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendDryRunProbeManifest "acceptedContactPreparedPreviewCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffSendDryRunProbeManifest "authorizationNotRequiredForDryRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffSendDryRunProbeManifest "dryRunDoesNotCreateConfirmationToken" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendDryRunProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendDryRunProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendDryRunProbeManifest "confirmationTokenCreated" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendDryRunProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendDryRunProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffSendDryRunProbeManifest "productionOutputBoundary" "") -eq "owner_send_dry_run_preview_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendDryRunProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendDryRunProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_send_dry_run_probe_policy" $productionHandoffSendDryRunProbeAccepted `
+    "Production handoff evidence must prove owner-packet send dry run works without local mail authorization and does not create confirmation tokens or send email." `
+    "production_handoff_send_dry_run_probe_not_accepted"
+
 $releaseProgressNotificationOutboxAccepted = (
     $null -ne $releaseProgressNotificationOutboxManifest -and
     $releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_outbox.v1" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "") -eq "kibernet@sina.com" -and
-    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "") -eq "production_handoff_owner_contact_external_intake_probe" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "") -eq "production_handoff_send_dry_run_probe" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeStatus" "") -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalContactIntakeAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalSendReadyForConfirmation" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "sendDryRunAuthorizationFree" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "defaultDryRunBlockedPreviewCount" 0)) -gt 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "acceptedContactDryRunPreparedPreviewCount" 0)) -gt 0 -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "statusGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "progressEmailDraftGenerated" $false)) -and
@@ -1408,6 +1440,7 @@ $sourceFiles = @(
     "production-handoff-owner-unblock-pack-contract-probe-manifest.json",
     "production-handoff-owner-input-request-pack-manifest.json",
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
+    "production-handoff-send-dry-run-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",
@@ -1477,6 +1510,8 @@ $manifest = [ordered]@{
     productionHandoffOwnerInputRequestRecipient = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "operatorProgressRecipient" "")
     productionHandoffOwnerContactExternalIntakeProbeAccepted = [bool]$productionHandoffOwnerContactExternalIntakeProbeAccepted
     productionHandoffOwnerContactExternalSendReady = (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "externalSendReadyForConfirmation" $false)
+    productionHandoffSendDryRunProbeAccepted = [bool]$productionHandoffSendDryRunProbeAccepted
+    productionHandoffSendDryRunAuthorizationFree = (Get-JsonValue $productionHandoffSendDryRunProbeManifest "authorizationNotRequiredForDryRun" $false)
     releaseProgressNotificationOutboxAccepted = [bool]$releaseProgressNotificationOutboxAccepted
     releaseProgressNotificationDispatchStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "")
     releaseProgressNotificationRecipient = (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "")
@@ -1541,6 +1576,8 @@ $reportLines = @(
     "- Production handoff owner input request recipient: $($manifest.productionHandoffOwnerInputRequestRecipient)",
     "- Production handoff owner contact external intake accepted: $($manifest.productionHandoffOwnerContactExternalIntakeProbeAccepted)",
     "- Production handoff owner contact external send ready: $($manifest.productionHandoffOwnerContactExternalSendReady)",
+    "- Production handoff send dry-run probe accepted: $($manifest.productionHandoffSendDryRunProbeAccepted)",
+    "- Production handoff send dry run auth-free: $($manifest.productionHandoffSendDryRunAuthorizationFree)",
     "- Release progress notification outbox accepted: $($manifest.releaseProgressNotificationOutboxAccepted)",
     "- Release progress notification dispatch status: $($manifest.releaseProgressNotificationDispatchStatus)",
     "- Release progress notification recipient: $($manifest.releaseProgressNotificationRecipient)",
