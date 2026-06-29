@@ -143,6 +143,7 @@ $repairAgentPatchApplyRetestManifest = Read-Manifest "repair-agent-patch-apply-r
 $repairRetestManifest = Read-Manifest "repair-retest-manifest.json"
 $failureProbeManifest = Read-Manifest "repair-driver-failure-manifest.json"
 $profileImportManifest = Read-Manifest "replay-profile-import-manifest.json"
+$productionReplayDriverReadinessManifest = Read-Manifest "production-replay-driver-readiness-manifest.json"
 $modelEndpointManifest = Read-Manifest "model-endpoint-trace-manifest.json"
 $modelEndpointProviderDiagnosticsManifest = Read-Manifest "model-endpoint-provider-diagnostics-manifest.json"
 $liveModelEndpointFailureProbeManifest = Read-Manifest "live-model-endpoint-failure-probe-manifest.json"
@@ -736,6 +737,53 @@ if ($null -ne $profileImportManifest) {
     Test-ListedFiles $profileImportManifest "replay_profile_import"
 }
 
+if ($null -ne $productionReplayDriverReadinessManifest) {
+    $productionDriverReady = [bool]$productionReplayDriverReadinessManifest.readyForProductionDriverRelease -and
+        [bool]$productionReplayDriverReadinessManifest.realProjectBound -and
+        [int]$productionReplayDriverReadinessManifest.unresolvedRequiredHookCount -eq 0 -and
+        -not [bool]$productionReplayDriverReadinessManifest.sampleGameReplayDriverUsed -and
+        [bool]$productionReplayDriverReadinessManifest.externalProductionDriverSelected -and
+        [bool]$productionReplayDriverReadinessManifest.retestPassed -and
+        [bool]$productionReplayDriverReadinessManifest.descriptorPresent -and
+        [bool]$productionReplayDriverReadinessManifest.descriptorSupportsStandardHandlerKeys -and
+        [bool]$productionReplayDriverReadinessManifest.descriptorConfigurationComplete -and
+        [bool]$productionReplayDriverReadinessManifest.businessReplayStateComplete -and
+        [bool]$productionReplayDriverReadinessManifest.driverFailureProbePassed -and
+        [bool]$productionReplayDriverReadinessManifest.replayProfileImportPassed -and
+        [int]$productionReplayDriverReadinessManifest.blockingReasonCount -eq 0
+
+    $productionDriverExplicitlyBlocked = -not [bool]$productionReplayDriverReadinessManifest.readyForProductionDriverRelease -and
+        [bool]$productionReplayDriverReadinessManifest.packageReleaseAllowedWithoutProductionBinding -and
+        -not [bool]$productionReplayDriverReadinessManifest.productionBindingRequiredForPackageRelease -and
+        [int]$productionReplayDriverReadinessManifest.blockingReasonCount -ge 4 -and
+        (Test-ContainsAll @($productionReplayDriverReadinessManifest.blockingReasons) @(
+            "production_replay_integration_not_bound",
+            "required_hooks_not_all_bound",
+            "unresolved_required_hooks",
+            "sample_game_replay_driver_used",
+            "external_production_driver_not_selected"
+        )) -and
+        -not [bool]$productionReplayDriverReadinessManifest.realProjectBound -and
+        [int]$productionReplayDriverReadinessManifest.unresolvedRequiredHookCount -gt 0 -and
+        [bool]$productionReplayDriverReadinessManifest.sampleGameReplayDriverUsed -and
+        -not [bool]$productionReplayDriverReadinessManifest.externalProductionDriverSelected -and
+        [bool]$productionReplayDriverReadinessManifest.retestPassed -and
+        [bool]$productionReplayDriverReadinessManifest.descriptorPresent -and
+        [bool]$productionReplayDriverReadinessManifest.descriptorSupportsStandardHandlerKeys -and
+        [bool]$productionReplayDriverReadinessManifest.descriptorConfigurationComplete -and
+        [bool]$productionReplayDriverReadinessManifest.businessReplayStateComplete -and
+        [bool]$productionReplayDriverReadinessManifest.driverFailureProbePassed -and
+        [bool]$productionReplayDriverReadinessManifest.replayProfileImportPassed
+
+    Add-ReleaseCheck "production_replay_driver_readiness" `
+        ($productionReplayDriverReadinessManifest.status -eq "PASS" -and
+            $productionReplayDriverReadinessManifest.schemaVersion -eq "aitestpilot.production_replay_driver_readiness.v1" -and
+            ($productionDriverReady -or $productionDriverExplicitlyBlocked)) `
+        "Production replay driver readiness must either prove a real bound production driver or explicitly record the current sample/unbound blockers while keeping package release separate."
+
+    Test-ListedFiles $productionReplayDriverReadinessManifest "production_replay_driver_readiness"
+}
+
 if ($null -ne $modelEndpointManifest) {
     Add-ReleaseCheck "model_endpoint_trace_probe" `
         ($modelEndpointManifest.status -eq "PASS" -and
@@ -982,6 +1030,7 @@ $sourceManifests = @(
     "repair-retest-manifest.json",
     "repair-driver-failure-manifest.json",
     "replay-profile-import-manifest.json",
+    "production-replay-driver-readiness-manifest.json",
     "model-endpoint-trace-manifest.json",
     "model-endpoint-provider-diagnostics-manifest.json",
     "live-model-endpoint-failure-probe-manifest.json",

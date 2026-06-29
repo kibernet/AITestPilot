@@ -254,6 +254,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_replay_driver_readiness" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionReplayDriverReadiness.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "model_endpoint_trace_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotModelEndpointTraceProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

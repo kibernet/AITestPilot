@@ -24,6 +24,7 @@ The pipeline runs:
 - negative replay-driver failure probe.
 - targeted repair retest with a selected game replay driver.
 - replay profile JSON import.
+- production replay driver readiness, separating package-release readiness from real-project driver binding readiness.
 - model endpoint trace probe.
 - model endpoint provider diagnostics.
 - deterministic live model endpoint failure probe.
@@ -37,7 +38,7 @@ By default, the pipeline copies the latest evidence bundle to:
 
 `artifacts/ai-testpilot-release/latest`
 
-That directory includes `pipeline-manifest.json`, release gate manifests, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, model endpoint request/response/trace evidence, provider diagnostics, live endpoint failure-classification evidence, optional live model smoke evidence, and Unity logs.
+That directory includes `pipeline-manifest.json`, release gate manifests, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay driver readiness evidence, model endpoint request/response/trace evidence, provider diagnostics, live endpoint failure-classification evidence, optional live model smoke evidence, and Unity logs.
 
 ## Cursor Agent Output
 

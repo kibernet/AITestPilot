@@ -73,6 +73,8 @@ The Unity package includes a `ProductionReplayIntegrationPlan` ScriptableObject 
 
 Sample-scene validation validates that template and records `productionReplayIntegration` in scene evidence. The exported checklist files are `production-replay-integration-checklist.json` and `production-replay-integration-checklist.md`. They intentionally report `status=TEMPLATE_READY`, `realProjectBound=false`, zero bound required hooks, and five unresolved required hooks, so release evidence separates "handoff surface exists" from "real production game driver is implemented."
 
+`tools/Invoke-AITestPilotProductionReplayDriverReadiness.ps1` makes that separation machine-readable after targeted retest, the negative driver failure probe, and replay profile import have run. It writes `production-replay-driver-readiness-manifest.json`; current sample evidence records `readyForProductionDriverRelease=false` with blockers such as `production_replay_integration_not_bound`, `unresolved_required_hooks`, and `sample_game_replay_driver_used`, while still keeping `packageReleaseAllowedWithoutProductionBinding=true`. Real-project CI can pass `-RequireProductionBound` to make those blockers fail the command.
+
 ## Validation Boundary
 
 `tools/Validate-AITestPilot.ps1` proves the repo-side core behavior and package shape.
@@ -194,6 +196,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 - driver descriptor with standard handler support and configuration requirements.
 - negative driver failure probe manifest and log diagnostics.
 - replay profile import manifest and listed files.
+- production replay driver readiness manifest proving either a real bound production driver or explicit sample/unbound blockers.
 - model endpoint trace manifest, request/response artifacts, and persisted decision trace.
 - model endpoint provider diagnostics manifest with supported presets, request formats, selected preset, environment bindings, and no serialized secrets.
 - live model endpoint failure probe manifest proving auth failures are classified with remediation, retry/escalation policy, and a failed trace.
@@ -204,7 +207,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 
 `tools/Invoke-AITestPilotReleaseGateFailureProbe.ps1` copies the current bundle, removes the driver failure probe evidence, and expects the release gate to block that copy.
 
-`tools/Invoke-AITestPilotReleasePipeline.ps1` runs the full chain, including deterministic repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate probe, main worktree apply readiness, external task output directory acceptance, main worktree apply/retest/rollback through that accepted directory package, external patch safety preflight, unsafe-path failure probe, repository apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, and sandbox patch apply/retest, then copies the final evidence bundle to `artifacts/ai-testpilot-release/latest` with `pipeline-manifest.json`, giving CI one stable command and artifact directory. When run with `-UseCursorAgentExternalTaskOutput`, it inserts the optional headless Cursor Agent producer before acceptance and validates that optional manifest in the release gate.
+`tools/Invoke-AITestPilotReleasePipeline.ps1` runs the full chain, including deterministic repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate probe, main worktree apply readiness, external task output directory acceptance, main worktree apply/retest/rollback through that accepted directory package, external patch safety preflight, unsafe-path failure probe, repository apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, sandbox patch apply/retest, and production replay driver readiness, then copies the final evidence bundle to `artifacts/ai-testpilot-release/latest` with `pipeline-manifest.json`, giving CI one stable command and artifact directory. When run with `-UseCursorAgentExternalTaskOutput`, it inserts the optional headless Cursor Agent producer before acceptance and validates that optional manifest in the release gate.
 
 ## Replay Adapters
 

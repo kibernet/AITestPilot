@@ -150,6 +150,14 @@ That type must implement `IGameActionReplayDriver`; if it also implements `IGame
 For the hooks-based production adapter path, see `docs\integration\production-driver.md` and `unity\com.kibernet.ai-testpilot\Samples~\ProductionReplayDriver\ProductionReplayDriverTemplate.cs`.
 Scene validation also creates `Assets/AITestPilotGenerated/ProductionReplayIntegrationPlan.asset` and exports `production-replay-integration-checklist.json` plus `production-replay-integration-checklist.md` into the evidence bundle. That checklist is intentionally marked `TEMPLATE_READY` with `realProjectBound=false`; it is a handoff artifact for wiring real game APIs, not proof that a production game driver has already been implemented.
 
+To write a machine-readable production driver readiness boundary:
+
+```powershell
+.\tools\Invoke-AITestPilotProductionReplayDriverReadiness.ps1
+```
+
+That script reads the production replay checklist, targeted retest, negative driver failure probe, and replay profile import evidence. It writes `production-replay-driver-readiness-manifest.json` with `readyForProductionDriverRelease=false` and explicit blockers while the repo still uses the sample driver and the checklist remains unbound. Passing `-RequireProductionBound` turns those blockers into a hard failure for real-project CI.
+
 To prove that driver failures are surfaced with actionable hook diagnostics:
 
 ```powershell
@@ -172,7 +180,7 @@ To run the full repo-side release gate over the evidence bundle:
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -272,6 +280,7 @@ Implemented now:
 - Production replay integration plan asset and release-evidence checklist for real game driver handoff.
 - Driver capability/configuration descriptor recorded in repair retest evidence.
 - Negative replay-driver failure probe with driver, handler, action, target, and step diagnostics.
+- Production replay driver readiness manifest separating package release readiness from real-project driver binding readiness.
 - Repo-side release gate that blocks missing driver descriptor, missing negative probe, failed retest, or missing evidence files.
 - CI release pipeline wrapper with stable artifact output under `artifacts\ai-testpilot-release\latest`.
 - Generic HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.

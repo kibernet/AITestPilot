@@ -38,6 +38,7 @@
 - Hooks-based production driver adapter, diagnostics, and copyable driver template.
 - Driver capability/configuration descriptor in repair retest evidence.
 - Negative replay-driver failure probe for CI diagnostics.
+- Production replay driver readiness manifest with explicit sample/unbound blockers.
 - Repo-side release gate over scene, retest, driver descriptor, negative probe, and profile import evidence.
 - One-command release pipeline with stable CI artifact output.
 - Core HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.
@@ -56,7 +57,7 @@
 ## V0.2 Unity Import Gate
 
 - Export release evidence into a stable CI artifact directory.
-- Replace the sample `IGameActionReplayDriver` and unbound production replay checklist with real project implementations for login, activity reward, fishing, and account setup.
+- Replace the sample `IGameActionReplayDriver` and unbound production replay checklist with real project implementations for login, activity reward, fishing, and account setup, then run production readiness with `-RequireProductionBound`.
 
 ## V0.3 Model Bridge
 
