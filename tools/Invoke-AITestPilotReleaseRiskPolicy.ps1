@@ -211,6 +211,7 @@ $releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-PolicyJson
 $releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-PolicyJson "release-progress-notification-local-send-workflow-probe-manifest.json" "Release progress notification local send workflow probe manifest"
 $releaseProgressNotificationRealReceiptGuardProbeManifest = Read-PolicyJson "release-progress-notification-real-receipt-guard-probe-manifest.json" "Release progress notification real receipt guard probe manifest"
 $releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-PolicyJson "release-progress-notification-post-dispatch-snapshot-probe-manifest.json" "Release progress notification post-dispatch snapshot probe manifest"
+$productionExternalEvidenceActionQueueProbeManifest = Read-PolicyJson "production-external-evidence-action-queue-probe-manifest.json" "Production external evidence action queue probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -1590,6 +1591,32 @@ Add-PolicyCheck "release_progress_notification_post_dispatch_snapshot_probe_poli
     "Release progress notification evidence must prove post-dispatch snapshots reject contract fixtures and do not clear local mail until real operator dispatch evidence is accepted." `
     "release_progress_notification_post_dispatch_snapshot_probe_not_accepted"
 
+$productionExternalEvidenceActionQueueProbeAccepted = (
+    $null -ne $productionExternalEvidenceActionQueueProbeManifest -and
+    $productionExternalEvidenceActionQueueProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_action_queue_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueAccepted" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueLocalMailRemainingActionCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueTrackedRemainingWorkItemCount" 0)) -eq 4 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueAccepted" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLocalMailRemainingActionCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueTrackedRemainingWorkItemCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "externalRemainingMissingFileCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "externalRemainingBlockingReasonCount" 0)) -eq 11 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_action_queue_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_action_queue_probe_policy" $productionExternalEvidenceActionQueueProbeAccepted `
+    "Production handoff evidence must include an action queue that distinguishes pending-mail and post-dispatch states while preserving the three external evidence blockers." `
+    "production_external_evidence_action_queue_probe_not_accepted"
+
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
     $productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -1950,6 +1977,10 @@ $manifest = [ordered]@{
     releaseProgressNotificationPostDispatchContractFixtureRejected = (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureRejected" $false)
     releaseProgressNotificationPostDispatchContractFixtureEmailSent = (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureEmailSent" $true)
     releaseProgressNotificationPostDispatchContractFixtureLocalMailRemainingActionCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureLocalMailRemainingActionCount" 0))
+    productionExternalEvidenceActionQueueProbeAccepted = [bool]$productionExternalEvidenceActionQueueProbeAccepted
+    productionExternalEvidenceActionQueuePendingTrackedItems = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueTrackedRemainingWorkItemCount" 0))
+    productionExternalEvidenceActionQueuePostDispatchTrackedItems = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueTrackedRemainingWorkItemCount" 0))
+    productionExternalEvidenceActionQueueMissingPostDispatchRejected = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
@@ -2066,6 +2097,10 @@ $reportLines = @(
     "- Release progress notification post-dispatch contract fixture rejected: $($manifest.releaseProgressNotificationPostDispatchContractFixtureRejected)",
     "- Release progress notification post-dispatch contract fixture email sent: $($manifest.releaseProgressNotificationPostDispatchContractFixtureEmailSent)",
     "- Release progress notification post-dispatch contract fixture local mail remaining actions: $($manifest.releaseProgressNotificationPostDispatchContractFixtureLocalMailRemainingActionCount)",
+    "- Production external evidence action queue probe accepted: $($manifest.productionExternalEvidenceActionQueueProbeAccepted)",
+    "- Production external evidence action queue pending tracked items: $($manifest.productionExternalEvidenceActionQueuePendingTrackedItems)",
+    "- Production external evidence action queue post-dispatch tracked items: $($manifest.productionExternalEvidenceActionQueuePostDispatchTrackedItems)",
+    "- Production external evidence action queue missing post-dispatch rejected: $($manifest.productionExternalEvidenceActionQueueMissingPostDispatchRejected)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",

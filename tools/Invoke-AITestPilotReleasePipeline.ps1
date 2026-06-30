@@ -565,6 +565,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_external_evidence_action_queue_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_hard_mode_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

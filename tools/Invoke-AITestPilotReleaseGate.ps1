@@ -229,6 +229,7 @@ $releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-Manifest "
 $releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-Manifest "release-progress-notification-local-send-workflow-probe-manifest.json"
 $releaseProgressNotificationRealReceiptGuardProbeManifest = Read-Manifest "release-progress-notification-real-receipt-guard-probe-manifest.json"
 $releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-Manifest "release-progress-notification-post-dispatch-snapshot-probe-manifest.json"
+$productionExternalEvidenceActionQueueProbeManifest = Read-Manifest "production-external-evidence-action-queue-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2530,6 +2531,31 @@ if ($null -ne $releaseProgressNotificationPostDispatchSnapshotProbeManifest) {
         "Release progress notification post-dispatch snapshot probe must reject contract fixtures and keep local mail remaining until real operator dispatch evidence is accepted."
 
     Test-ListedFiles $releaseProgressNotificationPostDispatchSnapshotProbeManifest "release_progress_notification_post_dispatch_snapshot_probe"
+}
+
+if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
+    Add-ReleaseCheck "production_external_evidence_action_queue_probe" `
+        ($productionExternalEvidenceActionQueueProbeManifest.status -eq "PASS" -and
+            $productionExternalEvidenceActionQueueProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_action_queue_probe.v1" -and
+            [bool]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueAccepted -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueLocalMailRemainingActionCount -eq 1 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueTrackedRemainingWorkItemCount -eq 4 -and
+            [bool]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueAccepted -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueLocalMailRemainingActionCount -eq 0 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueTrackedRemainingWorkItemCount -eq 3 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.externalRemainingWorkItemCount -eq 3 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.externalRemainingMissingFileCount -eq 9 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.externalRemainingBlockingReasonCount -eq 11 -and
+            [bool]$productionExternalEvidenceActionQueueProbeManifest.missingPostDispatchRejected -and
+            -not [bool]$productionExternalEvidenceActionQueueProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionExternalEvidenceActionQueueProbeManifest.externalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceActionQueueProbeManifest.fixtureEvidencePromoted -and
+            $productionExternalEvidenceActionQueueProbeManifest.productionOutputBoundary -eq "production_external_evidence_action_queue_probe_only" -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.failedCheckCount -eq 0) `
+        "Production external evidence action queue probe must keep pending-mail and post-dispatch queues distinct while preserving external evidence blockers."
+
+    Test-ListedFiles $productionExternalEvidenceActionQueueProbeManifest "production_external_evidence_action_queue_probe"
 }
 
 if ($null -ne $productionExternalEvidenceInboxManifest) {

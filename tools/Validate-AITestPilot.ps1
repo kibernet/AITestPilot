@@ -118,6 +118,8 @@ try {
         "tools\Invoke-AITestPilotProductionHandoffSendDryRunProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKit.ps1",
+        "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueue.ps1",
+        "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1",
         "tools\Invoke-AITestPilotProductionHandoffMailHelperAuthStatusProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationConfirmationProbe.ps1",

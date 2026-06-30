@@ -352,6 +352,20 @@ That probe writes `production-handoff-owner-response-bundle-probe-manifest.json`
 That script writes `production-handoff-owner-response-bundle-kit-manifest.json`, a Markdown report, `production-handoff-owner-response-bundle-kit\`, and `production-handoff-owner-response-bundle-kit.zip`. The kit is the fillable owner-return package: a contact roster template, driver/Lua/live-smoke evidence directories, required-file manifests, a local verifier, an import helper, and a request draft. It does not send email, run OAuth, accept production evidence, or include fixture evidence.
 
 ```powershell
+.\tools\Invoke-AITestPilotProductionExternalEvidenceActionQueue.ps1 `
+    -EvidenceBundleDir .\artifacts\ai-testpilot-release\latest `
+    -RequirePostDispatch
+```
+
+That operator-side script writes `production-external-evidence-action-queue-manifest.json` and a Markdown report. It turns the current remaining production evidence state into a single action queue with the three owner areas, nine missing files, eleven blocker reasons, preflight commands, acceptance-wrapper commands, and hard-validation commands. In CI it falls back to the pending remaining-work snapshot and keeps the local progress-mail action in tracked work; with `-RequirePostDispatch` it requires a real post-dispatch snapshot and clears only the local progress-mail action.
+
+```powershell
+.\tools\Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1
+```
+
+That probe writes `production-external-evidence-action-queue-probe-manifest.json` and a Markdown report. It proves pending-mail and post-dispatch queues stay distinct, missing post-dispatch snapshots are rejected when required, and the three external evidence areas remain unaccepted until real host-project evidence arrives.
+
+```powershell
 .\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1
 ```
 
