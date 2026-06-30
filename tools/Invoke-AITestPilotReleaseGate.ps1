@@ -208,6 +208,7 @@ $providerCiQualityProbeManifest = Read-Manifest "provider-ci-quality-probe-manif
 $productionHandoffPackageManifest = Read-Manifest "production-handoff-package-manifest.json"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-Manifest "production-handoff-external-evidence-preflight-probe-manifest.json"
 $productionHandoffExportManifest = Read-Manifest "production-handoff-export-manifest.json"
+$productionHandoffExportZipIndexManifest = Read-Manifest "production-handoff-export-zip-index-manifest.json"
 $productionHandoffStatusManifest = Read-Manifest "production-handoff-status-manifest.json"
 $productionHandoffDispatchPlanManifest = Read-Manifest "production-handoff-dispatch-manifest.json"
 $productionHandoffContactReadinessManifest = Read-Manifest "production-handoff-contact-readiness-manifest.json"
@@ -1860,6 +1861,38 @@ if ($null -ne $productionHandoffExportManifest) {
     Test-ListedFiles $productionHandoffExportManifest "production_handoff_export"
 }
 
+if ($null -ne $productionHandoffExportZipIndexManifest) {
+    Add-ReleaseCheck "production_handoff_export_zip_index" `
+        ($productionHandoffExportZipIndexManifest.status -eq "PASS" -and
+            $productionHandoffExportZipIndexManifest.schemaVersion -eq "aitestpilot.production_handoff_export_zip_index.v1" -and
+            -not [string]::IsNullOrWhiteSpace([string]$productionHandoffExportZipIndexManifest.zipSha256) -and
+            ([string]$productionHandoffExportZipIndexManifest.zipSha256).Length -eq 64 -and
+            [int64]$productionHandoffExportZipIndexManifest.zipLengthBytes -gt 0 -and
+            [int]$productionHandoffExportZipIndexManifest.zipEntryCount -eq [int]$productionHandoffExportZipIndexManifest.expectedZipEntryCount -and
+            [int]$productionHandoffExportZipIndexManifest.zipEntryCount -eq [int]$productionHandoffExportManifest.exportFileCount -and
+            [int]$productionHandoffExportZipIndexManifest.missingZipEntryCount -eq 0 -and
+            [int]$productionHandoffExportZipIndexManifest.unexpectedZipEntryCount -eq 0 -and
+            [int]$productionHandoffExportZipIndexManifest.hashMismatchCount -eq 0 -and
+            [int]$productionHandoffExportZipIndexManifest.missingSourceFileCount -eq 0 -and
+            [int]$productionHandoffExportZipIndexManifest.unsafeEntryNameCount -eq 0 -and
+            [int]$productionHandoffExportZipIndexManifest.duplicateEntryCount -eq 0 -and
+            [int]$productionHandoffExportZipIndexManifest.requiredZipEntryCount -ge 12 -and
+            [int]$productionHandoffExportZipIndexManifest.missingRequiredZipEntryCount -eq 0 -and
+            [bool]$productionHandoffExportZipIndexManifest.indexGenerated -and
+            [bool]$productionHandoffExportZipIndexManifest.reportGenerated -and
+            [bool]$productionHandoffExportZipIndexManifest.reportContentValidated -and
+            -not [bool]$productionHandoffExportZipIndexManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffExportZipIndexManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffExportZipIndexManifest.externalEvidenceAccepted -and
+            -not [bool]$productionHandoffExportZipIndexManifest.fixtureEvidencePromoted -and
+            $productionHandoffExportZipIndexManifest.productionOutputBoundary -eq "production_handoff_export_zip_index_only" -and
+            [int]$productionHandoffExportZipIndexManifest.checkCount -eq 11 -and
+            [int]$productionHandoffExportZipIndexManifest.failedCheckCount -eq 0) `
+        "Production handoff export zip index must prove the zip entry list and every entry content hash match the export manifest and source files."
+
+    Test-ListedFiles $productionHandoffExportZipIndexManifest "production_handoff_export_zip_index"
+}
+
 if ($null -ne $productionHandoffStatusManifest) {
     Add-ReleaseCheck "production_handoff_status" `
         ($productionHandoffStatusManifest.status -eq "PASS" -and
@@ -3067,6 +3100,14 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffExportLuaEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportLiveModelSmokeEvidenceExportHelperIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportLiveModelSmokeEvidenceExportHelperDocumented -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportZipIndexAccepted -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexEntryCount -eq [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexExpectedEntryCount -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexMissingEntryCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexUnexpectedEntryCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexHashMismatchCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexUnsafeEntryNameCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexDuplicateEntryCount -eq 0 -and
+            -not [string]::IsNullOrWhiteSpace([string]$releaseRiskPolicyManifest.productionHandoffExportZipIndexSha256) -and
             [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and
@@ -3216,6 +3257,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-package-manifest.json",
         "production-handoff-external-evidence-preflight-probe-manifest.json",
         "production-handoff-export-manifest.json",
+        "production-handoff-export-zip-index-manifest.json",
         "production-handoff-status-manifest.json",
         "production-handoff-dispatch-manifest.json",
         "production-handoff-contact-readiness-manifest.json",
@@ -3339,6 +3381,7 @@ $sourceManifests = @(
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-handoff-export-manifest.json",
+    "production-handoff-export-zip-index-manifest.json",
     "production-handoff-status-manifest.json",
     "production-handoff-dispatch-manifest.json",
     "production-handoff-contact-readiness-manifest.json",

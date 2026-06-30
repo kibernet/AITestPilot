@@ -191,6 +191,7 @@ $providerCiQualityProbeManifest = Read-PolicyJson "provider-ci-quality-probe-man
 $productionHandoffPackageManifest = Read-PolicyJson "production-handoff-package-manifest.json" "Production handoff package manifest"
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-PolicyJson "production-handoff-external-evidence-preflight-probe-manifest.json" "Production handoff external evidence preflight probe manifest"
 $productionHandoffExportManifest = Read-PolicyJson "production-handoff-export-manifest.json" "Production handoff export manifest"
+$productionHandoffExportZipIndexManifest = Read-PolicyJson "production-handoff-export-zip-index-manifest.json" "Production handoff export zip index manifest"
 $productionHandoffStatusManifest = Read-PolicyJson "production-handoff-status-manifest.json" "Production handoff status manifest"
 $productionHandoffDispatchPlanManifest = Read-PolicyJson "production-handoff-dispatch-manifest.json" "Production handoff dispatch plan manifest"
 $productionHandoffContactReadinessManifest = Read-PolicyJson "production-handoff-contact-readiness-manifest.json" "Production handoff contact readiness manifest"
@@ -878,6 +879,41 @@ $productionHandoffExportAccepted = (
 Add-PolicyCheck "production_handoff_export_policy" $productionHandoffExportAccepted `
     "Production handoff evidence must include a compact owner-facing export zip with handoff package, owner packets, kits, and contract reports without promoting fixture data." `
     "production_handoff_export_not_accepted"
+
+$productionHandoffExportZipIndexAccepted = (
+    $null -ne $productionHandoffExportZipIndexManifest -and
+    $productionHandoffExportZipIndexManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffExportZipIndexManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_export_zip_index.v1" -and
+    -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $productionHandoffExportZipIndexManifest "zipSha256" "")) -and
+    ([string](Get-JsonValue $productionHandoffExportZipIndexManifest "zipSha256" "")).Length -eq 64 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "zipLengthBytes" 0)) -gt 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "zipEntryCount" 0)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "expectedZipEntryCount" -1)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "zipEntryCount" 0)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "exportFileCount" -1)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "missingZipEntryCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "unexpectedZipEntryCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "hashMismatchCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "missingSourceFileCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "unsafeEntryNameCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "duplicateEntryCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "requiredZipEntryCount" 0)) -ge 12 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "missingRequiredZipEntryCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "indexGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "reportGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "reportContentValidated" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffExportZipIndexManifest "productionOutputBoundary" "") -eq "production_handoff_export_zip_index_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "checkCount" 0)) -eq 11 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_export_zip_index_policy" $productionHandoffExportZipIndexAccepted `
+    "Production handoff evidence must include a zip index proving export zip entries exactly match the export manifest and every zip entry hash matches its source file." `
+    "production_handoff_export_zip_index_not_accepted"
 
 $productionHandoffStatusAccepted = (
     $null -ne $productionHandoffStatusManifest -and
@@ -2167,6 +2203,7 @@ $sourceFiles = @(
     "production-handoff-package-manifest.json",
     "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-handoff-export-manifest.json",
+    "production-handoff-export-zip-index-manifest.json",
     "production-handoff-status-manifest.json",
     "production-handoff-dispatch-manifest.json",
     "production-handoff-contact-readiness-manifest.json",
@@ -2269,6 +2306,15 @@ $manifest = [ordered]@{
     productionHandoffExportLuaEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperDocumented" $false)
     productionHandoffExportLiveModelSmokeEvidenceExportHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "liveModelSmokeEvidenceExportHelperIncluded" $false)
     productionHandoffExportLiveModelSmokeEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)
+    productionHandoffExportZipIndexAccepted = [bool]$productionHandoffExportZipIndexAccepted
+    productionHandoffExportZipIndexEntryCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "zipEntryCount" 0))
+    productionHandoffExportZipIndexExpectedEntryCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "expectedZipEntryCount" 0))
+    productionHandoffExportZipIndexMissingEntryCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "missingZipEntryCount" 0))
+    productionHandoffExportZipIndexUnexpectedEntryCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "unexpectedZipEntryCount" 0))
+    productionHandoffExportZipIndexHashMismatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "hashMismatchCount" 0))
+    productionHandoffExportZipIndexUnsafeEntryNameCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "unsafeEntryNameCount" 0))
+    productionHandoffExportZipIndexDuplicateEntryCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "duplicateEntryCount" 0))
+    productionHandoffExportZipIndexSha256 = (Get-JsonValue $productionHandoffExportZipIndexManifest "zipSha256" "")
     productionHandoffStatusAccepted = [bool]$productionHandoffStatusAccepted
     productionHandoffDispatchPlanAccepted = [bool]$productionHandoffDispatchPlanAccepted
     productionHandoffPendingDispatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffDispatchPlanManifest "pendingDispatchCount" 0))
@@ -2452,6 +2498,10 @@ $reportLines = @(
     "- Production handoff export operator action queue content validated: $($manifest.productionHandoffExportOperatorActionQueueContentValidated)",
     "- Production handoff export operator action queue item bundle command coverage: $($manifest.productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount)",
     "- Production handoff export live smoke helper documented: $($manifest.productionHandoffExportLiveModelSmokeEvidenceExportHelperDocumented)",
+    "- Production handoff export zip index accepted: $($manifest.productionHandoffExportZipIndexAccepted)",
+    "- Production handoff export zip index entries: $($manifest.productionHandoffExportZipIndexEntryCount) / $($manifest.productionHandoffExportZipIndexExpectedEntryCount)",
+    "- Production handoff export zip index hash mismatches: $($manifest.productionHandoffExportZipIndexHashMismatchCount)",
+    "- Production handoff export zip index unsafe entries: $($manifest.productionHandoffExportZipIndexUnsafeEntryNameCount)",
     "- Production handoff status accepted: $($manifest.productionHandoffStatusAccepted)",
     "- Production handoff dispatch plan accepted: $($manifest.productionHandoffDispatchPlanAccepted)",
     "- Production handoff pending dispatches: $($manifest.productionHandoffPendingDispatchCount)",

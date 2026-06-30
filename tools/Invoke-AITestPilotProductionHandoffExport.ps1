@@ -318,11 +318,14 @@ $exportReadmeLines += @(
 $exportReadmePath = Join-Path $exportPath "README.md"
 $exportReadmeLines | Set-Content -Path $exportReadmePath -Encoding UTF8
 
+$manifestFileName = Split-Path $manifestFullPath -Leaf
+$zipFileName = Split-Path $zipFullPath -Leaf
+$manifestCopyRelativePath = "production-handoff-export\$manifestFileName"
 $exportFiles = @(
     Get-ChildItem -LiteralPath $exportPath -Recurse -File |
         ForEach-Object { "production-handoff-export\" + (Convert-ToRelativePath $exportPath $_.FullName) }
 )
-$exportFiles = @($exportFiles | Sort-Object)
+$exportFiles = @($exportFiles + $manifestCopyRelativePath | Sort-Object -Unique)
 
 $requiredExportSnippets = @(
     "AI TestPilot Production Handoff Export",
@@ -545,10 +548,7 @@ $checks = @(
 $failedChecks = @($checks | Where-Object { -not [bool]$_["passed"] })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
 
-$manifestFileName = Split-Path $manifestFullPath -Leaf
-$zipFileName = Split-Path $zipFullPath -Leaf
-$manifestCopyRelativePath = "production-handoff-export\$manifestFileName"
-$files = @($manifestFileName, $zipFileName, $manifestCopyRelativePath) + $exportFiles
+$files = @($manifestFileName, $zipFileName) + $exportFiles
 
 $manifest = [ordered]@{
     schemaVersion = "aitestpilot.production_handoff_export.v1"
