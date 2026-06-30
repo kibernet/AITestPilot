@@ -1730,16 +1730,26 @@ $productionExternalEvidenceAutoAcceptanceProbeAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractRealHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractEmailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractFixtureEvidencePromoted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleUnderRepo" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleRequiredFixtureFileCount" -1)) -eq 9 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleAccepted" $false)) -and
+    (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleStatus" "") -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleAcceptanceRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleAllExternalEvidenceAccepted" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleRealHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleFixtureEvidencePromoted" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSourceCount" 0)) -eq 3 -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "releasePipelineSendsEmail" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_auto_acceptance_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "checkCount" 0)) -eq 7 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_external_evidence_auto_acceptance_probe_policy" $productionExternalEvidenceAutoAcceptanceProbeAccepted `
-    "Production evidence handoff must prove auto-discovery stays pending when evidence is missing and delegates complete evidence to stable acceptance without sending mail or promoting fixtures." `
+    "Production evidence handoff must prove auto-discovery stays pending when evidence is missing, and complete evidence root or owner response bundle evidence delegates to stable acceptance without sending mail or promoting fixtures." `
     "production_external_evidence_auto_acceptance_probe_not_accepted"
 
 $productionExternalEvidenceAcceptanceContractAccepted = (
@@ -2069,6 +2079,8 @@ $manifest = [ordered]@{
     productionExternalEvidenceAutoAcceptancePendingMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultMissingFileCount" 0))
     productionExternalEvidenceAutoAcceptanceContractAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractAccepted" $false)
     productionExternalEvidenceAutoAcceptanceContractRealHostProjectEvidenceAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractRealHostProjectEvidenceAccepted" $true)
+    productionExternalEvidenceAutoAcceptanceOwnerResponseBundleAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleAccepted" $false)
+    productionExternalEvidenceAutoAcceptanceOwnerResponseBundleSourceCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSourceCount" 0))
     productionExternalEvidenceAcceptanceContractAccepted = [bool]$productionExternalEvidenceAcceptanceContractAccepted
     productionExternalEvidenceAcceptanceFailureAccepted = [bool]$productionExternalEvidenceAcceptanceFailureAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
@@ -2197,6 +2209,8 @@ $reportLines = @(
     "- Production external evidence auto acceptance pending status: $($manifest.productionExternalEvidenceAutoAcceptancePendingStatus)",
     "- Production external evidence auto acceptance pending missing files: $($manifest.productionExternalEvidenceAutoAcceptancePendingMissingFileCount)",
     "- Production external evidence auto acceptance contract accepted: $($manifest.productionExternalEvidenceAutoAcceptanceContractAccepted)",
+    "- Production external evidence auto acceptance owner response bundle accepted: $($manifest.productionExternalEvidenceAutoAcceptanceOwnerResponseBundleAccepted)",
+    "- Production external evidence auto acceptance owner response bundle source count: $($manifest.productionExternalEvidenceAutoAcceptanceOwnerResponseBundleSourceCount)",
     "- Production external evidence acceptance contract accepted: $($manifest.productionExternalEvidenceAcceptanceContractAccepted)",
     "- Production external evidence acceptance failure accepted: $($manifest.productionExternalEvidenceAcceptanceFailureAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",

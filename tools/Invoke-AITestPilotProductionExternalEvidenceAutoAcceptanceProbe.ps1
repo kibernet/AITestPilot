@@ -172,6 +172,7 @@ function Invoke-AutoAcceptance {
     param(
         [string]$Name,
         [string]$EvidenceRoot = "",
+        [string]$OwnerResponseBundleDir = "",
         [switch]$RequireAllEvidence,
         [switch]$ContractFixtureMode
     )
@@ -189,6 +190,9 @@ function Invoke-AutoAcceptance {
     }
     if (-not [string]::IsNullOrWhiteSpace($EvidenceRoot)) {
         $autoParams["EvidenceRoot"] = $EvidenceRoot
+    }
+    if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
+        $autoParams["OwnerResponseBundleDir"] = $OwnerResponseBundleDir
     }
     if ([bool]$RequireAllEvidence) {
         $autoParams["RequireAllEvidence"] = $true
@@ -237,6 +241,7 @@ function Add-ProbeCheck {
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $probePath = Assert-PathUnderRepo $ProbeDir "ProbeDir"
 $externalEvidencePath = Assert-PathUnderTemp $ExternalEvidenceRoot "ExternalEvidenceRoot"
+$ownerResponseBundlePath = Assert-PathUnderTemp (Join-Path (Split-Path -Parent $externalEvidencePath) "owner-response-bundle-auto-acceptance-probe") "OwnerResponseBundlePath"
 $manifestFullPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
 $reportFullPath = Assert-PathUnderRepo $ReportPath "ReportPath"
 
@@ -250,9 +255,13 @@ if (Test-Path $probePath) {
 if (Test-Path $externalEvidencePath) {
     Remove-Item -LiteralPath $externalEvidencePath -Recurse -Force
 }
+if (Test-Path $ownerResponseBundlePath) {
+    Remove-Item -LiteralPath $ownerResponseBundlePath -Recurse -Force
+}
 
 New-Item -ItemType Directory -Force $probePath | Out-Null
 New-Item -ItemType Directory -Force $externalEvidencePath | Out-Null
+New-Item -ItemType Directory -Force $ownerResponseBundlePath | Out-Null
 
 $driverFiles = @(
     "production-replay-integration-checklist.json",
@@ -281,18 +290,29 @@ $liveSourceDir = Resolve-FullPath ([string](Get-JsonValue $liveContract "externa
 Copy-RequiredFiles $driverSourceDir (Join-Path $externalEvidencePath "production-driver-evidence") $driverFiles "Production driver accepted fixture"
 Copy-RequiredFiles $luaSourceDir (Join-Path $externalEvidencePath "production-lua-evidence") $luaFiles "Production Lua accepted fixture"
 Copy-RequiredFiles $liveSourceDir (Join-Path $externalEvidencePath "live-smoke-evidence") $liveFiles "Live smoke accepted fixture"
+Copy-RequiredFiles (Join-Path $externalEvidencePath "production-driver-evidence") (Join-Path $ownerResponseBundlePath "production-driver-evidence") $driverFiles "Owner response production driver fixture"
+Copy-RequiredFiles (Join-Path $externalEvidencePath "production-lua-evidence") (Join-Path $ownerResponseBundlePath "production-lua-evidence") $luaFiles "Owner response production Lua fixture"
+Copy-RequiredFiles (Join-Path $externalEvidencePath "live-smoke-evidence") (Join-Path $ownerResponseBundlePath "live-smoke-evidence") $liveFiles "Owner response live smoke fixture"
 
 $pendingRun = Invoke-AutoAcceptance -Name "pending-default-auto-acceptance"
 $acceptedRun = Invoke-AutoAcceptance -Name "accepted-contract-auto-acceptance" -EvidenceRoot $externalEvidencePath -RequireAllEvidence -ContractFixtureMode
+$ownerResponseBundleRun = Invoke-AutoAcceptance -Name "owner-response-bundle-auto-acceptance" -OwnerResponseBundleDir $ownerResponseBundlePath -RequireAllEvidence -ContractFixtureMode
 
 $pendingManifest = $pendingRun.manifest
 $acceptedManifest = $acceptedRun.manifest
+$ownerResponseBundleManifest = $ownerResponseBundleRun.manifest
 $externalBundleUnderRepo = $externalEvidencePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
+$ownerResponseBundleUnderRepo = $ownerResponseBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
 $externalFileCount = @(
     Get-ChildItem -LiteralPath $externalEvidencePath -Recurse -File |
         Where-Object { $_.Name -notin @("README.md", "required-files.json") }
 ).Count
+$ownerResponseBundleFileCount = @(
+    Get-ChildItem -LiteralPath $ownerResponseBundlePath -Recurse -File |
+        Where-Object { $_.Name -notin @("README.md", "required-files.json") }
+).Count
 $externalRequiredFileCount = 0
+$ownerResponseBundleRequiredFileCount = 0
 foreach ($spec in @(
         [ordered]@{ path = (Join-Path $externalEvidencePath "production-driver-evidence"); files = $driverFiles },
         [ordered]@{ path = (Join-Path $externalEvidencePath "production-lua-evidence"); files = $luaFiles },
@@ -301,6 +321,17 @@ foreach ($spec in @(
     foreach ($fileName in @($spec.files)) {
         if (Test-Path (Join-Path ([string]$spec.path) ([string]$fileName))) {
             $externalRequiredFileCount += 1
+        }
+    }
+}
+foreach ($spec in @(
+        [ordered]@{ path = (Join-Path $ownerResponseBundlePath "production-driver-evidence"); files = $driverFiles },
+        [ordered]@{ path = (Join-Path $ownerResponseBundlePath "production-lua-evidence"); files = $luaFiles },
+        [ordered]@{ path = (Join-Path $ownerResponseBundlePath "live-smoke-evidence"); files = $liveFiles }
+    )) {
+    foreach ($fileName in @($spec.files)) {
+        if (Test-Path (Join-Path ([string]$spec.path) ([string]$fileName))) {
+            $ownerResponseBundleRequiredFileCount += 1
         }
     }
 }
@@ -326,14 +357,40 @@ $contractAccepted = $null -ne $acceptedManifest -and
     -not (Convert-ToBool (Get-JsonValue $acceptedManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $acceptedManifest "productionOutputBoundary" "") -eq "external_evidence_auto_acceptance_contract_fixture_only"
 
+$ownerResponseBundleAreaStatuses = @()
+if ($null -ne $ownerResponseBundleManifest) {
+    $ownerResponseBundleAreaStatuses = @(Get-JsonValue $ownerResponseBundleManifest "areaStatuses" @())
+}
+$ownerResponseBundleSourceCount = @(
+    $ownerResponseBundleAreaStatuses |
+        Where-Object { (Get-JsonValue $_ "source" "") -eq "owner_response_bundle" }
+).Count
+$ownerResponseBundleAccepted = $null -ne $ownerResponseBundleManifest -and
+    (Get-JsonValue $ownerResponseBundleManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_auto_acceptance.v1" -and
+    (Get-JsonValue $ownerResponseBundleManifest "status" "") -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "allEvidenceReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "acceptanceRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "acceptanceSucceeded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "allExternalEvidenceAccepted" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $ownerResponseBundleManifest "productionOutputBoundary" "") -eq "external_evidence_auto_acceptance_contract_fixture_only" -and
+    $ownerResponseBundleSourceCount -eq 3
+
 $pendingReportText = if (Test-Path $pendingRun.reportPath) { Get-Content -Raw -Path $pendingRun.reportPath -Encoding UTF8 } else { "" }
 $acceptedReportText = if (Test-Path $acceptedRun.reportPath) { Get-Content -Raw -Path $acceptedRun.reportPath -Encoding UTF8 } else { "" }
+$ownerResponseBundleReportText = if (Test-Path $ownerResponseBundleRun.reportPath) { Get-Content -Raw -Path $ownerResponseBundleRun.reportPath -Encoding UTF8 } else { "" }
 $reportsValidated = $pendingReportText.Contains("PENDING_EXTERNAL_EVIDENCE") -and
     $acceptedReportText.Contains("All external evidence accepted") -and
+    $ownerResponseBundleReportText.Contains("All external evidence accepted") -and
     -not $pendingReportText.Contains("System.Collections") -and
     -not $acceptedReportText.Contains("System.Collections") -and
+    -not $ownerResponseBundleReportText.Contains("System.Collections") -and
     -not $pendingReportText.Contains("@{") -and
-    -not $acceptedReportText.Contains("@{")
+    -not $acceptedReportText.Contains("@{") -and
+    -not $ownerResponseBundleReportText.Contains("@{")
 
 $checks = @()
 Add-ProbeCheck "auto_acceptance_script_available" `
@@ -345,6 +402,9 @@ Add-ProbeCheck "default_missing_evidence_stays_pending" `
 Add-ProbeCheck "complete_external_root_accepts_contract_fixture" `
     $contractAccepted `
     "A complete external evidence root must run the stable acceptance command and pass only as a contract fixture."
+Add-ProbeCheck "owner_response_bundle_accepts_contract_fixture" `
+    ($ownerResponseBundleAccepted -and -not [bool]$ownerResponseBundleUnderRepo -and $ownerResponseBundleRequiredFileCount -eq 9) `
+    "A complete owner response bundle must discover all three areas from the owner bundle and pass only as a contract fixture."
 Add-ProbeCheck "external_fixture_root_outside_repo" `
     (-not [bool]$externalBundleUnderRepo -and $externalRequiredFileCount -eq 9) `
     "Probe fixture root must stay outside the repository and contain the nine required evidence files."
@@ -354,7 +414,10 @@ Add-ProbeCheck "auto_acceptance_reports_validated" `
 Add-ProbeCheck "auto_acceptance_boundaries_preserved" `
     (-not (Convert-ToBool (Get-JsonValue $acceptedManifest "realHostProjectEvidenceAccepted" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $acceptedManifest "emailSent" $true)) -and
-        -not (Convert-ToBool (Get-JsonValue $acceptedManifest "fixtureEvidencePromoted" $true))) `
+        -not (Convert-ToBool (Get-JsonValue $acceptedManifest "fixtureEvidencePromoted" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "realHostProjectEvidenceAccepted" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "emailSent" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "fixtureEvidencePromoted" $true))) `
     "Auto acceptance probe must not send mail, accept real host-project evidence, or promote fixture data."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
@@ -373,14 +436,20 @@ $reportLines = @(
     "| Status | $(Format-MarkdownCell $status) |",
     "| Pending run accepted | $pendingAccepted |",
     "| Contract run accepted | $contractAccepted |",
+    "| Owner response bundle run accepted | $ownerResponseBundleAccepted |",
+    "| Owner response bundle source count | $ownerResponseBundleSourceCount |",
     "| External fixture files | $externalFileCount |",
     "| External required fixture files | $externalRequiredFileCount |",
     "| External fixture under repo | $externalBundleUnderRepo |",
+    "| Owner response bundle fixture files | $ownerResponseBundleFileCount |",
+    "| Owner response bundle required fixture files | $ownerResponseBundleRequiredFileCount |",
+    "| Owner response bundle under repo | $ownerResponseBundleUnderRepo |",
     "",
     "## Boundary",
     "",
     "- Pending discovery does not run acceptance.",
     "- Complete fixture discovery runs acceptance only in contract fixture mode.",
+    "- Complete owner response bundle discovery runs acceptance only in contract fixture mode.",
     "- No mail is sent and no real host-project evidence is accepted.",
     "",
     "## Checks",
@@ -418,9 +487,13 @@ $manifest = [ordered]@{
     evidenceBundleDir = $evidenceBundlePath
     probeDir = $probePath
     externalEvidenceRoot = $externalEvidencePath
+    ownerResponseBundleDir = $ownerResponseBundlePath
     externalBundleUnderRepo = [bool]$externalBundleUnderRepo
+    ownerResponseBundleUnderRepo = [bool]$ownerResponseBundleUnderRepo
     externalFixtureFileCount = [int]$externalFileCount
+    ownerResponseBundleFixtureFileCount = [int]$ownerResponseBundleFileCount
     externalRequiredFixtureFileCount = [int]$externalRequiredFileCount
+    ownerResponseBundleRequiredFixtureFileCount = [int]$ownerResponseBundleRequiredFileCount
     pendingDefaultAccepted = [bool]$pendingAccepted
     pendingDefaultStatus = [string](Get-JsonValue $pendingManifest "status" "")
     pendingDefaultAcceptanceRun = Convert-ToBool (Get-JsonValue $pendingManifest "acceptanceRun" $false)
@@ -432,6 +505,14 @@ $manifest = [ordered]@{
     acceptedContractRealHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $acceptedManifest "realHostProjectEvidenceAccepted" $true)
     acceptedContractEmailSent = Convert-ToBool (Get-JsonValue $acceptedManifest "emailSent" $true)
     acceptedContractFixtureEvidencePromoted = Convert-ToBool (Get-JsonValue $acceptedManifest "fixtureEvidencePromoted" $true)
+    ownerResponseBundleAccepted = [bool]$ownerResponseBundleAccepted
+    ownerResponseBundleStatus = [string](Get-JsonValue $ownerResponseBundleManifest "status" "")
+    ownerResponseBundleAcceptanceRun = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "acceptanceRun" $false)
+    ownerResponseBundleAllExternalEvidenceAccepted = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "allExternalEvidenceAccepted" $false)
+    ownerResponseBundleRealHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "realHostProjectEvidenceAccepted" $true)
+    ownerResponseBundleEmailSent = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "emailSent" $true)
+    ownerResponseBundleFixtureEvidencePromoted = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "fixtureEvidencePromoted" $true)
+    ownerResponseBundleSourceCount = [int]$ownerResponseBundleSourceCount
     releasePipelineSendsEmail = $false
     emailSent = $false
     realHostProjectEvidenceAccepted = $false

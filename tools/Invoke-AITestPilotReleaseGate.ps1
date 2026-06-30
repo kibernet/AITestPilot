@@ -2662,13 +2662,23 @@ if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractRealHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractEmailSent -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractFixtureEvidencePromoted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleUnderRepo -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleRequiredFixtureFileCount -eq 9 -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleAccepted -and
+            $productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleStatus -eq "PASS" -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleAcceptanceRun -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleAllExternalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleRealHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleEmailSent -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleFixtureEvidencePromoted -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleSourceCount -eq 3 -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.releasePipelineSendsEmail -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceAutoAcceptanceProbeManifest.productionOutputBoundary -eq "production_external_evidence_auto_acceptance_probe_only" -and
-            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.checkCount -eq 7 -and
             [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.failedCheckCount -eq 0) `
-        "Production external evidence auto acceptance probe must prove discovery stays pending when evidence is missing and complete external evidence delegates to stable acceptance without promoting fixtures."
+        "Production external evidence auto acceptance probe must prove discovery stays pending when evidence is missing, and complete evidence root or owner response bundle evidence delegates to stable acceptance without promoting fixtures."
 
     Test-ListedFiles $productionExternalEvidenceAutoAcceptanceProbeManifest "production_external_evidence_auto_acceptance_probe"
 }
