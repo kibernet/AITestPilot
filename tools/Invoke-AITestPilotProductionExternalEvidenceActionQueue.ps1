@@ -212,6 +212,8 @@ $responseKitZipPath = if (Test-Path $currentBundleResponseKitZipPath) {
 else {
     [string](Get-JsonValue $ownerResponseBundleKit "zipPath" "")
 }
+$ownerResponseBundleAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`" -RequireAllEvidence"
+$ownerResponseBundleZipAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`" -RequireAllEvidence"
 
 $queueItems = @()
 $totalMissing = 0
@@ -292,6 +294,13 @@ Add-QueueCheck "external_evidence_action_queue_commands" `
             [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "hardValidationCommand" ""))
         }).Count -eq 0) `
     "Every external evidence queue item must include preflight, acceptance-wrapper, and hard-validation commands."
+Add-QueueCheck "external_evidence_action_queue_auto_acceptance_commands" `
+    ($ownerResponseBundleAutoAcceptanceCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
+        $ownerResponseBundleAutoAcceptanceCommand.Contains("-OwnerResponseBundleDir") -and
+        $ownerResponseBundleZipAutoAcceptanceCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
+        $ownerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
+        $ownerResponseBundleZipAutoAcceptanceCommand.Contains("-RequireAllEvidence")) `
+    "Action queue must expose one-command auto-acceptance paths for filled owner response bundle directories and zip files."
 Add-QueueCheck "external_evidence_action_queue_current_bundle_paths" `
     ((-not [string]::IsNullOrWhiteSpace($responseKitZipPath)) -and
         $responseKitZipPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase) -and
@@ -349,6 +358,9 @@ $manifest = [ordered]@{
     externalRemainingMissingFileCount = [int]$totalMissing
     ownerResponseBundleKitZipPath = $responseKitZipPath
     inboxAcceptanceCommand = [string](Get-JsonValue $externalEvidenceInbox "acceptanceCommand" "")
+    ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
+    ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
+    ownerResponseBundleZipEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
     actionQueue = @($queueItems)
     releasePipelineSendsEmail = $false
     realHostProjectEvidenceAccepted = $false
@@ -386,6 +398,8 @@ $reportLines = @(
     "| External blockers | $totalBlockers |",
     "| External missing files | $totalMissing |",
     "| Response bundle kit zip | $(Format-MarkdownCell $responseKitZipPath) |",
+    "| Owner response bundle auto acceptance | $(Format-MarkdownCell $ownerResponseBundleAutoAcceptanceCommand) |",
+    "| Owner response bundle zip auto acceptance | $(Format-MarkdownCell $ownerResponseBundleZipAutoAcceptanceCommand) |",
     "",
     "## Queue",
     "",

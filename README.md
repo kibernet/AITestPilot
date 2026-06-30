@@ -363,13 +363,13 @@ That probe writes `production-handoff-owner-response-bundle-kit-workflow-probe-m
     -RequirePostDispatch
 ```
 
-That operator-side script writes `production-external-evidence-action-queue-manifest.json` and a Markdown report. It turns the current remaining production evidence state into a single action queue with the three owner areas, nine missing files, eleven blocker reasons, preflight commands, acceptance-wrapper commands, and hard-validation commands. In CI it falls back to the pending remaining-work snapshot and keeps the local progress-mail action in tracked work; with `-RequirePostDispatch` it requires a real post-dispatch snapshot and clears only the local progress-mail action.
+That operator-side script writes `production-external-evidence-action-queue-manifest.json` and a Markdown report. It turns the current remaining production evidence state into a single action queue with the three owner areas, nine missing files, eleven blocker reasons, preflight commands, acceptance-wrapper commands, hard-validation commands, and one-command owner response bundle directory/zip auto-acceptance commands. In CI it falls back to the pending remaining-work snapshot and keeps the local progress-mail action in tracked work; with `-RequirePostDispatch` it requires a real post-dispatch snapshot and clears only the local progress-mail action.
 
 ```powershell
 .\tools\Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1
 ```
 
-That probe writes `production-external-evidence-action-queue-probe-manifest.json` and a Markdown report. It proves pending-mail and post-dispatch queues stay distinct, missing post-dispatch snapshots are rejected when required, and the three external evidence areas remain unaccepted until real host-project evidence arrives.
+That probe writes `production-external-evidence-action-queue-probe-manifest.json` and a Markdown report. It proves pending-mail and post-dispatch queues stay distinct, missing post-dispatch snapshots are rejected when required, owner response bundle directory/zip auto-acceptance commands are exposed, and the three external evidence areas remain unaccepted until real host-project evidence arrives.
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1

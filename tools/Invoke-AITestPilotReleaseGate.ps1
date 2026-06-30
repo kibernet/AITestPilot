@@ -2580,14 +2580,19 @@ if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
             [int]$productionExternalEvidenceActionQueueProbeManifest.externalRemainingWorkItemCount -eq 3 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.externalRemainingMissingFileCount -eq 9 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.externalRemainingBlockingReasonCount -eq 11 -and
+            $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleAutoAcceptanceCommand.Contains("-OwnerResponseBundleDir") -and
+            $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
+            $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleAutoAcceptanceCommand.Contains("-OwnerResponseBundleDir") -and
+            $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
+            $productionExternalEvidenceActionQueueProbeManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             [bool]$productionExternalEvidenceActionQueueProbeManifest.missingPostDispatchRejected -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.releasePipelineSendsEmail -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.externalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceActionQueueProbeManifest.productionOutputBoundary -eq "production_external_evidence_action_queue_probe_only" -and
-            [int]$productionExternalEvidenceActionQueueProbeManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.checkCount -eq 7 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.failedCheckCount -eq 0) `
-        "Production external evidence action queue probe must keep pending-mail and post-dispatch queues distinct while preserving external evidence blockers."
+        "Production external evidence action queue probe must keep pending-mail and post-dispatch queues distinct while exposing owner response bundle directory/zip auto-acceptance commands and preserving external evidence blockers."
 
     Test-ListedFiles $productionExternalEvidenceActionQueueProbeManifest "production_external_evidence_action_queue_probe"
 }

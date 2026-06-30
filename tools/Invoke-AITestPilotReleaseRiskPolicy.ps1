@@ -1644,17 +1644,22 @@ $productionExternalEvidenceActionQueueProbeAccepted = (
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "externalRemainingMissingFileCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "externalRemainingBlockingReasonCount" 0)) -eq 11 -and
+    ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueOwnerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
+    ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueOwnerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
+    ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "releasePipelineSendsEmail" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_action_queue_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "checkCount" 0)) -eq 7 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_external_evidence_action_queue_probe_policy" $productionExternalEvidenceActionQueueProbeAccepted `
-    "Production handoff evidence must include an action queue that distinguishes pending-mail and post-dispatch states while preserving the three external evidence blockers." `
+    "Production handoff evidence must include an action queue that distinguishes pending-mail and post-dispatch states while exposing owner response bundle directory/zip auto-acceptance commands and preserving the three external evidence blockers." `
     "production_external_evidence_action_queue_probe_not_accepted"
 
 $productionExternalEvidenceInboxAccepted = (
@@ -2084,6 +2089,7 @@ $manifest = [ordered]@{
     productionExternalEvidenceActionQueueProbeAccepted = [bool]$productionExternalEvidenceActionQueueProbeAccepted
     productionExternalEvidenceActionQueuePendingTrackedItems = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueTrackedRemainingWorkItemCount" 0))
     productionExternalEvidenceActionQueuePostDispatchTrackedItems = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueTrackedRemainingWorkItemCount" 0))
+    productionExternalEvidenceActionQueueOwnerResponseBundleZipAutoAcceptanceCommand = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand" "")
     productionExternalEvidenceActionQueueMissingPostDispatchRejected = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
@@ -2220,6 +2226,7 @@ $reportLines = @(
     "- Production external evidence action queue probe accepted: $($manifest.productionExternalEvidenceActionQueueProbeAccepted)",
     "- Production external evidence action queue pending tracked items: $($manifest.productionExternalEvidenceActionQueuePendingTrackedItems)",
     "- Production external evidence action queue post-dispatch tracked items: $($manifest.productionExternalEvidenceActionQueuePostDispatchTrackedItems)",
+    "- Production external evidence action queue owner response bundle zip command: $($manifest.productionExternalEvidenceActionQueueOwnerResponseBundleZipAutoAcceptanceCommand)",
     "- Production external evidence action queue missing post-dispatch rejected: $($manifest.productionExternalEvidenceActionQueueMissingPostDispatchRejected)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
