@@ -2839,6 +2839,7 @@ if ($null -ne $productionExternalEvidenceGapAnalysisManifest) {
             [int]$productionExternalEvidenceGapAnalysisManifest.repoSideClosableGapCount -eq 0 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.externalEvidenceRequiredGapCount -eq 3 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.itemExportHelperCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.itemSemanticPreflightCommandCount -eq 3 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.itemAutoAcceptanceCommandCount -eq 3 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.itemHardValidationCommandCount -eq 3 -and
             [bool]$productionExternalEvidenceGapAnalysisManifest.reportGenerated -and

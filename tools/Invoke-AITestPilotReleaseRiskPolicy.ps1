@@ -1955,6 +1955,7 @@ $productionExternalEvidenceGapAnalysisAccepted = (
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "repoSideClosableGapCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalEvidenceRequiredGapCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemExportHelperCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemSemanticPreflightCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemAutoAcceptanceCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemHardValidationCommandCount" 0)) -eq 3 -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "reportGenerated" $false)) -and
@@ -2575,6 +2576,7 @@ $manifest = [ordered]@{
     productionExternalEvidenceGapAnalysisExternalEvidenceRequiredGapCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalEvidenceRequiredGapCount" 0))
     productionExternalEvidenceGapAnalysisMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingMissingFileCount" 0))
     productionExternalEvidenceGapAnalysisBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingBlockingReasonCount" 0))
+    productionExternalEvidenceGapAnalysisSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemSemanticPreflightCommandCount" 0))
     productionExternalEvidencePartialMatrixProbeAccepted = [bool]$productionExternalEvidencePartialMatrixProbeAccepted
     productionExternalEvidencePartialMatrixCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "caseCount" 0))
     productionExternalEvidencePartialMatrixRejectedCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "rejectedCaseCount" 0))
@@ -2777,6 +2779,7 @@ $reportLines = @(
     "- Production external evidence gap analysis repo-side closable gaps: $($manifest.productionExternalEvidenceGapAnalysisRepoSideClosableGapCount)",
     "- Production external evidence gap analysis missing files: $($manifest.productionExternalEvidenceGapAnalysisMissingFileCount)",
     "- Production external evidence gap analysis blockers: $($manifest.productionExternalEvidenceGapAnalysisBlockingReasonCount)",
+    "- Production external evidence gap analysis semantic preflight command coverage: $($manifest.productionExternalEvidenceGapAnalysisSemanticPreflightCommandCount)",
     "- Production external evidence partial matrix accepted: $($manifest.productionExternalEvidencePartialMatrixProbeAccepted)",
     "- Production external evidence partial matrix rejected cases: $($manifest.productionExternalEvidencePartialMatrixRejectedCaseCount) / $($manifest.productionExternalEvidencePartialMatrixCaseCount)",
     "- Production external evidence partial matrix single-area rejected: $($manifest.productionExternalEvidencePartialMatrixSingleAreaRejected)",
