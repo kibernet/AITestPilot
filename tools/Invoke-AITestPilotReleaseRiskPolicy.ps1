@@ -489,6 +489,28 @@ Add-PolicyCheck "production_lua_evidence_kit_policy" $productionLuaEvidenceKitAc
     "Production Lua patch evidence must include a host-project evidence kit and isolated accepted-fixture readiness contract without promoting fixture evidence as production." `
     "production_lua_evidence_kit_not_accepted"
 
+$productionLuaEvidenceKitExportHelperAccepted = (
+    $null -ne $productionLuaPatchEvidenceKitProbeManifest -and
+    $productionLuaPatchEvidenceKitProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "schemaVersion" "") -eq "aitestpilot.production_lua_patch_evidence_kit_probe.v1" -and
+    (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "generatedFileCount" 0)) -ge 8 -and
+    (Test-ContainsAll -Actual (Convert-ToArray (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "generatedFiles" @())) -Required @("production-lua-patch-evidence-kit/Export-ProductionLuaPatchEvidenceBundle.ps1")) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportHelperGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportHelperRequiresProductionLuaPatchedReadiness" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportHelperRequiresRealHostProjectEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportHelperRejectedTemplateEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportHelperRejectedFixtureEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportRejectionReadinessRejectedCurrentTemplate" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportRejectionBlockingReasonCount" 0)) -ge 4 -and
+    (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportRejectionProductionEvidenceBlockingReasonCount" 0)) -ge 5 -and
+    ([string](Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "evidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_lua_evidence_kit_export_helper_policy" $productionLuaEvidenceKitExportHelperAccepted `
+    "Production Lua patch evidence kit must include an export helper that requires accepted real host-project readiness and rejects template or fixture evidence." `
+    "production_lua_evidence_kit_export_helper_not_accepted"
+
 $productionLuaExternalBundleIntakeAccepted = (
     $null -ne $productionLuaPatchExternalBundleIntakeProbeManifest -and
     $productionLuaPatchExternalBundleIntakeProbeManifest.status -eq "PASS" -and
@@ -739,6 +761,8 @@ $productionHandoffPackageAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "acceptanceWrapperScriptContentValidated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "productionDriverEvidenceExportHelperDocumented" $false)) -and
     ([string](Get-JsonValue $productionHandoffPackageManifest "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "productionLuaEvidenceExportHelperDocumented" $false)) -and
+    ([string](Get-JsonValue $productionHandoffPackageManifest "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "sourceManifestCount" 0)) -ge 12 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 13 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "checkCount" 0)) -eq 10 -and
@@ -804,6 +828,9 @@ $productionHandoffExportAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperIncluded" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperDocumented" $false)) -and
     ([string](Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperPath" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperDocumented" $false)) -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperPath" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionFileCount" 0)) -ge 6 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemAutoAcceptanceCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueTrackedRemainingWorkItemCount" 0)) -eq 3 -and
@@ -818,7 +845,7 @@ $productionHandoffExportAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffExportManifest "productionOutputBoundary" "") -eq "host_project_external_handoff_export_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 10 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -1321,6 +1348,8 @@ $productionHandoffOwnerResponseBundleKitAccepted = (
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionDriverEvidenceExportHelperDocumented" $false)) -and
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionLuaEvidenceExportHelperDocumented" $false)) -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerContactCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "requiredEvidenceFileCount" -1)) -eq
@@ -1370,6 +1399,7 @@ $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-RequireAllEvidence") -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionDriverEvidenceExportHelperDocumented" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionLuaEvidenceExportHelperDocumented" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importedEvidenceFileCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "writtenEvidenceFileCount" -1)) -eq
@@ -1750,6 +1780,9 @@ $productionExternalEvidenceActionQueueProbeAccepted = (
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueDriverExportHelperItemCount" 0)) -eq 1 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueDriverExportHelperItemCount" 0)) -eq 1 -and
     ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueProductionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueLuaExportHelperItemCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLuaExportHelperItemCount" 0)) -eq 1 -and
+    ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueProductionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
     (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "releasePipelineSendsEmail" $true)) -and
@@ -2098,6 +2131,7 @@ $manifest = [ordered]@{
     productionDriverBlockingReasons = @($driverBlockingReasons)
     productionLuaEvidenceAccepted = [bool]$productionLuaEvidenceAccepted
     productionLuaEvidenceKitAccepted = [bool]$productionLuaEvidenceKitAccepted
+    productionLuaEvidenceKitExportHelperAccepted = [bool]$productionLuaEvidenceKitExportHelperAccepted
     productionLuaExternalBundleIntakeAccepted = [bool]$productionLuaExternalBundleIntakeAccepted
     productionLuaEvidenceStatus = $productionLuaEvidenceStatus
     productionLuaReady = [bool]$productionLuaReadyForProduction
@@ -2131,6 +2165,8 @@ $manifest = [ordered]@{
     productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemAutoAcceptanceCommandCount" 0))
     productionHandoffExportDriverEvidenceExportHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperIncluded" $false)
     productionHandoffExportDriverEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperDocumented" $false)
+    productionHandoffExportLuaEvidenceExportHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperIncluded" $false)
+    productionHandoffExportLuaEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperDocumented" $false)
     productionHandoffStatusAccepted = [bool]$productionHandoffStatusAccepted
     productionHandoffDispatchPlanAccepted = [bool]$productionHandoffDispatchPlanAccepted
     productionHandoffPendingDispatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffDispatchPlanManifest "pendingDispatchCount" 0))
@@ -2162,6 +2198,8 @@ $manifest = [ordered]@{
     productionHandoffOwnerResponseBundleKitZipEnvironmentVariable = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipEnvironmentVariable" "")
     productionHandoffOwnerResponseBundleKitDriverEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionDriverEvidenceExportHelperDocumented" $false)
     productionHandoffOwnerResponseBundleKitDriverEvidenceExportHelperCommand = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionDriverEvidenceExportHelperCommand" "")
+    productionHandoffOwnerResponseBundleKitLuaEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionLuaEvidenceExportHelperDocumented" $false)
+    productionHandoffOwnerResponseBundleKitLuaEvidenceExportHelperCommand = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionLuaEvidenceExportHelperCommand" "")
     productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted
     productionHandoffOwnerResponseBundleKitWorkflowEmptyTemplateRejected = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emptyTemplateRejected" $false)
     productionHandoffOwnerResponseBundleKitWorkflowCompleteTemplateAccepted = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateAccepted" $false)
@@ -2170,6 +2208,7 @@ $manifest = [ordered]@{
     productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceCommandsDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceCommandsDocumented" $false)
     productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceZipCommandDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceZipCommandDocumented" $false)
     productionHandoffOwnerResponseBundleKitWorkflowDriverEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionDriverEvidenceExportHelperDocumented" $false)
+    productionHandoffOwnerResponseBundleKitWorkflowLuaEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionLuaEvidenceExportHelperDocumented" $false)
     releaseProgressNotificationOutboxAccepted = [bool]$releaseProgressNotificationOutboxAccepted
     releaseProgressNotificationDispatchStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "")
     releaseProgressNotificationRecipient = (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "")
@@ -2226,6 +2265,8 @@ $manifest = [ordered]@{
     productionExternalEvidenceActionQueuePostDispatchItemAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueItemAutoAcceptanceCommandCount" 0))
     productionExternalEvidenceActionQueuePostDispatchDriverExportHelperItemCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueDriverExportHelperItemCount" 0))
     productionExternalEvidenceActionQueuePostDispatchDriverExportHelperCommand = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueProductionDriverEvidenceExportHelperCommand" "")
+    productionExternalEvidenceActionQueuePostDispatchLuaExportHelperItemCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLuaExportHelperItemCount" 0))
+    productionExternalEvidenceActionQueuePostDispatchLuaExportHelperCommand = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueProductionLuaEvidenceExportHelperCommand" "")
     productionExternalEvidenceActionQueueMissingPostDispatchRejected = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
@@ -2374,6 +2415,7 @@ $reportLines = @(
     "- Production external evidence action queue owner response bundle zip command: $($manifest.productionExternalEvidenceActionQueueOwnerResponseBundleZipAutoAcceptanceCommand)",
     "- Production external evidence action queue item bundle command coverage: $($manifest.productionExternalEvidenceActionQueuePostDispatchItemAutoAcceptanceCommandCount)",
     "- Production external evidence action queue driver export helper command: $($manifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperCommand)",
+    "- Production external evidence action queue Lua export helper command: $($manifest.productionExternalEvidenceActionQueuePostDispatchLuaExportHelperCommand)",
     "- Production external evidence action queue missing post-dispatch rejected: $($manifest.productionExternalEvidenceActionQueueMissingPostDispatchRejected)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",

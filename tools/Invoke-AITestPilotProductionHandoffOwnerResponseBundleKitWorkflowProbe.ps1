@@ -290,6 +290,7 @@ $ownerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $kitManifest 
 $ownerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
 $ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $kitManifest "ownerResponseBundleZipEnvironmentVariable" "")
 $productionDriverEvidenceExportHelperCommand = [string](Get-JsonValue $kitManifest "productionDriverEvidenceExportHelperCommand" "")
+$productionLuaEvidenceExportHelperCommand = [string](Get-JsonValue $kitManifest "productionLuaEvidenceExportHelperCommand" "")
 $kitReadmeText = if (Test-Path $kitReadmePath) { Get-Content -Path $kitReadmePath -Encoding UTF8 -Raw } else { "" }
 $requestDraftText = if (Test-Path $requestDraftPath) { Get-Content -Path $requestDraftPath -Encoding UTF8 -Raw } else { "" }
 $kitDocsText = [string]::Join([Environment]::NewLine, @($kitReadmeText, $requestDraftText))
@@ -309,7 +310,10 @@ $autoAcceptanceCommandsDocumented = (
     $autoAcceptanceZipCommandDocumented -and
     -not [string]::IsNullOrWhiteSpace($productionDriverEvidenceExportHelperCommand) -and
     $kitDocsText.Contains($productionDriverEvidenceExportHelperCommand) -and
-    $kitDocsText.Contains("Export-ProductionDriverEvidenceBundle.ps1")
+    $kitDocsText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+    -not [string]::IsNullOrWhiteSpace($productionLuaEvidenceExportHelperCommand) -and
+    $kitDocsText.Contains($productionLuaEvidenceExportHelperCommand) -and
+    $kitDocsText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1")
 )
 
 $incompleteBundlePath = Join-Path $workPath "incomplete-owner-response-bundle"
@@ -459,6 +463,7 @@ $reportLines = @(
     "| Imported evidence files | $(@($importedEvidenceFiles).Count) |",
     "| Auto acceptance commands documented | $autoAcceptanceCommandsDocumented |",
     "| Auto acceptance zip command documented | $autoAcceptanceZipCommandDocumented |",
+    "| Production Lua evidence export helper | $productionLuaEvidenceExportHelperCommand |",
     "| Import error | $(Format-MarkdownCell $importErrorMessage) |",
     "",
     "## Boundary",
@@ -572,6 +577,8 @@ $manifest = [ordered]@{
     ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
     productionDriverEvidenceExportHelperCommand = $productionDriverEvidenceExportHelperCommand
     productionDriverEvidenceExportHelperDocumented = [bool](-not [string]::IsNullOrWhiteSpace($productionDriverEvidenceExportHelperCommand) -and $kitDocsText.Contains($productionDriverEvidenceExportHelperCommand) -and $kitDocsText.Contains("Export-ProductionDriverEvidenceBundle.ps1"))
+    productionLuaEvidenceExportHelperCommand = $productionLuaEvidenceExportHelperCommand
+    productionLuaEvidenceExportHelperDocumented = [bool](-not [string]::IsNullOrWhiteSpace($productionLuaEvidenceExportHelperCommand) -and $kitDocsText.Contains($productionLuaEvidenceExportHelperCommand) -and $kitDocsText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1"))
     importedRosterPath = $importedRosterPath
     importedInboxPath = $importedInboxPath
     releasePipelineSendsEmail = $false

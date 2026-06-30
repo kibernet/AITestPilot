@@ -218,6 +218,9 @@ $ownerResponseBundleZipEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_
 $productionDriverEvidenceExportHelperPath = "production-driver-binding-kit/Export-ProductionDriverEvidenceBundle.ps1"
 $productionDriverEvidenceExportHelperCommand = ".\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 -EvidenceBundleDir `"path\to\release-evidence`""
 $productionDriverEvidenceExportZipPath = "production-driver-evidence-export/production-driver-evidence.zip"
+$productionLuaEvidenceExportHelperPath = "production-lua-patch-evidence-kit/Export-ProductionLuaPatchEvidenceBundle.ps1"
+$productionLuaEvidenceExportHelperCommand = ".\production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1 -EvidenceBundleDir `"path\to\release-evidence`" -ProductionLuaEvidenceDir `"path\to\production-lua-evidence`""
+$productionLuaEvidenceExportZipPath = "production-lua-evidence-export/production-lua-evidence.zip"
 
 $queueItems = @()
 $totalMissing = 0
@@ -248,6 +251,9 @@ foreach ($item in $externalItems) {
     $driverExportHelperPath = if ($area -eq "production_driver_binding") { $productionDriverEvidenceExportHelperPath } else { "" }
     $driverExportHelperCommand = if ($area -eq "production_driver_binding") { $productionDriverEvidenceExportHelperCommand } else { "" }
     $driverExportZipPath = if ($area -eq "production_driver_binding") { $productionDriverEvidenceExportZipPath } else { "" }
+    $luaExportHelperPath = if ($area -eq "production_lua_patch_evidence") { $productionLuaEvidenceExportHelperPath } else { "" }
+    $luaExportHelperCommand = if ($area -eq "production_lua_patch_evidence") { $productionLuaEvidenceExportHelperCommand } else { "" }
+    $luaExportZipPath = if ($area -eq "production_lua_patch_evidence") { $productionLuaEvidenceExportZipPath } else { "" }
 
     $queueItems += [ordered]@{
         owner = [string](Get-JsonValue $item "owner" "")
@@ -277,6 +283,9 @@ foreach ($item in $externalItems) {
         productionDriverEvidenceExportHelperPath = $driverExportHelperPath
         productionDriverEvidenceExportHelperCommand = $driverExportHelperCommand
         productionDriverEvidenceExportZipPath = $driverExportZipPath
+        productionLuaEvidenceExportHelperPath = $luaExportHelperPath
+        productionLuaEvidenceExportHelperCommand = $luaExportHelperCommand
+        productionLuaEvidenceExportZipPath = $luaExportZipPath
     }
 }
 
@@ -289,6 +298,12 @@ $productionDriverEvidenceExportHelperItemCount = @($queueItems | Where-Object {
         ([string](Get-JsonValue $_ "productionDriverEvidenceExportHelperPath" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
         ([string](Get-JsonValue $_ "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
         ([string](Get-JsonValue $_ "productionDriverEvidenceExportZipPath" "")).Contains("production-driver-evidence.zip")
+    }).Count
+$productionLuaEvidenceExportHelperItemCount = @($queueItems | Where-Object {
+        [string](Get-JsonValue $_ "area" "") -eq "production_lua_patch_evidence" -and
+        ([string](Get-JsonValue $_ "productionLuaEvidenceExportHelperPath" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "productionLuaEvidenceExportZipPath" "")).Contains("production-lua-evidence.zip")
     }).Count
 
 $checks = @()
@@ -331,8 +346,8 @@ Add-QueueCheck "external_evidence_action_queue_item_bundle_commands" `
             -not ([string](Get-JsonValue $_ "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -or
             -not ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -or
             ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -ne $ownerResponseBundleZipEnvironmentVariable
-        }).Count -eq 0) -and $productionDriverEvidenceExportHelperItemCount -eq 1) `
-    "Every external evidence queue item must carry owner response bundle area paths and directory/zip auto-acceptance commands, and the production driver item must expose the evidence export helper."
+        }).Count -eq 0) -and $productionDriverEvidenceExportHelperItemCount -eq 1 -and $productionLuaEvidenceExportHelperItemCount -eq 1) `
+    "Every external evidence queue item must carry owner response bundle area paths and directory/zip auto-acceptance commands, and driver/Lua items must expose evidence export helpers."
 Add-QueueCheck "external_evidence_action_queue_current_bundle_paths" `
     ((-not [string]::IsNullOrWhiteSpace($responseKitZipPath)) -and
         $responseKitZipPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase) -and
@@ -397,6 +412,10 @@ $manifest = [ordered]@{
     productionDriverEvidenceExportHelperCommand = $productionDriverEvidenceExportHelperCommand
     productionDriverEvidenceExportZipPath = $productionDriverEvidenceExportZipPath
     productionDriverEvidenceExportHelperItemCount = [int]$productionDriverEvidenceExportHelperItemCount
+    productionLuaEvidenceExportHelperPath = $productionLuaEvidenceExportHelperPath
+    productionLuaEvidenceExportHelperCommand = $productionLuaEvidenceExportHelperCommand
+    productionLuaEvidenceExportZipPath = $productionLuaEvidenceExportZipPath
+    productionLuaEvidenceExportHelperItemCount = [int]$productionLuaEvidenceExportHelperItemCount
     actionQueue = @($queueItems)
     releasePipelineSendsEmail = $false
     realHostProjectEvidenceAccepted = $false
@@ -437,11 +456,12 @@ $reportLines = @(
     "| Owner response bundle auto acceptance | $(Format-MarkdownCell $ownerResponseBundleAutoAcceptanceCommand) |",
     "| Owner response bundle zip auto acceptance | $(Format-MarkdownCell $ownerResponseBundleZipAutoAcceptanceCommand) |",
     "| Production driver evidence export helper | $(Format-MarkdownCell $productionDriverEvidenceExportHelperCommand) |",
+    "| Production Lua evidence export helper | $(Format-MarkdownCell $productionLuaEvidenceExportHelperCommand) |",
     "",
     "## Queue",
     "",
-    "| Area | Owner | Missing Files | Blockers | Preflight | Inbox Acceptance | Bundle Area | Bundle Acceptance | Driver Export | Hard Validation |",
-    "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- | --- |"
+    "| Area | Owner | Missing Files | Blockers | Preflight | Inbox Acceptance | Bundle Area | Bundle Acceptance | Driver Export | Lua Export | Hard Validation |",
+    "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- |"
 )
 foreach ($item in $queueItems) {
     $area = Get-JsonValue $item "area" ""
@@ -453,8 +473,9 @@ foreach ($item in $queueItems) {
     $bundleAreaPath = Get-JsonValue $item "ownerResponseBundleAreaPath" ""
     $bundleAcceptanceCommand = Get-JsonValue $item "ownerResponseBundleZipAutoAcceptanceCommand" ""
     $driverExportCommand = Get-JsonValue $item "productionDriverEvidenceExportHelperCommand" ""
+    $luaExportCommand = Get-JsonValue $item "productionLuaEvidenceExportHelperCommand" ""
     $hardValidationCommand = Get-JsonValue $item "hardValidationCommand" ""
-    $reportLines += "| $(Format-MarkdownCell $area) | $(Format-MarkdownCell $owner) | $missingFileCount | $blockingReasonCount | $(Format-MarkdownCell $preflightCommand) | $(Format-MarkdownCell $acceptanceWrapperCommand) | $(Format-MarkdownCell $bundleAreaPath) | $(Format-MarkdownCell $bundleAcceptanceCommand) | $(Format-MarkdownCell $driverExportCommand) | $(Format-MarkdownCell $hardValidationCommand) |"
+    $reportLines += "| $(Format-MarkdownCell $area) | $(Format-MarkdownCell $owner) | $missingFileCount | $blockingReasonCount | $(Format-MarkdownCell $preflightCommand) | $(Format-MarkdownCell $acceptanceWrapperCommand) | $(Format-MarkdownCell $bundleAreaPath) | $(Format-MarkdownCell $bundleAcceptanceCommand) | $(Format-MarkdownCell $driverExportCommand) | $(Format-MarkdownCell $luaExportCommand) | $(Format-MarkdownCell $hardValidationCommand) |"
 }
 $reportLines += @(
     "",

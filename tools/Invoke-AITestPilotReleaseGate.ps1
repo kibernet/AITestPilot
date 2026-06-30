@@ -1458,11 +1458,20 @@ if ($null -ne $productionLuaPatchEvidenceKitProbeManifest) {
             -not [bool]$productionLuaPatchEvidenceKitProbeManifest.releasePipelineUsesFixture -and
             -not [bool]$productionLuaPatchEvidenceKitProbeManifest.realProductionLuaPatchEvidenceAccepted -and
             [bool]$productionLuaPatchEvidenceKitProbeManifest.productionLuaEvidenceDirRequiredForProduction -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.exportHelperGenerated -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.exportHelperRequiresProductionLuaPatchedReadiness -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.exportHelperRequiresRealHostProjectEvidence -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.exportHelperRejectedTemplateEvidence -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.exportHelperRejectedFixtureEvidence -and
+            [bool]$productionLuaPatchEvidenceKitProbeManifest.exportRejectionReadinessRejectedCurrentTemplate -and
+            [int]$productionLuaPatchEvidenceKitProbeManifest.exportRejectionBlockingReasonCount -ge 4 -and
+            [int]$productionLuaPatchEvidenceKitProbeManifest.exportRejectionProductionEvidenceBlockingReasonCount -ge 5 -and
+            ([string]$productionLuaPatchEvidenceKitProbeManifest.evidenceExportHelperCommand).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
             [bool]$productionLuaPatchEvidenceKitProbeManifest.acceptedReadinessReady -and
             [bool]$productionLuaPatchEvidenceKitProbeManifest.acceptedReadinessEvidenceAccepted -and
             [int]$productionLuaPatchEvidenceKitProbeManifest.acceptedReadinessBlockingReasonCount -eq 0 -and
-            [int]$productionLuaPatchEvidenceKitProbeManifest.generatedFileCount -ge 6 -and
-            [int]$productionLuaPatchEvidenceKitProbeManifest.checkCount -eq 4 -and
+            [int]$productionLuaPatchEvidenceKitProbeManifest.generatedFileCount -ge 8 -and
+            [int]$productionLuaPatchEvidenceKitProbeManifest.checkCount -eq 5 -and
             [int]$productionLuaPatchEvidenceKitProbeManifest.failedCheckCount -eq 0) `
         "Production Lua patch evidence kit probe must generate the host evidence template and prove an isolated accepted fixture satisfies readiness without using fixture evidence in the release pipeline."
 
@@ -1750,6 +1759,8 @@ if ($null -ne $productionHandoffPackageManifest) {
             [bool]$productionHandoffPackageManifest.acceptanceWrapperScriptContentValidated -and
             [bool]$productionHandoffPackageManifest.productionDriverEvidenceExportHelperDocumented -and
             ([string]$productionHandoffPackageManifest.productionDriverEvidenceExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+            [bool]$productionHandoffPackageManifest.productionLuaEvidenceExportHelperDocumented -and
+            ([string]$productionHandoffPackageManifest.productionLuaEvidenceExportHelperCommand).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
             [int]$productionHandoffPackageManifest.sourceManifestCount -ge 12 -and
             [int]$productionHandoffPackageManifest.generatedFileCount -ge 13 -and
             [int]$productionHandoffPackageManifest.checkCount -eq 10 -and
@@ -1811,6 +1822,9 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.productionDriverEvidenceExportHelperIncluded -and
             [bool]$productionHandoffExportManifest.productionDriverEvidenceExportHelperDocumented -and
             ([string]$productionHandoffExportManifest.productionDriverEvidenceExportHelperPath).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+            [bool]$productionHandoffExportManifest.productionLuaEvidenceExportHelperIncluded -and
+            [bool]$productionHandoffExportManifest.productionLuaEvidenceExportHelperDocumented -and
+            ([string]$productionHandoffExportManifest.productionLuaEvidenceExportHelperPath).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
             [int]$productionHandoffExportManifest.operatorActionFileCount -ge 6 -and
             [int]$productionHandoffExportManifest.operatorActionQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueTrackedRemainingWorkItemCount -eq 3 -and
@@ -1825,7 +1839,7 @@ if ($null -ne $productionHandoffExportManifest) {
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 9 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 10 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 
@@ -2265,6 +2279,8 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             $productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.productionDriverEvidenceExportHelperDocumented -and
             ([string]$productionHandoffOwnerResponseBundleKitManifest.productionDriverEvidenceExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.productionLuaEvidenceExportHelperDocumented -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.productionLuaEvidenceExportHelperCommand).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.ownerContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.requiredEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.templateDirectoryCount -eq 3 -and
@@ -2318,6 +2334,7 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.fixtureEvidencePromoted -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionDriverEvidenceExportHelperDocumented -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionLuaEvidenceExportHelperDocumented -and
             $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionOutputBoundary -eq "owner_response_bundle_kit_workflow_probe_only" -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 7 -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.failedCheckCount -eq 0) `
@@ -2665,6 +2682,9 @@ if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
             [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueDriverExportHelperItemCount -eq 1 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueDriverExportHelperItemCount -eq 1 -and
             ([string]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueProductionDriverEvidenceExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueLuaExportHelperItemCount -eq 1 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueLuaExportHelperItemCount -eq 1 -and
+            ([string]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueProductionLuaEvidenceExportHelperCommand).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
             $productionExternalEvidenceActionQueueProbeManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             [bool]$productionExternalEvidenceActionQueueProbeManifest.missingPostDispatchRejected -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.releasePipelineSendsEmail -and
@@ -2936,6 +2956,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             $releaseRiskPolicyManifest.driverEvidenceStatus -eq $expectedDriverEvidenceStatus -and
             [bool]$releaseRiskPolicyManifest.productionLuaEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.productionLuaEvidenceKitAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionLuaEvidenceKitExportHelperAccepted -and
             [bool]$releaseRiskPolicyManifest.productionLuaExternalBundleIntakeAccepted -and
             $releaseRiskPolicyManifest.productionLuaEvidenceStatus -eq $expectedProductionLuaEvidenceStatus -and
             [bool]$releaseRiskPolicyManifest.liveModelPolicyAccepted -and
@@ -2959,6 +2980,8 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportDriverEvidenceExportHelperIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportDriverEvidenceExportHelperDocumented -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportLuaEvidenceExportHelperIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportLuaEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and
@@ -2985,9 +3008,12 @@ if ($null -ne $releaseRiskPolicyManifest) {
             $releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitDriverEvidenceExportHelperDocumented -and
             ([string]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitDriverEvidenceExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitLuaEvidenceExportHelperDocumented -and
+            ([string]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitLuaEvidenceExportHelperCommand).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceCommandsDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceZipCommandDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowDriverEvidenceExportHelperDocumented -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowLuaEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationCadencePolicy -eq "BIG_NODE_ONLY" -and
@@ -3030,6 +3056,8 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperItemCount -eq 1 -and
             ([string]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchLuaExportHelperItemCount -eq 1 -and
+            ([string]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchLuaExportHelperCommand).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
             [bool]$releaseRiskPolicyManifest.productionHardModeFailureAccepted -and
             [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractAccepted" $false) -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and

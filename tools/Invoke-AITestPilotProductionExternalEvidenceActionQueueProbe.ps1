@@ -299,6 +299,16 @@ $postDispatchQueueDriverExportHelperItemCount = @($postDispatchQueueItems | Wher
         ([string](Get-JsonValue $_ "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
         ([string](Get-JsonValue $_ "productionDriverEvidenceExportZipPath" "")).Contains("production-driver-evidence.zip")
     }).Count
+$pendingQueueLuaExportHelperItemCount = @($pendingQueueItems | Where-Object {
+        [string](Get-JsonValue $_ "area" "") -eq "production_lua_patch_evidence" -and
+        ([string](Get-JsonValue $_ "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "productionLuaEvidenceExportZipPath" "")).Contains("production-lua-evidence.zip")
+    }).Count
+$postDispatchQueueLuaExportHelperItemCount = @($postDispatchQueueItems | Where-Object {
+        [string](Get-JsonValue $_ "area" "") -eq "production_lua_patch_evidence" -and
+        ([string](Get-JsonValue $_ "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "productionLuaEvidenceExportZipPath" "")).Contains("production-lua-evidence.zip")
+    }).Count
 
 $checks = @()
 Add-ProbeCheck "action_queue_sources_available" `
@@ -347,8 +357,10 @@ Add-ProbeCheck "action_queue_items_expose_bundle_auto_acceptance" `
     ($pendingQueueItemAutoAcceptanceCommandCount -eq 3 -and
         $postDispatchQueueItemAutoAcceptanceCommandCount -eq 3 -and
         $pendingQueueDriverExportHelperItemCount -eq 1 -and
-        $postDispatchQueueDriverExportHelperItemCount -eq 1) `
-    "Every pending and post-dispatch queue item must expose its bundle area path plus directory/zip auto-acceptance commands, and the production driver item must expose the evidence export helper."
+        $postDispatchQueueDriverExportHelperItemCount -eq 1 -and
+        $pendingQueueLuaExportHelperItemCount -eq 1 -and
+        $postDispatchQueueLuaExportHelperItemCount -eq 1) `
+    "Every pending and post-dispatch queue item must expose its bundle area path plus directory/zip auto-acceptance commands, and driver/Lua items must expose evidence export helpers."
 Add-ProbeCheck "missing_post_dispatch_rejected_when_required" `
     ($missingPostDispatchResult.exitCode -ne 0 -and $null -eq $missingPostDispatchManifest) `
     "RequirePostDispatch must reject a missing post-dispatch snapshot instead of falling back silently."
@@ -407,6 +419,9 @@ $manifest = [ordered]@{
     pendingQueueDriverExportHelperItemCount = [int]$pendingQueueDriverExportHelperItemCount
     postDispatchQueueDriverExportHelperItemCount = [int]$postDispatchQueueDriverExportHelperItemCount
     postDispatchQueueProductionDriverEvidenceExportHelperCommand = [string](Get-JsonValue ($postDispatchQueueItems | Where-Object { [string](Get-JsonValue $_ "area" "") -eq "production_driver_binding" } | Select-Object -First 1) "productionDriverEvidenceExportHelperCommand" "")
+    pendingQueueLuaExportHelperItemCount = [int]$pendingQueueLuaExportHelperItemCount
+    postDispatchQueueLuaExportHelperItemCount = [int]$postDispatchQueueLuaExportHelperItemCount
+    postDispatchQueueProductionLuaEvidenceExportHelperCommand = [string](Get-JsonValue ($postDispatchQueueItems | Where-Object { [string](Get-JsonValue $_ "area" "") -eq "production_lua_patch_evidence" } | Select-Object -First 1) "productionLuaEvidenceExportHelperCommand" "")
     ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipEnvironmentVariable" "")
     missingPostDispatchRejected = [bool]($missingPostDispatchResult.exitCode -ne 0)
     releasePipelineSendsEmail = $false
@@ -431,6 +446,7 @@ $reportLines = @(
     "- Owner response bundle zip auto acceptance: $($manifest.postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand)",
     "- Queue item bundle command coverage: $($manifest.postDispatchQueueItemAutoAcceptanceCommandCount) / $($manifest.externalRemainingWorkItemCount)",
     "- Production driver evidence export helper: $($manifest.postDispatchQueueProductionDriverEvidenceExportHelperCommand)",
+    "- Production Lua evidence export helper: $($manifest.postDispatchQueueProductionLuaEvidenceExportHelperCommand)",
     "- Missing post-dispatch rejected: $($manifest.missingPostDispatchRejected)",
     "",
     "## Boundary",

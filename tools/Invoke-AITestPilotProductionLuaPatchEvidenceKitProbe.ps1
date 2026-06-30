@@ -148,6 +148,8 @@ $generatedFiles = @(
     "$relativeKitDir/production-lua-patch-evidence-schema.md",
     "$relativeKitDir/production-lua-patch-retest-template.md",
     "$relativeKitDir/production-lua-patch-rollback-plan-template.md",
+    "$relativeKitDir/Invoke-ProductionLuaPatchEvidence.ps1",
+    "$relativeKitDir/Export-ProductionLuaPatchEvidenceBundle.ps1",
     "$relativeKitDir/production-lua-patch-evidence-kit-generated-manifest.json"
 )
 
@@ -161,6 +163,45 @@ foreach ($fileName in $generatedFiles) {
 $copiedAcceptedReadinessName = "production-lua-patch-evidence-kit-accepted-readiness-manifest.json"
 Copy-Item -LiteralPath $acceptedReadinessManifestPath -Destination (Join-Path $evidenceBundlePath $copiedAcceptedReadinessName) -Force
 
+$templateExportOutputDir = Join-Path $probeBundlePath "template-export\production-lua-evidence"
+$templateExportZipPath = Join-Path $probeBundlePath "template-export\production-lua-evidence.zip"
+$templateExportReadinessPath = Join-Path (Split-Path $templateExportOutputDir -Parent) "production-lua-patch-readiness-for-export.json"
+$templateExportSucceeded = $false
+$templateExportMessage = ""
+try {
+    & (Join-Path $kitPath "Export-ProductionLuaPatchEvidenceBundle.ps1") `
+        -EvidenceBundleDir $evidenceBundlePath `
+        -ProductionLuaEvidenceDir $kitPath `
+        -OutputDir $templateExportOutputDir `
+        -ZipPath $templateExportZipPath | Out-Null
+    $templateExportSucceeded = $true
+}
+catch {
+    $templateExportMessage = $_.Exception.Message
+}
+
+$acceptedFixtureExportOutputDir = Join-Path $probeBundlePath "accepted-fixture-export\production-lua-evidence"
+$acceptedFixtureExportZipPath = Join-Path $probeBundlePath "accepted-fixture-export\production-lua-evidence.zip"
+$acceptedFixtureExportSucceeded = $false
+$acceptedFixtureExportMessage = ""
+try {
+    & (Join-Path $acceptedEvidenceDir "Export-ProductionLuaPatchEvidenceBundle.ps1") `
+        -EvidenceBundleDir $acceptedReadinessBundleDir `
+        -ProductionLuaEvidenceDir $acceptedEvidenceDir `
+        -OutputDir $acceptedFixtureExportOutputDir `
+        -ZipPath $acceptedFixtureExportZipPath | Out-Null
+    $acceptedFixtureExportSucceeded = $true
+}
+catch {
+    $acceptedFixtureExportMessage = $_.Exception.Message
+}
+
+$templateExportReadiness = if (Test-Path $templateExportReadinessPath) {
+    Read-JsonFile $templateExportReadinessPath "Template export rejection readiness manifest"
+} else {
+    $null
+}
+
 $checks = @()
 
 $templateKitValid = $generatedManifest.status -eq "PASS" -and
@@ -169,7 +210,13 @@ $templateKitValid = $generatedManifest.status -eq "PASS" -and
     -not [bool]$generatedManifest.acceptedFixtureGenerated -and
     -not [bool]$generatedManifest.realHostProjectEvidence -and
     -not [bool]$generatedManifest.productionEvidenceAccepted -and
-    -not [bool]$generatedManifest.readyForProductionLuaPatchRelease
+    -not [bool]$generatedManifest.readyForProductionLuaPatchRelease -and
+    [bool]$generatedManifest.invokeHelperGenerated -and
+    [bool]$generatedManifest.exportHelperGenerated -and
+    [bool]$generatedManifest.exportHelperRequiresProductionLuaPatchedReadiness -and
+    [bool]$generatedManifest.exportHelperRequiresRealHostProjectEvidence -and
+    [bool]$generatedManifest.exportHelperRejectsTemplateEvidence -and
+    [bool]$generatedManifest.exportHelperRejectsFixtureEvidence
 
 $templateEvidenceBoundaryValid = $templateEvidence.schemaVersion -eq "aitestpilot.production_lua_patch_evidence.v1" -and
     $templateEvidence.status -eq "PENDING_PRODUCTION_EVIDENCE" -and
@@ -224,10 +271,23 @@ $acceptedReadinessPassed = $acceptedReadiness.status -eq "PASS" -and
     [int]$acceptedReadiness.blockingReasonCount -eq 0 -and
     $acceptedReadiness.productionOutputBoundary -eq "real_production_lua_patch_evidence_accepted"
 
+$exportHelperBoundaryValid = [bool]$generatedManifest.exportHelperGenerated -and
+    ([string]$generatedManifest.evidenceExportHelperCommand).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    -not [bool]$templateExportSucceeded -and
+    $null -ne $templateExportReadiness -and
+    -not [bool]$templateExportReadiness.readyForProductionLuaPatchRelease -and
+    -not [bool]$templateExportReadiness.productionLuaEvidenceAccepted -and
+    [int]$templateExportReadiness.blockingReasonCount -ge 4 -and
+    [int]$templateExportReadiness.productionEvidenceBlockingReasonCount -ge 5 -and
+    $templateExportReadiness.productionOutputBoundary -eq "real_production_lua_patch_not_claimed" -and
+    -not [bool]$acceptedFixtureExportSucceeded -and
+    $acceptedFixtureExportMessage.Contains("realHostProjectEvidence=true")
+
 Add-ProbeCheck "template_kit_generated" $templateKitValid "Template kit must generate without claiming real production evidence."
 Add-ProbeCheck "template_evidence_boundary" $templateEvidenceBoundaryValid "Default evidence JSON must remain pending and blocked."
 Add-ProbeCheck "accepted_fixture_generated" $acceptedFixtureValid "Accepted fixture must satisfy the readiness contract while marking itself as fixture-only."
 Add-ProbeCheck "accepted_fixture_readiness" $acceptedReadinessPassed "Readiness must accept the isolated fixture only inside the contract probe bundle."
+Add-ProbeCheck "export_helper_boundary" $exportHelperBoundaryValid "Export helper must reject template evidence and contract fixtures before packaging Lua evidence."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -252,6 +312,18 @@ $manifest = [ordered]@{
     realHostProjectEvidence = $false
     realProductionLuaPatchEvidenceAccepted = $false
     productionLuaEvidenceDirRequiredForProduction = $true
+    exportHelperGenerated = [bool]$generatedManifest.exportHelperGenerated
+    exportHelperRequiresProductionLuaPatchedReadiness = [bool]$generatedManifest.exportHelperRequiresProductionLuaPatchedReadiness
+    exportHelperRequiresRealHostProjectEvidence = [bool]$generatedManifest.exportHelperRequiresRealHostProjectEvidence
+    exportHelperRejectedTemplateEvidence = -not [bool]$templateExportSucceeded
+    exportHelperRejectedFixtureEvidence = -not [bool]$acceptedFixtureExportSucceeded
+    exportRejectionReadinessRejectedCurrentTemplate = ($null -ne $templateExportReadiness -and -not [bool]$templateExportReadiness.readyForProductionLuaPatchRelease)
+    exportRejectionBlockingReasonCount = if ($null -ne $templateExportReadiness) { [int]$templateExportReadiness.blockingReasonCount } else { 0 }
+    exportRejectionProductionEvidenceBlockingReasonCount = if ($null -ne $templateExportReadiness) { [int]$templateExportReadiness.productionEvidenceBlockingReasonCount } else { 0 }
+    exportRejectionMessage = $templateExportMessage
+    exportFixtureRejectionMessage = $acceptedFixtureExportMessage
+    evidenceExportHelperCommand = [string]$generatedManifest.evidenceExportHelperCommand
+    evidenceExportZipPath = [string]$generatedManifest.evidenceExportZipPath
     acceptedReadinessReady = [bool]$acceptedReadiness.readyForProductionLuaPatchRelease
     acceptedReadinessEvidenceAccepted = [bool]$acceptedReadiness.productionLuaEvidenceAccepted
     acceptedReadinessBlockingReasonCount = [int]$acceptedReadiness.blockingReasonCount

@@ -265,6 +265,11 @@ $productionDriverEvidenceExportHelperCommand = '.\production-driver-binding-kit\
 $productionDriverEvidenceExportOutputDir = "production-driver-evidence-export/production-driver-evidence"
 $productionDriverEvidenceExportZipPath = "production-driver-evidence-export/production-driver-evidence.zip"
 $productionDriverEvidenceExportManifestPath = "production-driver-evidence-export/production-driver-evidence-export-manifest.json"
+$productionLuaEvidenceExportHelperPath = "production-lua-patch-evidence-kit/Export-ProductionLuaPatchEvidenceBundle.ps1"
+$productionLuaEvidenceExportHelperCommand = '.\production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence" -ProductionLuaEvidenceDir "path\to\production-lua-evidence"'
+$productionLuaEvidenceExportOutputDir = "production-lua-evidence-export/production-lua-evidence"
+$productionLuaEvidenceExportZipPath = "production-lua-evidence-export/production-lua-evidence.zip"
+$productionLuaEvidenceExportManifestPath = "production-lua-evidence-export/production-lua-evidence-export-manifest.json"
 
 $driverHandoffReady = $driverKit.status -eq "PASS" -and
     [bool](Get-JsonValue $driverKit "kitGenerated" $false) -and
@@ -285,6 +290,11 @@ $driverHandoffReady = $driverKit.status -eq "PASS" -and
 
 $luaHandoffReady = $luaKit.status -eq "PASS" -and
     [bool](Get-JsonValue $luaKit "templateKitGenerated" $false) -and
+    [bool](Get-JsonValue $luaKit "exportHelperGenerated" $false) -and
+    [bool](Get-JsonValue $luaKit "exportHelperRequiresProductionLuaPatchedReadiness" $false) -and
+    [bool](Get-JsonValue $luaKit "exportHelperRequiresRealHostProjectEvidence" $false) -and
+    [bool](Get-JsonValue $luaKit "exportHelperRejectedTemplateEvidence" $false) -and
+    [bool](Get-JsonValue $luaKit "exportHelperRejectedFixtureEvidence" $false) -and
     [bool](Get-JsonValue $luaKit "acceptedFixtureProbePassed" $false) -and
     -not [bool](Get-JsonValue $luaKit "releasePipelineUsesFixture" $true) -and
     -not [bool](Get-JsonValue $luaKit "realProductionLuaPatchEvidenceAccepted" $true) -and
@@ -364,6 +374,11 @@ if (-not $productionLuaReady) {
         remainingBlockingReasons = @($luaBlockingReasons)
         kitPath = "production-lua-patch-evidence-kit"
         requiredEvidenceFiles = @($luaRequiredEvidence)
+        evidenceExportHelperPath = $productionLuaEvidenceExportHelperPath
+        evidenceExportHelperCommand = $productionLuaEvidenceExportHelperCommand
+        evidenceExportOutputDir = $productionLuaEvidenceExportOutputDir
+        evidenceExportZipPath = $productionLuaEvidenceExportZipPath
+        evidenceExportManifestPath = $productionLuaEvidenceExportManifestPath
         validationCommand = '.\tools\Invoke-AITestPilotReleasePipeline.ps1 -ProductionLuaEvidenceDir "path\to\production-lua-evidence" -RequireProductionLuaPatched'
     }
 }
@@ -411,6 +426,11 @@ $requiredEvidence = [ordered]@{
         handoffPathReady = [bool]$luaHandoffReady
         requiredFiles = @($luaRequiredEvidence)
         kitPath = "production-lua-patch-evidence-kit"
+        evidenceExportHelperPath = $productionLuaEvidenceExportHelperPath
+        evidenceExportHelperCommand = $productionLuaEvidenceExportHelperCommand
+        evidenceExportOutputDir = $productionLuaEvidenceExportOutputDir
+        evidenceExportZipPath = $productionLuaEvidenceExportZipPath
+        evidenceExportManifestPath = $productionLuaEvidenceExportManifestPath
         readinessCommand = '.\tools\Invoke-AITestPilotProductionLuaPatchReadiness.ps1 -ProductionLuaEvidenceDir "path\to\production-lua-evidence" -RequireProductionLuaPatched'
         releaseCommand = '.\tools\Invoke-AITestPilotReleasePipeline.ps1 -ProductionLuaEvidenceDir "path\to\production-lua-evidence" -RequireProductionLuaPatched'
     }
@@ -494,6 +514,7 @@ $actionPlanLines += @(
     "- Fixture contracts prove acceptance schemas only; they are not promoted as real host-project evidence.",
     "- Production driver completion requires a non-sample driver type, BOUND checklist, retest, failure-probe, and profile-import evidence.",
     "- Production driver owners can run ``$productionDriverEvidenceExportHelperCommand`` after production-bound readiness passes to package the four required driver files into ``$productionDriverEvidenceExportOutputDir`` and ``$productionDriverEvidenceExportZipPath``.",
+    "- Production Lua owners can run ``$productionLuaEvidenceExportHelperCommand`` after production Lua patch readiness passes with real host-project evidence to package the three required Lua files into ``$productionLuaEvidenceExportOutputDir`` and ``$productionLuaEvidenceExportZipPath``.",
     "- Production Lua completion requires real Lua analysis, patch, validation, retest, rollback, and clean source-control evidence.",
     "- Live model completion requires a real PASS smoke manifest and decision trace from the selected provider."
 )
@@ -1034,7 +1055,9 @@ foreach ($item in $actionItems) {
     $preflightCommand = ".\production-handoff-package\verify-external-evidence.ps1 -ProductionDriverEvidenceDir `"path\to\production-driver-evidence`" -ProductionLuaEvidenceDir `"path\to\production-lua-evidence`" -LiveModelEndpointSmokeEvidenceDir `"path\to\live-smoke-evidence`" -RequireAllEvidence -RunIntake"
     $acceptanceWrapperCommand = ".\production-handoff-package\accept-external-evidence.ps1 -ProductionDriverEvidenceDir `"path\to\production-driver-evidence`" -ProductionLuaEvidenceDir `"path\to\production-lua-evidence`" -LiveModelEndpointSmokeEvidenceDir `"path\to\live-smoke-evidence`" -RequireAllEvidence"
     $hardValidationCommand = [string]$item["validationCommand"]
-    $driverEvidenceExportHelperCommand = if ($area -eq "production_driver_binding") { [string]$item["evidenceExportHelperCommand"] } else { "" }
+    $evidenceExportHelperCommand = if ($item.Contains("evidenceExportHelperCommand")) { [string]$item["evidenceExportHelperCommand"] } else { "" }
+    $evidenceExportOutputDir = if ($item.Contains("evidenceExportOutputDir")) { [string]$item["evidenceExportOutputDir"] } else { "" }
+    $evidenceExportZipPath = if ($item.Contains("evidenceExportZipPath")) { [string]$item["evidenceExportZipPath"] } else { "" }
 
     $packetLines = @(
         "# Production Evidence Owner Packet: $owner",
@@ -1051,18 +1074,25 @@ foreach ($item in $actionItems) {
         $packetLines += "- ``$fileName``"
     }
 
-    if ($area -eq "production_driver_binding") {
+    if (-not [string]::IsNullOrWhiteSpace($evidenceExportHelperCommand)) {
+        $exportTitle = if ($area -eq "production_driver_binding") { "Driver Evidence Export" } else { "Lua Evidence Export" }
+        $exportDescription = if ($area -eq "production_driver_binding") {
+            "It creates ``$evidenceExportOutputDir`` and ``$evidenceExportZipPath`` for owner response bundle return. It rejects sample or unbound evidence."
+        } else {
+            "It creates ``$evidenceExportOutputDir`` and ``$evidenceExportZipPath`` for owner response bundle return. It rejects template or fixture Lua evidence."
+        }
+
         $packetLines += @(
             "",
-            "## Driver Evidence Export",
+            "## $exportTitle",
             "",
-            "Run this helper in the host-project release evidence bundle after production-bound readiness passes with zero blockers:",
+            "Run this helper in the host-project release evidence bundle after readiness passes with zero blockers:",
             "",
             '```powershell',
-            $driverEvidenceExportHelperCommand,
+            $evidenceExportHelperCommand,
             '```',
             "",
-            "It creates ``$productionDriverEvidenceExportOutputDir`` and ``$productionDriverEvidenceExportZipPath`` for owner response bundle return. It rejects sample or unbound evidence."
+            $exportDescription
         )
     }
 
@@ -1124,7 +1154,9 @@ foreach ($item in $actionItems) {
         blockerResolutionCount = [int]$areaResolutions.Count
         preflightCommand = $preflightCommand
         acceptanceWrapperCommand = $acceptanceWrapperCommand
-        driverEvidenceExportHelperCommand = $driverEvidenceExportHelperCommand
+        evidenceExportHelperCommand = $evidenceExportHelperCommand
+        driverEvidenceExportHelperCommand = if ($area -eq "production_driver_binding") { $evidenceExportHelperCommand } else { "" }
+        luaEvidenceExportHelperCommand = if ($area -eq "production_lua_patch_evidence") { $evidenceExportHelperCommand } else { "" }
         hardValidationCommand = $hardValidationCommand
     }
 }
@@ -1187,6 +1219,8 @@ $requiredEvidenceContentValid = $requiredEvidenceText.Contains("aitestpilot.prod
     $requiredEvidenceText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
     $requiredEvidenceText.Contains("production-driver-evidence.zip") -and
     $requiredEvidenceText.Contains("production-lua-patch-evidence.json") -and
+    $requiredEvidenceText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    $requiredEvidenceText.Contains("production-lua-evidence.zip") -and
     $requiredEvidenceText.Contains("live-model-endpoint-smoke-manifest.json") -and
     -not ($requiredEvidenceText -match "System\.Collections|OrderedDictionary")
 
@@ -1364,6 +1398,12 @@ $manifest = [ordered]@{
     productionLuaBlockingReasons = @($luaBlockingReasons)
     productionLuaRequiredEvidenceFiles = @($luaRequiredEvidence)
     productionLuaKitPath = "production-lua-patch-evidence-kit"
+    productionLuaEvidenceExportHelperPath = $productionLuaEvidenceExportHelperPath
+    productionLuaEvidenceExportHelperCommand = $productionLuaEvidenceExportHelperCommand
+    productionLuaEvidenceExportHelperDocumented = [bool]($requiredEvidenceContentValid -and $ownerPacketMarkdownText.Contains($productionLuaEvidenceExportHelperCommand))
+    productionLuaEvidenceExportOutputDir = $productionLuaEvidenceExportOutputDir
+    productionLuaEvidenceExportZipPath = $productionLuaEvidenceExportZipPath
+    productionLuaEvidenceExportManifestPath = $productionLuaEvidenceExportManifestPath
     realProductionLuaPatchEvidenceAccepted = [bool]$productionLuaReady
     liveModelHandoffReady = [bool]$liveModelHandoffReady
     liveModelEndpointAccessProven = [bool]$liveModelAccessProven
