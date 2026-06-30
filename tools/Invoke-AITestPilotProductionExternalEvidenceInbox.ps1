@@ -368,7 +368,7 @@ foreach ($packet in @(Convert-ToArray $ownerPacketIndex.packets)) {
         ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`"",
         '```',
         "",
-        "If the owners return a filled owner response bundle, pass `-OwnerResponseBundleDir` or `-OwnerResponseBundleZipPath` instead of copying files into this inbox first.",
+        'If the owners return a filled owner response bundle, pass `-OwnerResponseBundleDir` or `-OwnerResponseBundleZipPath` instead of copying files into this inbox first.',
         "",
         "This directory is incomplete until every required file exists and the acceptance wrapper passes."
     )
@@ -436,13 +436,13 @@ $rootReadmeLines += @(
         ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`" -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`"",
         '```',
         "",
-        "Add `-ContractFixtureMode` only for repository contract probes that use accepted fixture evidence.",
-        "Add `-RunHardValidation` only after the acceptance report passes.",
+        'Add `-ContractFixtureMode` only for repository contract probes that use accepted fixture evidence.',
+        'Add `-RunHardValidation` only after the acceptance report passes.',
     "",
     "## Boundary",
     "",
     "- This inbox is a return structure and inspection report.",
-    "- Real host-project evidence is accepted only after `accept-returned-evidence.ps1` produces a PASS acceptance report with `realHostProjectEvidenceAccepted=true`.",
+    '- Real host-project evidence is accepted only after `accept-returned-evidence.ps1` produces a PASS acceptance report with `realHostProjectEvidenceAccepted=true`.',
     "- Fixture contract evidence must not be copied into this inbox as production evidence."
 )
 $rootReadmeLines | Set-Content -Path $rootReadmePath -Encoding UTF8
@@ -486,7 +486,7 @@ $reportLines += @(
     "",
     "- This inbox only standardizes returned evidence layout.",
     "- It is not an acceptance result and does not claim real production evidence.",
-    "- Use the generated acceptance wrapper to produce `production-external-evidence-acceptance-manifest.json` before hard validation."
+    '- Use the generated acceptance wrapper to produce `production-external-evidence-acceptance-manifest.json` before hard validation.'
 )
 $reportText = [string]::Join([Environment]::NewLine, $reportLines) + [Environment]::NewLine
 $reportText | Set-Content -Path $reportFullPath -Encoding UTF8

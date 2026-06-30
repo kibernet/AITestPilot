@@ -232,6 +232,8 @@ $releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-Manifest "rele
 $releaseProgressNotificationRealReceiptGuardProbeManifest = Read-Manifest "release-progress-notification-real-receipt-guard-probe-manifest.json"
 $releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-Manifest "release-progress-notification-post-dispatch-snapshot-probe-manifest.json"
 $productionExternalEvidenceActionQueueProbeManifest = Read-Manifest "production-external-evidence-action-queue-probe-manifest.json"
+$productionExternalEvidenceGapAnalysisManifest = Read-Manifest "production-external-evidence-gap-analysis-manifest.json"
+$productionExternalEvidencePartialMatrixProbeManifest = Read-Manifest "production-external-evidence-partial-matrix-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2716,6 +2718,67 @@ if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
     Test-ListedFiles $productionExternalEvidenceActionQueueProbeManifest "production_external_evidence_action_queue_probe"
 }
 
+if ($null -ne $productionExternalEvidenceGapAnalysisManifest) {
+    Add-ReleaseCheck "production_external_evidence_gap_analysis" `
+        ($productionExternalEvidenceGapAnalysisManifest.status -eq "PASS" -and
+            $productionExternalEvidenceGapAnalysisManifest.schemaVersion -eq "aitestpilot.production_external_evidence_gap_analysis.v1" -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.externalRemainingWorkItemCount -eq 3 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.externalRemainingMissingFileCount -eq 9 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.externalRemainingBlockingReasonCount -eq 11 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.pendingOwnerPacketCount -eq 3 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.gapItemCount -eq 3 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.repoSideClosableGapCount -eq 0 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.externalEvidenceRequiredGapCount -eq 3 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.itemExportHelperCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.itemAutoAcceptanceCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.itemHardValidationCommandCount -eq 3 -and
+            [bool]$productionExternalEvidenceGapAnalysisManifest.reportGenerated -and
+            [bool]$productionExternalEvidenceGapAnalysisManifest.reportContentValidated -and
+            -not [bool]$productionExternalEvidenceGapAnalysisManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionExternalEvidenceGapAnalysisManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceGapAnalysisManifest.externalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceGapAnalysisManifest.fixtureEvidencePromoted -and
+            $productionExternalEvidenceGapAnalysisManifest.productionOutputBoundary -eq "production_external_evidence_gap_analysis_only" -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceGapAnalysisManifest.failedCheckCount -eq 0) `
+        "Production external evidence gap analysis must summarize the remaining three external gaps, commands, and production boundary without claiming repo-side closure."
+
+    Test-ListedFiles $productionExternalEvidenceGapAnalysisManifest "production_external_evidence_gap_analysis"
+}
+
+if ($null -ne $productionExternalEvidencePartialMatrixProbeManifest) {
+    Add-ReleaseCheck "production_external_evidence_partial_matrix_probe" `
+        ($productionExternalEvidencePartialMatrixProbeManifest.status -eq "PASS" -and
+            $productionExternalEvidencePartialMatrixProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_partial_matrix_probe.v1" -and
+            -not [bool]$productionExternalEvidencePartialMatrixProbeManifest.externalBundleUnderRepo -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.caseCount -eq 5 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.rejectedCaseCount -eq 5 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.manifestRejectedCaseCount -eq 4 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.preManifestRejectedCaseCount -eq 1 -and
+            [bool]$productionExternalEvidencePartialMatrixProbeManifest.singleAreaCasesRejected -and
+            [bool]$productionExternalEvidencePartialMatrixProbeManifest.singleFileMissingRejected -and
+            [bool]$productionExternalEvidencePartialMatrixProbeManifest.malformedZipRejected -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.driverOnlyReadyAreaCount -eq 1 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.driverOnlyMissingFileCount -eq 5 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.luaOnlyReadyAreaCount -eq 1 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.luaOnlyMissingFileCount -eq 6 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.liveOnlyReadyAreaCount -eq 1 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.liveOnlyMissingFileCount -eq 7 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.missingDriverFileReadyAreaCount -eq 2 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.missingDriverFileMissingFileCount -eq 1 -and
+            -not [bool]$productionExternalEvidencePartialMatrixProbeManifest.malformedZipManifestGenerated -and
+            -not [bool]$productionExternalEvidencePartialMatrixProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionExternalEvidencePartialMatrixProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidencePartialMatrixProbeManifest.externalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidencePartialMatrixProbeManifest.fixtureEvidencePromoted -and
+            $productionExternalEvidencePartialMatrixProbeManifest.productionOutputBoundary -eq "production_external_evidence_partial_matrix_probe_only" -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidencePartialMatrixProbeManifest.failedCheckCount -eq 0) `
+        "Production external evidence partial matrix probe must reject single-area, single-file-missing, and malformed zip owner response bundles before accepting production evidence."
+
+    Test-ListedFiles $productionExternalEvidencePartialMatrixProbeManifest "production_external_evidence_partial_matrix_probe"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -3078,6 +3141,18 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueueProbeAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisAccepted -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisGapItemCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisRepoSideClosableGapCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisExternalEvidenceRequiredGapCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisMissingFileCount -eq 9 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisBlockingReasonCount -eq 11 -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixProbeAccepted -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixRejectedCaseCount -eq 5 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixCaseCount -eq 5 -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixSingleAreaRejected -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixSingleFileMissingRejected -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixMalformedZipRejected -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperItemCount -eq 1 -and
             ([string]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
@@ -3165,6 +3240,10 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-external-evidence-acceptance-failure-probe-manifest.json",
         "production-external-evidence-inbox-manifest.json",
         "production-external-evidence-inbox-contract-probe-manifest.json",
+        "production-external-evidence-auto-acceptance-probe-manifest.json",
+        "production-external-evidence-action-queue-probe-manifest.json",
+        "production-external-evidence-gap-analysis-manifest.json",
+        "production-external-evidence-partial-matrix-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "production-hard-mode-success-contract-probe-manifest.json",
         "release-risk-policy-manifest.json"
@@ -3282,6 +3361,10 @@ $sourceManifests = @(
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
     "production-external-evidence-inbox-contract-probe-manifest.json",
+    "production-external-evidence-auto-acceptance-probe-manifest.json",
+    "production-external-evidence-action-queue-probe-manifest.json",
+    "production-external-evidence-gap-analysis-manifest.json",
+    "production-external-evidence-partial-matrix-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "production-hard-mode-success-contract-probe-manifest.json",
     "release-risk-policy-manifest.json",

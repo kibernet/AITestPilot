@@ -372,6 +372,19 @@ That operator-side script writes `production-external-evidence-action-queue-mani
 That probe writes `production-external-evidence-action-queue-probe-manifest.json` and a Markdown report. It proves pending-mail and post-dispatch queues stay distinct, missing post-dispatch snapshots are rejected when required, owner response bundle directory/zip auto-acceptance commands are exposed at queue and item level, and the three external evidence areas remain unaccepted until real host-project evidence arrives.
 
 ```powershell
+.\tools\Invoke-AITestPilotProductionExternalEvidenceGapAnalysis.ps1 `
+    -EvidenceBundleDir .\artifacts\ai-testpilot-release\latest
+```
+
+That script writes `production-external-evidence-gap-analysis-manifest.json` and a Markdown report. It turns the post-dispatch action queue into an operator/audit summary showing the three remaining external evidence areas, nine missing files, eleven blocker reasons, zero repo-side-closable gaps, and the next owner/operator commands without sending email, accepting real host-project evidence, or promoting fixtures.
+
+```powershell
+.\tools\Invoke-AITestPilotProductionExternalEvidencePartialMatrixProbe.ps1
+```
+
+That probe writes `production-external-evidence-partial-matrix-probe-manifest.json` and a Markdown report. It builds isolated returned-bundle variants for driver-only, Lua-only, live-smoke-only, one-file-missing, and malformed zip cases, then proves each one is rejected before acceptance can claim all production evidence is ready.
+
+```powershell
 .\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1
 ```
 
@@ -679,7 +692,7 @@ Implemented now:
 - GitHub Actions release workflow for self-hosted Windows Unity runners, with release-gated workflow probe and evidence artifact upload.
 - Azure Pipelines release workflow for self-hosted Windows Unity pools, with release-gated workflow probe and evidence artifact publishing.
 - Provider-specific build, smoke test, and vision evidence checks for GitHub Actions and Azure Pipelines, with release-gated quality probe evidence.
-- Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence, with generated-content quality checks, a blocker-resolution map, per-owner action packets, a returned-evidence inbox, a compact owner-facing handoff export zip that includes the fillable owner response bundle kit and post-dispatch operator action queue after final refresh, item-level owner response bundle paths and auto-acceptance commands, an owner-level evidence collection status report, an owner dispatch queue with email drafts, an owner contact roster readiness report, progress-notification send-helper auth-status parsing proof, fake-CLI two-stage confirmation proof, a runnable external-evidence preflight script, a stable repo-side external evidence acceptance command, accepted-fixture contract probes, and missing/partial evidence failure probes for owner-facing action plans.
+- Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence, with generated-content quality checks, a blocker-resolution map, per-owner action packets, a returned-evidence inbox, a compact owner-facing handoff export zip that includes the fillable owner response bundle kit and post-dispatch operator action queue after final refresh, item-level owner response bundle paths and auto-acceptance commands, an owner-level evidence collection status report, a machine-readable external evidence gap analysis, a partial/malformed returned-bundle rejection matrix, an owner dispatch queue with email drafts, an owner contact roster readiness report, progress-notification send-helper auth-status parsing proof, fake-CLI two-stage confirmation proof, a runnable external-evidence preflight script, a stable repo-side external evidence acceptance command, accepted-fixture contract probes, and missing/partial evidence failure probes for owner-facing action plans.
 - Production hard-mode failure probe proving combined driver, Lua, and live-model hard switches block the current sample or missing-evidence state.
 - Production hard-mode success contract probe proving the combined hard-mode path passes with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers.

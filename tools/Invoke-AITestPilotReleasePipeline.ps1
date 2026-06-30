@@ -606,6 +606,16 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_external_evidence_gap_analysis" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceGapAnalysis.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
+    Invoke-PipelineStep "production_external_evidence_partial_matrix_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidencePartialMatrixProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_handoff_export_final_refresh" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffExport.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

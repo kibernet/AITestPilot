@@ -215,6 +215,8 @@ $releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-PolicyJson "re
 $releaseProgressNotificationRealReceiptGuardProbeManifest = Read-PolicyJson "release-progress-notification-real-receipt-guard-probe-manifest.json" "Release progress notification real receipt guard probe manifest"
 $releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-PolicyJson "release-progress-notification-post-dispatch-snapshot-probe-manifest.json" "Release progress notification post-dispatch snapshot probe manifest"
 $productionExternalEvidenceActionQueueProbeManifest = Read-PolicyJson "production-external-evidence-action-queue-probe-manifest.json" "Production external evidence action queue probe manifest"
+$productionExternalEvidenceGapAnalysisManifest = Read-PolicyJson "production-external-evidence-gap-analysis-manifest.json" "Production external evidence gap analysis manifest"
+$productionExternalEvidencePartialMatrixProbeManifest = Read-PolicyJson "production-external-evidence-partial-matrix-probe-manifest.json" "Production external evidence partial matrix probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -1827,6 +1829,69 @@ Add-PolicyCheck "production_external_evidence_action_queue_probe_policy" $produc
     "Production handoff evidence must include an action queue that distinguishes pending-mail and post-dispatch states while exposing owner response bundle directory/zip auto-acceptance commands at queue and item level and preserving the three external evidence blockers." `
     "production_external_evidence_action_queue_probe_not_accepted"
 
+$productionExternalEvidenceGapAnalysisAccepted = (
+    $null -ne $productionExternalEvidenceGapAnalysisManifest -and
+    $productionExternalEvidenceGapAnalysisManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_gap_analysis.v1" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingMissingFileCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingBlockingReasonCount" 0)) -eq 11 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "pendingOwnerPacketCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "gapItemCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "repoSideClosableGapCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalEvidenceRequiredGapCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemExportHelperCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemAutoAcceptanceCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemHardValidationCommandCount" 0)) -eq 3 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "reportGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "reportContentValidated" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "productionOutputBoundary" "") -eq "production_external_evidence_gap_analysis_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_gap_analysis_policy" $productionExternalEvidenceGapAnalysisAccepted `
+    "Production evidence handoff must include a machine-readable gap analysis proving the remaining work cannot be closed repo-side and has owner/operator commands for every external area." `
+    "production_external_evidence_gap_analysis_not_accepted"
+
+$productionExternalEvidencePartialMatrixProbeAccepted = (
+    $null -ne $productionExternalEvidencePartialMatrixProbeManifest -and
+    $productionExternalEvidencePartialMatrixProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_partial_matrix_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "caseCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "rejectedCaseCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "manifestRejectedCaseCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "preManifestRejectedCaseCount" 0)) -eq 1 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "singleAreaCasesRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "singleFileMissingRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "malformedZipRejected" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "driverOnlyReadyAreaCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "driverOnlyMissingFileCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "luaOnlyReadyAreaCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "luaOnlyMissingFileCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "liveOnlyReadyAreaCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "liveOnlyMissingFileCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "missingDriverFileReadyAreaCount" 0)) -eq 2 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "missingDriverFileMissingFileCount" 0)) -eq 1 -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "malformedZipManifestGenerated" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_partial_matrix_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_partial_matrix_probe_policy" $productionExternalEvidencePartialMatrixProbeAccepted `
+    "Production evidence handoff must prove partial or malformed owner response bundles are rejected before acceptance runs or fixture evidence is promoted." `
+    "production_external_evidence_partial_matrix_probe_not_accepted"
+
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
     $productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2129,6 +2194,9 @@ $sourceFiles = @(
     "production-external-evidence-inbox-manifest.json",
     "production-external-evidence-inbox-contract-probe-manifest.json",
     "production-external-evidence-auto-acceptance-probe-manifest.json",
+    "production-external-evidence-action-queue-probe-manifest.json",
+    "production-external-evidence-gap-analysis-manifest.json",
+    "production-external-evidence-partial-matrix-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "production-hard-mode-success-contract-probe-manifest.json"
 )
@@ -2307,6 +2375,18 @@ $manifest = [ordered]@{
     productionExternalEvidenceActionQueuePostDispatchLiveModelSmokeExportHelperItemCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLiveSmokeExportHelperItemCount" 0))
     productionExternalEvidenceActionQueuePostDispatchLiveModelSmokeExportHelperCommand = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLiveModelSmokeEvidenceExportHelperCommand" "")
     productionExternalEvidenceActionQueueMissingPostDispatchRejected = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)
+    productionExternalEvidenceGapAnalysisAccepted = [bool]$productionExternalEvidenceGapAnalysisAccepted
+    productionExternalEvidenceGapAnalysisGapItemCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "gapItemCount" 0))
+    productionExternalEvidenceGapAnalysisRepoSideClosableGapCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "repoSideClosableGapCount" 0))
+    productionExternalEvidenceGapAnalysisExternalEvidenceRequiredGapCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalEvidenceRequiredGapCount" 0))
+    productionExternalEvidenceGapAnalysisMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingMissingFileCount" 0))
+    productionExternalEvidenceGapAnalysisBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingBlockingReasonCount" 0))
+    productionExternalEvidencePartialMatrixProbeAccepted = [bool]$productionExternalEvidencePartialMatrixProbeAccepted
+    productionExternalEvidencePartialMatrixCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "caseCount" 0))
+    productionExternalEvidencePartialMatrixRejectedCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "rejectedCaseCount" 0))
+    productionExternalEvidencePartialMatrixSingleAreaRejected = (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "singleAreaCasesRejected" $false)
+    productionExternalEvidencePartialMatrixSingleFileMissingRejected = (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "singleFileMissingRejected" $false)
+    productionExternalEvidencePartialMatrixMalformedZipRejected = (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "malformedZipRejected" $false)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
@@ -2460,6 +2540,16 @@ $reportLines = @(
     "- Production external evidence action queue Lua export helper command: $($manifest.productionExternalEvidenceActionQueuePostDispatchLuaExportHelperCommand)",
     "- Production external evidence action queue live smoke export helper command: $($manifest.productionExternalEvidenceActionQueuePostDispatchLiveModelSmokeExportHelperCommand)",
     "- Production external evidence action queue missing post-dispatch rejected: $($manifest.productionExternalEvidenceActionQueueMissingPostDispatchRejected)",
+    "- Production external evidence gap analysis accepted: $($manifest.productionExternalEvidenceGapAnalysisAccepted)",
+    "- Production external evidence gap analysis gaps: $($manifest.productionExternalEvidenceGapAnalysisGapItemCount)",
+    "- Production external evidence gap analysis repo-side closable gaps: $($manifest.productionExternalEvidenceGapAnalysisRepoSideClosableGapCount)",
+    "- Production external evidence gap analysis missing files: $($manifest.productionExternalEvidenceGapAnalysisMissingFileCount)",
+    "- Production external evidence gap analysis blockers: $($manifest.productionExternalEvidenceGapAnalysisBlockingReasonCount)",
+    "- Production external evidence partial matrix accepted: $($manifest.productionExternalEvidencePartialMatrixProbeAccepted)",
+    "- Production external evidence partial matrix rejected cases: $($manifest.productionExternalEvidencePartialMatrixRejectedCaseCount) / $($manifest.productionExternalEvidencePartialMatrixCaseCount)",
+    "- Production external evidence partial matrix single-area rejected: $($manifest.productionExternalEvidencePartialMatrixSingleAreaRejected)",
+    "- Production external evidence partial matrix single-file-missing rejected: $($manifest.productionExternalEvidencePartialMatrixSingleFileMissingRejected)",
+    "- Production external evidence partial matrix malformed zip rejected: $($manifest.productionExternalEvidencePartialMatrixMalformedZipRejected)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",
