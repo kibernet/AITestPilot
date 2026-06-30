@@ -139,6 +139,27 @@ function Export-PipelineArtifacts {
 
     $manifestPath = Join-Path $artifactPath "pipeline-manifest.json"
     $manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $manifestPath -Encoding UTF8
+
+    if ($PipelinePassed) {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
+            -EvidenceBundleDir $artifactPath `
+            -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+            -RequireProductionLuaPatched:$RequireProductionLuaPatched `
+            -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke | Out-Null
+
+        $indexManifestPath = Join-Path $artifactPath "release-evidence-index-manifest.json"
+        if (-not (Test-Path $indexManifestPath)) {
+            throw "Final artifact release evidence index manifest was not produced: $indexManifestPath"
+        }
+
+        $indexManifest = Get-Content -Path $indexManifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if ($indexManifest.status -ne "PASS" -or
+            -not [bool]$indexManifest.pipelineManifestExpected -or
+            -not [bool]$indexManifest.pipelineManifestIncluded) {
+            throw "Final artifact release evidence index must include pipeline-manifest.json after pipeline export."
+        }
+    }
+
     Write-Output "Pipeline artifacts: $artifactPath"
     Write-Output "Pipeline manifest: $manifestPath"
 }

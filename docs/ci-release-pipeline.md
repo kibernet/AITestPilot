@@ -131,7 +131,7 @@ That directory includes `pipeline-manifest.json`, release gate manifests, releas
 
 `release-risk-policy-manifest.json` is the machine-readable release-blocker decision for downstream CI, portal, or audit tooling. It is generated after the production handoff and hard-mode probes and before the release evidence index, recording whether package release is allowed under the active production driver, production Lua, and live-model enforcement switches.
 
-`release-evidence-index.json` is the stable machine-readable summary for downstream CI, portal, or audit tooling. It indexes the primary release-gate source manifests, including the release risk policy, records source status coverage, listed-file coverage, optional live-smoke skip handling, and auxiliary manifest inventory. The release gate validates `release-evidence-index-manifest.json` before allowing release.
+`release-evidence-index.json` is the stable machine-readable summary for downstream CI, portal, or audit tooling. It indexes the primary release-gate source manifests, including the release risk policy, records source status coverage, listed-file coverage, optional live-smoke skip handling, and auxiliary manifest inventory. The release gate validates `release-evidence-index-manifest.json` before allowing release; after the pipeline manifest is written, the pipeline refreshes the final artifact copy of the index so uploaded evidence also records `pipelineManifestIncluded=true`.
 
 ## GitHub Actions
 

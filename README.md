@@ -237,7 +237,7 @@ To export a machine-readable release evidence index:
 .\tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1
 ```
 
-That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. The full release pipeline runs it before the release gate so CI and portal handoff can consume one stable evidence summary.
+That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. The full release pipeline runs it before the release gate, then refreshes the final artifact index after writing `pipeline-manifest.json` so CI and portal handoff can consume one stable evidence summary that includes the pipeline manifest.
 
 To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint configuration, external live-smoke evidence intake, live-smoke accepted-contract proof, returned-evidence inbox contract proof, owner contact readiness contract proof, owner send readiness proof, live endpoint policy, and CI provider controls:
 
