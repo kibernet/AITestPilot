@@ -202,6 +202,7 @@ $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-PolicyJson "pro
 $productionHandoffSendDryRunProbeManifest = Read-PolicyJson "production-handoff-send-dry-run-probe-manifest.json" "Production handoff send dry-run probe manifest"
 $productionHandoffOwnerResponseBundleProbeManifest = Read-PolicyJson "production-handoff-owner-response-bundle-probe-manifest.json" "Production handoff owner response bundle probe manifest"
 $productionHandoffOwnerResponseBundleKitManifest = Read-PolicyJson "production-handoff-owner-response-bundle-kit-manifest.json" "Production handoff owner response bundle kit manifest"
+$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest = Read-PolicyJson "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "Production handoff owner response bundle kit workflow probe manifest"
 $releaseProgressNotificationOutboxManifest = Read-PolicyJson "release-progress-notification-outbox-manifest.json" "Release progress notification outbox manifest"
 $releaseProgressNotificationRemainingWorkSnapshotProbeManifest = Read-PolicyJson "release-progress-notification-remaining-work-snapshot-probe-manifest.json" "Release progress notification remaining-work snapshot probe manifest"
 $productionHandoffMailHelperAuthStatusProbeManifest = Read-PolicyJson "production-handoff-mail-helper-auth-status-probe-manifest.json" "Production handoff mail helper auth-status probe manifest"
@@ -1254,6 +1255,44 @@ Add-PolicyCheck "production_handoff_owner_response_bundle_kit_policy" $productio
     "Production handoff evidence must include a fillable owner response bundle kit and zip without sending email or accepting evidence." `
     "production_handoff_owner_response_bundle_kit_not_accepted"
 
+$productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
+    $null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest -and
+    $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_owner_response_bundle_kit_workflow_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emptyTemplateRejected" $false)) -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emptyTemplateStatus" "") -eq "INCOMPLETE_OWNER_RESPONSE" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emptyTemplateInvalidContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emptyTemplateMissingEvidenceFileCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateAccepted" $false)) -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateStatus" "") -eq "READY_FOR_IMPORT" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateConfiguredContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateMissingEvidenceFileCount" -1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importHelperSucceeded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importCopiedBundle" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importedEvidenceFileCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "writtenEvidenceFileCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "confirmationTokenCreated" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "mailAuthorizationCheckedByPipeline" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionOutputBoundary" "") -eq "owner_response_bundle_kit_workflow_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_owner_response_bundle_kit_workflow_probe_policy" $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted `
+    "Production handoff evidence must execute the generated owner response bundle kit verify/import helpers against incomplete and complete isolated bundles without sending email or accepting evidence." `
+    "production_handoff_owner_response_bundle_kit_workflow_probe_not_accepted"
+
 $releaseProgressNotificationOutboxAccepted = (
     $null -ne $releaseProgressNotificationOutboxManifest -and
     $releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
@@ -1844,6 +1883,7 @@ $sourceFiles = @(
     "production-handoff-send-dry-run-probe-manifest.json",
     "production-handoff-owner-response-bundle-probe-manifest.json",
     "production-handoff-owner-response-bundle-kit-manifest.json",
+    "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
     "release-progress-notification-remaining-work-snapshot-probe-manifest.json",
     "production-handoff-mail-helper-auth-status-probe-manifest.json",
@@ -1928,6 +1968,11 @@ $manifest = [ordered]@{
     productionHandoffOwnerResponseBundleKitAccepted = [bool]$productionHandoffOwnerResponseBundleKitAccepted
     productionHandoffOwnerResponseBundleKitZipGenerated = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "zipGenerated" $false)
     productionHandoffOwnerResponseBundleKitRequiredFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "requiredEvidenceFileCount" 0))
+    productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted
+    productionHandoffOwnerResponseBundleKitWorkflowEmptyTemplateRejected = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emptyTemplateRejected" $false)
+    productionHandoffOwnerResponseBundleKitWorkflowCompleteTemplateAccepted = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateAccepted" $false)
+    productionHandoffOwnerResponseBundleKitWorkflowImportCopiedBundle = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importCopiedBundle" $false)
+    productionHandoffOwnerResponseBundleKitWorkflowImportedEvidenceFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importedEvidenceFileCount" 0))
     releaseProgressNotificationOutboxAccepted = [bool]$releaseProgressNotificationOutboxAccepted
     releaseProgressNotificationDispatchStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "")
     releaseProgressNotificationRecipient = (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "")
@@ -2050,6 +2095,10 @@ $reportLines = @(
     "- Production handoff owner response bundle kit accepted: $($manifest.productionHandoffOwnerResponseBundleKitAccepted)",
     "- Production handoff owner response bundle kit zip generated: $($manifest.productionHandoffOwnerResponseBundleKitZipGenerated)",
     "- Production handoff owner response bundle kit required files: $($manifest.productionHandoffOwnerResponseBundleKitRequiredFileCount)",
+    "- Production handoff owner response bundle kit workflow accepted: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted)",
+    "- Production handoff owner response bundle kit workflow empty rejected: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowEmptyTemplateRejected)",
+    "- Production handoff owner response bundle kit workflow complete accepted: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowCompleteTemplateAccepted)",
+    "- Production handoff owner response bundle kit workflow imported files: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowImportedEvidenceFileCount)",
     "- Release progress notification outbox accepted: $($manifest.releaseProgressNotificationOutboxAccepted)",
     "- Release progress notification dispatch status: $($manifest.releaseProgressNotificationDispatchStatus)",
     "- Release progress notification recipient: $($manifest.releaseProgressNotificationRecipient)",

@@ -352,6 +352,12 @@ That probe writes `production-handoff-owner-response-bundle-probe-manifest.json`
 That script writes `production-handoff-owner-response-bundle-kit-manifest.json`, a Markdown report, `production-handoff-owner-response-bundle-kit\`, and `production-handoff-owner-response-bundle-kit.zip`. The kit is the fillable owner-return package: a contact roster template, driver/Lua/live-smoke evidence directories, required-file manifests, a local verifier, an import helper, and a request draft. It does not send email, run OAuth, accept production evidence, or include fixture evidence.
 
 ```powershell
+.\tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKitWorkflowProbe.ps1
+```
+
+That probe writes `production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json` and a Markdown report. It copies the generated kit into an isolated workflow, proves the untouched template is rejected, fills fixture contacts plus the nine required placeholder evidence files, proves the verifier returns `READY_FOR_IMPORT`, and proves the import helper copies the roster and evidence into an isolated evidence bundle without sending email or accepting production evidence.
+
+```powershell
 .\tools\Invoke-AITestPilotProductionExternalEvidenceActionQueue.ps1 `
     -EvidenceBundleDir .\artifacts\ai-testpilot-release\latest `
     -RequirePostDispatch

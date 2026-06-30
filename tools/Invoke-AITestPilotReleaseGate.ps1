@@ -220,6 +220,7 @@ $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-Manifest "produ
 $productionHandoffSendDryRunProbeManifest = Read-Manifest "production-handoff-send-dry-run-probe-manifest.json"
 $productionHandoffOwnerResponseBundleProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-probe-manifest.json"
 $productionHandoffOwnerResponseBundleKitManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-manifest.json"
+$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json"
 $releaseProgressNotificationOutboxManifest = Read-Manifest "release-progress-notification-outbox-manifest.json"
 $releaseProgressNotificationRemainingWorkSnapshotProbeManifest = Read-Manifest "release-progress-notification-remaining-work-snapshot-probe-manifest.json"
 $productionHandoffMailHelperAuthStatusProbeManifest = Read-Manifest "production-handoff-mail-helper-auth-status-probe-manifest.json"
@@ -2214,6 +2215,38 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
         "Production handoff owner response bundle kit must package fillable owner evidence directories, roster, scripts, request draft, and zip without sending email or accepting real evidence."
 
     Test-ListedFiles $productionHandoffOwnerResponseBundleKitManifest "production_handoff_owner_response_bundle_kit"
+}
+
+if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
+    Add-ReleaseCheck "production_handoff_owner_response_bundle_kit_workflow_probe" `
+        ($productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.status -eq "PASS" -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_response_bundle_kit_workflow_probe.v1" -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.emptyTemplateRejected -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.emptyTemplateStatus -eq "INCOMPLETE_OWNER_RESPONSE" -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.emptyTemplateInvalidContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.emptyTemplateMissingEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.completeTemplateAccepted -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.completeTemplateStatus -eq "READY_FOR_IMPORT" -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.completeTemplateConfiguredContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.completeTemplateMissingEvidenceFileCount -eq 0 -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.importHelperSucceeded -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.importCopiedBundle -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.importedEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.writtenEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.emailSent -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.confirmationTokenCreated -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.mailAuthorizationCheckedByPipeline -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.externalEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.fixtureEvidencePromoted -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionOutputBoundary -eq "owner_response_bundle_kit_workflow_probe_only" -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 6 -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.failedCheckCount -eq 0) `
+        "Production handoff owner response bundle kit workflow probe must execute generated verify/import helpers against incomplete and complete isolated bundles without sending email or accepting production evidence."
+
+    Test-ListedFiles $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "production_handoff_owner_response_bundle_kit_workflow_probe"
 }
 
 if ($null -ne $releaseProgressNotificationOutboxManifest) {

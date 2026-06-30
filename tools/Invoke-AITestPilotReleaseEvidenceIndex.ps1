@@ -243,6 +243,7 @@ function Get-DefaultSourceManifestNames {
         "production-handoff-send-dry-run-probe-manifest.json",
         "production-handoff-owner-response-bundle-probe-manifest.json",
         "production-handoff-owner-response-bundle-kit-manifest.json",
+        "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
         "release-progress-notification-outbox-manifest.json",
         "production-handoff-mail-helper-auth-status-probe-manifest.json",
         "release-progress-notification-confirmation-probe-manifest.json",
