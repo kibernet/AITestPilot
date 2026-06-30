@@ -322,6 +322,7 @@ function Get-DefaultSourceManifestNames {
         "production-handoff-external-evidence-preflight-probe-manifest.json",
         "production-handoff-export-manifest.json",
         "production-handoff-export-zip-index-manifest.json",
+        "release-docs-freshness-manifest.json",
         "production-handoff-status-manifest.json",
         "production-handoff-dispatch-manifest.json",
         "production-handoff-contact-readiness-manifest.json",

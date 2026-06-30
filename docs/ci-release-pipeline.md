@@ -6,6 +6,102 @@ Use the release pipeline wrapper when CI needs one command with stable artifacts
 .\tools\Invoke-AITestPilotReleasePipeline.ps1
 ```
 
+## Release Pipeline Step Index
+
+`tools\Invoke-AITestPilotReleaseDocsFreshnessProbe.ps1` treats this table as the machine-checked release step coverage contract. Keep each step ID aligned with `Invoke-PipelineStep` entries in `tools\Invoke-AITestPilotReleasePipeline.ps1`.
+
+| # | Step ID |
+| ---: | --- |
+| 1 | `repo_validation` |
+| 2 | `unity_import_scene_validation` |
+| 3 | `repair_agent_patch_output_import` |
+| 4 | `repair_agent_external_completion_failure_probe` |
+| 5 | `repair_agent_generic_patch_import_probe` |
+| 6 | `repair_agent_source_snapshot_apply_validate` |
+| 7 | `repair_agent_main_worktree_apply_readiness` |
+| 8 | `repair_agent_cursor_agent_external_task_output` |
+| 9 | `repair_agent_external_task_output_acceptance` |
+| 10 | `repair_agent_patch_result_analysis` |
+| 11 | `repair_agent_patch_result_history` |
+| 12 | `repair_agent_external_patch_preflight` |
+| 13 | `repair_agent_external_patch_preflight_failure_probe` |
+| 14 | `repair_agent_repository_patch_apply_guard` |
+| 15 | `repair_agent_repository_patch_apply_clean_probe` |
+| 16 | `repair_agent_repository_patch_apply_clean_retest` |
+| 17 | `repair_agent_patch_apply_retest` |
+| 18 | `driver_failure_probe` |
+| 19 | `targeted_repair_retest` |
+| 20 | `replay_profile_import` |
+| 21 | `production_replay_integration_contract_probe` |
+| 22 | `production_driver_binding_kit_probe` |
+| 23 | `production_driver_evidence_contract_probe` |
+| 24 | `production_replay_driver_readiness` |
+| 25 | `production_driver_evidence_intake` |
+| 26 | `production_driver_external_bundle_intake_probe` |
+| 27 | `production_replay_driver_bound_failure_probe` |
+| 28 | `model_endpoint_trace_probe` |
+| 29 | `model_endpoint_provider_diagnostics` |
+| 30 | `model_endpoint_provider_retry_policy` |
+| 31 | `live_model_endpoint_config_kit_probe` |
+| 32 | `lua_static_analysis_probe` |
+| 33 | `lua_auto_patch_sandbox_probe` |
+| 34 | `production_lua_patch_readiness` |
+| 35 | `production_lua_patch_bound_failure_probe` |
+| 36 | `production_lua_patch_evidence_kit_probe` |
+| 37 | `production_lua_patch_external_bundle_intake_probe` |
+| 38 | `live_model_endpoint_failure_probe` |
+| 39 | `live_model_endpoint_smoke` |
+| 40 | `live_model_endpoint_smoke_evidence_intake` |
+| 41 | `live_model_endpoint_external_smoke_intake_probe` |
+| 42 | `live_model_endpoint_smoke_evidence_contract_probe` |
+| 43 | `ci_provider_release_workflow_probe` |
+| 44 | `ci_provider_azure_pipelines_workflow_probe` |
+| 45 | `ci_provider_quality_probe` |
+| 46 | `production_handoff_package` |
+| 47 | `production_handoff_external_evidence_preflight_probe` |
+| 48 | `production_external_evidence_acceptance_contract_probe` |
+| 49 | `production_external_evidence_acceptance_failure_probe` |
+| 50 | `production_external_evidence_inbox` |
+| 51 | `production_external_evidence_inbox_contract_probe` |
+| 52 | `production_external_evidence_auto_acceptance_probe` |
+| 53 | `production_handoff_export` |
+| 54 | `production_handoff_status` |
+| 55 | `production_handoff_dispatch_plan` |
+| 56 | `production_handoff_contact_readiness` |
+| 57 | `production_handoff_contact_readiness_contract_probe` |
+| 58 | `production_handoff_send_readiness` |
+| 59 | `production_handoff_mail_auth_readiness` |
+| 60 | `production_handoff_owner_unblock_pack` |
+| 61 | `production_handoff_owner_unblock_pack_contract_probe` |
+| 62 | `production_handoff_owner_input_request_pack` |
+| 63 | `production_handoff_owner_contact_external_intake_probe` |
+| 64 | `production_handoff_send_dry_run_probe` |
+| 65 | `production_handoff_owner_response_bundle_probe` |
+| 66 | `production_handoff_owner_response_bundle_kit` |
+| 67 | `production_handoff_owner_response_bundle_kit_workflow_probe` |
+| 68 | `production_handoff_export_refresh` |
+| 69 | `release_progress_notification_outbox` |
+| 70 | `release_progress_notification_remaining_work_snapshot_probe` |
+| 71 | `production_handoff_mail_helper_auth_status_probe` |
+| 72 | `release_progress_notification_confirmation_probe` |
+| 73 | `release_progress_notification_receipt_probe` |
+| 74 | `release_progress_notification_dispatch_receipt_intake_probe` |
+| 75 | `release_progress_notification_local_send_workflow_probe` |
+| 76 | `release_progress_notification_real_receipt_guard_probe` |
+| 77 | `release_progress_notification_post_dispatch_snapshot_probe` |
+| 78 | `production_external_evidence_action_queue_probe` |
+| 79 | `production_external_evidence_gap_analysis` |
+| 80 | `production_external_evidence_partial_matrix_probe` |
+| 81 | `production_handoff_export_final_refresh` |
+| 82 | `production_handoff_export_zip_index` |
+| 83 | `release_docs_freshness` |
+| 84 | `production_hard_mode_failure_probe` |
+| 85 | `production_hard_mode_success_contract_probe` |
+| 86 | `release_risk_policy` |
+| 87 | `release_evidence_index` |
+| 88 | `release_gate` |
+| 89 | `release_gate_failure_probe` |
+
 The pipeline runs:
 
 - repo validation and smoke tests.
@@ -73,6 +169,7 @@ The pipeline runs:
 - production external evidence partial matrix probe, proving driver-only, Lua-only, live-smoke-only, one-file-missing, and malformed owner response bundle returns are rejected before acceptance can claim all production evidence is ready.
 - production handoff export final refresh, re-running the export after the action queue probe so `operator-actions\` carries the post-dispatch action queue, source snapshot, and action-queue probe proof in the final owner-facing zip.
 - production handoff export zip index, opening the final owner-facing zip and proving its entries and per-entry hashes match the export manifest and source folder with no unsafe or duplicate paths.
+- release docs freshness, proving the README, CI release pipeline docs, architecture doc, roadmap, pipeline step index, required release artifact names, and source-manifest coverage stayed aligned before hard-mode copied-bundle probes run.
 - release progress notification outbox, preparing the requested big-node status email for the progress recipient, writing a `BIG_NODE_ONLY` cadence policy that suppresses separate small proof/probe emails, writing a remaining-work snapshot for the three external owner areas plus the local progress-mail action, and keeping local agently-cli authorization plus two-stage send confirmation outside CI.
 - release progress notification remaining-work snapshot probe, independently verifying the outbox snapshot against owner input, driver readiness, Lua readiness, and the returned-evidence inbox while preserving the local mail boundary; it is recorded as a suppressed small proof node under the big-node-only cadence.
 - production handoff mail helper auth-status probe, proving owner-packet and progress-notification helpers parse unauthenticated agently-cli JSON-plus-tip output and stop before +me, confirmation tokens, or message sends.
@@ -98,7 +195,7 @@ By default, the pipeline copies the latest evidence bundle to:
 
 `artifacts/ai-testpilot-release/latest`
 
-That directory includes `pipeline-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, provider CI quality probe evidence, production handoff package evidence, production handoff blocker-resolution evidence, production handoff external evidence preflight contract evidence, returned external evidence inbox evidence and contract proof, production handoff export evidence and zip with final `operator-actions\` content plus zip entry/hash index evidence, production handoff status evidence, owner dispatch queue and email drafts, owner contact roster readiness and contract evidence, guarded owner send readiness evidence, local mail authorization readiness evidence, owner unblock pack and contract evidence, owner input request pack evidence, owner contact external intake probe evidence, owner send dry-run probe evidence, owner response bundle probe evidence, owner response bundle kit evidence and zip, owner response bundle kit workflow proof, external evidence action queue proof with item-level returned-bundle paths and auto-acceptance commands, external evidence gap analysis, partial/malformed returned-bundle rejection matrix evidence, external evidence auto-acceptance proof for evidence roots plus owner response bundle directories/zips, release progress notification outbox evidence including the remaining-work snapshot and snapshot probe, mail-helper auth-status parsing proof, progress-notification confirmation proof, progress-notification receipt proof, progress-notification dispatch receipt intake proof, progress-notification local send workflow proof, progress-notification real receipt guard proof, post-dispatch snapshot fixture rejection proof, production external evidence acceptance contract and failure evidence, production hard-mode failure and success-contract probe evidence, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, production driver evidence contract evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, live model endpoint config kit and intake evidence, external live-smoke intake evidence, live-smoke accepted-contract evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, production Lua evidence kit evidence, production Lua external bundle intake evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
+That directory includes `pipeline-manifest.json`, `release-gate-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, `release-docs-freshness-manifest.json`, provider CI quality probe evidence, production handoff package evidence, production handoff blocker-resolution evidence, production handoff external evidence preflight contract evidence, returned external evidence inbox evidence and contract proof, production handoff export evidence and zip with final `operator-actions\` content plus zip entry/hash index evidence, production handoff status evidence, owner dispatch queue and email drafts, owner contact roster readiness and contract evidence, guarded owner send readiness evidence, local mail authorization readiness evidence, owner unblock pack and contract evidence, owner input request pack evidence, owner contact external intake probe evidence, owner send dry-run probe evidence, owner response bundle probe evidence, owner response bundle kit evidence and zip, owner response bundle kit workflow proof, external evidence action queue proof with item-level returned-bundle paths and auto-acceptance commands, external evidence gap analysis, partial/malformed returned-bundle rejection matrix evidence, external evidence auto-acceptance proof for evidence roots plus owner response bundle directories/zips, release progress notification outbox evidence including the remaining-work snapshot and snapshot probe, mail-helper auth-status parsing proof, progress-notification confirmation proof, progress-notification receipt proof, progress-notification dispatch receipt intake proof, progress-notification local send workflow proof, progress-notification real receipt guard proof, post-dispatch snapshot fixture rejection proof, production external evidence acceptance contract and failure evidence, production hard-mode failure and success-contract probe evidence, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, production driver evidence contract evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, live model endpoint config kit and intake evidence, external live-smoke intake evidence, live-smoke accepted-contract evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, production Lua evidence kit evidence, production Lua external bundle intake evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
 
 `production-handoff-package-manifest.json` is generated before the release risk policy. It points host-project owners at the exact driver, Lua, and live-model evidence files and hard-mode release-pipeline commands needed to replace the package fixtures with real production evidence. The package also validates that generated Markdown and command files contain concrete owner names, kit paths, required evidence files, blocker-resolution rows, per-owner packet commands, release commands, preflight commands, and acceptance-wrapper commands rather than serialized PowerShell object names. The generated `blocker-resolution-map.json` and `blocker-resolution-map.md` map every remaining production blocker to its owner, evidence files, acceptance criteria, and validation command. The generated `owner-packets\*.md` files split those rows into one executable packet per host-project owner, with required evidence, blocker reasons, preflight, acceptance-wrapper, and hard-validation commands. The generated `verify-external-evidence.ps1` preflights driver, Lua, and live-model evidence paths and writes `external-evidence-preflight-self-check.json`; the generated `accept-external-evidence.ps1` runs the stable external evidence acceptance command and writes the Markdown acceptance report before optional hard validation. The default self-check must remain pending for the three real host-project evidence areas. `production-handoff-external-evidence-preflight-probe-manifest.json` then runs the generated preflight and acceptance wrapper against complete accepted fixture evidence from outside the repository with contract boundaries preserved, recording `production-handoff-external-evidence-preflight-accepted-manifest.json` and `production-handoff-external-evidence-acceptance-wrapper-manifest.json` as contract proof only.
 

@@ -126,6 +126,7 @@ try {
         "tools\Invoke-AITestPilotProductionExternalEvidenceGapAnalysis.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidencePartialMatrixProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffExportZipIndex.ps1",
+        "tools\Invoke-AITestPilotReleaseDocsFreshnessProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1",
         "tools\Invoke-AITestPilotProductionHandoffMailHelperAuthStatusProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationConfirmationProbe.ps1",

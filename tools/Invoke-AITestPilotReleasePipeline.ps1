@@ -626,6 +626,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "release_docs_freshness" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseDocsFreshnessProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_hard_mode_failure_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

@@ -209,6 +209,7 @@ $productionHandoffPackageManifest = Read-Manifest "production-handoff-package-ma
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-Manifest "production-handoff-external-evidence-preflight-probe-manifest.json"
 $productionHandoffExportManifest = Read-Manifest "production-handoff-export-manifest.json"
 $productionHandoffExportZipIndexManifest = Read-Manifest "production-handoff-export-zip-index-manifest.json"
+$releaseDocsFreshnessManifest = Read-Manifest "release-docs-freshness-manifest.json"
 $productionHandoffStatusManifest = Read-Manifest "production-handoff-status-manifest.json"
 $productionHandoffDispatchPlanManifest = Read-Manifest "production-handoff-dispatch-manifest.json"
 $productionHandoffContactReadinessManifest = Read-Manifest "production-handoff-contact-readiness-manifest.json"
@@ -1893,6 +1894,33 @@ if ($null -ne $productionHandoffExportZipIndexManifest) {
     Test-ListedFiles $productionHandoffExportZipIndexManifest "production_handoff_export_zip_index"
 }
 
+if ($null -ne $releaseDocsFreshnessManifest) {
+    Add-ReleaseCheck "release_docs_freshness" `
+        ($releaseDocsFreshnessManifest.status -eq "PASS" -and
+            $releaseDocsFreshnessManifest.schemaVersion -eq "aitestpilot.release_docs_freshness.v1" -and
+            [bool]$releaseDocsFreshnessManifest.docsFresh -and
+            [int]$releaseDocsFreshnessManifest.pipelineStepCount -ge 80 -and
+            [int]$releaseDocsFreshnessManifest.documentedPipelineStepCount -eq [int]$releaseDocsFreshnessManifest.pipelineStepCount -and
+            [int]$releaseDocsFreshnessManifest.missingPipelineStepDocCount -eq 0 -and
+            [int]$releaseDocsFreshnessManifest.requiredDocFileMissingCount -eq 0 -and
+            [int]$releaseDocsFreshnessManifest.missingRequiredArtifactDocCount -eq 0 -and
+            [int]$releaseDocsFreshnessManifest.missingRequiredDocStringCount -eq 0 -and
+            [bool]$releaseDocsFreshnessManifest.sourceManifestListAligned -and
+            [int]$releaseDocsFreshnessManifest.missingSourceManifestReferenceCount -eq 0 -and
+            [bool]$releaseDocsFreshnessManifest.reportGenerated -and
+            [bool]$releaseDocsFreshnessManifest.reportContentValidated -and
+            -not [bool]$releaseDocsFreshnessManifest.releasePipelineSendsEmail -and
+            -not [bool]$releaseDocsFreshnessManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$releaseDocsFreshnessManifest.externalEvidenceAccepted -and
+            -not [bool]$releaseDocsFreshnessManifest.fixtureEvidencePromoted -and
+            $releaseDocsFreshnessManifest.productionOutputBoundary -eq "release_docs_freshness_only" -and
+            [int]$releaseDocsFreshnessManifest.checkCount -eq 9 -and
+            [int]$releaseDocsFreshnessManifest.failedCheckCount -eq 0) `
+        "Release docs freshness must prove README, CI release docs, architecture, roadmap, pipeline step index, core artifact names, and source-manifest lists align with the current release pipeline before hard-mode copied-bundle probes."
+
+    Test-ListedFiles $releaseDocsFreshnessManifest "release_docs_freshness"
+}
+
 if ($null -ne $productionHandoffStatusManifest) {
     Add-ReleaseCheck "production_handoff_status" `
         ($productionHandoffStatusManifest.status -eq "PASS" -and
@@ -3108,6 +3136,12 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexUnsafeEntryNameCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexDuplicateEntryCount -eq 0 -and
             -not [string]::IsNullOrWhiteSpace([string]$releaseRiskPolicyManifest.productionHandoffExportZipIndexSha256) -and
+            [bool]$releaseRiskPolicyManifest.releaseDocsFreshnessAccepted -and
+            [int]$releaseRiskPolicyManifest.releaseDocsFreshnessDocumentedPipelineStepCount -eq [int]$releaseRiskPolicyManifest.releaseDocsFreshnessPipelineStepCount -and
+            [int]$releaseRiskPolicyManifest.releaseDocsFreshnessMissingPipelineStepDocCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.releaseDocsFreshnessMissingRequiredArtifactDocCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.releaseDocsFreshnessMissingRequiredDocStringCount -eq 0 -and
+            [bool]$releaseRiskPolicyManifest.releaseDocsFreshnessSourceManifestListAligned -and
             [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and
@@ -3258,6 +3292,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-external-evidence-preflight-probe-manifest.json",
         "production-handoff-export-manifest.json",
         "production-handoff-export-zip-index-manifest.json",
+        "release-docs-freshness-manifest.json",
         "production-handoff-status-manifest.json",
         "production-handoff-dispatch-manifest.json",
         "production-handoff-contact-readiness-manifest.json",
@@ -3382,6 +3417,7 @@ $sourceManifests = @(
     "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-handoff-export-manifest.json",
     "production-handoff-export-zip-index-manifest.json",
+    "release-docs-freshness-manifest.json",
     "production-handoff-status-manifest.json",
     "production-handoff-dispatch-manifest.json",
     "production-handoff-contact-readiness-manifest.json",

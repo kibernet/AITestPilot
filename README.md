@@ -509,6 +509,7 @@ For CI, run the full pipeline wrapper:
 ```
 
 It runs the full chain and exports stable artifacts to `artifacts\ai-testpilot-release\latest`. See `docs\ci-release-pipeline.md`.
+The pipeline also writes `release-docs-freshness-manifest.json` before hard-mode probes and release policy checks. That manifest proves the release pipeline step index, README, CI release docs, architecture summary, roadmap, core artifact names, and source-manifest lists are still aligned with the current `Invoke-AITestPilotReleasePipeline.ps1` chain.
 Production CI that must block until real game APIs are wired can run the same wrapper with `-RequireProductionReplayDriverBound`; in that mode the release gate no longer accepts the sample/unbound package-release boundary.
 The repository also includes `.github\workflows\ai-testpilot-release.yml` for a self-hosted Windows Unity GitHub Actions runner and `.azure-pipelines\ai-testpilot-release.yml` for an Azure Pipelines self-hosted Windows Unity pool. Both expose production-bound driver, production Lua patch evidence directory, live model smoke, external live-smoke evidence directory, and Cursor Agent output controls, run the release pipeline, enforce `pipeline-manifest.json` status, and upload/publish the release evidence artifact. The release pipeline validates those provider workflows through `Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1` and `Invoke-AITestPilotAzurePipelinesWorkflowProbe.ps1`.
 

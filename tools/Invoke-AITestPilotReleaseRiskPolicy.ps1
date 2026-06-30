@@ -192,6 +192,7 @@ $productionHandoffPackageManifest = Read-PolicyJson "production-handoff-package-
 $productionHandoffExternalEvidencePreflightProbeManifest = Read-PolicyJson "production-handoff-external-evidence-preflight-probe-manifest.json" "Production handoff external evidence preflight probe manifest"
 $productionHandoffExportManifest = Read-PolicyJson "production-handoff-export-manifest.json" "Production handoff export manifest"
 $productionHandoffExportZipIndexManifest = Read-PolicyJson "production-handoff-export-zip-index-manifest.json" "Production handoff export zip index manifest"
+$releaseDocsFreshnessManifest = Read-PolicyJson "release-docs-freshness-manifest.json" "Release docs freshness manifest"
 $productionHandoffStatusManifest = Read-PolicyJson "production-handoff-status-manifest.json" "Production handoff status manifest"
 $productionHandoffDispatchPlanManifest = Read-PolicyJson "production-handoff-dispatch-manifest.json" "Production handoff dispatch plan manifest"
 $productionHandoffContactReadinessManifest = Read-PolicyJson "production-handoff-contact-readiness-manifest.json" "Production handoff contact readiness manifest"
@@ -914,6 +915,35 @@ $productionHandoffExportZipIndexAccepted = (
 Add-PolicyCheck "production_handoff_export_zip_index_policy" $productionHandoffExportZipIndexAccepted `
     "Production handoff evidence must include a zip index proving export zip entries exactly match the export manifest and every zip entry hash matches its source file." `
     "production_handoff_export_zip_index_not_accepted"
+
+$releaseDocsFreshnessAccepted = (
+    $null -ne $releaseDocsFreshnessManifest -and
+    $releaseDocsFreshnessManifest.status -eq "PASS" -and
+    (Get-JsonValue $releaseDocsFreshnessManifest "schemaVersion" "") -eq "aitestpilot.release_docs_freshness.v1" -and
+    (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "docsFresh" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "pipelineStepCount" 0)) -ge 80 -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "documentedPipelineStepCount" 0)) -eq
+        (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "pipelineStepCount" -1)) -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingPipelineStepDocCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "requiredDocFileMissingCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingRequiredArtifactDocCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingRequiredDocStringCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "sourceManifestListAligned" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingSourceManifestReferenceCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "reportGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "reportContentValidated" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $releaseDocsFreshnessManifest "productionOutputBoundary" "") -eq "release_docs_freshness_only" -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "checkCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "release_docs_freshness_policy" $releaseDocsFreshnessAccepted `
+    "Release evidence must include a docs freshness proof that the README, CI release docs, architecture, roadmap, pipeline step index, core artifact names, and source-manifest lists match the current release pipeline before hard-mode copied-bundle checks run." `
+    "release_docs_freshness_not_accepted"
 
 $productionHandoffStatusAccepted = (
     $null -ne $productionHandoffStatusManifest -and
@@ -2204,6 +2234,7 @@ $sourceFiles = @(
     "production-handoff-external-evidence-preflight-probe-manifest.json",
     "production-handoff-export-manifest.json",
     "production-handoff-export-zip-index-manifest.json",
+    "release-docs-freshness-manifest.json",
     "production-handoff-status-manifest.json",
     "production-handoff-dispatch-manifest.json",
     "production-handoff-contact-readiness-manifest.json",
@@ -2315,6 +2346,13 @@ $manifest = [ordered]@{
     productionHandoffExportZipIndexUnsafeEntryNameCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "unsafeEntryNameCount" 0))
     productionHandoffExportZipIndexDuplicateEntryCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "duplicateEntryCount" 0))
     productionHandoffExportZipIndexSha256 = (Get-JsonValue $productionHandoffExportZipIndexManifest "zipSha256" "")
+    releaseDocsFreshnessAccepted = [bool]$releaseDocsFreshnessAccepted
+    releaseDocsFreshnessPipelineStepCount = (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "pipelineStepCount" 0))
+    releaseDocsFreshnessDocumentedPipelineStepCount = (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "documentedPipelineStepCount" 0))
+    releaseDocsFreshnessMissingPipelineStepDocCount = (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingPipelineStepDocCount" 0))
+    releaseDocsFreshnessMissingRequiredArtifactDocCount = (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingRequiredArtifactDocCount" 0))
+    releaseDocsFreshnessMissingRequiredDocStringCount = (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingRequiredDocStringCount" 0))
+    releaseDocsFreshnessSourceManifestListAligned = (Get-JsonValue $releaseDocsFreshnessManifest "sourceManifestListAligned" $false)
     productionHandoffStatusAccepted = [bool]$productionHandoffStatusAccepted
     productionHandoffDispatchPlanAccepted = [bool]$productionHandoffDispatchPlanAccepted
     productionHandoffPendingDispatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffDispatchPlanManifest "pendingDispatchCount" 0))
@@ -2502,6 +2540,10 @@ $reportLines = @(
     "- Production handoff export zip index entries: $($manifest.productionHandoffExportZipIndexEntryCount) / $($manifest.productionHandoffExportZipIndexExpectedEntryCount)",
     "- Production handoff export zip index hash mismatches: $($manifest.productionHandoffExportZipIndexHashMismatchCount)",
     "- Production handoff export zip index unsafe entries: $($manifest.productionHandoffExportZipIndexUnsafeEntryNameCount)",
+    "- Release docs freshness accepted: $($manifest.releaseDocsFreshnessAccepted)",
+    "- Release docs freshness step coverage: $($manifest.releaseDocsFreshnessDocumentedPipelineStepCount) / $($manifest.releaseDocsFreshnessPipelineStepCount)",
+    "- Release docs freshness missing step docs: $($manifest.releaseDocsFreshnessMissingPipelineStepDocCount)",
+    "- Release docs freshness source manifests aligned: $($manifest.releaseDocsFreshnessSourceManifestListAligned)",
     "- Production handoff status accepted: $($manifest.productionHandoffStatusAccepted)",
     "- Production handoff dispatch plan accepted: $($manifest.productionHandoffDispatchPlanAccepted)",
     "- Production handoff pending dispatches: $($manifest.productionHandoffPendingDispatchCount)",
