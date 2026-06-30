@@ -727,16 +727,20 @@ $productionHandoffExportAccepted = (
         (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "hostProjectActionItemCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerPacketBlockingReasonCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "hostProjectBlockingReasonCount" -2)) -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "kitDirectoryCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "kitDirectoryCount" 0)) -eq 5 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitAvailable" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitWorkflowProbeIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitAutoAcceptanceCommandsDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "externalEvidenceInboxIncluded" $false)) -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "contractEvidenceFileCount" 0)) -ge 14 -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "exportFileCount" 0)) -ge 40 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "contractEvidenceFileCount" 0)) -ge 18 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "exportFileCount" 0)) -ge 50 -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "zipGenerated" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffExportManifest "productionOutputBoundary" "") -eq "host_project_external_handoff_export_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 7 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2019,6 +2023,8 @@ $manifest = [ordered]@{
     productionHandoffPackageAccepted = [bool]$productionHandoffPackageAccepted
     productionHandoffExternalEvidencePreflightAccepted = [bool]$productionHandoffExternalEvidencePreflightAccepted
     productionHandoffExportAccepted = [bool]$productionHandoffExportAccepted
+    productionHandoffExportOwnerResponseBundleKitIncluded = (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitIncluded" $false)
+    productionHandoffExportOwnerResponseBundleKitAutoAcceptanceDocumented = (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitAutoAcceptanceCommandsDocumented" $false)
     productionHandoffStatusAccepted = [bool]$productionHandoffStatusAccepted
     productionHandoffDispatchPlanAccepted = [bool]$productionHandoffDispatchPlanAccepted
     productionHandoffPendingDispatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffDispatchPlanManifest "pendingDispatchCount" 0))
@@ -2165,6 +2171,8 @@ $reportLines = @(
     "- Production handoff package accepted: $($manifest.productionHandoffPackageAccepted)",
     "- Production handoff external evidence preflight accepted: $($manifest.productionHandoffExternalEvidencePreflightAccepted)",
     "- Production handoff export accepted: $($manifest.productionHandoffExportAccepted)",
+    "- Production handoff export owner response bundle kit included: $($manifest.productionHandoffExportOwnerResponseBundleKitIncluded)",
+    "- Production handoff export owner response bundle kit auto acceptance documented: $($manifest.productionHandoffExportOwnerResponseBundleKitAutoAcceptanceDocumented)",
     "- Production handoff status accepted: $($manifest.productionHandoffStatusAccepted)",
     "- Production handoff dispatch plan accepted: $($manifest.productionHandoffDispatchPlanAccepted)",
     "- Production handoff pending dispatches: $($manifest.productionHandoffPendingDispatchCount)",

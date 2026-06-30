@@ -137,6 +137,16 @@ $preflightProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "producti
 $acceptanceContractProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-contract-probe-manifest.json") "Production external evidence acceptance contract probe manifest"
 $acceptanceFailureProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-failure-probe-manifest.json") "Production external evidence acceptance failure probe manifest"
 $inboxContractProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-inbox-contract-probe-manifest.json") "Production external evidence inbox contract probe manifest"
+$ownerResponseBundleKitManifestPath = Join-Path $evidenceBundlePath "production-handoff-owner-response-bundle-kit-manifest.json"
+$ownerResponseBundleKitWorkflowProbeManifestPath = Join-Path $evidenceBundlePath "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json"
+$ownerResponseBundleKitDirPath = Join-Path $evidenceBundlePath "production-handoff-owner-response-bundle-kit"
+$ownerResponseBundleKitAvailable = (Test-Path $ownerResponseBundleKitManifestPath) -and (Test-Path $ownerResponseBundleKitWorkflowProbeManifestPath) -and (Test-Path $ownerResponseBundleKitDirPath)
+$ownerResponseBundleKitManifest = $null
+$ownerResponseBundleKitWorkflowProbeManifest = $null
+if ($ownerResponseBundleKitAvailable) {
+    $ownerResponseBundleKitManifest = Read-JsonFile $ownerResponseBundleKitManifestPath "Production handoff owner response bundle kit manifest"
+    $ownerResponseBundleKitWorkflowProbeManifest = Read-JsonFile $ownerResponseBundleKitWorkflowProbeManifestPath "Production handoff owner response bundle kit workflow probe manifest"
+}
 
 $requiredDirectories = @(
     "production-handoff-package",
@@ -144,6 +154,9 @@ $requiredDirectories = @(
     "production-lua-patch-evidence-kit",
     "live-model-endpoint-config-kit"
 )
+if ($ownerResponseBundleKitAvailable) {
+    $requiredDirectories += "production-handoff-owner-response-bundle-kit"
+}
 
 foreach ($directory in $requiredDirectories) {
     Copy-ExportDirectory $directory
@@ -173,6 +186,14 @@ $requiredFiles = @(
     "production-external-evidence-inbox-acceptance-manifest.json",
     "production-external-evidence-inbox-acceptance.md"
 )
+if ($ownerResponseBundleKitAvailable) {
+    $requiredFiles += @(
+        "production-handoff-owner-response-bundle-kit-manifest.json",
+        "production-handoff-owner-response-bundle-kit.md",
+        "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
+        "production-handoff-owner-response-bundle-kit-workflow-probe.md"
+    )
+}
 
 foreach ($fileName in $requiredFiles) {
     Copy-ExportFile $fileName ("contract-evidence\" + $fileName)
@@ -205,6 +226,7 @@ $exportReadmeLines = @(
     "- `production-driver-binding-kit/`: host-project production replay driver binding kit.",
     "- `production-lua-patch-evidence-kit/`: host-project production Lua evidence template kit.",
     "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit.",
+    $(if ($ownerResponseBundleKitAvailable) { "- `production-handoff-owner-response-bundle-kit/`: fillable owner response bundle template with verifier, import helper, and returned folder/zip auto-acceptance commands." }),
     "- `contract-evidence/`: accepted-fixture and rejection reports proving the intake path without claiming real production evidence.",
     "- `contract-evidence/production-external-evidence-inbox-acceptance.md`: accepted returned-evidence inbox wrapper contract report.",
     "",
@@ -242,6 +264,13 @@ $requiredExportSnippets = @(
     "contract-evidence",
     "Real host-project evidence accepted: False"
 )
+if ($ownerResponseBundleKitAvailable) {
+    $requiredExportSnippets += @(
+        "production-handoff-owner-response-bundle-kit",
+        "owner response bundle template",
+        "auto-acceptance commands"
+    )
+}
 $exportReadmeText = Get-Content -Path $exportReadmePath -Encoding UTF8 -Raw
 $missingExportSnippetCount = @($requiredExportSnippets | Where-Object { -not $exportReadmeText.Contains($_) }).Count
 
@@ -263,7 +292,38 @@ $requiredExportPaths = @(
     "production-handoff-export\contract-evidence\production-external-evidence-acceptance-driver-only.md",
     "production-handoff-export\contract-evidence\production-external-evidence-inbox-acceptance.md"
 )
+if ($ownerResponseBundleKitAvailable) {
+    $requiredExportPaths += @(
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\README.md",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-bundle-request-draft.md",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\verify-owner-response-bundle.ps1",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\import-owner-response-bundle.ps1",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-bundle-template\README.md",
+        "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit-manifest.json",
+        "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit.md",
+        "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
+        "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit-workflow-probe.md"
+    )
+}
 $missingExportPathCount = @($requiredExportPaths | Where-Object { $exportFiles -notcontains $_ }).Count
+
+$ownerResponseBundleKitExportContentText = ""
+if ($ownerResponseBundleKitAvailable) {
+    $ownerResponseBundleKitReadmePath = Join-Path $exportPath "production-handoff-owner-response-bundle-kit\README.md"
+    $ownerResponseBundleKitRequestDraftPath = Join-Path $exportPath "production-handoff-owner-response-bundle-kit\owner-response-bundle-request-draft.md"
+    $ownerResponseBundleKitExportContentText = [string]::Join([Environment]::NewLine, @(
+            if (Test-Path $ownerResponseBundleKitReadmePath) { Get-Content -Path $ownerResponseBundleKitReadmePath -Encoding UTF8 -Raw }
+            if (Test-Path $ownerResponseBundleKitRequestDraftPath) { Get-Content -Path $ownerResponseBundleKitRequestDraftPath -Encoding UTF8 -Raw }
+        ))
+}
+$ownerResponseBundleKitExportContentValidated = (
+    $ownerResponseBundleKitAvailable -and
+    [bool]$ownerResponseBundleKitManifest.autoAcceptanceCommandsContentValidated -and
+    [bool]$ownerResponseBundleKitWorkflowProbeManifest.autoAcceptanceCommandsDocumented -and
+    $ownerResponseBundleKitExportContentText.Contains("-OwnerResponseBundleDir") -and
+    $ownerResponseBundleKitExportContentText.Contains("-OwnerResponseBundleZipPath") -and
+    $ownerResponseBundleKitExportContentText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH")
+)
 
 $checks = @(
     [ordered]@{
@@ -295,6 +355,11 @@ $checks = @(
         name = "external_evidence_inbox"
         passed = ($missingExportPathCount -eq 0 -and $exportFiles -contains "production-handoff-export\production-external-evidence-inbox\accept-returned-evidence.ps1" -and $inboxContractProbeManifest.status -eq "PASS" -and [bool]$inboxContractProbeManifest.acceptedWrapperPassed)
         message = "Export must include the returned external evidence inbox, acceptance wrapper, and accepted inbox contract proof."
+    },
+    [ordered]@{
+        name = "owner_response_bundle_kit_export"
+        passed = ((-not $ownerResponseBundleKitAvailable) -or ($exportFiles -contains "production-handoff-export\production-handoff-owner-response-bundle-kit\README.md" -and $exportFiles -contains "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-bundle-request-draft.md" -and $ownerResponseBundleKitManifest.status -eq "PASS" -and $ownerResponseBundleKitWorkflowProbeManifest.status -eq "PASS" -and $ownerResponseBundleKitExportContentValidated))
+        message = "Final export must include the owner response bundle kit and its returned folder/zip auto-acceptance handoff text once the kit is available."
     }
 )
 
@@ -320,6 +385,10 @@ $manifest = [ordered]@{
     hostProjectBlockingReasonCount = [int]$hostProjectBlockingReasonCount
     ownerPacketsContentValidated = [bool]$handoffManifest.ownerPacketsContentValidated
     kitDirectoryCount = [int]$requiredDirectories.Count
+    ownerResponseBundleKitAvailable = [bool]$ownerResponseBundleKitAvailable
+    ownerResponseBundleKitIncluded = [bool]$ownerResponseBundleKitAvailable
+    ownerResponseBundleKitWorkflowProbeIncluded = [bool]$ownerResponseBundleKitAvailable
+    ownerResponseBundleKitAutoAcceptanceCommandsDocumented = [bool]$ownerResponseBundleKitExportContentValidated
     externalEvidenceInboxIncluded = $true
     contractEvidenceFileCount = [int]$requiredFiles.Count
     exportFileCount = [int]$exportFiles.Count

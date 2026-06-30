@@ -1755,16 +1755,20 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.ownerPacketsContentValidated -and
             [int]$productionHandoffExportManifest.ownerPacketCount -eq [int]$productionHandoffExportManifest.hostProjectActionItemCount -and
             [int]$productionHandoffExportManifest.ownerPacketBlockingReasonCount -eq [int]$productionHandoffExportManifest.hostProjectBlockingReasonCount -and
-            [int]$productionHandoffExportManifest.kitDirectoryCount -eq 4 -and
+            [int]$productionHandoffExportManifest.kitDirectoryCount -eq 5 -and
+            [bool]$productionHandoffExportManifest.ownerResponseBundleKitAvailable -and
+            [bool]$productionHandoffExportManifest.ownerResponseBundleKitIncluded -and
+            [bool]$productionHandoffExportManifest.ownerResponseBundleKitWorkflowProbeIncluded -and
+            [bool]$productionHandoffExportManifest.ownerResponseBundleKitAutoAcceptanceCommandsDocumented -and
             [bool]$productionHandoffExportManifest.externalEvidenceInboxIncluded -and
-            [int]$productionHandoffExportManifest.contractEvidenceFileCount -ge 14 -and
-            [int]$productionHandoffExportManifest.exportFileCount -ge 40 -and
+            [int]$productionHandoffExportManifest.contractEvidenceFileCount -ge 18 -and
+            [int]$productionHandoffExportManifest.exportFileCount -ge 50 -and
             [bool]$productionHandoffExportManifest.zipGenerated -and
             -not [bool]$productionHandoffExportManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 6 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 7 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 
@@ -2867,6 +2871,9 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.providerCiQualityAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffPackageAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExternalEvidencePreflightAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitAutoAcceptanceDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and
