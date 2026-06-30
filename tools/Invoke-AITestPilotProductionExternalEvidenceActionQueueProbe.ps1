@@ -309,6 +309,16 @@ $postDispatchQueueLuaExportHelperItemCount = @($postDispatchQueueItems | Where-O
         ([string](Get-JsonValue $_ "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
         ([string](Get-JsonValue $_ "productionLuaEvidenceExportZipPath" "")).Contains("production-lua-evidence.zip")
     }).Count
+$pendingQueueLiveSmokeExportHelperItemCount = @($pendingQueueItems | Where-Object {
+        [string](Get-JsonValue $_ "area" "") -eq "live_model_endpoint_smoke" -and
+        ([string](Get-JsonValue $_ "liveModelSmokeEvidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "liveModelSmokeEvidenceExportZipPath" "")).Contains("live-smoke-evidence.zip")
+    }).Count
+$postDispatchQueueLiveSmokeExportHelperItemCount = @($postDispatchQueueItems | Where-Object {
+        [string](Get-JsonValue $_ "area" "") -eq "live_model_endpoint_smoke" -and
+        ([string](Get-JsonValue $_ "liveModelSmokeEvidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "liveModelSmokeEvidenceExportZipPath" "")).Contains("live-smoke-evidence.zip")
+    }).Count
 
 $checks = @()
 Add-ProbeCheck "action_queue_sources_available" `
@@ -359,8 +369,10 @@ Add-ProbeCheck "action_queue_items_expose_bundle_auto_acceptance" `
         $pendingQueueDriverExportHelperItemCount -eq 1 -and
         $postDispatchQueueDriverExportHelperItemCount -eq 1 -and
         $pendingQueueLuaExportHelperItemCount -eq 1 -and
-        $postDispatchQueueLuaExportHelperItemCount -eq 1) `
-    "Every pending and post-dispatch queue item must expose its bundle area path plus directory/zip auto-acceptance commands, and driver/Lua items must expose evidence export helpers."
+        $postDispatchQueueLuaExportHelperItemCount -eq 1 -and
+        $pendingQueueLiveSmokeExportHelperItemCount -eq 1 -and
+        $postDispatchQueueLiveSmokeExportHelperItemCount -eq 1) `
+    "Every pending and post-dispatch queue item must expose its bundle area path plus directory/zip auto-acceptance commands, and driver/Lua/live-smoke items must expose evidence export helpers."
 Add-ProbeCheck "missing_post_dispatch_rejected_when_required" `
     ($missingPostDispatchResult.exitCode -ne 0 -and $null -eq $missingPostDispatchManifest) `
     "RequirePostDispatch must reject a missing post-dispatch snapshot instead of falling back silently."
@@ -422,6 +434,9 @@ $manifest = [ordered]@{
     pendingQueueLuaExportHelperItemCount = [int]$pendingQueueLuaExportHelperItemCount
     postDispatchQueueLuaExportHelperItemCount = [int]$postDispatchQueueLuaExportHelperItemCount
     postDispatchQueueProductionLuaEvidenceExportHelperCommand = [string](Get-JsonValue ($postDispatchQueueItems | Where-Object { [string](Get-JsonValue $_ "area" "") -eq "production_lua_patch_evidence" } | Select-Object -First 1) "productionLuaEvidenceExportHelperCommand" "")
+    pendingQueueLiveSmokeExportHelperItemCount = [int]$pendingQueueLiveSmokeExportHelperItemCount
+    postDispatchQueueLiveSmokeExportHelperItemCount = [int]$postDispatchQueueLiveSmokeExportHelperItemCount
+    postDispatchQueueLiveModelSmokeEvidenceExportHelperCommand = [string](Get-JsonValue ($postDispatchQueueItems | Where-Object { [string](Get-JsonValue $_ "area" "") -eq "live_model_endpoint_smoke" } | Select-Object -First 1) "liveModelSmokeEvidenceExportHelperCommand" "")
     ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipEnvironmentVariable" "")
     missingPostDispatchRejected = [bool]($missingPostDispatchResult.exitCode -ne 0)
     releasePipelineSendsEmail = $false
@@ -447,6 +462,7 @@ $reportLines = @(
     "- Queue item bundle command coverage: $($manifest.postDispatchQueueItemAutoAcceptanceCommandCount) / $($manifest.externalRemainingWorkItemCount)",
     "- Production driver evidence export helper: $($manifest.postDispatchQueueProductionDriverEvidenceExportHelperCommand)",
     "- Production Lua evidence export helper: $($manifest.postDispatchQueueProductionLuaEvidenceExportHelperCommand)",
+    "- Live model smoke evidence export helper: $($manifest.postDispatchQueueLiveModelSmokeEvidenceExportHelperCommand)",
     "- Missing post-dispatch rejected: $($manifest.missingPostDispatchRejected)",
     "",
     "## Boundary",

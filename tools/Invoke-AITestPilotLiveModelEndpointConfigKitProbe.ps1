@@ -79,6 +79,16 @@ function Read-JsonFile {
     return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
 }
 
+function Convert-ToArray {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return @()
+    }
+
+    return @($Value)
+}
+
 function Add-ProbeCheck {
     param(
         [string]$Name,
@@ -165,6 +175,8 @@ $generatedFiles = @(
     "$relativeKitDir/live-model-endpoint-config.json",
     "$relativeKitDir/live-model-endpoint-config-schema.md",
     "$relativeKitDir/live-model-endpoint-smoke-runbook.md",
+    "$relativeKitDir/Invoke-LiveModelEndpointSmokeEvidence.ps1",
+    "$relativeKitDir/Export-LiveModelEndpointSmokeEvidenceBundle.ps1",
     "$relativeKitDir/live-model-endpoint-config-kit-generated-manifest.json"
 )
 
@@ -173,6 +185,95 @@ foreach ($fileName in $generatedFiles) {
     if (-not (Test-Path $path)) {
         throw "Live model endpoint config kit file is missing: $fileName"
     }
+}
+
+$exportHelperPath = Join-Path $kitPath "Export-LiveModelEndpointSmokeEvidenceBundle.ps1"
+$exportHelperText = Get-Content -Path $exportHelperPath -Encoding UTF8 -Raw
+
+$missingSmokeDir = Join-Path $probeBundlePath "missing-smoke-evidence"
+New-Item -ItemType Directory -Force $missingSmokeDir | Out-Null
+$missingExportOutputDir = Join-Path $probeBundlePath "missing-smoke-export\live-smoke-evidence"
+$missingExportZipPath = Join-Path $probeBundlePath "missing-smoke-export\live-smoke-evidence.zip"
+$exportMissingEvidenceRejected = $false
+$exportMissingEvidenceError = ""
+try {
+    & $exportHelperPath `
+        -AITestPilotRepoRoot $repoRoot `
+        -EvidenceBundleDir $evidenceBundlePath `
+        -LiveModelEndpointSmokeEvidenceDir $missingSmokeDir `
+        -OutputDir $missingExportOutputDir `
+        -ZipPath $missingExportZipPath
+}
+catch {
+    $exportMissingEvidenceRejected = $true
+    $exportMissingEvidenceError = $_.Exception.Message
+}
+
+$contractFixtureSmokeDir = Join-Path $probeBundlePath "contract-fixture-live-smoke-evidence"
+New-Item -ItemType Directory -Force $contractFixtureSmokeDir | Out-Null
+$contractFixtureSmokeManifest = [ordered]@{
+    schemaVersion = "ai-testpilot.live_model_endpoint_smoke.v1"
+    status = "PASS"
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    endpointMode = "live_http_endpoint"
+    clientType = "ModelEndpointDecisionClient"
+    endpointConfigured = $true
+    modelConfigured = $true
+    apiKeyRequired = $true
+    apiKeyConfigured = $true
+    requestFormat = "NativeJson"
+    actionSchemaVersion = "ai-testpilot.action.v1"
+    requestContainsActionSchema = $true
+    requestContainsAllowedActions = $true
+    responseValidated = $true
+    traceStatus = "PASS"
+    attemptCount = 1
+    parsedAction = [ordered]@{ action = "finish" }
+    fixtureOnly = $true
+    contractFixtureMode = $true
+    realProviderAccessProven = $false
+    liveSmokeExecuted = $false
+    productionLiveEndpointAccessProven = $false
+    evidenceProvenance = "contract_fixture_live_smoke_shape"
+    productionOutputBoundary = "contract_fixture_live_smoke_shape_only"
+}
+$contractFixtureTrace = [ordered]@{
+    runId = "LIVE-MODEL-ENDPOINT-SMOKE"
+    requestJson = '{"messages":[{"role":"user","content":"contract fixture"}],"allowedActions":["finish"]}'
+    responseJson = '{"action":"finish"}'
+    fixtureOnly = $true
+    contractFixtureMode = $true
+    realProviderAccessProven = $false
+    liveSmokeExecuted = $false
+    productionLiveEndpointAccessProven = $false
+    evidenceProvenance = "contract_fixture_live_smoke_shape"
+    productionOutputBoundary = "contract_fixture_live_smoke_shape_only"
+}
+$contractFixtureSmokeManifest | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $contractFixtureSmokeDir "live-model-endpoint-smoke-manifest.json") -Encoding UTF8
+$contractFixtureTrace | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $contractFixtureSmokeDir "live-model-endpoint-decision-trace.json") -Encoding UTF8
+
+$fixtureExportOutputDir = Join-Path $probeBundlePath "contract-fixture-smoke-export\live-smoke-evidence"
+$fixtureExportZipPath = Join-Path $probeBundlePath "contract-fixture-smoke-export\live-smoke-evidence.zip"
+$fixtureExportIntakeManifestPath = Join-Path (Split-Path $fixtureExportOutputDir -Parent) "live-model-endpoint-smoke-evidence-intake-for-export.json"
+$exportContractFixtureRejected = $false
+$exportContractFixtureError = ""
+try {
+    & $exportHelperPath `
+        -AITestPilotRepoRoot $repoRoot `
+        -EvidenceBundleDir $evidenceBundlePath `
+        -LiveModelEndpointSmokeEvidenceDir $contractFixtureSmokeDir `
+        -OutputDir $fixtureExportOutputDir `
+        -ZipPath $fixtureExportZipPath
+}
+catch {
+    $exportContractFixtureRejected = $true
+    $exportContractFixtureError = $_.Exception.Message
+}
+
+$fixtureExportRejectionIntake = if (Test-Path $fixtureExportIntakeManifestPath) {
+    Read-JsonFile $fixtureExportIntakeManifestPath "Contract fixture export rejection intake manifest"
+} else {
+    $null
 }
 
 $copiedAcceptedIntakeName = "live-model-endpoint-config-kit-accepted-intake-manifest.json"
@@ -191,6 +292,14 @@ $templateKitValid = $generatedManifest.status -eq "PASS" -and
     -not [bool]$generatedManifest.realProviderAccessProven -and
     -not [bool]$generatedManifest.liveSmokeExecuted -and
     -not [bool]$generatedManifest.secretsSerialized -and
+    [bool]$generatedManifest.invokeHelperGenerated -and
+    [bool]$generatedManifest.exportHelperGenerated -and
+    [bool]$generatedManifest.exportHelperRequiresRealProviderEvidence -and
+    [bool]$generatedManifest.exportHelperRequiresProductionLiveEndpointAccess -and
+    [bool]$generatedManifest.exportHelperRejectsFixtureEvidence -and
+    [bool]$generatedManifest.exportHelperRejectsSkippedEvidence -and
+    [bool]$generatedManifest.exportHelperRejectsContractFixtureEvidence -and
+    [int]$generatedManifest.generatedFileCount -eq 7 -and
     $templateConfig.status -eq "PENDING_LIVE_ENDPOINT_CONFIGURATION" -and
     -not [bool]$templateConfig.configurationComplete
 
@@ -228,15 +337,56 @@ $externalTemplateBlocked = -not [bool]$externalConfigUnderRepo -and
     -not [bool]$externalIntake.configurationComplete -and
     [int]$externalIntake.blockingReasonCount -ge 4
 
+$fixtureExportBlockingReasonCount = if ($null -ne $fixtureExportRejectionIntake) {
+    [int]$fixtureExportRejectionIntake.blockingReasonCount
+} else {
+    -1
+}
+$fixtureExportBlockingReasons = if ($null -ne $fixtureExportRejectionIntake) {
+    @(Convert-ToArray $fixtureExportRejectionIntake.blockingReasons | ForEach-Object { [string]$_ })
+} else {
+    @()
+}
+$exportHelperBoundaryPassed = [bool]$exportMissingEvidenceRejected -and
+    [bool]$exportContractFixtureRejected -and
+    -not (Test-Path $missingExportZipPath) -and
+    -not (Test-Path $fixtureExportZipPath) -and
+    $exportHelperText.Contains("direct_live_http_endpoint_pass") -and
+    $exportHelperText.Contains("realProviderAccessProven") -and
+    $exportHelperText.Contains("productionLiveEndpointAccessProven") -and
+    $exportHelperText.Contains("fixtureOnly=false") -and
+    $null -ne $fixtureExportRejectionIntake -and
+    -not [bool]$fixtureExportRejectionIntake.smokeEvidenceAccepted -and
+    -not [bool]$fixtureExportRejectionIntake.realProviderEvidenceAccepted -and
+    -not [bool]$fixtureExportRejectionIntake.productionLiveEndpointAccessProven -and
+    -not [bool]$fixtureExportRejectionIntake.realProviderAccessProven -and
+    -not [bool]$fixtureExportRejectionIntake.liveSmokeExecuted -and
+    -not [bool]$fixtureExportRejectionIntake.contractFixtureMode -and
+    [bool]$fixtureExportRejectionIntake.fixtureEvidenceDetected -and
+    [bool]$fixtureExportRejectionIntake.fixtureOnly -and
+    [int]$fixtureExportRejectionIntake.blockingReasonCount -ge 1 -and
+    $fixtureExportBlockingReasons -contains "live_model_endpoint_fixture_smoke_not_allowed"
+
 $checks = @()
 Add-ProbeCheck "template_kit_generated" $templateKitValid "Template config kit must generate without claiming provider access."
 Add-ProbeCheck "accepted_fixture_config_intake" $acceptedFixturePassed "Accepted config fixture must pass static intake without claiming live access."
 Add-ProbeCheck "external_template_blocked" $externalTemplateBlocked "Repo-external pending config must be read and rejected under complete-configuration mode."
+Add-ProbeCheck "export_helper_boundary" $exportHelperBoundaryPassed "Export helper must reject missing and contract-fixture smoke evidence unless direct live provider provenance is present."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
 
-$files = @($generatedFiles + $copiedAcceptedIntakeName + $copiedExternalIntakeName + $copiedExternalConfigName)
+$copiedFixtureExportRejectionName = "live-model-endpoint-config-kit-export-helper-fixture-rejection-intake-manifest.json"
+if ($null -ne $fixtureExportRejectionIntake) {
+    Copy-Item -LiteralPath $fixtureExportIntakeManifestPath -Destination (Join-Path $evidenceBundlePath $copiedFixtureExportRejectionName) -Force
+}
+$exportProbeFiles = if ($null -ne $fixtureExportRejectionIntake) {
+    @($copiedFixtureExportRejectionName)
+} else {
+    @()
+}
+
+$files = @($generatedFiles + $copiedAcceptedIntakeName + $copiedExternalIntakeName + $copiedExternalConfigName + $exportProbeFiles)
 
 $manifest = [ordered]@{
     schemaVersion = "aitestpilot.live_model_endpoint_config_kit_probe.v1"
@@ -258,6 +408,23 @@ $manifest = [ordered]@{
     externalTemplateBlocked = [bool]$externalTemplateBlocked
     externalTemplateCommandFailed = [bool]$externalIntakeCommandFailed
     externalTemplateError = $externalIntakeError
+    invokeHelperGenerated = [bool]$generatedManifest.invokeHelperGenerated
+    exportHelperGenerated = [bool]$generatedManifest.exportHelperGenerated
+    exportHelperRequiresRealProviderEvidence = [bool]$generatedManifest.exportHelperRequiresRealProviderEvidence
+    exportHelperRequiresProductionLiveEndpointAccess = [bool]$generatedManifest.exportHelperRequiresProductionLiveEndpointAccess
+    exportHelperRejectsFixtureEvidence = [bool]$generatedManifest.exportHelperRejectsFixtureEvidence
+    exportHelperRejectsSkippedEvidence = [bool]$generatedManifest.exportHelperRejectsSkippedEvidence
+    exportHelperRejectsContractFixtureEvidence = [bool]$generatedManifest.exportHelperRejectsContractFixtureEvidence
+    exportHelperRequiresDirectLiveHttpProvenance = [bool]$exportHelperText.Contains("direct_live_http_endpoint_pass")
+    exportHelperRejectedMissingEvidence = [bool]$exportMissingEvidenceRejected
+    exportHelperMissingEvidenceError = $exportMissingEvidenceError
+    exportHelperRejectedContractFixtureEvidence = [bool]$exportContractFixtureRejected
+    exportHelperContractFixtureError = $exportContractFixtureError
+    exportFixtureRejectionBlockingReasonCount = [int]$fixtureExportBlockingReasonCount
+    exportFixtureRejectionBlockingReasons = @($fixtureExportBlockingReasons)
+    evidenceExportHelperCommand = [string]$generatedManifest.evidenceExportHelperCommand
+    evidenceExportZipPath = [string]$generatedManifest.evidenceExportZipPath
+    evidenceExportManifestPath = [string]$generatedManifest.evidenceExportManifestPath
     releasePipelineUsesFixture = $false
     productionLiveEndpointAccessProven = $false
     liveSmokeRequiredForProduction = $true

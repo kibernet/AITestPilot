@@ -274,12 +274,13 @@ $exportReadmeLines = @(
     "2. Send each `production-handoff-package\\owner-packets\\*.md` packet to the listed owner.",
     "3. Production driver owners can run `production-driver-binding-kit\\Export-ProductionDriverEvidenceBundle.ps1` after production-bound readiness passes; it creates `production-driver-evidence-export\\production-driver-evidence` and `production-driver-evidence-export\\production-driver-evidence.zip`.",
     "4. Production Lua owners can run `production-lua-patch-evidence-kit\\Export-ProductionLuaPatchEvidenceBundle.ps1` after real Lua patch readiness passes; it creates `production-lua-evidence-export\\production-lua-evidence` and `production-lua-evidence-export\\production-lua-evidence.zip`.",
-    "5. Owners copy returned evidence into `production-external-evidence-inbox\\production-driver-evidence`, `production-external-evidence-inbox\\production-lua-evidence`, and `production-external-evidence-inbox\\live-smoke-evidence`.",
-    "6. Run `production-external-evidence-inbox\\accept-returned-evidence.ps1` to generate the Markdown acceptance report.",
-    "7. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`."
+    "5. Live model owners can run `live-model-endpoint-config-kit\\Export-LiveModelEndpointSmokeEvidenceBundle.ps1` after direct live provider smoke passes; it creates `live-model-endpoint-smoke-evidence-export\\live-smoke-evidence` and `live-model-endpoint-smoke-evidence-export\\live-smoke-evidence.zip`.",
+    "6. Owners copy returned evidence into `production-external-evidence-inbox\\production-driver-evidence`, `production-external-evidence-inbox\\production-lua-evidence`, and `production-external-evidence-inbox\\live-smoke-evidence`.",
+    "7. Run `production-external-evidence-inbox\\accept-returned-evidence.ps1` to generate the Markdown acceptance report.",
+    "8. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`."
 )
 if ($operatorActionQueueAvailable) {
-    $exportReadmeLines += "8. Use `operator-actions\\production-external-evidence-action-queue.md` as the post-dispatch operator checklist for returned folder/zip auto acceptance."
+    $exportReadmeLines += "9. Use `operator-actions\\production-external-evidence-action-queue.md` as the post-dispatch operator checklist for returned folder/zip auto acceptance."
 }
 $exportReadmeLines += @(
     "",
@@ -291,7 +292,7 @@ $exportReadmeLines += @(
     "- `production-external-evidence-inbox/`: returned-evidence directory layout and wrapper for accepting owner evidence.",
     "- `production-driver-binding-kit/`: host-project production replay driver binding kit, including `Export-ProductionDriverEvidenceBundle.ps1` for production-bound driver evidence folder/zip export.",
     "- `production-lua-patch-evidence-kit/`: host-project production Lua evidence template kit, including `Export-ProductionLuaPatchEvidenceBundle.ps1` for real Lua evidence folder/zip export.",
-    "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit."
+    "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit, including `Export-LiveModelEndpointSmokeEvidenceBundle.ps1` for direct live provider smoke evidence folder/zip export."
 )
 if ($ownerResponseBundleKitAvailable) {
     $exportReadmeLines += "- `production-handoff-owner-response-bundle-kit/`: fillable owner response bundle template with verifier, import helper, and returned folder/zip auto-acceptance commands."
@@ -335,6 +336,8 @@ $requiredExportSnippets = @(
     "Export-ProductionLuaPatchEvidenceBundle.ps1",
     "production-lua-evidence.zip",
     "live-model-endpoint-config-kit",
+    "Export-LiveModelEndpointSmokeEvidenceBundle.ps1",
+    "live-smoke-evidence.zip",
     "production-external-evidence-inbox",
     "accept-returned-evidence.ps1",
     "production-external-evidence-inbox-acceptance.md",
@@ -367,6 +370,7 @@ $requiredExportPaths = @(
     "production-handoff-export\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1",
     "production-handoff-export\production-lua-patch-evidence-kit\README.md",
     "production-handoff-export\production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1",
+    "production-handoff-export\live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1",
     "production-handoff-export\production-external-evidence-inbox\README.md",
     "production-handoff-export\production-external-evidence-inbox\accept-returned-evidence.ps1",
     "production-handoff-export\production-external-evidence-inbox\production-driver-evidence\README.md",
@@ -399,6 +403,8 @@ $productionDriverEvidenceExportHelperRelativePath = "production-handoff-export\p
 $productionDriverEvidenceExportHelperIncluded = $exportFiles -contains $productionDriverEvidenceExportHelperRelativePath
 $productionLuaEvidenceExportHelperRelativePath = "production-handoff-export\production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1"
 $productionLuaEvidenceExportHelperIncluded = $exportFiles -contains $productionLuaEvidenceExportHelperRelativePath
+$liveModelSmokeEvidenceExportHelperRelativePath = "production-handoff-export\live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1"
+$liveModelSmokeEvidenceExportHelperIncluded = $exportFiles -contains $liveModelSmokeEvidenceExportHelperRelativePath
 
 $ownerResponseBundleKitExportContentText = ""
 if ($ownerResponseBundleKitAvailable) {
@@ -415,7 +421,8 @@ $ownerResponseBundleKitExportContentValidated = (
     [bool]$ownerResponseBundleKitWorkflowProbeManifest.autoAcceptanceCommandsDocumented -and
     $ownerResponseBundleKitExportContentText.Contains("-OwnerResponseBundleDir") -and
     $ownerResponseBundleKitExportContentText.Contains("-OwnerResponseBundleZipPath") -and
-    $ownerResponseBundleKitExportContentText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH")
+    $ownerResponseBundleKitExportContentText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH") -and
+    $ownerResponseBundleKitExportContentText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1")
 )
 $operatorActionQueueReportText = ""
 $operatorActionQueueItemBundleCommandCount = 0
@@ -444,6 +451,11 @@ $productionLuaEvidenceExportHelperDocumented = (
     $exportReadmeText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
     $exportReadmeText.Contains("production-lua-evidence.zip")
 )
+$liveModelSmokeEvidenceExportHelperDocumented = (
+    $liveModelSmokeEvidenceExportHelperIncluded -and
+    $exportReadmeText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+    $exportReadmeText.Contains("live-smoke-evidence.zip")
+)
 $operatorActionQueueExportContentValidated = (
     $operatorActionQueueAvailable -and
     $operatorActionQueueManifest.status -eq "PASS" -and
@@ -461,9 +473,12 @@ $operatorActionQueueExportContentValidated = (
     $operatorActionQueueManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     [int](Get-ObjectProperty $operatorActionQueueManifest "productionLuaEvidenceExportHelperItemCount" 0) -eq 1 -and
     ([string](Get-ObjectProperty $operatorActionQueueManifest "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    [int](Get-ObjectProperty $operatorActionQueueManifest "liveModelSmokeEvidenceExportHelperItemCount" 0) -eq 1 -and
+    ([string](Get-ObjectProperty $operatorActionQueueManifest "liveModelSmokeEvidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
     $operatorActionQueueReportText.Contains("-OwnerResponseBundleZipPath") -and
     $operatorActionQueueReportText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
     $operatorActionQueueReportText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    $operatorActionQueueReportText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
     $operatorActionQueueReportText.Contains("Owner response bundle zip auto acceptance") -and
     $operatorActionQueueReportText.Contains("Bundle Area") -and
     $operatorActionQueueReportText.Contains("Bundle Acceptance")
@@ -499,6 +514,11 @@ $checks = @(
         name = "production_lua_evidence_export_helper"
         passed = ($productionLuaEvidenceExportHelperIncluded -and $productionLuaEvidenceExportHelperDocumented)
         message = "Final export must include and document the production Lua evidence export helper."
+    },
+    [ordered]@{
+        name = "live_model_smoke_evidence_export_helper"
+        passed = ($liveModelSmokeEvidenceExportHelperIncluded -and $liveModelSmokeEvidenceExportHelperDocumented)
+        message = "Final export must include and document the live model smoke evidence export helper."
     },
     [ordered]@{
         name = "failure_contract_reports"
@@ -562,6 +582,9 @@ $manifest = [ordered]@{
     productionLuaEvidenceExportHelperIncluded = [bool]$productionLuaEvidenceExportHelperIncluded
     productionLuaEvidenceExportHelperDocumented = [bool]$productionLuaEvidenceExportHelperDocumented
     productionLuaEvidenceExportHelperPath = $productionLuaEvidenceExportHelperRelativePath
+    liveModelSmokeEvidenceExportHelperIncluded = [bool]$liveModelSmokeEvidenceExportHelperIncluded
+    liveModelSmokeEvidenceExportHelperDocumented = [bool]$liveModelSmokeEvidenceExportHelperDocumented
+    liveModelSmokeEvidenceExportHelperPath = $liveModelSmokeEvidenceExportHelperRelativePath
     operatorActionQueueTrackedRemainingWorkItemCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.trackedRemainingWorkItemCount } else { 0 })
     operatorActionQueueExternalRemainingWorkItemCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingWorkItemCount } else { 0 })
     operatorActionQueueExternalRemainingMissingFileCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingMissingFileCount } else { 0 })

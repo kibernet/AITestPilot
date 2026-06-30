@@ -635,7 +635,26 @@ $liveModelConfigKitAccepted = (
     (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "liveSmokeRequiredForProduction" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "liveSmokeExecuted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "secretsSerialized" $true)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRequiresRealProviderEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRequiresProductionLiveEndpointAccess" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRejectedMissingEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRejectedContractFixtureEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRequiresDirectLiveHttpProvenance" $false)) -and
+    ([string](Get-JsonValue $liveModelConfigKitProbeManifest "evidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+    (Convert-ToInt (Get-JsonValue $liveModelConfigKitProbeManifest "generatedFileCount" 0)) -ge 7 -and
+    (Convert-ToInt (Get-JsonValue $liveModelConfigKitProbeManifest "checkCount" 0)) -eq 4 -and
     (Convert-ToInt (Get-JsonValue $liveModelConfigKitProbeManifest "failedCheckCount" 1)) -eq 0
+)
+$liveModelConfigKitExportHelperAccepted = (
+    $null -ne $liveModelConfigKitProbeManifest -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRequiresRealProviderEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRequiresProductionLiveEndpointAccess" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRejectedMissingEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRejectedContractFixtureEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRequiresDirectLiveHttpProvenance" $false)) -and
+    ([string](Get-JsonValue $liveModelConfigKitProbeManifest "evidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1")
 )
 
 Add-PolicyCheck "live_model_endpoint_config_kit_policy" $liveModelConfigKitAccepted `
@@ -763,6 +782,8 @@ $productionHandoffPackageAccepted = (
     ([string](Get-JsonValue $productionHandoffPackageManifest "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
     (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "productionLuaEvidenceExportHelperDocumented" $false)) -and
     ([string](Get-JsonValue $productionHandoffPackageManifest "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffPackageManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)) -and
+    ([string](Get-JsonValue $productionHandoffPackageManifest "liveModelSmokeEvidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "sourceManifestCount" 0)) -ge 12 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "generatedFileCount" 0)) -ge 13 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffPackageManifest "checkCount" 0)) -eq 10 -and
@@ -831,6 +852,9 @@ $productionHandoffExportAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperIncluded" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperDocumented" $false)) -and
     ([string](Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperPath" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "liveModelSmokeEvidenceExportHelperIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)) -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "liveModelSmokeEvidenceExportHelperPath" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionFileCount" 0)) -ge 6 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemAutoAcceptanceCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueTrackedRemainingWorkItemCount" 0)) -eq 3 -and
@@ -845,7 +869,7 @@ $productionHandoffExportAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffExportManifest "productionOutputBoundary" "") -eq "host_project_external_handoff_export_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 10 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 11 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -1350,6 +1374,8 @@ $productionHandoffOwnerResponseBundleKitAccepted = (
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionLuaEvidenceExportHelperDocumented" $false)) -and
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)) -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "liveModelSmokeEvidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerContactCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "requiredEvidenceFileCount" -1)) -eq
@@ -1400,6 +1426,7 @@ $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionDriverEvidenceExportHelperDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionLuaEvidenceExportHelperDocumented" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importedEvidenceFileCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "writtenEvidenceFileCount" -1)) -eq
@@ -1783,6 +1810,9 @@ $productionExternalEvidenceActionQueueProbeAccepted = (
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueLuaExportHelperItemCount" 0)) -eq 1 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLuaExportHelperItemCount" 0)) -eq 1 -and
     ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueProductionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueLiveSmokeExportHelperItemCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLiveSmokeExportHelperItemCount" 0)) -eq 1 -and
+    ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLiveModelSmokeEvidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
     (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "releasePipelineSendsEmail" $true)) -and
@@ -2148,6 +2178,8 @@ $manifest = [ordered]@{
     liveModelSmokeLiveSmokeExecuted = [bool]$liveModelSmokeLiveSmokeExecuted
     liveModelSmokeProductionLiveEndpointAccessProven = [bool]$liveModelSmokeProductionLiveEndpointAccessProven
     liveModelConfigKitAccepted = [bool]$liveModelConfigKitAccepted
+    liveModelConfigKitExportHelperAccepted = [bool]$liveModelConfigKitExportHelperAccepted
+    liveModelConfigKitEvidenceExportHelperCommand = (Get-JsonValue $liveModelConfigKitProbeManifest "evidenceExportHelperCommand" "")
     liveModelExternalSmokeIntakeAccepted = [bool]$liveModelExternalSmokeIntakeAccepted
     liveModelSmokeEvidenceContractAccepted = [bool]$liveModelSmokeEvidenceContractAccepted
     ciProviderEvidenceAccepted = [bool]$ciProviderEvidenceAccepted
@@ -2167,6 +2199,8 @@ $manifest = [ordered]@{
     productionHandoffExportDriverEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperDocumented" $false)
     productionHandoffExportLuaEvidenceExportHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperIncluded" $false)
     productionHandoffExportLuaEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperDocumented" $false)
+    productionHandoffExportLiveModelSmokeEvidenceExportHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "liveModelSmokeEvidenceExportHelperIncluded" $false)
+    productionHandoffExportLiveModelSmokeEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)
     productionHandoffStatusAccepted = [bool]$productionHandoffStatusAccepted
     productionHandoffDispatchPlanAccepted = [bool]$productionHandoffDispatchPlanAccepted
     productionHandoffPendingDispatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffDispatchPlanManifest "pendingDispatchCount" 0))
@@ -2200,6 +2234,8 @@ $manifest = [ordered]@{
     productionHandoffOwnerResponseBundleKitDriverEvidenceExportHelperCommand = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionDriverEvidenceExportHelperCommand" "")
     productionHandoffOwnerResponseBundleKitLuaEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionLuaEvidenceExportHelperDocumented" $false)
     productionHandoffOwnerResponseBundleKitLuaEvidenceExportHelperCommand = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionLuaEvidenceExportHelperCommand" "")
+    productionHandoffOwnerResponseBundleKitLiveModelSmokeEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)
+    productionHandoffOwnerResponseBundleKitLiveModelSmokeEvidenceExportHelperCommand = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "liveModelSmokeEvidenceExportHelperCommand" "")
     productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted
     productionHandoffOwnerResponseBundleKitWorkflowEmptyTemplateRejected = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emptyTemplateRejected" $false)
     productionHandoffOwnerResponseBundleKitWorkflowCompleteTemplateAccepted = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateAccepted" $false)
@@ -2209,6 +2245,7 @@ $manifest = [ordered]@{
     productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceZipCommandDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceZipCommandDocumented" $false)
     productionHandoffOwnerResponseBundleKitWorkflowDriverEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionDriverEvidenceExportHelperDocumented" $false)
     productionHandoffOwnerResponseBundleKitWorkflowLuaEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionLuaEvidenceExportHelperDocumented" $false)
+    productionHandoffOwnerResponseBundleKitWorkflowLiveModelSmokeEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)
     releaseProgressNotificationOutboxAccepted = [bool]$releaseProgressNotificationOutboxAccepted
     releaseProgressNotificationDispatchStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "")
     releaseProgressNotificationRecipient = (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "")
@@ -2267,6 +2304,8 @@ $manifest = [ordered]@{
     productionExternalEvidenceActionQueuePostDispatchDriverExportHelperCommand = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueProductionDriverEvidenceExportHelperCommand" "")
     productionExternalEvidenceActionQueuePostDispatchLuaExportHelperItemCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLuaExportHelperItemCount" 0))
     productionExternalEvidenceActionQueuePostDispatchLuaExportHelperCommand = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueProductionLuaEvidenceExportHelperCommand" "")
+    productionExternalEvidenceActionQueuePostDispatchLiveModelSmokeExportHelperItemCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLiveSmokeExportHelperItemCount" 0))
+    productionExternalEvidenceActionQueuePostDispatchLiveModelSmokeExportHelperCommand = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLiveModelSmokeEvidenceExportHelperCommand" "")
     productionExternalEvidenceActionQueueMissingPostDispatchRejected = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
@@ -2319,6 +2358,7 @@ $reportLines = @(
     "- Production Lua external bundle intake accepted: $($manifest.productionLuaExternalBundleIntakeAccepted)",
     "- Live model policy: $($manifest.liveModelPolicyStatus)",
     "- Live model config kit accepted: $($manifest.liveModelConfigKitAccepted)",
+    "- Live model config kit export helper accepted: $($manifest.liveModelConfigKitExportHelperAccepted)",
     "- Live model external smoke intake accepted: $($manifest.liveModelExternalSmokeIntakeAccepted)",
     "- Live model smoke evidence contract accepted: $($manifest.liveModelSmokeEvidenceContractAccepted)",
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",
@@ -2331,6 +2371,7 @@ $reportLines = @(
     "- Production handoff export operator action queue source kind: $($manifest.productionHandoffExportOperatorActionQueueSourceKind)",
     "- Production handoff export operator action queue content validated: $($manifest.productionHandoffExportOperatorActionQueueContentValidated)",
     "- Production handoff export operator action queue item bundle command coverage: $($manifest.productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount)",
+    "- Production handoff export live smoke helper documented: $($manifest.productionHandoffExportLiveModelSmokeEvidenceExportHelperDocumented)",
     "- Production handoff status accepted: $($manifest.productionHandoffStatusAccepted)",
     "- Production handoff dispatch plan accepted: $($manifest.productionHandoffDispatchPlanAccepted)",
     "- Production handoff pending dispatches: $($manifest.productionHandoffPendingDispatchCount)",
@@ -2357,6 +2398,7 @@ $reportLines = @(
     "- Production handoff owner response bundle kit zip generated: $($manifest.productionHandoffOwnerResponseBundleKitZipGenerated)",
     "- Production handoff owner response bundle kit required files: $($manifest.productionHandoffOwnerResponseBundleKitRequiredFileCount)",
     "- Production handoff owner response bundle kit auto acceptance documented: $($manifest.productionHandoffOwnerResponseBundleKitAutoAcceptanceCommandsDocumented)",
+    "- Production handoff owner response bundle kit live smoke helper documented: $($manifest.productionHandoffOwnerResponseBundleKitLiveModelSmokeEvidenceExportHelperDocumented)",
     "- Production handoff owner response bundle kit workflow accepted: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted)",
     "- Production handoff owner response bundle kit workflow empty rejected: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowEmptyTemplateRejected)",
     "- Production handoff owner response bundle kit workflow complete accepted: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowCompleteTemplateAccepted)",
@@ -2416,6 +2458,7 @@ $reportLines = @(
     "- Production external evidence action queue item bundle command coverage: $($manifest.productionExternalEvidenceActionQueuePostDispatchItemAutoAcceptanceCommandCount)",
     "- Production external evidence action queue driver export helper command: $($manifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperCommand)",
     "- Production external evidence action queue Lua export helper command: $($manifest.productionExternalEvidenceActionQueuePostDispatchLuaExportHelperCommand)",
+    "- Production external evidence action queue live smoke export helper command: $($manifest.productionExternalEvidenceActionQueuePostDispatchLiveModelSmokeExportHelperCommand)",
     "- Production external evidence action queue missing post-dispatch rejected: $($manifest.productionExternalEvidenceActionQueueMissingPostDispatchRejected)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",

@@ -84,6 +84,8 @@ This kit defines the host-project configuration evidence needed before required 
 - `live-model-endpoint-config.json`: machine-readable config contract for provider preset, endpoint URL, model, request format, and secret reference.
 - `live-model-endpoint-config-schema.md`: acceptance rules for static config intake.
 - `live-model-endpoint-smoke-runbook.md`: production CI steps for running the real live smoke after secrets exist.
+- `Invoke-LiveModelEndpointSmokeEvidence.ps1`: owner-side helper that runs the live smoke and exports the return bundle.
+- `Export-LiveModelEndpointSmokeEvidenceBundle.ps1`: packages the two required live-smoke files only after real provenance is accepted.
 
 ## Required validation
 
@@ -95,6 +97,12 @@ Static config intake proves that the endpoint configuration is complete and that
 
 ```powershell
 .\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke
+```
+
+To package returned live-smoke evidence after a real provider request passes:
+
+```powershell
+.\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence" -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"
 ```
 '@
 
@@ -118,6 +126,15 @@ Required values for accepted static configuration:
 - `configurationComplete`: `true`
 
 This static config does not prove provider access. Required live release still needs `live-model-endpoint-smoke-manifest.json` with `status=PASS`.
+
+The smoke manifest and decision trace must also prove:
+
+- `fixtureOnly`: `false`
+- `contractFixtureMode`: `false`
+- `realProviderAccessProven`: `true`
+- `liveSmokeExecuted`: `true`
+- `productionLiveEndpointAccessProven`: `true`
+- `evidenceProvenance`: `direct_live_http_endpoint_pass`
 '@
 
 $runbook = @'
@@ -137,24 +154,263 @@ $runbook = @'
 .\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke
 ```
 
-5. Keep the config JSON free of raw secret values. Store only environment variable names and CI secret references.
+5. Export the owner response bundle:
+
+```powershell
+.\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence" -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"
+```
+
+6. Keep the config JSON free of raw secret values. Store only environment variable names and CI secret references.
+'@
+
+$invokeScriptTemplate = @'
+[CmdletBinding()]
+param(
+    [string]$AITestPilotRepoRoot = "__REPO_ROOT__",
+    [string]$EvidenceBundleDir,
+    [string]$LiveModelEndpointSmokeEvidenceDir,
+    [string]$TraceDir,
+    [switch]$AllowMissingApiKey,
+    [switch]$DisableFailurePolicyRetry,
+    [int]$MaxPolicyRetries = 2,
+    [int]$MaxRetryBackoffSeconds = 5
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
+    $EvidenceBundleDir = Join-Path $AITestPilotRepoRoot "Temp\release-evidence\latest"
+}
+
+if ([string]::IsNullOrWhiteSpace($LiveModelEndpointSmokeEvidenceDir)) {
+    $LiveModelEndpointSmokeEvidenceDir = Join-Path $EvidenceBundleDir "live-smoke-evidence"
+}
+
+if ([string]::IsNullOrWhiteSpace($TraceDir)) {
+    $TraceDir = Join-Path $LiveModelEndpointSmokeEvidenceDir "trace"
+}
+
+$smokeArgs = @{
+    EvidenceBundleDir = $LiveModelEndpointSmokeEvidenceDir
+    TraceDir = $TraceDir
+    RequireLive = $true
+    MaxPolicyRetries = $MaxPolicyRetries
+    MaxRetryBackoffSeconds = $MaxRetryBackoffSeconds
+}
+if ([bool]$AllowMissingApiKey) {
+    $smokeArgs["AllowMissingApiKey"] = $true
+}
+if ([bool]$DisableFailurePolicyRetry) {
+    $smokeArgs["DisableFailurePolicyRetry"] = $true
+}
+
+& (Join-Path $AITestPilotRepoRoot "tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1") @smokeArgs
+
+& (Join-Path $PSScriptRoot "Export-LiveModelEndpointSmokeEvidenceBundle.ps1") `
+    -AITestPilotRepoRoot $AITestPilotRepoRoot `
+    -EvidenceBundleDir $EvidenceBundleDir `
+    -LiveModelEndpointSmokeEvidenceDir $LiveModelEndpointSmokeEvidenceDir
+'@
+
+$exportScriptTemplate = @'
+[CmdletBinding()]
+param(
+    [string]$AITestPilotRepoRoot = "__REPO_ROOT__",
+    [string]$EvidenceBundleDir,
+    [string]$LiveModelEndpointSmokeEvidenceDir,
+    [string]$OutputDir,
+    [string]$ZipPath
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Read-JsonFile {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    if (-not (Test-Path $Path)) {
+        throw "$Label is missing: $Path"
+    }
+
+    return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
+}
+
+function Get-JsonValue {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [object]$DefaultValue = $null
+    )
+
+    if ($null -eq $Object) {
+        return $DefaultValue
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+
+    return $property.Value
+}
+
+if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
+    throw "EvidenceBundleDir is required."
+}
+
+if ([string]::IsNullOrWhiteSpace($LiveModelEndpointSmokeEvidenceDir)) {
+    throw "LiveModelEndpointSmokeEvidenceDir is required."
+}
+
+$evidenceBundlePath = [System.IO.Path]::GetFullPath($EvidenceBundleDir)
+$smokeEvidencePath = [System.IO.Path]::GetFullPath($LiveModelEndpointSmokeEvidenceDir)
+
+if (-not (Test-Path $evidenceBundlePath)) {
+    throw "Evidence bundle does not exist: $evidenceBundlePath"
+}
+
+if (-not (Test-Path $smokeEvidencePath)) {
+    throw "Live model endpoint smoke evidence directory does not exist: $smokeEvidencePath"
+}
+
+if ([string]::IsNullOrWhiteSpace($OutputDir)) {
+    $OutputDir = Join-Path (Join-Path $evidenceBundlePath "live-model-endpoint-smoke-evidence-export") "live-smoke-evidence"
+}
+$outputPath = [System.IO.Path]::GetFullPath($OutputDir)
+
+if ([string]::IsNullOrWhiteSpace($ZipPath)) {
+    $ZipPath = Join-Path (Split-Path $outputPath -Parent) "live-smoke-evidence.zip"
+}
+$zipFullPath = [System.IO.Path]::GetFullPath($ZipPath)
+
+$requiredFiles = @(
+    "live-model-endpoint-smoke-manifest.json",
+    "live-model-endpoint-decision-trace.json"
+)
+
+$missingFiles = @()
+foreach ($fileName in $requiredFiles) {
+    if (-not (Test-Path (Join-Path $smokeEvidencePath $fileName))) {
+        $missingFiles += $fileName
+    }
+}
+if ($missingFiles.Count -gt 0) {
+    throw "Live model endpoint smoke evidence export is missing required files: $($missingFiles -join ', ')"
+}
+
+$intakeManifestPath = Join-Path (Split-Path $outputPath -Parent) "live-model-endpoint-smoke-evidence-intake-for-export.json"
+New-Item -ItemType Directory -Force (Split-Path $intakeManifestPath -Parent) | Out-Null
+
+& (Join-Path $AITestPilotRepoRoot "tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1") `
+    -EvidenceBundleDir $evidenceBundlePath `
+    -SmokeEvidenceDir $smokeEvidencePath `
+    -ManifestPath $intakeManifestPath `
+    -RequireLiveModelEndpointSmoke
+
+$intake = Read-JsonFile $intakeManifestPath "Live model endpoint smoke evidence intake manifest"
+$smokeManifest = Read-JsonFile (Join-Path $smokeEvidencePath "live-model-endpoint-smoke-manifest.json") "Live model endpoint smoke manifest"
+$traceManifest = Read-JsonFile (Join-Path $smokeEvidencePath "live-model-endpoint-decision-trace.json") "Live model endpoint decision trace"
+
+$readyForExport = $intake.status -eq "PASS" -and
+    [bool](Get-JsonValue $intake "smokeEvidenceAccepted" $false) -and
+    [bool](Get-JsonValue $intake "realProviderEvidenceAccepted" $false) -and
+    [bool](Get-JsonValue $intake "productionLiveEndpointAccessProven" $false) -and
+    [bool](Get-JsonValue $intake "realProviderAccessProven" $false) -and
+    [bool](Get-JsonValue $intake "liveSmokeExecuted" $false) -and
+    -not [bool](Get-JsonValue $intake "contractFixtureMode" $true) -and
+    -not [bool](Get-JsonValue $intake "fixtureOnly" $true) -and
+    -not [bool](Get-JsonValue $intake "fixtureEvidenceDetected" $true) -and
+    [int](Get-JsonValue $intake "blockingReasonCount" 1) -eq 0 -and
+    (Get-JsonValue $intake "evidenceProvenance" "") -eq "direct_live_http_endpoint_pass"
+
+if (-not $readyForExport) {
+    throw "Live model endpoint smoke export requires accepted real provider provenance with fixtureOnly=false, contractFixtureMode=false, realProviderAccessProven=true, liveSmokeExecuted=true, productionLiveEndpointAccessProven=true, and evidenceProvenance=direct_live_http_endpoint_pass. Current intake: accepted=$($intake.smokeEvidenceAccepted), realProvider=$($intake.realProviderAccessProven), liveSmoke=$($intake.liveSmokeExecuted), productionAccess=$($intake.productionLiveEndpointAccessProven), fixtureOnly=$($intake.fixtureOnly), contractFixtureMode=$($intake.contractFixtureMode), blockers=$($intake.blockingReasonCount)."
+}
+
+if (Test-Path $outputPath) {
+    Remove-Item -LiteralPath $outputPath -Recurse -Force
+}
+New-Item -ItemType Directory -Force $outputPath | Out-Null
+
+foreach ($fileName in $requiredFiles) {
+    Copy-Item -LiteralPath (Join-Path $smokeEvidencePath $fileName) -Destination (Join-Path $outputPath $fileName) -Force
+}
+
+New-Item -ItemType Directory -Force (Split-Path $zipFullPath -Parent) | Out-Null
+if (Test-Path $zipFullPath) {
+    Remove-Item -LiteralPath $zipFullPath -Force
+}
+Compress-Archive -LiteralPath $outputPath -DestinationPath $zipFullPath -Force
+
+$manifestPath = Join-Path (Split-Path $outputPath -Parent) "live-model-endpoint-smoke-evidence-export-manifest.json"
+$manifest = [ordered]@{
+    schemaVersion = "aitestpilot.live_model_endpoint_smoke_evidence_export.v1"
+    status = "PASS"
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    evidenceBundleDir = $evidenceBundlePath
+    liveModelEndpointSmokeEvidenceDir = $smokeEvidencePath
+    outputDir = $outputPath
+    zipPath = $zipFullPath
+    intakeManifestPath = $intakeManifestPath
+    smokeEvidenceAccepted = [bool](Get-JsonValue $intake "smokeEvidenceAccepted" $false)
+    realProviderEvidenceAccepted = [bool](Get-JsonValue $intake "realProviderEvidenceAccepted" $false)
+    productionLiveEndpointAccessProven = [bool](Get-JsonValue $intake "productionLiveEndpointAccessProven" $false)
+    realProviderAccessProven = [bool](Get-JsonValue $intake "realProviderAccessProven" $false)
+    liveSmokeExecuted = [bool](Get-JsonValue $intake "liveSmokeExecuted" $false)
+    fixtureOnly = [bool](Get-JsonValue $intake "fixtureOnly" $false)
+    contractFixtureMode = [bool](Get-JsonValue $intake "contractFixtureMode" $false)
+    evidenceProvenance = [string](Get-JsonValue $intake "evidenceProvenance" "")
+    endpointMode = [string](Get-JsonValue $intake "endpointMode" "")
+    clientType = [string](Get-JsonValue $intake "clientType" "")
+    requestFormat = [string](Get-JsonValue $intake "requestFormat" "")
+    parsedAction = [string](Get-JsonValue $intake "parsedAction" "")
+    traceRunId = [string](Get-JsonValue $intake "traceRunId" "")
+    smokeManifestStatus = [string](Get-JsonValue $smokeManifest "status" "")
+    traceFixtureOnly = [bool](Get-JsonValue $traceManifest "fixtureOnly" $false)
+    blockingReasonCount = [int](Get-JsonValue $intake "blockingReasonCount" 0)
+    productionOutputBoundary = "real_live_model_endpoint_smoke_evidence_exported"
+    requiredFiles = @($requiredFiles)
+    exportedFileCount = [int]$requiredFiles.Count
+    productionEvidenceExported = $true
+    productionEvidenceAccepted = $false
+    fixtureEvidencePromoted = $false
+}
+$manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $manifestPath -Encoding UTF8
+
+Write-Output "Live model endpoint smoke evidence export: $outputPath"
+Write-Output "Live model endpoint smoke evidence export zip: $zipFullPath"
+Write-Output "Live model endpoint smoke evidence export manifest: $manifestPath"
+Write-Output "PASS AI TestPilot live model endpoint smoke evidence export"
 '@
 
 $configPath = Join-Path $outputPath "live-model-endpoint-config.json"
 $readmePath = Join-Path $outputPath "README.md"
 $schemaPath = Join-Path $outputPath "live-model-endpoint-config-schema.md"
 $runbookPath = Join-Path $outputPath "live-model-endpoint-smoke-runbook.md"
+$invokeScriptPath = Join-Path $outputPath "Invoke-LiveModelEndpointSmokeEvidence.ps1"
+$exportScriptPath = Join-Path $outputPath "Export-LiveModelEndpointSmokeEvidenceBundle.ps1"
+
+$invokeScript = $invokeScriptTemplate.Replace("__REPO_ROOT__", ($repoRoot -replace "\\", "\\"))
+$exportScript = $exportScriptTemplate.Replace("__REPO_ROOT__", ($repoRoot -replace "\\", "\\"))
 
 $config | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding UTF8
 $readme | Set-Content -Path $readmePath -Encoding UTF8
 $schema | Set-Content -Path $schemaPath -Encoding UTF8
 $runbook | Set-Content -Path $runbookPath -Encoding UTF8
+$invokeScript | Set-Content -Path $invokeScriptPath -Encoding UTF8
+$exportScript | Set-Content -Path $exportScriptPath -Encoding UTF8
 
 $generatedFiles = @(
     "README.md",
     "live-model-endpoint-config.json",
     "live-model-endpoint-config-schema.md",
     "live-model-endpoint-smoke-runbook.md",
+    "Invoke-LiveModelEndpointSmokeEvidence.ps1",
+    "Export-LiveModelEndpointSmokeEvidenceBundle.ps1",
     "live-model-endpoint-config-kit-generated-manifest.json"
 )
 
@@ -170,6 +426,18 @@ $manifest = [ordered]@{
     secretsSerialized = $false
     configurationAccepted = $false
     readyForLiveEndpointSmoke = $false
+    invokeHelperGenerated = $true
+    exportHelperGenerated = $true
+    exportHelperRequiresRealProviderEvidence = $true
+    exportHelperRequiresProductionLiveEndpointAccess = $true
+    exportHelperRejectsFixtureEvidence = $true
+    exportHelperRejectsSkippedEvidence = $true
+    exportHelperRejectsContractFixtureEvidence = $true
+    evidenceExportHelperPath = "Export-LiveModelEndpointSmokeEvidenceBundle.ps1"
+    evidenceExportHelperCommand = '.\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence" -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"'
+    evidenceExportOutputDir = "live-model-endpoint-smoke-evidence-export/live-smoke-evidence"
+    evidenceExportZipPath = "live-model-endpoint-smoke-evidence-export/live-smoke-evidence.zip"
+    evidenceExportManifestPath = "live-model-endpoint-smoke-evidence-export/live-model-endpoint-smoke-evidence-export-manifest.json"
     configStatus = $configStatus
     expectedBlockingReasonCount = [int]$expectedBlockingReasons.Count
     expectedBlockingReasons = @($expectedBlockingReasons)

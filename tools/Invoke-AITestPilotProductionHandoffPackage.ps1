@@ -270,6 +270,11 @@ $productionLuaEvidenceExportHelperCommand = '.\production-lua-patch-evidence-kit
 $productionLuaEvidenceExportOutputDir = "production-lua-evidence-export/production-lua-evidence"
 $productionLuaEvidenceExportZipPath = "production-lua-evidence-export/production-lua-evidence.zip"
 $productionLuaEvidenceExportManifestPath = "production-lua-evidence-export/production-lua-evidence-export-manifest.json"
+$liveModelSmokeEvidenceExportHelperPath = "live-model-endpoint-config-kit/Export-LiveModelEndpointSmokeEvidenceBundle.ps1"
+$liveModelSmokeEvidenceExportHelperCommand = '.\live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence" -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"'
+$liveModelSmokeEvidenceExportOutputDir = "live-model-endpoint-smoke-evidence-export/live-smoke-evidence"
+$liveModelSmokeEvidenceExportZipPath = "live-model-endpoint-smoke-evidence-export/live-smoke-evidence.zip"
+$liveModelSmokeEvidenceExportManifestPath = "live-model-endpoint-smoke-evidence-export/live-model-endpoint-smoke-evidence-export-manifest.json"
 
 $driverHandoffReady = $driverKit.status -eq "PASS" -and
     [bool](Get-JsonValue $driverKit "kitGenerated" $false) -and
@@ -307,8 +312,16 @@ $liveModelHandoffReady = $liveConfigKit.status -eq "PASS" -and
     [bool](Get-JsonValue $liveConfigKit "templateKitGenerated" $false) -and
     [bool](Get-JsonValue $liveConfigKit "acceptedFixtureIntakePassed" $false) -and
     [bool](Get-JsonValue $liveConfigKit "acceptedFixtureReadyForLiveEndpointSmoke" $false) -and
+    [bool](Get-JsonValue $liveConfigKit "exportHelperGenerated" $false) -and
+    [bool](Get-JsonValue $liveConfigKit "exportHelperRequiresRealProviderEvidence" $false) -and
+    [bool](Get-JsonValue $liveConfigKit "exportHelperRequiresProductionLiveEndpointAccess" $false) -and
+    [bool](Get-JsonValue $liveConfigKit "exportHelperRejectedMissingEvidence" $false) -and
+    [bool](Get-JsonValue $liveConfigKit "exportHelperRejectedContractFixtureEvidence" $false) -and
+    [bool](Get-JsonValue $liveConfigKit "exportHelperRequiresDirectLiveHttpProvenance" $false) -and
     -not [bool](Get-JsonValue $liveConfigKit "productionLiveEndpointAccessProven" $true) -and
     -not [bool](Get-JsonValue $liveConfigKit "secretsSerialized" $true) -and
+    [int](Get-JsonValue $liveConfigKit "generatedFileCount" 0) -ge 7 -and
+    [int](Get-JsonValue $liveConfigKit "checkCount" 0) -eq 4 -and
     $liveExternalSmoke.status -eq "PASS" -and
     -not [bool](Get-JsonValue $liveExternalSmoke "externalBundleUnderRepo" $true) -and
     [bool](Get-JsonValue $liveExternalSmoke "expectedBlockedPassed" $false) -and
@@ -392,6 +405,11 @@ if (-not $liveModelAccessProven) {
         remainingBlockingReasons = @($liveBlockingReasons)
         kitPath = "live-model-endpoint-config-kit"
         requiredEvidenceFiles = @($liveRequiredEvidence)
+        evidenceExportHelperPath = $liveModelSmokeEvidenceExportHelperPath
+        evidenceExportHelperCommand = $liveModelSmokeEvidenceExportHelperCommand
+        evidenceExportOutputDir = $liveModelSmokeEvidenceExportOutputDir
+        evidenceExportZipPath = $liveModelSmokeEvidenceExportZipPath
+        evidenceExportManifestPath = $liveModelSmokeEvidenceExportManifestPath
         validationCommand = '.\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"'
     }
 }
@@ -439,6 +457,11 @@ $requiredEvidence = [ordered]@{
         handoffPathReady = [bool]$liveModelHandoffReady
         requiredFiles = @($liveRequiredEvidence)
         kitPath = "live-model-endpoint-config-kit"
+        evidenceExportHelperPath = $liveModelSmokeEvidenceExportHelperPath
+        evidenceExportHelperCommand = $liveModelSmokeEvidenceExportHelperCommand
+        evidenceExportOutputDir = $liveModelSmokeEvidenceExportOutputDir
+        evidenceExportZipPath = $liveModelSmokeEvidenceExportZipPath
+        evidenceExportManifestPath = $liveModelSmokeEvidenceExportManifestPath
         releaseCommand = '.\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"'
     }
 }
@@ -1075,11 +1098,25 @@ foreach ($item in $actionItems) {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($evidenceExportHelperCommand)) {
-        $exportTitle = if ($area -eq "production_driver_binding") { "Driver Evidence Export" } else { "Lua Evidence Export" }
-        $exportDescription = if ($area -eq "production_driver_binding") {
-            "It creates ``$evidenceExportOutputDir`` and ``$evidenceExportZipPath`` for owner response bundle return. It rejects sample or unbound evidence."
-        } else {
-            "It creates ``$evidenceExportOutputDir`` and ``$evidenceExportZipPath`` for owner response bundle return. It rejects template or fixture Lua evidence."
+        $exportTitle = switch ($area) {
+            "production_driver_binding" { "Driver Evidence Export" }
+            "production_lua_patch_evidence" { "Lua Evidence Export" }
+            "live_model_endpoint_smoke" { "Live Smoke Evidence Export" }
+            default { "Evidence Export" }
+        }
+        $exportDescription = switch ($area) {
+            "production_driver_binding" {
+                "It creates ``$evidenceExportOutputDir`` and ``$evidenceExportZipPath`` for owner response bundle return. It rejects sample or unbound evidence."
+            }
+            "production_lua_patch_evidence" {
+                "It creates ``$evidenceExportOutputDir`` and ``$evidenceExportZipPath`` for owner response bundle return. It rejects template or fixture Lua evidence."
+            }
+            "live_model_endpoint_smoke" {
+                "It creates ``$evidenceExportOutputDir`` and ``$evidenceExportZipPath`` for owner response bundle return. It rejects skipped, fixture, and non-live-provider smoke evidence."
+            }
+            default {
+                "It creates ``$evidenceExportOutputDir`` and ``$evidenceExportZipPath`` for owner response bundle return."
+            }
         }
 
         $packetLines += @(
@@ -1157,6 +1194,7 @@ foreach ($item in $actionItems) {
         evidenceExportHelperCommand = $evidenceExportHelperCommand
         driverEvidenceExportHelperCommand = if ($area -eq "production_driver_binding") { $evidenceExportHelperCommand } else { "" }
         luaEvidenceExportHelperCommand = if ($area -eq "production_lua_patch_evidence") { $evidenceExportHelperCommand } else { "" }
+        liveModelSmokeEvidenceExportHelperCommand = if ($area -eq "live_model_endpoint_smoke") { $evidenceExportHelperCommand } else { "" }
         hardValidationCommand = $hardValidationCommand
     }
 }
@@ -1222,6 +1260,8 @@ $requiredEvidenceContentValid = $requiredEvidenceText.Contains("aitestpilot.prod
     $requiredEvidenceText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
     $requiredEvidenceText.Contains("production-lua-evidence.zip") -and
     $requiredEvidenceText.Contains("live-model-endpoint-smoke-manifest.json") -and
+    $requiredEvidenceText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+    $requiredEvidenceText.Contains("live-smoke-evidence.zip") -and
     -not ($requiredEvidenceText -match "System\.Collections|OrderedDictionary")
 
 $expectedBlockerResolutionSnippets = @(
@@ -1409,6 +1449,12 @@ $manifest = [ordered]@{
     liveModelEndpointAccessProven = [bool]$liveModelAccessProven
     liveModelRequiredEvidenceFiles = @($liveRequiredEvidence)
     liveModelConfigKitPath = "live-model-endpoint-config-kit"
+    liveModelSmokeEvidenceExportHelperPath = $liveModelSmokeEvidenceExportHelperPath
+    liveModelSmokeEvidenceExportHelperCommand = $liveModelSmokeEvidenceExportHelperCommand
+    liveModelSmokeEvidenceExportHelperDocumented = [bool]($requiredEvidenceContentValid -and $ownerPacketMarkdownText.Contains($liveModelSmokeEvidenceExportHelperCommand))
+    liveModelSmokeEvidenceExportOutputDir = $liveModelSmokeEvidenceExportOutputDir
+    liveModelSmokeEvidenceExportZipPath = $liveModelSmokeEvidenceExportZipPath
+    liveModelSmokeEvidenceExportManifestPath = $liveModelSmokeEvidenceExportManifestPath
     ciReleaseControlsReady = [bool]$ciReleaseControlsReady
     fixtureEvidencePromoted = $false
     generatedHandoffContentQualityAccepted = [bool]$generatedHandoffContentQualityAccepted

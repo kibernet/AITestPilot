@@ -490,6 +490,9 @@ $productionDriverEvidenceExportZipPath = "production-driver-evidence-export/prod
 $productionLuaEvidenceExportHelperPath = "production-lua-patch-evidence-kit/Export-ProductionLuaPatchEvidenceBundle.ps1"
 $productionLuaEvidenceExportHelperCommand = '.\production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence" -ProductionLuaEvidenceDir "path\to\production-lua-evidence"'
 $productionLuaEvidenceExportZipPath = "production-lua-evidence-export/production-lua-evidence.zip"
+$liveModelSmokeEvidenceExportHelperPath = "live-model-endpoint-config-kit/Export-LiveModelEndpointSmokeEvidenceBundle.ps1"
+$liveModelSmokeEvidenceExportHelperCommand = '.\live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence" -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"'
+$liveModelSmokeEvidenceExportZipPath = "live-model-endpoint-smoke-evidence-export/live-smoke-evidence.zip"
 
 $kitReadmePath = Join-Path $kitPath "README.md"
 $kitReadmeLines = @(
@@ -503,12 +506,13 @@ $kitReadmeLines = @(
     "2. Fill owner-contact-roster.json with real owner mailboxes.",
     "3. Production driver owners can run $productionDriverEvidenceExportHelperPath after production-bound readiness passes: $productionDriverEvidenceExportHelperCommand",
     "4. Production Lua owners can run $productionLuaEvidenceExportHelperPath after real Lua patch readiness passes: $productionLuaEvidenceExportHelperCommand",
-    "5. Copy required evidence files into production-driver-evidence, production-lua-evidence, and live-smoke-evidence.",
-    "6. Run verify-owner-response-bundle.ps1 against the filled bundle.",
-    "7. Run import-owner-response-bundle.ps1 -ResponseBundleDir path\\to\\filled-bundle -RunReadiness.",
-    "8. Operator-side auto acceptance from a returned folder: $ownerResponseBundleAutoAcceptanceCommand",
-    "9. Operator-side auto acceptance from a returned zip: $ownerResponseBundleZipAutoAcceptanceCommand",
-    "10. Zip path can also be provided with $ownerResponseBundleZipEnvironmentVariable.",
+    "5. Live model owners can run $liveModelSmokeEvidenceExportHelperPath after direct live provider smoke passes: $liveModelSmokeEvidenceExportHelperCommand",
+    "6. Copy required evidence files into production-driver-evidence, production-lua-evidence, and live-smoke-evidence.",
+    "7. Run verify-owner-response-bundle.ps1 against the filled bundle.",
+    "8. Run import-owner-response-bundle.ps1 -ResponseBundleDir path\\to\\filled-bundle -RunReadiness.",
+    "9. Operator-side auto acceptance from a returned folder: $ownerResponseBundleAutoAcceptanceCommand",
+    "10. Operator-side auto acceptance from a returned zip: $ownerResponseBundleZipAutoAcceptanceCommand",
+    "11. Zip path can also be provided with $ownerResponseBundleZipEnvironmentVariable.",
     "",
     "Boundary:",
     "",
@@ -530,9 +534,10 @@ $templateReadmeLines = @(
     "1. Fill owner-contact-roster.json.",
     "2. For production-driver-evidence, use $productionDriverEvidenceExportHelperPath when available to create $productionDriverEvidenceExportZipPath, then copy the four required driver files into this folder.",
     "3. For production-lua-evidence, use $productionLuaEvidenceExportHelperPath when real Lua evidence is available to create $productionLuaEvidenceExportZipPath, then copy the three required Lua files into this folder.",
-    "4. Add the required files listed under each evidence directory.",
-    "5. Run ../verify-owner-response-bundle.ps1 -BundleDir .",
-    "6. Return this folder, or a zip of this folder, to the operator for auto acceptance.",
+    "4. For live-smoke-evidence, use $liveModelSmokeEvidenceExportHelperPath after direct live provider smoke passes to create $liveModelSmokeEvidenceExportZipPath, then copy the two required live smoke files into this folder.",
+    "5. Add the required files listed under each evidence directory.",
+    "6. Run ../verify-owner-response-bundle.ps1 -BundleDir .",
+    "7. Return this folder, or a zip of this folder, to the operator for auto acceptance.",
     "",
     "The template is incomplete until every required file is present and every contact is configured."
 )
@@ -551,6 +556,7 @@ $requestDraftLines = @(
     "- Required evidence files total: $requiredEvidenceFileCount",
     "- Production driver evidence export helper: $productionDriverEvidenceExportHelperCommand",
     "- Production Lua evidence export helper: $productionLuaEvidenceExportHelperCommand",
+    "- Live model smoke evidence export helper: $liveModelSmokeEvidenceExportHelperCommand",
     "",
     "Use verify-owner-response-bundle.ps1 before returning the filled bundle.",
     "Return either the filled folder or a zip of that folder.",
@@ -586,6 +592,7 @@ $reportLines = @(
     "| Owner response bundle zip environment variable | $ownerResponseBundleZipEnvironmentVariable |",
     "| Production driver evidence export helper | $(Format-MarkdownCell $productionDriverEvidenceExportHelperCommand) |",
     "| Production Lua evidence export helper | $(Format-MarkdownCell $productionLuaEvidenceExportHelperCommand) |",
+    "| Live model smoke evidence export helper | $(Format-MarkdownCell $liveModelSmokeEvidenceExportHelperCommand) |",
     "",
     "## Directories",
     "",
@@ -629,7 +636,9 @@ $autoAcceptanceCommandsContentValidated = (
     $contentText.Contains($productionDriverEvidenceExportHelperPath) -and
     $contentText.Contains($productionDriverEvidenceExportHelperCommand) -and
     $contentText.Contains($productionLuaEvidenceExportHelperPath) -and
-    $contentText.Contains($productionLuaEvidenceExportHelperCommand)
+    $contentText.Contains($productionLuaEvidenceExportHelperCommand) -and
+    $contentText.Contains($liveModelSmokeEvidenceExportHelperPath) -and
+    $contentText.Contains($liveModelSmokeEvidenceExportHelperCommand)
 )
 
 $kitFiles = @(
@@ -656,7 +665,7 @@ Add-KitCheck "owner_response_bundle_counts_match" `
     ($ownerContactCount -eq (Convert-ToInt (Get-JsonValue $ownerResponseBundleProbe "ownerContactCount" -1)) -and $requiredEvidenceFileCount -eq (Convert-ToInt (Get-JsonValue $ownerResponseBundleProbe "responseBundleRequiredEvidenceFileCount" -1))) `
     "Owner response bundle kit counts must match the accepted response bundle probe."
 Add-KitCheck "owner_response_bundle_content_validated" `
-    ($contentText.Contains("Owner Response Bundle Kit") -and $contentText.Contains("host_project_gameplay_qa") -and $contentText.Contains("production-driver-evidence") -and $contentText.Contains("production-lua-evidence") -and $contentText.Contains("live-smoke-evidence") -and $contentText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and $contentText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and $contentText.Contains("does not send email") -and $noObjectLeakage) `
+    ($contentText.Contains("Owner Response Bundle Kit") -and $contentText.Contains("host_project_gameplay_qa") -and $contentText.Contains("production-driver-evidence") -and $contentText.Contains("production-lua-evidence") -and $contentText.Contains("live-smoke-evidence") -and $contentText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and $contentText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and $contentText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and $contentText.Contains("does not send email") -and $noObjectLeakage) `
     "Owner response bundle kit content must include concrete owners, directories, validation flow, and boundary text."
 Add-KitCheck "owner_response_bundle_auto_acceptance_commands_documented" `
     $autoAcceptanceCommandsContentValidated `
@@ -708,6 +717,10 @@ $manifest = [ordered]@{
     productionLuaEvidenceExportHelperCommand = $productionLuaEvidenceExportHelperCommand
     productionLuaEvidenceExportHelperDocumented = [bool]$contentText.Contains($productionLuaEvidenceExportHelperCommand)
     productionLuaEvidenceExportZipPath = $productionLuaEvidenceExportZipPath
+    liveModelSmokeEvidenceExportHelperPath = $liveModelSmokeEvidenceExportHelperPath
+    liveModelSmokeEvidenceExportHelperCommand = $liveModelSmokeEvidenceExportHelperCommand
+    liveModelSmokeEvidenceExportHelperDocumented = [bool]$contentText.Contains($liveModelSmokeEvidenceExportHelperCommand)
+    liveModelSmokeEvidenceExportZipPath = $liveModelSmokeEvidenceExportZipPath
     templateDirectoryCount = [int]$templateDirectoryCount
     requiredFilesJsonCount = [int]$requiredFilesJsonCount
     areaReadmeCount = [int]$areaReadmeCount
