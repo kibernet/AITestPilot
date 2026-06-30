@@ -153,7 +153,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 - `repair-agent-patch-apply-sandbox/Assets/SampleModule/StartButton.cs`: patched sandbox fixture proving the sample diff can be applied without mutating repo source.
 - `production-replay-integration-checklist.json` and `production-replay-integration-checklist.md`: required production driver hook checklist and current binding status.
 - `production-replay-integration-contract-probe-manifest.json`: proof that the checklist validator distinguishes template, invalid flip, and bound fixture states without claiming real API calls.
-- `production-driver-binding-kit-manifest.json` and `production-driver-binding-kit/`: generated host-project starter kit with driver template, authoring checklist, and production-bound validation helper.
+- `production-driver-binding-kit-manifest.json` and `production-driver-binding-kit/`: generated host-project starter kit with driver template, authoring checklist, production-bound validation helper, and a production-bound evidence export helper that rejects sample/unbound evidence.
 - `production-driver-evidence-intake-manifest.json`: production driver evidence intake result for either a real accepted bundle or the expected sample/unbound rejection.
 - `production-driver-evidence-contract-probe-manifest.json`, `production-driver-evidence-contract-accepted-intake-manifest.json`, `production-driver-evidence-contract-accepted-readiness-manifest.json`, `production-driver-evidence-contract-accepted-checklist.json`, and `production-driver-evidence-contract-accepted-retest-manifest.json`: isolated accepted-fixture proof that BOUND host-project-shaped driver evidence can pass intake without being promoted as real production evidence.
 - `production-driver-external-bundle-intake-probe-manifest.json`, `production-driver-external-bundle-intake-manifest.json`, and `production-driver-external-bundle-readiness-manifest.json`: proof that the intake path can inspect repo-external evidence directories while preserving the sample/unbound blocker.
@@ -276,7 +276,7 @@ The validation script also writes a CI-friendly bundle under `Temp/release-evide
 - negative driver failure probe manifest and log diagnostics.
 - replay profile import manifest and listed files.
 - production replay integration contract probe manifest proving `TEMPLATE_READY`, `INVALID`, and `BOUND` checklist states.
-- production driver binding kit manifest proving host-project starter files are generated while still marked as non-production-bound handoff material.
+- production driver binding kit manifest proving host-project starter files and the production-bound evidence export helper are generated while still marked as non-production-bound handoff material.
 - production replay driver readiness manifest proving either a real bound production driver or explicit sample/unbound blockers.
 - production driver evidence intake manifest proving real production-bound bundles are accepted or the sample/unbound bundle is blocked.
 - production driver evidence contract probe manifest proving the accepted BOUND fixture can pass intake while remaining isolated from canonical production evidence.

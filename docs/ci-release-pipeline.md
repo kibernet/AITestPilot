@@ -27,7 +27,7 @@ The pipeline runs:
 - targeted repair retest with a selected game replay driver.
 - replay profile JSON import.
 - production replay integration contract probe, proving template, invalid flip, and bound checklist states.
-- production driver binding kit probe, proving the host-project starter kit can be generated without claiming production-bound evidence.
+- production driver binding kit probe, proving the host-project starter kit and production-bound evidence export helper can be generated without claiming production-bound evidence.
 - production replay driver readiness, separating package-release readiness from real-project driver binding readiness.
 - production driver evidence intake, accepting real production-bound bundles or proving the current sample/unbound bundle is blocked.
 - production driver evidence contract probe, proving an isolated BOUND fixture can pass the real intake path without being promoted as production evidence.
@@ -183,7 +183,7 @@ To generate the host-project starter kit before wiring real APIs:
 .\tools\New-AITestPilotProductionDriverBindingKit.ps1 -DriverTypeName "Your.Game.Tests.ProductionReplayDriver" -DriverId "your_game.production_replay"
 ```
 
-The kit contains a customized driver template, an authoring checklist, and a host helper script. The release pipeline also runs `production_driver_binding_kit_probe`; the gate only accepts that proof when the kit is still marked as generated handoff material and `productionEvidenceAccepted=false`.
+The kit contains a customized driver template, an authoring checklist, a host helper script, and `Export-ProductionDriverEvidenceBundle.ps1`, which packages the four required driver evidence files only after production-bound readiness passes with zero blockers. The release pipeline also runs `production_driver_binding_kit_probe`; the gate only accepts that proof when the kit is still marked as generated handoff material, `productionEvidenceAccepted=false`, and the export helper rejects the current sample/unbound evidence.
 
 To make production binding a hard release condition, run:
 

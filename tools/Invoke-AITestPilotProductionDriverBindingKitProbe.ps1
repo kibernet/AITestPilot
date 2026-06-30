@@ -86,6 +86,7 @@ $relativeKitDir = "production-driver-binding-kit"
 $generatedFiles = @(
     "$relativeKitDir/$driverFileName",
     "$relativeKitDir/Invoke-ProductionDriverEvidence.ps1",
+    "$relativeKitDir/Export-ProductionDriverEvidenceBundle.ps1",
     "$relativeKitDir/README.md",
     "$relativeKitDir/production-replay-integration-checklist.authoring.json",
     "$relativeKitDir/production-driver-binding-kit-generated-manifest.json"
@@ -98,6 +99,8 @@ foreach ($fileName in $generatedFiles) {
 
 $driverSource = Get-Content -Path (Join-Path $kitPath $driverFileName) -Encoding UTF8 -Raw
 $hostScript = Get-Content -Path (Join-Path $kitPath "Invoke-ProductionDriverEvidence.ps1") -Encoding UTF8 -Raw
+$exportScriptPath = Join-Path $kitPath "Export-ProductionDriverEvidenceBundle.ps1"
+$exportScript = Get-Content -Path $exportScriptPath -Encoding UTF8 -Raw
 $readme = Get-Content -Path (Join-Path $kitPath "README.md") -Encoding UTF8 -Raw
 $authoringChecklist = Read-JsonFile (Join-Path $kitPath "production-replay-integration-checklist.authoring.json") "Production driver binding authoring checklist"
 
@@ -112,8 +115,21 @@ $hostScriptHasProductionIntake = $hostScript -match [regex]::Escape("Invoke-AITe
     $hostScript -match [regex]::Escape("Invoke-AITestPilotProductionDriverEvidenceIntake.ps1") -and
     $hostScript -match [regex]::Escape($DriverTypeName)
 
+$exportScriptRequiresProductionBoundReadiness = $exportScript -match [regex]::Escape("readyForProductionDriverRelease") -and
+    $exportScript -match [regex]::Escape("requireProductionBound") -and
+    $exportScript -match [regex]::Escape("integrationChecklistStatus") -and
+    $exportScript -match [regex]::Escape("BOUND") -and
+    $exportScript -match [regex]::Escape("sampleGameReplayDriverUsed") -and
+    $exportScript -match [regex]::Escape("production-driver-evidence.zip") -and
+    $exportScript -match [regex]::Escape("production-replay-integration-checklist.json") -and
+    $exportScript -match [regex]::Escape("repair-retest-manifest.json") -and
+    $exportScript -match [regex]::Escape("repair-driver-failure-manifest.json") -and
+    $exportScript -match [regex]::Escape("replay-profile-import-manifest.json")
+
 $readmeHasProductionBoundary = $readme -match [regex]::Escape("-RequireProductionReplayDriverBound") -and
-    $readme -match [regex]::Escape("not production-bound evidence")
+    $readme -match [regex]::Escape("not production-bound evidence") -and
+    $readme -match [regex]::Escape("Export-ProductionDriverEvidenceBundle.ps1") -and
+    $readme -match [regex]::Escape("production-bound readiness passes with zero blockers")
 
 $authoringChecklistIsTemplate = $authoringChecklist.status -eq "TEMPLATE_READY" -and
     -not [bool]$authoringChecklist.realProjectBound -and
@@ -127,8 +143,54 @@ Assert-True (-not [bool]$generatedManifest.readyForProductionDriverRelease) "Gen
 Assert-True (-not [bool]$generatedManifest.productionEvidenceAccepted) "Generated kit must not claim production evidence acceptance."
 Assert-True $driverSourceHasHooks "Generated driver source is missing hook placeholders."
 Assert-True $hostScriptHasProductionIntake "Generated host script is missing production-bound intake commands."
+Assert-True $exportScriptRequiresProductionBoundReadiness "Generated export helper must require production-bound readiness and package exactly the required driver evidence files."
 Assert-True $readmeHasProductionBoundary "Generated README is missing production-bound boundary guidance."
 Assert-True $authoringChecklistIsTemplate "Generated authoring checklist must remain TEMPLATE_READY and unbound."
+
+$rejectionBundlePath = Join-Path $evidenceBundlePath "production-driver-binding-kit-export-rejection-probe"
+if (Test-Path $rejectionBundlePath) {
+    Remove-Item -LiteralPath $rejectionBundlePath -Recurse -Force
+}
+New-Item -ItemType Directory -Force $rejectionBundlePath | Out-Null
+
+$requiredDriverEvidenceFiles = @(
+    "production-replay-integration-checklist.json",
+    "repair-retest-manifest.json",
+    "repair-driver-failure-manifest.json",
+    "replay-profile-import-manifest.json"
+)
+foreach ($fileName in $requiredDriverEvidenceFiles) {
+    Copy-Item -LiteralPath (Join-Path $evidenceBundlePath $fileName) -Destination (Join-Path $rejectionBundlePath $fileName) -Force
+}
+
+$rejectionReadinessManifestPath = Join-Path $rejectionBundlePath "production-replay-driver-readiness-manifest.json"
+$readinessRejectedCurrentSample = $false
+$readinessFailureMessage = ""
+try {
+    & (Join-Path $PSScriptRoot "Invoke-AITestPilotProductionReplayDriverReadiness.ps1") `
+        -EvidenceBundleDir $rejectionBundlePath `
+        -ManifestPath $rejectionReadinessManifestPath `
+        -RequireProductionBound | Out-Null
+}
+catch {
+    $readinessRejectedCurrentSample = $true
+    $readinessFailureMessage = $_.Exception.Message
+}
+Assert-True (Test-Path $rejectionReadinessManifestPath) "Production driver export rejection probe did not write readiness manifest."
+$rejectionReadiness = Read-JsonFile $rejectionReadinessManifestPath "Production driver export rejection readiness manifest"
+
+$exportRejectedCurrentSample = $false
+$exportFailureMessage = ""
+try {
+    & $exportScriptPath -EvidenceBundleDir $rejectionBundlePath | Out-Null
+}
+catch {
+    $exportRejectedCurrentSample = $true
+    $exportFailureMessage = $_.Exception.Message
+}
+Assert-True $readinessRejectedCurrentSample "Production-bound readiness must reject the current sample/unbound evidence before export."
+Assert-True $exportRejectedCurrentSample "Production driver evidence export helper must reject the current sample/unbound evidence."
+Assert-True (-not (Test-Path (Join-Path $rejectionBundlePath "production-driver-evidence-export\production-driver-evidence.zip"))) "Production driver evidence export zip must not be written for sample/unbound evidence."
 
 $manifest = [ordered]@{
     schemaVersion = "aitestpilot.production_driver_binding_kit_probe.v1"
@@ -149,6 +211,13 @@ $manifest = [ordered]@{
     authoringChecklistRealProjectBound = [bool]$authoringChecklist.realProjectBound
     authoringChecklistUnresolvedRequiredHookCount = [int]$authoringChecklist.unresolvedRequiredHookCount
     hostValidationScriptIncludesProductionBoundIntake = [bool]$hostScriptHasProductionIntake
+    exportHelperGenerated = [bool](Test-Path $exportScriptPath)
+    exportHelperRequiresProductionBoundReadiness = [bool]$exportScriptRequiresProductionBoundReadiness
+    exportHelperRejectedSampleUnboundEvidence = [bool]$exportRejectedCurrentSample
+    exportHelperSampleRejectionMessage = $exportFailureMessage
+    exportRejectionReadinessRejectedCurrentSample = [bool]$readinessRejectedCurrentSample
+    exportRejectionReadinessFailureMessage = $readinessFailureMessage
+    exportRejectionBlockingReasonCount = [int]$rejectionReadiness.blockingReasonCount
     readyForProductionDriverRelease = $false
     productionEvidenceAccepted = $false
     generatedKitOnly = $true

@@ -85,6 +85,7 @@ New-Item -ItemType Directory -Force $outputPath | Out-Null
 $driverFileName = "$driverClassName.cs"
 $driverPath = Join-Path $outputPath $driverFileName
 $hostScriptPath = Join-Path $outputPath "Invoke-ProductionDriverEvidence.ps1"
+$exportScriptPath = Join-Path $outputPath "Export-ProductionDriverEvidenceBundle.ps1"
 $readmePath = Join-Path $outputPath "README.md"
 $checklistPath = Join-Path $outputPath "production-replay-integration-checklist.authoring.json"
 
@@ -211,11 +212,142 @@ $driverTypeName = "__DRIVER_TYPE__"
 
 & (Join-Path $AITestPilotRepoRoot "tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1") `
     -EvidenceBundleDir $EvidenceBundleDir
+
+& (Join-Path $PSScriptRoot "Export-ProductionDriverEvidenceBundle.ps1") `
+    -EvidenceBundleDir $EvidenceBundleDir
 '@
 
 $hostScript = $hostScriptTemplate.
     Replace("__REPO_ROOT__", ($repoRoot -replace "\\", "\\")).
     Replace("__DRIVER_TYPE__", $DriverTypeName)
+
+$exportScriptTemplate = @'
+[CmdletBinding()]
+param(
+    [string]$EvidenceBundleDir,
+    [string]$OutputDir,
+    [string]$ZipPath
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
+    throw "EvidenceBundleDir is required."
+}
+
+$evidenceBundlePath = [System.IO.Path]::GetFullPath($EvidenceBundleDir)
+if (-not (Test-Path $evidenceBundlePath)) {
+    throw "Evidence bundle does not exist: $evidenceBundlePath"
+}
+
+if ([string]::IsNullOrWhiteSpace($OutputDir)) {
+    $OutputDir = Join-Path (Join-Path $evidenceBundlePath "production-driver-evidence-export") "production-driver-evidence"
+}
+$outputPath = [System.IO.Path]::GetFullPath($OutputDir)
+
+if ([string]::IsNullOrWhiteSpace($ZipPath)) {
+    $ZipPath = Join-Path (Split-Path $outputPath -Parent) "production-driver-evidence.zip"
+}
+$zipFullPath = [System.IO.Path]::GetFullPath($ZipPath)
+
+$requiredFiles = @(
+    "production-replay-integration-checklist.json",
+    "repair-retest-manifest.json",
+    "repair-driver-failure-manifest.json",
+    "replay-profile-import-manifest.json"
+)
+
+function Read-JsonFile {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    if (-not (Test-Path $Path)) {
+        throw "$Label is missing: $Path"
+    }
+
+    return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
+}
+
+$readinessPath = Join-Path $evidenceBundlePath "production-replay-driver-readiness-manifest.json"
+$readiness = Read-JsonFile $readinessPath "Production replay driver readiness manifest"
+
+$readyForExport = $readiness.status -eq "PASS" -and
+    [bool]$readiness.readyForProductionDriverRelease -and
+    [bool]$readiness.requireProductionBound -and
+    $readiness.integrationChecklistStatus -eq "BOUND" -and
+    [bool]$readiness.realProjectBound -and
+    [int]$readiness.unresolvedRequiredHookCount -eq 0 -and
+    [bool]$readiness.productionChecklistAllRequiredHooksBound -and
+    [bool]$readiness.productionChecklistRequiredBindingMetadataComplete -and
+    -not [bool]$readiness.sampleGameReplayDriverUsed -and
+    [bool]$readiness.externalProductionDriverSelected -and
+    [bool]$readiness.retestPassed -and
+    [bool]$readiness.driverFailureProbePassed -and
+    [bool]$readiness.replayProfileImportPassed -and
+    [int]$readiness.blockingReasonCount -eq 0
+
+if (-not $readyForExport) {
+    throw "Production driver evidence export requires production-bound readiness with zero blockers. Current readiness: ready=$($readiness.readyForProductionDriverRelease), bound=$($readiness.realProjectBound), sample=$($readiness.sampleGameReplayDriverUsed), blockers=$($readiness.blockingReasonCount)."
+}
+
+$missingFiles = @()
+foreach ($fileName in $requiredFiles) {
+    if (-not (Test-Path (Join-Path $evidenceBundlePath $fileName))) {
+        $missingFiles += $fileName
+    }
+}
+if ($missingFiles.Count -gt 0) {
+    throw "Production driver evidence export is missing required files: $($missingFiles -join ', ')"
+}
+
+$productionChecklist = Read-JsonFile (Join-Path $evidenceBundlePath "production-replay-integration-checklist.json") "Production replay integration checklist"
+
+if (Test-Path $outputPath) {
+    Remove-Item -LiteralPath $outputPath -Recurse -Force
+}
+New-Item -ItemType Directory -Force $outputPath | Out-Null
+
+foreach ($fileName in $requiredFiles) {
+    Copy-Item -LiteralPath (Join-Path $evidenceBundlePath $fileName) -Destination (Join-Path $outputPath $fileName) -Force
+}
+
+New-Item -ItemType Directory -Force (Split-Path $zipFullPath -Parent) | Out-Null
+if (Test-Path $zipFullPath) {
+    Remove-Item -LiteralPath $zipFullPath -Force
+}
+Compress-Archive -LiteralPath $outputPath -DestinationPath $zipFullPath -Force
+
+$manifestPath = Join-Path (Split-Path $outputPath -Parent) "production-driver-evidence-export-manifest.json"
+$manifest = [ordered]@{
+    schemaVersion = "aitestpilot.production_driver_evidence_export.v1"
+    status = "PASS"
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    evidenceBundleDir = $evidenceBundlePath
+    outputDir = $outputPath
+    zipPath = $zipFullPath
+    driverTypeName = [string]$productionChecklist.driverTypeName
+    gameReplayDriverId = [string]$readiness.gameReplayDriverId
+    readyForProductionDriverRelease = [bool]$readiness.readyForProductionDriverRelease
+    realProjectBound = [bool]$readiness.realProjectBound
+    sampleGameReplayDriverUsed = [bool]$readiness.sampleGameReplayDriverUsed
+    externalProductionDriverSelected = [bool]$readiness.externalProductionDriverSelected
+    blockingReasonCount = [int]$readiness.blockingReasonCount
+    requiredFiles = @($requiredFiles)
+    exportedFileCount = [int]$requiredFiles.Count
+    productionEvidenceExported = $true
+    productionEvidenceAccepted = $false
+    fixtureEvidencePromoted = $false
+}
+$manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $manifestPath -Encoding UTF8
+
+Write-Output "Production driver evidence export: $outputPath"
+Write-Output "Production driver evidence export zip: $zipFullPath"
+Write-Output "Production driver evidence export manifest: $manifestPath"
+Write-Output "PASS AI TestPilot production driver evidence export"
+'@
 
 $readmeTemplate = @'
 # AI TestPilot Production Driver Binding Kit
@@ -227,6 +359,7 @@ This kit is a host-project starting point. It is not production-bound evidence.
 - `__DRIVER_FILE__`: copy into the host Unity test assembly, then replace each failing hook with real game API calls and state verification.
 - `production-replay-integration-checklist.authoring.json`: owner/API/verification checklist for the five required hooks.
 - `Invoke-ProductionDriverEvidence.ps1`: host CI helper that runs retest, profile import, readiness, and evidence intake after the real hooks and BOUND checklist exist.
+- `Export-ProductionDriverEvidenceBundle.ps1`: packages the four required production driver evidence files into a `production-driver-evidence` folder and zip, but only after production-bound readiness passes with zero blockers.
 
 ## Driver
 
@@ -279,12 +412,14 @@ $checklist = [ordered]@{
 
 $driverSource | Set-Content -Path $driverPath -Encoding UTF8
 $hostScript | Set-Content -Path $hostScriptPath -Encoding UTF8
+$exportScriptTemplate | Set-Content -Path $exportScriptPath -Encoding UTF8
 $readme | Set-Content -Path $readmePath -Encoding UTF8
 $checklist | ConvertTo-Json -Depth 10 | Set-Content -Path $checklistPath -Encoding UTF8
 
 $generatedFiles = @(
     $driverFileName,
     "Invoke-ProductionDriverEvidence.ps1",
+    "Export-ProductionDriverEvidenceBundle.ps1",
     "README.md",
     "production-replay-integration-checklist.authoring.json"
 )
@@ -304,6 +439,8 @@ $manifest = [ordered]@{
     requiredHookCount = 5
     generatedHookCount = 5
     generatedHooksFailUntilBound = $true
+    exportHelperGenerated = $true
+    exportHelperRequiresProductionBoundReadiness = $true
     readyForProductionDriverRelease = $false
     productionEvidenceAccepted = $false
     generatedKitOnly = $true

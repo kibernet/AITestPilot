@@ -927,11 +927,16 @@ if ($null -ne $productionDriverBindingKitManifest) {
         ($productionDriverBindingKitManifest.status -eq "PASS" -and
             $productionDriverBindingKitManifest.schemaVersion -eq "aitestpilot.production_driver_binding_kit_probe.v1" -and
             [bool]$productionDriverBindingKitManifest.kitGenerated -and
-            [int]$productionDriverBindingKitManifest.generatedFileCount -ge 5 -and
+            [int]$productionDriverBindingKitManifest.generatedFileCount -ge 6 -and
             [int]$productionDriverBindingKitManifest.requiredHookCount -eq 5 -and
             [bool]$productionDriverBindingKitManifest.generatedHooksFailUntilBound -and
-            [bool]$productionDriverBindingKitManifest.hostValidationScriptIncludesProductionBoundIntake) `
-        "Production driver binding kit probe must generate a host-project starter kit with production-bound validation commands."
+            [bool]$productionDriverBindingKitManifest.hostValidationScriptIncludesProductionBoundIntake -and
+            [bool]$productionDriverBindingKitManifest.exportHelperGenerated -and
+            [bool]$productionDriverBindingKitManifest.exportHelperRequiresProductionBoundReadiness -and
+            [bool]$productionDriverBindingKitManifest.exportHelperRejectedSampleUnboundEvidence -and
+            [bool]$productionDriverBindingKitManifest.exportRejectionReadinessRejectedCurrentSample -and
+            [int]$productionDriverBindingKitManifest.exportRejectionBlockingReasonCount -ge 1) `
+        "Production driver binding kit probe must generate a host-project starter kit with production-bound validation commands and an export helper that rejects sample/unbound evidence."
 
     Add-ReleaseCheck "production_driver_binding_kit_boundary" `
         ([bool]$productionDriverBindingKitManifest.generatedKitOnly -and

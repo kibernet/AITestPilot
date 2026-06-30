@@ -180,7 +180,7 @@ To generate a host-project production driver binding starter kit:
 .\tools\New-AITestPilotProductionDriverBindingKit.ps1 -OutputDir "Temp\production-driver-binding-kit\latest" -DriverTypeName "Your.Game.Tests.ProductionReplayDriver" -DriverId "your_game.production_replay"
 ```
 
-The kit includes a customized `HookedGameActionReplayDriver` template, an authoring checklist, and a host CI helper that calls production-bound readiness plus evidence intake. The generated hooks intentionally return `Fail(...)` until the host project wires real APIs; the kit is handoff material, not production-bound evidence.
+The kit includes a customized `HookedGameActionReplayDriver` template, an authoring checklist, a host CI helper that calls production-bound readiness plus evidence intake, and `Export-ProductionDriverEvidenceBundle.ps1` for packaging the four required driver evidence files after the host project is truly production-bound. The generated hooks intentionally return `Fail(...)` until the host project wires real APIs; the kit is handoff material, not production-bound evidence, and the export helper rejects the current sample/unbound evidence.
 
 To write a machine-readable production driver readiness boundary:
 

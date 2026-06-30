@@ -66,7 +66,7 @@
 - Production replay integration plan asset plus JSON/Markdown checklist evidence, explicitly marked unbound until real project APIs are wired.
 - Production replay integration contract probe proving `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states without claiming real game API calls.
 - Production driver evidence intake gate for standalone real-project evidence bundles, with default sample/unbound rejection evidence.
-- Production driver binding kit generator plus release-gated probe for host-project starter files.
+- Production driver binding kit generator plus release-gated probe for host-project starter files and a production-bound evidence export helper that rejects sample/unbound evidence.
 - Production driver evidence contract probe proving an isolated BOUND fixture can pass intake without being promoted as real production evidence.
 - Repo-external production driver evidence bundle intake probe for host-project release-evidence directories outside this repository.
 - Production-bound replay driver failure probe plus release-pipeline/release-gate switches that make real project binding a hard CI requirement when requested.
