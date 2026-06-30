@@ -149,6 +149,115 @@ function Format-MarkdownCell {
     return $text.Replace("`r", " ").Replace("`n", " ").Replace("|", "\|")
 }
 
+function Get-OwnerResponseBundleZipSafetyReport {
+    param([string]$Path)
+
+    $result = [ordered]@{
+        inspected = $true
+        safe = $false
+        zipOpenSucceeded = $false
+        entryCount = 0
+        directoryEntryCount = 0
+        unsafeEntryCount = 0
+        duplicateEntryCount = 0
+        unsafeEntries = @()
+        duplicateEntries = @()
+        safetyErrors = @()
+    }
+
+    try {
+        Add-Type -AssemblyName System.IO.Compression | Out-Null
+        Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
+    }
+    catch {
+        $result.safetyErrors = @("zip_open_failed")
+        $result.unsafeEntries = @([ordered]@{
+                name = [System.IO.Path]::GetFileName($Path)
+                reasons = @($_.Exception.Message)
+            })
+        $result.unsafeEntryCount = 1
+        return $result
+    }
+
+    $seen = @{}
+    try {
+        $result.zipOpenSucceeded = $true
+        foreach ($entry in $archive.Entries) {
+            $entryName = [string]$entry.FullName
+            $result.entryCount += 1
+            if ($entryName.EndsWith("/", [System.StringComparison]::Ordinal) -or
+                $entryName.EndsWith("\", [System.StringComparison]::Ordinal)) {
+                $result.directoryEntryCount += 1
+            }
+
+            $normalized = $entryName.Replace("\", "/")
+            $reasons = @()
+            if ([string]::IsNullOrWhiteSpace($normalized)) {
+                $reasons += "empty_entry_name"
+            }
+            if ($normalized.StartsWith("/", [System.StringComparison]::Ordinal) -or
+                $normalized.StartsWith("//", [System.StringComparison]::Ordinal)) {
+                $reasons += "absolute_entry_path"
+            }
+            if ($normalized -match "^[A-Za-z]:") {
+                $reasons += "drive_qualified_entry_path"
+            }
+
+            $segments = @($normalized -split "/" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if (@($segments | Where-Object { $_ -eq ".." }).Count -gt 0) {
+                $reasons += "path_traversal_segment"
+            }
+            if (@($segments | Where-Object { $_ -eq "." }).Count -gt 0) {
+                $reasons += "current_directory_segment"
+            }
+            if (@($segments | Where-Object { $_.Contains(":") }).Count -gt 0) {
+                $reasons += "colon_in_entry_segment"
+            }
+
+            $canonical = $normalized.TrimStart("/")
+            $canonicalKey = $canonical.ToLowerInvariant()
+            if ($seen.ContainsKey($canonicalKey)) {
+                $result.duplicateEntries += [ordered]@{
+                    name = $entryName
+                    firstEntry = [string]$seen[$canonicalKey]
+                }
+            }
+            else {
+                $seen[$canonicalKey] = $entryName
+            }
+
+            if ($reasons.Count -gt 0) {
+                $result.unsafeEntries += [ordered]@{
+                    name = $entryName
+                    reasons = @($reasons)
+                }
+            }
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+
+    $result.unsafeEntryCount = [int]@($result.unsafeEntries).Count
+    $result.duplicateEntryCount = [int]@($result.duplicateEntries).Count
+    $result.safe = $result.zipOpenSucceeded -and
+        $result.entryCount -gt 0 -and
+        $result.unsafeEntryCount -eq 0 -and
+        $result.duplicateEntryCount -eq 0
+    if ($result.entryCount -eq 0) {
+        $result.safetyErrors += "empty_zip"
+    }
+    if ($result.duplicateEntryCount -gt 0) {
+        $result.safetyErrors += "duplicate_entries"
+    }
+    if ($result.unsafeEntryCount -gt 0) {
+        $result.safetyErrors += "unsafe_entries"
+    }
+
+    return $result
+}
+
 function Resolve-CandidateDir {
     param(
         [string]$ExplicitPath,
@@ -305,27 +414,47 @@ if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and -not [string
 }
 
 $expandedOwnerResponseBundleDir = ""
+$ownerResponseBundleZipSafetyReport = [ordered]@{
+    inspected = $false
+    safe = $true
+    zipOpenSucceeded = $false
+    entryCount = 0
+    directoryEntryCount = 0
+    unsafeEntryCount = 0
+    duplicateEntryCount = 0
+    unsafeEntries = @()
+    duplicateEntries = @()
+    safetyErrors = @()
+}
+$ownerResponseBundleZipRejected = $false
 if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
     $ownerResponseBundleZipFullPath = Resolve-FullPath $OwnerResponseBundleZipPath
     if (-not (Test-Path $ownerResponseBundleZipFullPath)) {
         throw "Owner response bundle zip does not exist: $ownerResponseBundleZipFullPath"
     }
 
-    $zipStem = [System.IO.Path]::GetFileNameWithoutExtension($ownerResponseBundleZipFullPath)
-    if ([string]::IsNullOrWhiteSpace($zipStem)) {
-        $zipStem = "owner-response-bundle"
+    $ownerResponseBundleZipSafetyReport = Get-OwnerResponseBundleZipSafetyReport $ownerResponseBundleZipFullPath
+    if (-not [bool]$ownerResponseBundleZipSafetyReport.safe) {
+        $ownerResponseBundleZipRejected = $true
     }
-    $expandedOwnerResponseBundleDir = Join-Path $tempRoot (Join-Path "AITestPilot\production-external-evidence-auto-acceptance" $zipStem)
-    if (Test-Path $expandedOwnerResponseBundleDir) {
-        Remove-Item -LiteralPath $expandedOwnerResponseBundleDir -Recurse -Force
+    else {
+        $zipStem = [System.IO.Path]::GetFileNameWithoutExtension($ownerResponseBundleZipFullPath)
+        if ([string]::IsNullOrWhiteSpace($zipStem)) {
+            $zipStem = "owner-response-bundle"
+        }
+        $expandedOwnerResponseBundleDir = Join-Path $tempRoot (Join-Path "AITestPilot\production-external-evidence-auto-acceptance" $zipStem)
+        if (Test-Path $expandedOwnerResponseBundleDir) {
+            Remove-Item -LiteralPath $expandedOwnerResponseBundleDir -Recurse -Force
+        }
+        New-Item -ItemType Directory -Force $expandedOwnerResponseBundleDir | Out-Null
+        Expand-Archive -LiteralPath $ownerResponseBundleZipFullPath -DestinationPath $expandedOwnerResponseBundleDir -Force
+        $OwnerResponseBundleDir = $expandedOwnerResponseBundleDir
     }
-    New-Item -ItemType Directory -Force $expandedOwnerResponseBundleDir | Out-Null
-    Expand-Archive -LiteralPath $ownerResponseBundleZipFullPath -DestinationPath $expandedOwnerResponseBundleDir -Force
-    $OwnerResponseBundleDir = $expandedOwnerResponseBundleDir
 }
 if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
     $OwnerResponseBundleDir = Resolve-OwnerResponseBundleRoot $OwnerResponseBundleDir
 }
+
 
 $driverRequiredFiles = @(
     "production-replay-integration-checklist.json",
@@ -371,6 +500,9 @@ $areaStatuses = @(
 $readyAreaCount = @($areaStatuses | Where-Object { [bool]$_["readyForAcceptance"] }).Count
 $missingFileCount = [int](@($areaStatuses | ForEach-Object { [int]$_["missingFileCount"] } | Measure-Object -Sum).Sum)
 $allEvidenceReady = $readyAreaCount -eq 3 -and $missingFileCount -eq 0
+if ($ownerResponseBundleZipRejected) {
+    $allEvidenceReady = $false
+}
 $acceptanceRun = $false
 $acceptanceSucceeded = $false
 $acceptanceFailed = $false
@@ -413,7 +545,10 @@ $realHostProjectEvidenceAccepted = $allExternalEvidenceAccepted -and
     (Convert-ToBool (Get-JsonValue $acceptanceManifest "realHostProjectEvidenceAccepted" $false)) -and
     -not [bool]$ContractFixtureMode
 
-$status = if ($allExternalEvidenceAccepted) {
+$status = if ($ownerResponseBundleZipRejected) {
+    "FAIL"
+}
+elseif ($allExternalEvidenceAccepted) {
     "PASS"
 }
 elseif ($allEvidenceReady -or [bool]$RequireAllEvidence) {
@@ -434,6 +569,10 @@ Add-AutoCheck "pending_state_does_not_run_acceptance" `
 Add-AutoCheck "accepted_only_after_existing_acceptance_passes" `
     ((-not $allExternalEvidenceAccepted) -or ($acceptanceSucceeded -and $null -ne $acceptanceManifest -and (Get-JsonValue $acceptanceManifest "status" "") -eq "PASS")) `
     "Auto acceptance must delegate pass/fail decisions to the stable external evidence acceptance script."
+Add-AutoCheck "owner_response_bundle_zip_safe_before_expand" `
+    (([string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) -or
+        ([bool]$ownerResponseBundleZipSafetyReport.safe -and -not [bool]$ownerResponseBundleZipRejected)) `
+    "Owner response bundle zip input must be inspected for unsafe paths and duplicate entries before expansion or acceptance."
 Add-AutoCheck "fixture_boundary_preserved" `
     ((-not [bool]$ContractFixtureMode) -or (-not $realHostProjectEvidenceAccepted)) `
     "Contract fixture mode must not claim real host-project evidence."
@@ -448,6 +587,9 @@ if ($failedChecks.Count -gt 0 -and $status -eq "PASS") {
 
 $productionOutputBoundary = if ($realHostProjectEvidenceAccepted) {
     "real_host_project_external_evidence_auto_accepted"
+}
+elseif ($ownerResponseBundleZipRejected) {
+    "owner_response_bundle_zip_rejected_before_acceptance"
 }
 elseif ($allExternalEvidenceAccepted -and [bool]$ContractFixtureMode) {
     "external_evidence_auto_acceptance_contract_fixture_only"
@@ -483,6 +625,17 @@ $manifest = [ordered]@{
     ownerResponseBundleDir = if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) { "" } else { Resolve-FullPath $OwnerResponseBundleDir }
     ownerResponseBundleZipPath = if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) { "" } else { Resolve-FullPath $OwnerResponseBundleZipPath }
     expandedOwnerResponseBundleDir = if ([string]::IsNullOrWhiteSpace($expandedOwnerResponseBundleDir)) { "" } else { Resolve-FullPath $expandedOwnerResponseBundleDir }
+    ownerResponseBundleZipInspected = [bool]$ownerResponseBundleZipSafetyReport.inspected
+    ownerResponseBundleZipSafe = [bool]$ownerResponseBundleZipSafetyReport.safe
+    ownerResponseBundleZipRejectedBeforeExpand = [bool]$ownerResponseBundleZipRejected
+    ownerResponseBundleZipOpenSucceeded = [bool]$ownerResponseBundleZipSafetyReport.zipOpenSucceeded
+    ownerResponseBundleZipEntryCount = [int]$ownerResponseBundleZipSafetyReport.entryCount
+    ownerResponseBundleZipDirectoryEntryCount = [int]$ownerResponseBundleZipSafetyReport.directoryEntryCount
+    ownerResponseBundleZipUnsafeEntryCount = [int]$ownerResponseBundleZipSafetyReport.unsafeEntryCount
+    ownerResponseBundleZipDuplicateEntryCount = [int]$ownerResponseBundleZipSafetyReport.duplicateEntryCount
+    ownerResponseBundleZipSafetyErrors = @($ownerResponseBundleZipSafetyReport.safetyErrors)
+    ownerResponseBundleZipUnsafeEntries = @($ownerResponseBundleZipSafetyReport.unsafeEntries)
+    ownerResponseBundleZipDuplicateEntries = @($ownerResponseBundleZipSafetyReport.duplicateEntries)
     acceptanceBundleDir = $acceptanceBundlePath
     contractFixtureMode = [bool]$ContractFixtureMode
     requireAllEvidence = [bool]$RequireAllEvidence
@@ -528,7 +681,13 @@ $reportLines = @(
     "| All external evidence accepted | $allExternalEvidenceAccepted |",
     "| Real host-project evidence accepted | $realHostProjectEvidenceAccepted |",
     "| Contract fixture mode | $([bool]$ContractFixtureMode) |",
+    "| Production output boundary | $(Format-MarkdownCell $productionOutputBoundary) |",
     "| Owner response bundle zip | $(Format-MarkdownCell $OwnerResponseBundleZipPath) |",
+    "| Owner response bundle zip inspected | $($ownerResponseBundleZipSafetyReport.inspected) |",
+    "| Owner response bundle zip safe | $($ownerResponseBundleZipSafetyReport.safe) |",
+    "| Owner response bundle zip entries | $($ownerResponseBundleZipSafetyReport.entryCount) |",
+    "| Owner response bundle zip unsafe entries | $($ownerResponseBundleZipSafetyReport.unsafeEntryCount) |",
+    "| Owner response bundle zip duplicate entries | $($ownerResponseBundleZipSafetyReport.duplicateEntryCount) |",
     "| Expanded owner response bundle | $(Format-MarkdownCell $expandedOwnerResponseBundleDir) |",
     "",
     "## Areas",

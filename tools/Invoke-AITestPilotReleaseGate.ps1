@@ -2938,13 +2938,24 @@ if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipEmailSent -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipFixtureEvidencePromoted -and
             [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipSourceCount -eq 3 -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipInspected -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipSafe -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipUnsafeEntryCount -eq 0 -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipDuplicateEntryCount -eq 0 -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipRejected -and
+            $productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipStatus -eq "FAIL" -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipAcceptanceRun -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipSafe -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipUnsafeEntryCount -gt 0 -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipRealHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipFixtureEvidencePromoted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.releasePipelineSendsEmail -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceAutoAcceptanceProbeManifest.productionOutputBoundary -eq "production_external_evidence_auto_acceptance_probe_only" -and
-            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.checkCount -eq 8 -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.checkCount -eq 9 -and
             [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.failedCheckCount -eq 0) `
-        "Production external evidence auto acceptance probe must prove discovery stays pending when evidence is missing, and complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance without promoting fixtures."
+        "Production external evidence auto acceptance probe must prove discovery stays pending when evidence is missing, complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance, and unsafe returned zips are rejected before expansion or acceptance without promoting fixtures."
 
     Test-ListedFiles $productionExternalEvidenceAutoAcceptanceProbeManifest "production_external_evidence_auto_acceptance_probe"
 }

@@ -168,6 +168,40 @@ function Copy-RequiredFiles {
     }
 }
 
+function New-UnsafeOwnerResponseBundleZip {
+    param([string]$Path)
+
+    if (Test-Path $Path) {
+        Remove-Item -LiteralPath $Path -Force
+    }
+
+    Add-Type -AssemblyName System.IO.Compression | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+    $archive = [System.IO.Compression.ZipFile]::Open($Path, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        $unsafeEntry = $archive.CreateEntry("../outside.txt")
+        $writer = [System.IO.StreamWriter]::new($unsafeEntry.Open())
+        try {
+            $writer.WriteLine("unsafe")
+        }
+        finally {
+            $writer.Dispose()
+        }
+
+        $normalEntry = $archive.CreateEntry("production-driver-evidence/production-replay-integration-checklist.json")
+        $writer = [System.IO.StreamWriter]::new($normalEntry.Open())
+        try {
+            $writer.WriteLine("{}")
+        }
+        finally {
+            $writer.Dispose()
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 function Invoke-AutoAcceptance {
     param(
         [string]$Name,
@@ -267,6 +301,7 @@ New-Item -ItemType Directory -Force $probePath | Out-Null
 New-Item -ItemType Directory -Force $externalEvidencePath | Out-Null
 New-Item -ItemType Directory -Force $ownerResponseBundlePath | Out-Null
 $ownerResponseBundleZipPath = Join-Path $probePath "owner-response-bundle-auto-acceptance.zip"
+$unsafeOwnerResponseBundleZipPath = Join-Path $probePath "owner-response-bundle-unsafe-entry.zip"
 
 $driverFiles = @(
     "production-replay-integration-checklist.json",
@@ -302,16 +337,19 @@ if (Test-Path $ownerResponseBundleZipPath) {
     Remove-Item -LiteralPath $ownerResponseBundleZipPath -Force
 }
 Compress-Archive -Path (Join-Path $ownerResponseBundlePath "*") -DestinationPath $ownerResponseBundleZipPath -Force
+New-UnsafeOwnerResponseBundleZip $unsafeOwnerResponseBundleZipPath
 
 $pendingRun = Invoke-AutoAcceptance -Name "pending-default-auto-acceptance"
 $acceptedRun = Invoke-AutoAcceptance -Name "accepted-contract-auto-acceptance" -EvidenceRoot $externalEvidencePath -RequireAllEvidence -ContractFixtureMode
 $ownerResponseBundleRun = Invoke-AutoAcceptance -Name "owner-response-bundle-auto-acceptance" -OwnerResponseBundleDir $ownerResponseBundlePath -RequireAllEvidence -ContractFixtureMode
 $ownerResponseBundleZipRun = Invoke-AutoAcceptance -Name "owner-response-bundle-zip-auto-acceptance" -OwnerResponseBundleZipPath $ownerResponseBundleZipPath -RequireAllEvidence -ContractFixtureMode
+$unsafeOwnerResponseBundleZipRun = Invoke-AutoAcceptance -Name "owner-response-bundle-unsafe-zip-auto-acceptance" -OwnerResponseBundleZipPath $unsafeOwnerResponseBundleZipPath -RequireAllEvidence -ContractFixtureMode
 
 $pendingManifest = $pendingRun.manifest
 $acceptedManifest = $acceptedRun.manifest
 $ownerResponseBundleManifest = $ownerResponseBundleRun.manifest
 $ownerResponseBundleZipManifest = $ownerResponseBundleZipRun.manifest
+$unsafeOwnerResponseBundleZipManifest = $unsafeOwnerResponseBundleZipRun.manifest
 $externalBundleUnderRepo = $externalEvidencePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
 $ownerResponseBundleUnderRepo = $ownerResponseBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
 $externalFileCount = @(
@@ -401,6 +439,10 @@ $ownerResponseBundleZipSourceCount = @(
 $ownerResponseBundleZipAccepted = $null -ne $ownerResponseBundleZipManifest -and
     (Get-JsonValue $ownerResponseBundleZipManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_auto_acceptance.v1" -and
     (Get-JsonValue $ownerResponseBundleZipManifest "status" "") -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipInspected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipSafe" $false)) -and
+    (Convert-ToInt (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipUnsafeEntryCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipDuplicateEntryCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "allEvidenceReady" $false)) -and
     (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "acceptanceRun" $false)) -and
     (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "acceptanceSucceeded" $false)) -and
@@ -414,22 +456,39 @@ $ownerResponseBundleZipAccepted = $null -ne $ownerResponseBundleZipManifest -and
     (Get-JsonValue $ownerResponseBundleZipManifest "productionOutputBoundary" "") -eq "external_evidence_auto_acceptance_contract_fixture_only" -and
     $ownerResponseBundleZipSourceCount -eq 3
 
+$unsafeOwnerResponseBundleZipRejected = $null -ne $unsafeOwnerResponseBundleZipManifest -and
+    [bool]$unsafeOwnerResponseBundleZipRun.failed -and
+    (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_auto_acceptance.v1" -and
+    (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "status" "") -eq "FAIL" -and
+    (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "ownerResponseBundleZipInspected" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "ownerResponseBundleZipSafe" $true)) -and
+    (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "ownerResponseBundleZipRejectedBeforeExpand" $false)) -and
+    (Convert-ToInt (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "ownerResponseBundleZipUnsafeEntryCount" 0)) -gt 0 -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "acceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "allExternalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "realHostProjectEvidenceAccepted" $true)) -and
+    (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "productionOutputBoundary" "") -eq "owner_response_bundle_zip_rejected_before_acceptance"
+
 $pendingReportText = if (Test-Path $pendingRun.reportPath) { Get-Content -Raw -Path $pendingRun.reportPath -Encoding UTF8 } else { "" }
 $acceptedReportText = if (Test-Path $acceptedRun.reportPath) { Get-Content -Raw -Path $acceptedRun.reportPath -Encoding UTF8 } else { "" }
 $ownerResponseBundleReportText = if (Test-Path $ownerResponseBundleRun.reportPath) { Get-Content -Raw -Path $ownerResponseBundleRun.reportPath -Encoding UTF8 } else { "" }
 $ownerResponseBundleZipReportText = if (Test-Path $ownerResponseBundleZipRun.reportPath) { Get-Content -Raw -Path $ownerResponseBundleZipRun.reportPath -Encoding UTF8 } else { "" }
+$unsafeOwnerResponseBundleZipReportText = if (Test-Path $unsafeOwnerResponseBundleZipRun.reportPath) { Get-Content -Raw -Path $unsafeOwnerResponseBundleZipRun.reportPath -Encoding UTF8 } else { "" }
 $reportsValidated = $pendingReportText.Contains("PENDING_EXTERNAL_EVIDENCE") -and
     $acceptedReportText.Contains("All external evidence accepted") -and
     $ownerResponseBundleReportText.Contains("All external evidence accepted") -and
     $ownerResponseBundleZipReportText.Contains("All external evidence accepted") -and
+    $unsafeOwnerResponseBundleZipReportText.Contains("owner_response_bundle_zip_rejected_before_acceptance") -and
     -not $pendingReportText.Contains("System.Collections") -and
     -not $acceptedReportText.Contains("System.Collections") -and
     -not $ownerResponseBundleReportText.Contains("System.Collections") -and
     -not $ownerResponseBundleZipReportText.Contains("System.Collections") -and
+    -not $unsafeOwnerResponseBundleZipReportText.Contains("System.Collections") -and
     -not $pendingReportText.Contains("@{") -and
     -not $acceptedReportText.Contains("@{") -and
     -not $ownerResponseBundleReportText.Contains("@{") -and
-    -not $ownerResponseBundleZipReportText.Contains("@{")
+    -not $ownerResponseBundleZipReportText.Contains("@{") -and
+    -not $unsafeOwnerResponseBundleZipReportText.Contains("@{")
 
 $checks = @()
 Add-ProbeCheck "auto_acceptance_script_available" `
@@ -447,6 +506,9 @@ Add-ProbeCheck "owner_response_bundle_accepts_contract_fixture" `
 Add-ProbeCheck "owner_response_bundle_zip_accepts_contract_fixture" `
     ($ownerResponseBundleZipAccepted -and (Test-Path $ownerResponseBundleZipPath)) `
     "A complete owner response bundle zip must expand, discover all three areas, and pass only as a contract fixture."
+Add-ProbeCheck "owner_response_bundle_unsafe_zip_rejected_before_acceptance" `
+    ($unsafeOwnerResponseBundleZipRejected -and (Test-Path $unsafeOwnerResponseBundleZipPath)) `
+    "An owner response bundle zip with unsafe entry paths must be rejected before expansion and before acceptance can run."
 Add-ProbeCheck "external_fixture_root_outside_repo" `
     (-not [bool]$externalBundleUnderRepo -and $externalRequiredFileCount -eq 9) `
     "Probe fixture root must stay outside the repository and contain the nine required evidence files."
@@ -462,7 +524,11 @@ Add-ProbeCheck "auto_acceptance_boundaries_preserved" `
         -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "fixtureEvidencePromoted" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "realHostProjectEvidenceAccepted" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "emailSent" $true)) -and
-        -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "fixtureEvidencePromoted" $true))) `
+        -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "fixtureEvidencePromoted" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "acceptanceRun" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "realHostProjectEvidenceAccepted" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "emailSent" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "fixtureEvidencePromoted" $true))) `
     "Auto acceptance probe must not send mail, accept real host-project evidence, or promote fixture data."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
@@ -485,6 +551,8 @@ $reportLines = @(
     "| Owner response bundle source count | $ownerResponseBundleSourceCount |",
     "| Owner response bundle zip run accepted | $ownerResponseBundleZipAccepted |",
     "| Owner response bundle zip source count | $ownerResponseBundleZipSourceCount |",
+    "| Unsafe owner response bundle zip rejected | $unsafeOwnerResponseBundleZipRejected |",
+    "| Unsafe owner response bundle zip unsafe entries | $(Convert-ToInt (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "ownerResponseBundleZipUnsafeEntryCount" 0)) |",
     "| External fixture files | $externalFileCount |",
     "| External required fixture files | $externalRequiredFileCount |",
     "| External fixture under repo | $externalBundleUnderRepo |",
@@ -499,6 +567,7 @@ $reportLines = @(
     "- Complete fixture discovery runs acceptance only in contract fixture mode.",
     "- Complete owner response bundle discovery runs acceptance only in contract fixture mode.",
     "- Complete owner response bundle zip discovery runs acceptance only in contract fixture mode.",
+    "- Unsafe owner response bundle zips are rejected before expansion and before acceptance.",
     "- No mail is sent and no real host-project evidence is accepted.",
     "",
     "## Checks",
@@ -571,6 +640,18 @@ $manifest = [ordered]@{
     ownerResponseBundleZipEmailSent = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "emailSent" $true)
     ownerResponseBundleZipFixtureEvidencePromoted = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "fixtureEvidencePromoted" $true)
     ownerResponseBundleZipSourceCount = [int]$ownerResponseBundleZipSourceCount
+    ownerResponseBundleZipInspected = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipInspected" $false)
+    ownerResponseBundleZipSafe = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipSafe" $false)
+    ownerResponseBundleZipUnsafeEntryCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipUnsafeEntryCount" 0)
+    ownerResponseBundleZipDuplicateEntryCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipDuplicateEntryCount" 0)
+    unsafeOwnerResponseBundleZipPath = $unsafeOwnerResponseBundleZipPath
+    unsafeOwnerResponseBundleZipRejected = [bool]$unsafeOwnerResponseBundleZipRejected
+    unsafeOwnerResponseBundleZipStatus = [string](Get-JsonValue $unsafeOwnerResponseBundleZipManifest "status" "")
+    unsafeOwnerResponseBundleZipAcceptanceRun = Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "acceptanceRun" $true)
+    unsafeOwnerResponseBundleZipSafe = Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "ownerResponseBundleZipSafe" $true)
+    unsafeOwnerResponseBundleZipUnsafeEntryCount = Convert-ToInt (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "ownerResponseBundleZipUnsafeEntryCount" 0)
+    unsafeOwnerResponseBundleZipRealHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "realHostProjectEvidenceAccepted" $true)
+    unsafeOwnerResponseBundleZipFixtureEvidencePromoted = Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "fixtureEvidencePromoted" $true)
     releasePipelineSendsEmail = $false
     emailSent = $false
     realHostProjectEvidenceAccepted = $false

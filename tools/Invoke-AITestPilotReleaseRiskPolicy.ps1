@@ -2059,16 +2059,27 @@ $productionExternalEvidenceAutoAcceptanceProbeAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipEmailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipFixtureEvidencePromoted" $true)) -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSourceCount" 0)) -eq 3 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipInspected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSafe" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipUnsafeEntryCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipDuplicateEntryCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipRejected" $false)) -and
+    (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipStatus" "") -eq "FAIL" -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipAcceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipSafe" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipUnsafeEntryCount" 0)) -gt 0 -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipRealHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipFixtureEvidencePromoted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "releasePipelineSendsEmail" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_auto_acceptance_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "checkCount" 0)) -eq 8 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "checkCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_external_evidence_auto_acceptance_probe_policy" $productionExternalEvidenceAutoAcceptanceProbeAccepted `
-    "Production evidence handoff must prove auto-discovery stays pending when evidence is missing, and complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance without sending mail or promoting fixtures." `
+    "Production evidence handoff must prove auto-discovery stays pending when evidence is missing, complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance, and unsafe owner response bundle zips are rejected before expansion or acceptance without sending mail or promoting fixtures." `
     "production_external_evidence_auto_acceptance_probe_not_accepted"
 
 $productionExternalEvidenceAcceptanceContractAccepted = (
@@ -2490,6 +2501,10 @@ $manifest = [ordered]@{
     productionExternalEvidenceAutoAcceptanceOwnerResponseBundleSourceCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSourceCount" 0))
     productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipAccepted" $false)
     productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipSourceCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSourceCount" 0))
+    productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipSafe = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSafe" $false)
+    productionExternalEvidenceAutoAcceptanceUnsafeZipRejected = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipRejected" $false)
+    productionExternalEvidenceAutoAcceptanceUnsafeZipAcceptanceRun = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipAcceptanceRun" $true)
+    productionExternalEvidenceAutoAcceptanceUnsafeZipUnsafeEntryCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipUnsafeEntryCount" 0))
     productionExternalEvidenceAcceptanceContractAccepted = [bool]$productionExternalEvidenceAcceptanceContractAccepted
     productionExternalEvidenceAcceptanceFailureAccepted = [bool]$productionExternalEvidenceAcceptanceFailureAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
