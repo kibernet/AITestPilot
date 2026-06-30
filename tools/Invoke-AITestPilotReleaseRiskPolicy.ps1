@@ -217,6 +217,7 @@ $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "pr
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
 $productionExternalEvidenceInboxContractProbeManifest = Read-PolicyJson "production-external-evidence-inbox-contract-probe-manifest.json" "Production external evidence inbox contract probe manifest"
+$productionExternalEvidenceAutoAcceptanceProbeManifest = Read-PolicyJson "production-external-evidence-auto-acceptance-probe-manifest.json" "Production external evidence auto acceptance probe manifest"
 $productionHardModeFailureProbeManifest = Read-PolicyJson "production-hard-mode-failure-probe-manifest.json" "Production hard-mode failure probe manifest"
 $productionHardModeSuccessContractProbeManifest = Read-PolicyJson "production-hard-mode-success-contract-probe-manifest.json" "Production hard-mode success contract probe manifest"
 
@@ -1712,6 +1713,35 @@ Add-PolicyCheck "production_external_evidence_inbox_contract_policy" $production
     "Production evidence handoff must prove the returned-evidence inbox wrapper can accept complete host-project-shaped evidence without promoting fixture data." `
     "production_external_evidence_inbox_contract_not_accepted"
 
+$productionExternalEvidenceAutoAcceptanceProbeAccepted = (
+    $null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest -and
+    $productionExternalEvidenceAutoAcceptanceProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_auto_acceptance_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "externalRequiredFixtureFileCount" -1)) -eq 9 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultAccepted" $false)) -and
+    (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultStatus" "") -eq "PENDING_EXTERNAL_EVIDENCE" -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultAcceptanceRun" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultMissingFileCount" 0)) -eq 9 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractAccepted" $false)) -and
+    (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractStatus" "") -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractAcceptanceRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractAllExternalEvidenceAccepted" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractRealHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractFixtureEvidencePromoted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_auto_acceptance_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_auto_acceptance_probe_policy" $productionExternalEvidenceAutoAcceptanceProbeAccepted `
+    "Production evidence handoff must prove auto-discovery stays pending when evidence is missing and delegates complete evidence to stable acceptance without sending mail or promoting fixtures." `
+    "production_external_evidence_auto_acceptance_probe_not_accepted"
+
 $productionExternalEvidenceAcceptanceContractAccepted = (
     $null -ne $productionExternalEvidenceAcceptanceContractProbeManifest -and
     $productionExternalEvidenceAcceptanceContractProbeManifest.status -eq "PASS" -and
@@ -1896,6 +1926,7 @@ $sourceFiles = @(
     "production-external-evidence-acceptance-failure-probe-manifest.json",
     "production-external-evidence-inbox-manifest.json",
     "production-external-evidence-inbox-contract-probe-manifest.json",
+    "production-external-evidence-auto-acceptance-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "production-hard-mode-success-contract-probe-manifest.json"
 )
@@ -2033,6 +2064,11 @@ $manifest = [ordered]@{
     productionExternalEvidenceInboxAccepted = [bool]$productionExternalEvidenceInboxAccepted
     productionExternalEvidenceInboxMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "missingRequiredFileCount" 0))
     productionExternalEvidenceInboxContractAccepted = [bool]$productionExternalEvidenceInboxContractAccepted
+    productionExternalEvidenceAutoAcceptanceProbeAccepted = [bool]$productionExternalEvidenceAutoAcceptanceProbeAccepted
+    productionExternalEvidenceAutoAcceptancePendingStatus = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultStatus" "")
+    productionExternalEvidenceAutoAcceptancePendingMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultMissingFileCount" 0))
+    productionExternalEvidenceAutoAcceptanceContractAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractAccepted" $false)
+    productionExternalEvidenceAutoAcceptanceContractRealHostProjectEvidenceAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractRealHostProjectEvidenceAccepted" $true)
     productionExternalEvidenceAcceptanceContractAccepted = [bool]$productionExternalEvidenceAcceptanceContractAccepted
     productionExternalEvidenceAcceptanceFailureAccepted = [bool]$productionExternalEvidenceAcceptanceFailureAccepted
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
@@ -2157,6 +2193,10 @@ $reportLines = @(
     "- Production external evidence inbox accepted: $($manifest.productionExternalEvidenceInboxAccepted)",
     "- Production external evidence inbox missing files: $($manifest.productionExternalEvidenceInboxMissingFileCount)",
     "- Production external evidence inbox contract accepted: $($manifest.productionExternalEvidenceInboxContractAccepted)",
+    "- Production external evidence auto acceptance probe accepted: $($manifest.productionExternalEvidenceAutoAcceptanceProbeAccepted)",
+    "- Production external evidence auto acceptance pending status: $($manifest.productionExternalEvidenceAutoAcceptancePendingStatus)",
+    "- Production external evidence auto acceptance pending missing files: $($manifest.productionExternalEvidenceAutoAcceptancePendingMissingFileCount)",
+    "- Production external evidence auto acceptance contract accepted: $($manifest.productionExternalEvidenceAutoAcceptanceContractAccepted)",
     "- Production external evidence acceptance contract accepted: $($manifest.productionExternalEvidenceAcceptanceContractAccepted)",
     "- Production external evidence acceptance failure accepted: $($manifest.productionExternalEvidenceAcceptanceFailureAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",

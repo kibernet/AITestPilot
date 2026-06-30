@@ -119,6 +119,8 @@ try {
         "tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKit.ps1",
         "tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKitWorkflowProbe.ps1",
+        "tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1",
+        "tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptanceProbe.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueue.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1",

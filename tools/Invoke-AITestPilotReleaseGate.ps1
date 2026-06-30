@@ -235,6 +235,7 @@ $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "prod
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
 $productionExternalEvidenceInboxContractProbeManifest = Read-Manifest "production-external-evidence-inbox-contract-probe-manifest.json"
+$productionExternalEvidenceAutoAcceptanceProbeManifest = Read-Manifest "production-external-evidence-auto-acceptance-probe-manifest.json"
 $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-failure-probe-manifest.json"
 $productionHardModeSuccessContractProbeManifest = Read-Manifest "production-hard-mode-success-contract-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
@@ -2642,6 +2643,34 @@ if ($null -ne $productionExternalEvidenceInboxContractProbeManifest) {
         "Production external evidence inbox contract probe must prove returned complete evidence can pass the wrapper while preserving the fixture boundary."
 
     Test-ListedFiles $productionExternalEvidenceInboxContractProbeManifest "production_external_evidence_inbox_contract_probe"
+}
+
+if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
+    Add-ReleaseCheck "production_external_evidence_auto_acceptance_probe" `
+        ($productionExternalEvidenceAutoAcceptanceProbeManifest.status -eq "PASS" -and
+            $productionExternalEvidenceAutoAcceptanceProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_auto_acceptance_probe.v1" -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.externalBundleUnderRepo -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.externalRequiredFixtureFileCount -eq 9 -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.pendingDefaultAccepted -and
+            $productionExternalEvidenceAutoAcceptanceProbeManifest.pendingDefaultStatus -eq "PENDING_EXTERNAL_EVIDENCE" -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.pendingDefaultAcceptanceRun -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.pendingDefaultMissingFileCount -eq 9 -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractAccepted -and
+            $productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractStatus -eq "PASS" -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractAcceptanceRun -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractAllExternalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractRealHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractEmailSent -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractFixtureEvidencePromoted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.fixtureEvidencePromoted -and
+            $productionExternalEvidenceAutoAcceptanceProbeManifest.productionOutputBoundary -eq "production_external_evidence_auto_acceptance_probe_only" -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.failedCheckCount -eq 0) `
+        "Production external evidence auto acceptance probe must prove discovery stays pending when evidence is missing and complete external evidence delegates to stable acceptance without promoting fixtures."
+
+    Test-ListedFiles $productionExternalEvidenceAutoAcceptanceProbeManifest "production_external_evidence_auto_acceptance_probe"
 }
 
 if ($null -ne $productionExternalEvidenceAcceptanceContractProbeManifest) {

@@ -447,6 +447,12 @@ To run the stable repo-side acceptance entry point after host-project owners ret
 
 That command runs the production driver intake, production Lua readiness, and live-smoke evidence intake into an isolated acceptance bundle, then writes `production-external-evidence-acceptance-manifest.json` and a Markdown report summarizing status, missing files, command results, and the fixture boundary. The release pipeline also runs `Invoke-AITestPilotProductionExternalEvidenceAcceptanceContractProbe.ps1`, which proves this stable entry point accepts complete host-project-shaped fixture evidence while recording `realHostProjectEvidenceAccepted=false` and a validated Markdown report. It also runs `Invoke-AITestPilotProductionExternalEvidenceAcceptanceFailureProbe.ps1`, proving fully missing evidence and driver-only partial evidence fail under `-RequireAllEvidence` while still producing owner-readable rejection reports.
 
+```powershell
+.\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1
+```
+
+That operator-side entry point discovers evidence directories from explicit parameters, `AITESTPILOT_*` environment variables, an owner response bundle, an evidence root, or the returned-evidence inbox. It stays `PENDING_EXTERNAL_EVIDENCE` and does not run acceptance until all nine required files are present; once ready, it delegates to `Invoke-AITestPilotProductionExternalEvidenceAcceptance.ps1`. The paired probe proves missing default evidence stays pending and a complete external fixture root passes only in contract mode without sending mail or accepting real host-project evidence.
+
 To prove all production hard-mode switches block the current sample or missing-evidence state together:
 
 ```powershell
