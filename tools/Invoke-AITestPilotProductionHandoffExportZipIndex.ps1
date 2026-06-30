@@ -274,6 +274,8 @@ $requiredZipEntries = @(
     "operator-actions\production-external-evidence-action-queue.md",
     "contract-evidence\production-external-evidence-acceptance-contract.md",
     "contract-evidence\production-external-evidence-inbox-acceptance.md",
+    "contract-evidence\production-external-evidence-semantic-preflight-probe-manifest.json",
+    "contract-evidence\production-external-evidence-semantic-preflight-probe.md",
     "production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1",
     "production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1",
     "live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1"

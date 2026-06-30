@@ -416,6 +416,13 @@ $result = [ordered]@{
     presentEvidenceFileCount = [int]$presentFileCount
     missingEvidenceFileCount = [int]($requiredFileCount - $presentFileCount)
     areaStatuses = @($areaStatuses)
+    semanticPreflightRecommendedBeforeAutoAcceptance = $true
+    semanticPreflightCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
+    semanticPreflightZipCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
+    autoAcceptanceRequiresSemanticPreflightCandidate = $true
+    semanticPreflightCandidateField = "readyForAcceptanceCandidate"
+    semanticPreflightStatusField = "semanticPreflightStatus"
+    semanticPreflightFailCountField = "semanticFailCount"
 }
 
 $result | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath -Encoding UTF8
@@ -483,6 +490,8 @@ $importScript | Set-Content -Path $importScriptPath -Encoding UTF8
 
 $ownerResponseBundleAutoAcceptanceCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle" -RequireAllEvidence'
 $ownerResponseBundleZipAutoAcceptanceCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip" -RequireAllEvidence'
+$ownerResponseBundleSemanticPreflightCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
+$ownerResponseBundleZipSemanticPreflightCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
 $ownerResponseBundleZipEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
 $productionDriverEvidenceExportHelperPath = "production-driver-binding-kit/Export-ProductionDriverEvidenceBundle.ps1"
 $productionDriverEvidenceExportHelperCommand = '.\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence"'
@@ -509,10 +518,13 @@ $kitReadmeLines = @(
     "5. Live model owners can run $liveModelSmokeEvidenceExportHelperPath after direct live provider smoke passes: $liveModelSmokeEvidenceExportHelperCommand",
     "6. Copy required evidence files into production-driver-evidence, production-lua-evidence, and live-smoke-evidence.",
     "7. Run verify-owner-response-bundle.ps1 against the filled bundle.",
-    "8. Run import-owner-response-bundle.ps1 -ResponseBundleDir path\\to\\filled-bundle -RunReadiness.",
-    "9. Operator-side auto acceptance from a returned folder: $ownerResponseBundleAutoAcceptanceCommand",
-    "10. Operator-side auto acceptance from a returned zip: $ownerResponseBundleZipAutoAcceptanceCommand",
-    "11. Zip path can also be provided with $ownerResponseBundleZipEnvironmentVariable.",
+    "8. Operator-side semantic preflight from a returned folder: $ownerResponseBundleSemanticPreflightCommand",
+    "9. Operator-side semantic preflight from a returned zip: $ownerResponseBundleZipSemanticPreflightCommand",
+    "10. Confirm the semantic preflight manifest reports readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0 before auto acceptance.",
+    "11. Run import-owner-response-bundle.ps1 -ResponseBundleDir path\\to\\filled-bundle -RunReadiness if operator inbox import is required.",
+    "12. Operator-side auto acceptance from a returned folder: $ownerResponseBundleAutoAcceptanceCommand",
+    "13. Operator-side auto acceptance from a returned zip: $ownerResponseBundleZipAutoAcceptanceCommand",
+    "14. Zip path can also be provided with $ownerResponseBundleZipEnvironmentVariable.",
     "",
     "Boundary:",
     "",
@@ -537,7 +549,7 @@ $templateReadmeLines = @(
     "4. For live-smoke-evidence, use $liveModelSmokeEvidenceExportHelperPath after direct live provider smoke passes to create $liveModelSmokeEvidenceExportZipPath, then copy the two required live smoke files into this folder.",
     "5. Add the required files listed under each evidence directory.",
     "6. Run ../verify-owner-response-bundle.ps1 -BundleDir .",
-    "7. Return this folder, or a zip of this folder, to the operator for auto acceptance.",
+    "7. Return this folder, or a zip of this folder, to the operator for semantic preflight before auto acceptance.",
     "",
     "The template is incomplete until every required file is present and every contact is configured."
 )
@@ -561,8 +573,11 @@ $requestDraftLines = @(
     "Use verify-owner-response-bundle.ps1 before returning the filled bundle.",
     "Return either the filled folder or a zip of that folder.",
     "",
-    "Operator-side acceptance after return:",
+    "Operator-side semantic preflight and acceptance after return:",
     "",
+    "- $ownerResponseBundleSemanticPreflightCommand",
+    "- $ownerResponseBundleZipSemanticPreflightCommand",
+    "- Auto acceptance requires readyForAcceptanceCandidate=true, semanticFailCount=0, and a semanticPreflightStatus ready or warn-ready state.",
     "- $ownerResponseBundleAutoAcceptanceCommand",
     "- $ownerResponseBundleZipAutoAcceptanceCommand",
     "- Zip path environment variable: $ownerResponseBundleZipEnvironmentVariable",
@@ -587,6 +602,8 @@ $reportLines = @(
     "| Missing evidence files in default bundle | $missingRequiredFileCount |",
     "| Response bundle probe ready | $(Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "ownerResponseReadyForConfirmation" $false)) |",
     "| Kit zip | $(Split-Path $zipFullPath -Leaf) |",
+    "| Owner response bundle semantic preflight | $(Format-MarkdownCell $ownerResponseBundleSemanticPreflightCommand) |",
+    "| Owner response bundle zip semantic preflight | $(Format-MarkdownCell $ownerResponseBundleZipSemanticPreflightCommand) |",
     "| Owner response bundle auto acceptance | $(Format-MarkdownCell $ownerResponseBundleAutoAcceptanceCommand) |",
     "| Owner response bundle zip auto acceptance | $(Format-MarkdownCell $ownerResponseBundleZipAutoAcceptanceCommand) |",
     "| Owner response bundle zip environment variable | $ownerResponseBundleZipEnvironmentVariable |",
@@ -640,6 +657,16 @@ $autoAcceptanceCommandsContentValidated = (
     $contentText.Contains($liveModelSmokeEvidenceExportHelperPath) -and
     $contentText.Contains($liveModelSmokeEvidenceExportHelperCommand)
 )
+$semanticPreflightCommandsContentValidated = (
+    $contentText.Contains($ownerResponseBundleSemanticPreflightCommand) -and
+    $contentText.Contains($ownerResponseBundleZipSemanticPreflightCommand) -and
+    $contentText.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    $contentText.Contains("-OwnerResponseBundleDir") -and
+    $contentText.Contains("-OwnerResponseBundleZipPath") -and
+    $contentText.Contains("readyForAcceptanceCandidate") -and
+    $contentText.Contains("semanticPreflightStatus") -and
+    $contentText.Contains("semanticFailCount")
+)
 
 $kitFiles = @(
     Get-ChildItem -LiteralPath $kitPath -Recurse -File |
@@ -670,6 +697,9 @@ Add-KitCheck "owner_response_bundle_content_validated" `
 Add-KitCheck "owner_response_bundle_auto_acceptance_commands_documented" `
     $autoAcceptanceCommandsContentValidated `
     "Owner response bundle kit must document operator-side auto acceptance commands for returned folders and zip archives."
+Add-KitCheck "owner_response_bundle_semantic_preflight_commands_documented" `
+    $semanticPreflightCommandsContentValidated `
+    "Owner response bundle kit must document operator-side semantic preflight commands and manifest fields before auto acceptance."
 Add-KitCheck "owner_response_bundle_boundary_preserved" `
     (-not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "emailSent" $true)) -and -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "realHostProjectEvidenceAccepted" $true)) -and -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "fixtureEvidencePromoted" $true))) `
     "Owner response bundle kit must preserve not-sent, no-real-evidence, and no-fixture-promotion boundaries."
@@ -706,8 +736,15 @@ $manifest = [ordered]@{
     reportGenerated = (Test-Path $reportFullPath)
     autoAcceptanceCommandsGenerated = $true
     autoAcceptanceCommandsContentValidated = [bool]$autoAcceptanceCommandsContentValidated
+    semanticPreflightCommandsGenerated = $true
+    semanticPreflightCommandsContentValidated = [bool]$semanticPreflightCommandsContentValidated
     ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
     ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
+    ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
+    ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
+    semanticPreflightCandidateField = "readyForAcceptanceCandidate"
+    semanticPreflightStatusField = "semanticPreflightStatus"
+    semanticPreflightFailCountField = "semanticFailCount"
     ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
     productionDriverEvidenceExportHelperPath = $productionDriverEvidenceExportHelperPath
     productionDriverEvidenceExportHelperCommand = $productionDriverEvidenceExportHelperCommand

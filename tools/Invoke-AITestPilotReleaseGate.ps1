@@ -1826,7 +1826,26 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitAvailable -and
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitIncluded -and
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitWorkflowProbeIncluded -and
+            [bool]$productionHandoffExportManifest.ownerResponseBundleKitExportContentValidated -and
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitAutoAcceptanceCommandsDocumented -and
+            [bool]$productionHandoffExportManifest.ownerResponseBundleKitSemanticPreflightCommandsDocumented -and
+            [bool]$productionHandoffExportManifest.ownerResponseBundleKitVerifyHelperSemanticNextStepDocumented -and
+            $productionHandoffExportManifest.ownerResponseBundleKitSemanticPreflightCandidateField -eq "readyForAcceptanceCandidate" -and
+            $productionHandoffExportManifest.ownerResponseBundleKitSemanticPreflightStatusField -eq "semanticPreflightStatus" -and
+            $productionHandoffExportManifest.ownerResponseBundleKitSemanticPreflightFailCountField -eq "semanticFailCount" -and
+            [bool]$productionHandoffExportManifest.semanticPreflightProbeAvailable -and
+            [bool]$productionHandoffExportManifest.semanticPreflightProbeIncluded -and
+            [bool]$productionHandoffExportManifest.semanticPreflightProbeReadOnly -and
+            -not [bool]$productionHandoffExportManifest.semanticPreflightProbeAcceptanceRun -and
+            [bool]$productionHandoffExportManifest.semanticPreflightProbeOwnerResponseBundleReady -and
+            [bool]$productionHandoffExportManifest.semanticPreflightProbePartialBundleRejected -and
+            [bool]$productionHandoffExportManifest.semanticPreflightProbeSemanticBadBundleRejected -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented -and
+            [bool]$productionHandoffExportManifest.semanticPreflightDocumentedBeforeAutoAcceptance -and
+            [bool]$productionHandoffExportManifest.autoAcceptanceRequiresSemanticPreflightCandidate -and
+            $productionHandoffExportManifest.semanticPreflightCandidateField -eq "readyForAcceptanceCandidate" -and
+            $productionHandoffExportManifest.semanticPreflightStatusField -eq "semanticPreflightStatus" -and
+            $productionHandoffExportManifest.semanticPreflightFailCountField -eq "semanticFailCount" -and
             [bool]$productionHandoffExportManifest.operatorActionQueueAvailable -and
             [bool]$productionHandoffExportManifest.operatorActionQueueIncluded -and
             @("canonical_post_dispatch_action_queue", "probe_post_dispatch_action_queue").Contains([string]$productionHandoffExportManifest.operatorActionQueueSourceKind) -and
@@ -1844,6 +1863,7 @@ if ($null -ne $productionHandoffExportManifest) {
             ([string]$productionHandoffExportManifest.liveModelSmokeEvidenceExportHelperPath).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
             [int]$productionHandoffExportManifest.operatorActionFileCount -ge 6 -and
             [int]$productionHandoffExportManifest.operatorActionQueueItemAutoAcceptanceCommandCount -eq 3 -and
+            [int]$productionHandoffExportManifest.operatorActionQueueItemSemanticPreflightCommandCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueTrackedRemainingWorkItemCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingWorkItemCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingMissingFileCount -eq 9 -and
@@ -1856,7 +1876,7 @@ if ($null -ne $productionHandoffExportManifest) {
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 11 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 12 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 
@@ -2349,9 +2369,18 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             [bool]$productionHandoffOwnerResponseBundleKitManifest.zipGenerated -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.autoAcceptanceCommandsGenerated -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.autoAcceptanceCommandsContentValidated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.semanticPreflightCommandsGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.semanticPreflightCommandsContentValidated -and
             ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleAutoAcceptanceCommand).Contains("-OwnerResponseBundleDir") -and
             ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-OwnerResponseBundleZipPath") -and
             ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-RequireAllEvidence") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleSemanticPreflightCommand).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleSemanticPreflightCommand).Contains("-OwnerResponseBundleDir") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipSemanticPreflightCommand).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipSemanticPreflightCommand).Contains("-OwnerResponseBundleZipPath") -and
+            $productionHandoffOwnerResponseBundleKitManifest.semanticPreflightCandidateField -eq "readyForAcceptanceCandidate" -and
+            $productionHandoffOwnerResponseBundleKitManifest.semanticPreflightStatusField -eq "semanticPreflightStatus" -and
+            $productionHandoffOwnerResponseBundleKitManifest.semanticPreflightFailCountField -eq "semanticFailCount" -and
             $productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.productionDriverEvidenceExportHelperDocumented -and
             ([string]$productionHandoffOwnerResponseBundleKitManifest.productionDriverEvidenceExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
@@ -2374,7 +2403,7 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             -not [bool]$productionHandoffOwnerResponseBundleKitManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffOwnerResponseBundleKitManifest.fixtureEvidencePromoted -and
             $productionHandoffOwnerResponseBundleKitManifest.productionOutputBoundary -eq "owner_response_bundle_template_kit_only" -and
-            [int]$productionHandoffOwnerResponseBundleKitManifest.checkCount -eq 7 -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.checkCount -eq 8 -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.failedCheckCount -eq 0) `
         "Production handoff owner response bundle kit must package fillable owner evidence directories, roster, scripts, request draft, and zip without sending email or accepting real evidence."
 
@@ -2395,8 +2424,20 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.completeTemplateMissingEvidenceFileCount -eq 0 -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.importHelperSucceeded -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.importCopiedBundle -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightCommandsGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightCommandsContentValidated -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightCommandsDocumented -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightZipCommandDocumented -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.verifyHelperSemanticNextStepDocumented -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.autoAcceptanceCommandsDocumented -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.autoAcceptanceZipCommandDocumented -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleSemanticPreflightCommand).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleSemanticPreflightCommand).Contains("-OwnerResponseBundleDir") -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipSemanticPreflightCommand).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipSemanticPreflightCommand).Contains("-OwnerResponseBundleZipPath") -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightCandidateField -eq "readyForAcceptanceCandidate" -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightStatusField -eq "semanticPreflightStatus" -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightFailCountField -eq "semanticFailCount" -and
             ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleAutoAcceptanceCommand).Contains("-OwnerResponseBundleDir") -and
             ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-OwnerResponseBundleZipPath") -and
             ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-RequireAllEvidence") -and
@@ -2415,7 +2456,7 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionLuaEvidenceExportHelperDocumented -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.liveModelSmokeEvidenceExportHelperDocumented -and
             $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionOutputBoundary -eq "owner_response_bundle_kit_workflow_probe_only" -and
-            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 7 -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 9 -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.failedCheckCount -eq 0) `
         "Production handoff owner response bundle kit workflow probe must execute generated verify/import helpers against incomplete and complete isolated bundles without sending email or accepting production evidence."
 
@@ -2754,10 +2795,16 @@ if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
             [int]$productionExternalEvidenceActionQueueProbeManifest.externalRemainingBlockingReasonCount -eq 11 -and
             $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleAutoAcceptanceCommand.Contains("-OwnerResponseBundleDir") -and
             $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
+            $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleSemanticPreflightCommand.Contains("-OwnerResponseBundleDir") -and
+            $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleZipSemanticPreflightCommand.Contains("-OwnerResponseBundleZipPath") -and
             $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleAutoAcceptanceCommand.Contains("-OwnerResponseBundleDir") -and
             $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
+            $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleSemanticPreflightCommand.Contains("-OwnerResponseBundleDir") -and
+            $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleZipSemanticPreflightCommand.Contains("-OwnerResponseBundleZipPath") -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueItemAutoAcceptanceCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueItemSemanticPreflightCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueItemSemanticPreflightCommandCount -eq 3 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueDriverExportHelperItemCount -eq 1 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueDriverExportHelperItemCount -eq 1 -and
             ([string]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueProductionDriverEvidenceExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
@@ -2773,9 +2820,9 @@ if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.externalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceActionQueueProbeManifest.productionOutputBoundary -eq "production_external_evidence_action_queue_probe_only" -and
-            [int]$productionExternalEvidenceActionQueueProbeManifest.checkCount -eq 8 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.checkCount -eq 9 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.failedCheckCount -eq 0) `
-        "Production external evidence action queue probe must keep pending-mail and post-dispatch queues distinct while exposing owner response bundle directory/zip auto-acceptance commands at queue and item level and preserving external evidence blockers."
+        "Production external evidence action queue probe must keep pending-mail and post-dispatch queues distinct while exposing owner response bundle directory/zip semantic preflight and auto-acceptance commands at queue and item level and preserving external evidence blockers."
 
     Test-ListedFiles $productionExternalEvidenceActionQueueProbeManifest "production_external_evidence_action_queue_probe"
 }

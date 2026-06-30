@@ -288,6 +288,13 @@ if (-not (Test-Path $templatePath)) {
 
 $ownerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleAutoAcceptanceCommand" "")
 $ownerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
+$ownerResponseBundleSemanticPreflightCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleSemanticPreflightCommand" "")
+$ownerResponseBundleZipSemanticPreflightCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleZipSemanticPreflightCommand" "")
+$semanticPreflightCandidateField = [string](Get-JsonValue $kitManifest "semanticPreflightCandidateField" "")
+$semanticPreflightStatusField = [string](Get-JsonValue $kitManifest "semanticPreflightStatusField" "")
+$semanticPreflightFailCountField = [string](Get-JsonValue $kitManifest "semanticPreflightFailCountField" "")
+$semanticPreflightCommandsGenerated = Convert-ToBool (Get-JsonValue $kitManifest "semanticPreflightCommandsGenerated" $false)
+$semanticPreflightCommandsContentValidated = Convert-ToBool (Get-JsonValue $kitManifest "semanticPreflightCommandsContentValidated" $false)
 $ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $kitManifest "ownerResponseBundleZipEnvironmentVariable" "")
 $productionDriverEvidenceExportHelperCommand = [string](Get-JsonValue $kitManifest "productionDriverEvidenceExportHelperCommand" "")
 $productionLuaEvidenceExportHelperCommand = [string](Get-JsonValue $kitManifest "productionLuaEvidenceExportHelperCommand" "")
@@ -318,6 +325,22 @@ $autoAcceptanceCommandsDocumented = (
     -not [string]::IsNullOrWhiteSpace($liveModelSmokeEvidenceExportHelperCommand) -and
     $kitDocsText.Contains($liveModelSmokeEvidenceExportHelperCommand) -and
     $kitDocsText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1")
+)
+$semanticPreflightZipCommandDocumented = (
+    -not [string]::IsNullOrWhiteSpace($ownerResponseBundleZipSemanticPreflightCommand) -and
+    $kitDocsText.Contains($ownerResponseBundleZipSemanticPreflightCommand) -and
+    $kitDocsText.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    $kitDocsText.Contains("-OwnerResponseBundleZipPath")
+)
+$semanticPreflightCommandsDocumented = (
+    $semanticPreflightCommandsContentValidated -and
+    -not [string]::IsNullOrWhiteSpace($ownerResponseBundleSemanticPreflightCommand) -and
+    $kitDocsText.Contains($ownerResponseBundleSemanticPreflightCommand) -and
+    $kitDocsText.Contains("-OwnerResponseBundleDir") -and
+    $semanticPreflightZipCommandDocumented -and
+    $kitDocsText.Contains("readyForAcceptanceCandidate") -and
+    $kitDocsText.Contains("semanticPreflightStatus") -and
+    $kitDocsText.Contains("semanticFailCount")
 )
 
 $incompleteBundlePath = Join-Path $workPath "incomplete-owner-response-bundle"
@@ -430,6 +453,24 @@ $completePreflight = $completeVerify.preflight
 $ownerContactCount = Convert-ToInt (Get-JsonValue $kitManifest "ownerContactCount" 0)
 $kitRequiredEvidenceFileCount = Convert-ToInt (Get-JsonValue $kitManifest "requiredEvidenceFileCount" 0)
 
+$verifyHelperSemanticNextStepDocumented = (
+    (Convert-ToBool (Get-JsonValue $incompletePreflight "semanticPreflightRecommendedBeforeAutoAcceptance" $false)) -and
+    (Convert-ToBool (Get-JsonValue $completePreflight "semanticPreflightRecommendedBeforeAutoAcceptance" $false)) -and
+    ([string](Get-JsonValue $incompletePreflight "semanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    ([string](Get-JsonValue $incompletePreflight "semanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -and
+    ([string](Get-JsonValue $completePreflight "semanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    ([string](Get-JsonValue $completePreflight "semanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -and
+    ([string](Get-JsonValue $incompletePreflight "semanticPreflightZipCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    ([string](Get-JsonValue $incompletePreflight "semanticPreflightZipCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    ([string](Get-JsonValue $completePreflight "semanticPreflightZipCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    ([string](Get-JsonValue $completePreflight "semanticPreflightZipCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    (Convert-ToBool (Get-JsonValue $incompletePreflight "autoAcceptanceRequiresSemanticPreflightCandidate" $false)) -and
+    (Convert-ToBool (Get-JsonValue $completePreflight "autoAcceptanceRequiresSemanticPreflightCandidate" $false)) -and
+    ([string](Get-JsonValue $completePreflight "semanticPreflightCandidateField" "")) -eq "readyForAcceptanceCandidate" -and
+    ([string](Get-JsonValue $completePreflight "semanticPreflightStatusField" "")) -eq "semanticPreflightStatus" -and
+    ([string](Get-JsonValue $completePreflight "semanticPreflightFailCountField" "")) -eq "semanticFailCount"
+)
+
 $emptyTemplateRejected = -not [bool]$incompleteVerify.succeeded -and
     (Get-JsonValue $incompletePreflight "status" "") -eq "INCOMPLETE_OWNER_RESPONSE" -and
     (Convert-ToInt (Get-JsonValue $incompletePreflight "ownerContactCount" 0)) -eq $ownerContactCount -and
@@ -465,6 +506,11 @@ $reportLines = @(
     "| Owner contacts | $ownerContactCount |",
     "| Required evidence files | $kitRequiredEvidenceFileCount |",
     "| Imported evidence files | $(@($importedEvidenceFiles).Count) |",
+    "| Semantic preflight commands documented | $semanticPreflightCommandsDocumented |",
+    "| Semantic preflight zip command documented | $semanticPreflightZipCommandDocumented |",
+    "| Verify helper semantic next step documented | $verifyHelperSemanticNextStepDocumented |",
+    "| Owner response bundle semantic preflight | $(Format-MarkdownCell $ownerResponseBundleSemanticPreflightCommand) |",
+    "| Owner response bundle zip semantic preflight | $(Format-MarkdownCell $ownerResponseBundleZipSemanticPreflightCommand) |",
     "| Auto acceptance commands documented | $autoAcceptanceCommandsDocumented |",
     "| Auto acceptance zip command documented | $autoAcceptanceZipCommandDocumented |",
     "| Production Lua evidence export helper | $productionLuaEvidenceExportHelperCommand |",
@@ -504,6 +550,12 @@ Add-ProbeCheck "import_helper_copies_bundle" `
 Add-ProbeCheck "auto_acceptance_commands_documented" `
     $autoAcceptanceCommandsDocumented `
     "Generated owner response bundle kit must document operator-side auto acceptance commands for returned folders and zip archives."
+Add-ProbeCheck "semantic_preflight_commands_documented" `
+    $semanticPreflightCommandsDocumented `
+    "Generated owner response bundle kit must document operator-side semantic preflight commands before auto acceptance."
+Add-ProbeCheck "verify_helper_semantic_next_step_documented" `
+    $verifyHelperSemanticNextStepDocumented `
+    "Generated verify helper must emit semantic preflight next-step fields for incomplete and complete owner response bundles."
 Add-ProbeCheck "workflow_counts_match_kit_contract" `
     ($ownerContactCount -eq (Convert-ToInt (Get-JsonValue $ownerInputRequest "ownerActionCount" 0)) -and
         $kitRequiredEvidenceFileCount -eq (Convert-ToInt (Get-JsonValue $ownerInputRequest "missingRequiredFileCount" 0)) -and
@@ -575,6 +627,16 @@ $manifest = [ordered]@{
     completeTemplateMissingEvidenceFileCount = Convert-ToInt (Get-JsonValue $completePreflight "missingEvidenceFileCount" 0)
     importHelperSucceeded = [bool]$importSucceeded
     importCopiedBundle = [bool]$importCopiedBundle
+    semanticPreflightCommandsGenerated = [bool]$semanticPreflightCommandsGenerated
+    semanticPreflightCommandsContentValidated = [bool]$semanticPreflightCommandsContentValidated
+    semanticPreflightCommandsDocumented = [bool]$semanticPreflightCommandsDocumented
+    semanticPreflightZipCommandDocumented = [bool]$semanticPreflightZipCommandDocumented
+    verifyHelperSemanticNextStepDocumented = [bool]$verifyHelperSemanticNextStepDocumented
+    ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
+    ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
+    semanticPreflightCandidateField = $semanticPreflightCandidateField
+    semanticPreflightStatusField = $semanticPreflightStatusField
+    semanticPreflightFailCountField = $semanticPreflightFailCountField
     autoAcceptanceCommandsDocumented = [bool]$autoAcceptanceCommandsDocumented
     autoAcceptanceZipCommandDocumented = [bool]$autoAcceptanceZipCommandDocumented
     ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
