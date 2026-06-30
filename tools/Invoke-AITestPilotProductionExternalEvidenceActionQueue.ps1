@@ -214,6 +214,7 @@ else {
 }
 $ownerResponseBundleAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`" -RequireAllEvidence"
 $ownerResponseBundleZipAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`" -RequireAllEvidence"
+$ownerResponseBundleZipEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
 
 $queueItems = @()
 $totalMissing = 0
@@ -262,6 +263,11 @@ foreach ($item in $externalItems) {
         acceptanceWrapperCommand = [string](Get-JsonValue $item "acceptanceWrapperCommand" "")
         hardValidationCommand = [string](Get-JsonValue $item "hardValidationCommand" "")
         ownerResponseBundleTemplatePath = "production-handoff-owner-response-bundle-kit/owner-response-bundle-template"
+        ownerResponseBundleAreaPath = "production-handoff-owner-response-bundle-kit/owner-response-bundle-template/$inboxDirectory"
+        ownerResponseBundleRequiredFilesPath = "production-handoff-owner-response-bundle-kit/owner-response-bundle-template/$inboxDirectory/required-files.json"
+        ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
+        ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
+        ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
     }
 }
 
@@ -301,6 +307,17 @@ Add-QueueCheck "external_evidence_action_queue_auto_acceptance_commands" `
         $ownerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
         $ownerResponseBundleZipAutoAcceptanceCommand.Contains("-RequireAllEvidence")) `
     "Action queue must expose one-command auto-acceptance paths for filled owner response bundle directories and zip files."
+Add-QueueCheck "external_evidence_action_queue_item_bundle_commands" `
+    (@($queueItems | Where-Object {
+            [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")) -or
+            [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" "")) -or
+            -not ([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")).Contains([string](Get-JsonValue $_ "inboxDirectory" "")) -or
+            -not ([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" "")).Contains("required-files.json") -or
+            -not ([string](Get-JsonValue $_ "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -or
+            -not ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -or
+            ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -ne $ownerResponseBundleZipEnvironmentVariable
+        }).Count -eq 0) `
+    "Every external evidence queue item must carry owner response bundle area paths and directory/zip auto-acceptance commands."
 Add-QueueCheck "external_evidence_action_queue_current_bundle_paths" `
     ((-not [string]::IsNullOrWhiteSpace($responseKitZipPath)) -and
         $responseKitZipPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase) -and
@@ -360,7 +377,7 @@ $manifest = [ordered]@{
     inboxAcceptanceCommand = [string](Get-JsonValue $externalEvidenceInbox "acceptanceCommand" "")
     ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
     ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
-    ownerResponseBundleZipEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+    ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
     actionQueue = @($queueItems)
     releasePipelineSendsEmail = $false
     realHostProjectEvidenceAccepted = $false
@@ -403,8 +420,8 @@ $reportLines = @(
     "",
     "## Queue",
     "",
-    "| Area | Owner | Missing Files | Blockers | Preflight | Acceptance | Hard Validation |",
-    "| --- | --- | ---: | ---: | --- | --- | --- |"
+    "| Area | Owner | Missing Files | Blockers | Preflight | Inbox Acceptance | Bundle Area | Bundle Acceptance | Hard Validation |",
+    "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- |"
 )
 foreach ($item in $queueItems) {
     $area = Get-JsonValue $item "area" ""
@@ -413,8 +430,10 @@ foreach ($item in $queueItems) {
     $blockingReasonCount = Get-JsonValue $item "remainingBlockingReasonCount" 0
     $preflightCommand = Get-JsonValue $item "preflightCommand" ""
     $acceptanceWrapperCommand = Get-JsonValue $item "acceptanceWrapperCommand" ""
+    $bundleAreaPath = Get-JsonValue $item "ownerResponseBundleAreaPath" ""
+    $bundleAcceptanceCommand = Get-JsonValue $item "ownerResponseBundleZipAutoAcceptanceCommand" ""
     $hardValidationCommand = Get-JsonValue $item "hardValidationCommand" ""
-    $reportLines += "| $(Format-MarkdownCell $area) | $(Format-MarkdownCell $owner) | $missingFileCount | $blockingReasonCount | $(Format-MarkdownCell $preflightCommand) | $(Format-MarkdownCell $acceptanceWrapperCommand) | $(Format-MarkdownCell $hardValidationCommand) |"
+    $reportLines += "| $(Format-MarkdownCell $area) | $(Format-MarkdownCell $owner) | $missingFileCount | $blockingReasonCount | $(Format-MarkdownCell $preflightCommand) | $(Format-MarkdownCell $acceptanceWrapperCommand) | $(Format-MarkdownCell $bundleAreaPath) | $(Format-MarkdownCell $bundleAcceptanceCommand) | $(Format-MarkdownCell $hardValidationCommand) |"
 }
 $reportLines += @(
     "",

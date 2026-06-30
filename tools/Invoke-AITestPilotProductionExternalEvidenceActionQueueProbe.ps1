@@ -269,6 +269,26 @@ $missingPostDispatchResult = Invoke-ActionQueue `
 $pendingManifest = $pendingResult.manifest
 $postDispatchManifest = $postDispatchResult.manifest
 $missingPostDispatchManifest = $missingPostDispatchResult.manifest
+$pendingQueueItems = @(Convert-ToArray (Get-JsonValue $pendingManifest "actionQueue" @()))
+$postDispatchQueueItems = @(Convert-ToArray (Get-JsonValue $postDispatchManifest "actionQueue" @()))
+$pendingQueueItemAutoAcceptanceCommandCount = @($pendingQueueItems | Where-Object {
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")) -and
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" "")) -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")).Contains([string](Get-JsonValue $_ "inboxDirectory" "")) -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" "")).Contains("required-files.json") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+    }).Count
+$postDispatchQueueItemAutoAcceptanceCommandCount = @($postDispatchQueueItems | Where-Object {
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")) -and
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" "")) -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")).Contains([string](Get-JsonValue $_ "inboxDirectory" "")) -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" "")).Contains("required-files.json") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+    }).Count
 
 $checks = @()
 Add-ProbeCheck "action_queue_sources_available" `
@@ -313,6 +333,9 @@ Add-ProbeCheck "action_queue_exposes_owner_response_bundle_auto_acceptance" `
         ([string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-RequireAllEvidence") -and
         (Get-JsonValue $postDispatchManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH") `
     "Pending and post-dispatch action queues must expose one-command owner response bundle directory and zip auto-acceptance paths."
+Add-ProbeCheck "action_queue_items_expose_bundle_auto_acceptance" `
+    ($pendingQueueItemAutoAcceptanceCommandCount -eq 3 -and $postDispatchQueueItemAutoAcceptanceCommandCount -eq 3) `
+    "Every pending and post-dispatch queue item must expose its bundle area path plus directory/zip auto-acceptance commands."
 Add-ProbeCheck "missing_post_dispatch_rejected_when_required" `
     ($missingPostDispatchResult.exitCode -ne 0 -and $null -eq $missingPostDispatchManifest) `
     "RequirePostDispatch must reject a missing post-dispatch snapshot instead of falling back silently."
@@ -366,6 +389,8 @@ $manifest = [ordered]@{
     pendingQueueOwnerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $pendingManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
     postDispatchQueueOwnerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleAutoAcceptanceCommand" "")
     postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
+    pendingQueueItemAutoAcceptanceCommandCount = [int]$pendingQueueItemAutoAcceptanceCommandCount
+    postDispatchQueueItemAutoAcceptanceCommandCount = [int]$postDispatchQueueItemAutoAcceptanceCommandCount
     ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipEnvironmentVariable" "")
     missingPostDispatchRejected = [bool]($missingPostDispatchResult.exitCode -ne 0)
     releasePipelineSendsEmail = $false
@@ -388,6 +413,7 @@ $reportLines = @(
     "- Post-dispatch queue local mail remaining actions: $($manifest.postDispatchQueueLocalMailRemainingActionCount)",
     "- External missing files: $($manifest.externalRemainingMissingFileCount)",
     "- Owner response bundle zip auto acceptance: $($manifest.postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand)",
+    "- Queue item bundle command coverage: $($manifest.postDispatchQueueItemAutoAcceptanceCommandCount) / $($manifest.externalRemainingWorkItemCount)",
     "- Missing post-dispatch rejected: $($manifest.missingPostDispatchRejected)",
     "",
     "## Boundary",

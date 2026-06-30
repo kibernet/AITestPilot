@@ -739,6 +739,7 @@ $productionHandoffExportAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueuePostDispatchSnapshotIncluded" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueContentValidated" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionFileCount" 0)) -ge 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemAutoAcceptanceCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueTrackedRemainingWorkItemCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingWorkItemCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingMissingFileCount" 0)) -eq 9 -and
@@ -1675,18 +1676,20 @@ $productionExternalEvidenceActionQueueProbeAccepted = (
     ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueOwnerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
     ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
     ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueItemAutoAcceptanceCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueItemAutoAcceptanceCommandCount" 0)) -eq 3 -and
     (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "releasePipelineSendsEmail" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_action_queue_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "checkCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "checkCount" 0)) -eq 8 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_external_evidence_action_queue_probe_policy" $productionExternalEvidenceActionQueueProbeAccepted `
-    "Production handoff evidence must include an action queue that distinguishes pending-mail and post-dispatch states while exposing owner response bundle directory/zip auto-acceptance commands and preserving the three external evidence blockers." `
+    "Production handoff evidence must include an action queue that distinguishes pending-mail and post-dispatch states while exposing owner response bundle directory/zip auto-acceptance commands at queue and item level and preserving the three external evidence blockers." `
     "production_external_evidence_action_queue_probe_not_accepted"
 
 $productionExternalEvidenceInboxAccepted = (
@@ -2039,6 +2042,7 @@ $manifest = [ordered]@{
     productionHandoffExportOperatorActionQueueIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueIncluded" $false)
     productionHandoffExportOperatorActionQueueSourceKind = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSourceKind" "")
     productionHandoffExportOperatorActionQueueContentValidated = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueContentValidated" $false)
+    productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemAutoAcceptanceCommandCount" 0))
     productionHandoffStatusAccepted = [bool]$productionHandoffStatusAccepted
     productionHandoffDispatchPlanAccepted = [bool]$productionHandoffDispatchPlanAccepted
     productionHandoffPendingDispatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffDispatchPlanManifest "pendingDispatchCount" 0))
@@ -2128,6 +2132,7 @@ $manifest = [ordered]@{
     productionExternalEvidenceActionQueuePendingTrackedItems = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueTrackedRemainingWorkItemCount" 0))
     productionExternalEvidenceActionQueuePostDispatchTrackedItems = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueTrackedRemainingWorkItemCount" 0))
     productionExternalEvidenceActionQueueOwnerResponseBundleZipAutoAcceptanceCommand = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand" "")
+    productionExternalEvidenceActionQueuePostDispatchItemAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueItemAutoAcceptanceCommandCount" 0))
     productionExternalEvidenceActionQueueMissingPostDispatchRejected = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
@@ -2190,6 +2195,7 @@ $reportLines = @(
     "- Production handoff export operator action queue included: $($manifest.productionHandoffExportOperatorActionQueueIncluded)",
     "- Production handoff export operator action queue source kind: $($manifest.productionHandoffExportOperatorActionQueueSourceKind)",
     "- Production handoff export operator action queue content validated: $($manifest.productionHandoffExportOperatorActionQueueContentValidated)",
+    "- Production handoff export operator action queue item bundle command coverage: $($manifest.productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount)",
     "- Production handoff status accepted: $($manifest.productionHandoffStatusAccepted)",
     "- Production handoff dispatch plan accepted: $($manifest.productionHandoffDispatchPlanAccepted)",
     "- Production handoff pending dispatches: $($manifest.productionHandoffPendingDispatchCount)",
@@ -2272,6 +2278,7 @@ $reportLines = @(
     "- Production external evidence action queue pending tracked items: $($manifest.productionExternalEvidenceActionQueuePendingTrackedItems)",
     "- Production external evidence action queue post-dispatch tracked items: $($manifest.productionExternalEvidenceActionQueuePostDispatchTrackedItems)",
     "- Production external evidence action queue owner response bundle zip command: $($manifest.productionExternalEvidenceActionQueueOwnerResponseBundleZipAutoAcceptanceCommand)",
+    "- Production external evidence action queue item bundle command coverage: $($manifest.productionExternalEvidenceActionQueuePostDispatchItemAutoAcceptanceCommandCount)",
     "- Production external evidence action queue missing post-dispatch rejected: $($manifest.productionExternalEvidenceActionQueueMissingPostDispatchRejected)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",

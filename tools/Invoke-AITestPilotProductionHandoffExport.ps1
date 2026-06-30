@@ -59,6 +59,25 @@ function Read-JsonFile {
     return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
 }
 
+function Get-ObjectProperty {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [object]$DefaultValue = $null
+    )
+
+    if ($null -eq $Object) {
+        return $DefaultValue
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+
+    return $property.Value
+}
+
 function Copy-ExportFile {
     param(
         [string]$RelativePath,
@@ -387,16 +406,28 @@ $ownerResponseBundleKitExportContentValidated = (
     $ownerResponseBundleKitExportContentText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH")
 )
 $operatorActionQueueReportText = ""
+$operatorActionQueueItemBundleCommandCount = 0
 if ($operatorActionQueueAvailable) {
     $operatorActionQueueReportPath = Join-Path $exportPath "operator-actions\production-external-evidence-action-queue.md"
     if (Test-Path $operatorActionQueueReportPath) {
         $operatorActionQueueReportText = Get-Content -Path $operatorActionQueueReportPath -Encoding UTF8 -Raw
     }
+    $operatorActionQueueItems = @(Get-ObjectProperty $operatorActionQueueManifest "actionQueue" @())
+    $operatorActionQueueItemBundleCommandCount = @($operatorActionQueueItems | Where-Object {
+            -not [string]::IsNullOrWhiteSpace([string](Get-ObjectProperty $_ "ownerResponseBundleAreaPath" "")) -and
+            ([string](Get-ObjectProperty $_ "ownerResponseBundleAreaPath" "")).Contains([string](Get-ObjectProperty $_ "inboxDirectory" "")) -and
+            ([string](Get-ObjectProperty $_ "ownerResponseBundleRequiredFilesPath" "")).Contains("required-files.json") -and
+            ([string](Get-ObjectProperty $_ "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-ObjectProperty $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+            ([string](Get-ObjectProperty $_ "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+        }).Count
 }
 $operatorActionQueueExportContentValidated = (
     $operatorActionQueueAvailable -and
     $operatorActionQueueManifest.status -eq "PASS" -and
     $operatorActionQueueProbeManifest.status -eq "PASS" -and
+    [int](Get-ObjectProperty $operatorActionQueueManifest "checkCount" 0) -eq 8 -and
+    $operatorActionQueueItemBundleCommandCount -eq 3 -and
     $operatorActionQueueManifest.sourceKind -eq "post_dispatch_snapshot" -and
     [bool]$operatorActionQueueManifest.progressNotificationEmailSent -and
     [int]$operatorActionQueueManifest.localProgressMailRemainingActionCount -eq 0 -and
@@ -407,7 +438,9 @@ $operatorActionQueueExportContentValidated = (
     ([string]$operatorActionQueueManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-OwnerResponseBundleZipPath") -and
     $operatorActionQueueManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     $operatorActionQueueReportText.Contains("-OwnerResponseBundleZipPath") -and
-    $operatorActionQueueReportText.Contains("Owner response bundle zip auto acceptance")
+    $operatorActionQueueReportText.Contains("Owner response bundle zip auto acceptance") -and
+    $operatorActionQueueReportText.Contains("Bundle Area") -and
+    $operatorActionQueueReportText.Contains("Bundle Acceptance")
 )
 
 $checks = @(
@@ -486,6 +519,7 @@ $manifest = [ordered]@{
     operatorActionQueuePostDispatchSnapshotIncluded = [bool]$operatorActionQueueAvailable
     operatorActionQueueContentValidated = [bool]$operatorActionQueueExportContentValidated
     operatorActionFileCount = $(if ($operatorActionQueueAvailable) { [int]@($operatorActionQueueFiles).Count } else { 0 })
+    operatorActionQueueItemAutoAcceptanceCommandCount = [int]$operatorActionQueueItemBundleCommandCount
     operatorActionQueueTrackedRemainingWorkItemCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.trackedRemainingWorkItemCount } else { 0 })
     operatorActionQueueExternalRemainingWorkItemCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingWorkItemCount } else { 0 })
     operatorActionQueueExternalRemainingMissingFileCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingMissingFileCount } else { 0 })

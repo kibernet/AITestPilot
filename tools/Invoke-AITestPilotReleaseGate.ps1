@@ -1767,6 +1767,7 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.operatorActionQueuePostDispatchSnapshotIncluded -and
             [bool]$productionHandoffExportManifest.operatorActionQueueContentValidated -and
             [int]$productionHandoffExportManifest.operatorActionFileCount -ge 6 -and
+            [int]$productionHandoffExportManifest.operatorActionQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueTrackedRemainingWorkItemCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingWorkItemCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingMissingFileCount -eq 9 -and
@@ -2611,15 +2612,17 @@ if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
             $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
             $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleAutoAcceptanceCommand.Contains("-OwnerResponseBundleDir") -and
             $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueItemAutoAcceptanceCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueItemAutoAcceptanceCommandCount -eq 3 -and
             $productionExternalEvidenceActionQueueProbeManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             [bool]$productionExternalEvidenceActionQueueProbeManifest.missingPostDispatchRejected -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.releasePipelineSendsEmail -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.externalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceActionQueueProbeManifest.productionOutputBoundary -eq "production_external_evidence_action_queue_probe_only" -and
-            [int]$productionExternalEvidenceActionQueueProbeManifest.checkCount -eq 7 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.checkCount -eq 8 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.failedCheckCount -eq 0) `
-        "Production external evidence action queue probe must keep pending-mail and post-dispatch queues distinct while exposing owner response bundle directory/zip auto-acceptance commands and preserving external evidence blockers."
+        "Production external evidence action queue probe must keep pending-mail and post-dispatch queues distinct while exposing owner response bundle directory/zip auto-acceptance commands at queue and item level and preserving external evidence blockers."
 
     Test-ListedFiles $productionExternalEvidenceActionQueueProbeManifest "production_external_evidence_action_queue_probe"
 }
@@ -2888,6 +2891,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueIncluded -and
             @("canonical_post_dispatch_action_queue", "probe_post_dispatch_action_queue").Contains([string]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueSourceKind) -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueContentValidated -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and
