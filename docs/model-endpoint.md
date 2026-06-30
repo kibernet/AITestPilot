@@ -234,7 +234,9 @@ The evidence directory must contain:
 - `live-model-endpoint-smoke-manifest.json`
 - `live-model-endpoint-decision-trace.json`
 
-Accepted evidence must be a real `status=PASS` live HTTP endpoint smoke using `ModelEndpointDecisionClient`, with endpoint and model configured, API key accepted or explicitly not required, action schema and allowed-action evidence present, response validation passing, a parsed action, at least one attempt, and a `LIVE-MODEL-ENDPOINT-SMOKE` trace with request and response JSON. `-PromoteToCanonical` copies the accepted manifest and trace into the canonical release-gate filenames.
+Accepted evidence must be a real `status=PASS` live HTTP endpoint smoke using `ModelEndpointDecisionClient`, with endpoint and model configured, API key accepted or explicitly not required, action schema and allowed-action evidence present, response validation passing, a parsed action, at least one attempt, and a `LIVE-MODEL-ENDPOINT-SMOKE` trace with request and response JSON. Production readiness is tied to the smoke manifest's direct provider provenance fields: `fixtureOnly=false`, `contractFixtureMode=false`, `realProviderAccessProven=true`, `liveSmokeExecuted=true`, `productionLiveEndpointAccessProven=true`, `evidenceProvenance=direct_live_http_endpoint_pass`, `endpointMode=live_http_endpoint`, `clientType=ModelEndpointDecisionClient`, `requestFormat`, and `attemptCount`. `-PromoteToCanonical` copies the accepted manifest and trace into the canonical release-gate filenames.
+
+Contract fixture smoke evidence can be accepted and promoted only by contract-mode probes or bundles. A promoted fixture manifest proves the intake and canonical-copy contract, not production live endpoint/provider access.
 
 The default release pipeline also runs:
 
@@ -250,7 +252,7 @@ The release pipeline also proves the accepted side of the same contract:
 .\tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceContractProbe.ps1
 ```
 
-That probe writes a PASS-shaped smoke manifest and decision trace outside the repository, imports them through `Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1 -RequireLiveModelEndpointSmoke -PromoteToCanonical` in an isolated bundle, and records the accepted canonical manifest/trace outputs. The probe remains fixture-only evidence: `releasePipelineUsesFixture=false` and `realProductionLiveEndpointAccessProven=false` keep real provider access as a host-project requirement.
+That probe writes a PASS-shaped smoke manifest and decision trace outside the repository, imports them through `Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1 -RequireLiveModelEndpointSmoke -PromoteToCanonical` in an isolated contract-mode bundle, and records the accepted canonical manifest/trace outputs. The canonical outputs remain fixture-only evidence: `releasePipelineUsesFixture=false`, `realProductionLiveEndpointAccessProven=false`, and `realLiveSmokeExecuted=false` keep real provider access as a host-project requirement, and the fixture manifest's `fixtureOnly=true` / `realProviderAccessProven=false` values must not be treated as production readiness.
 
 ## Failure Classification
 
@@ -337,3 +339,5 @@ When required, missing configuration or a failed live response blocks the releas
 
 - `live-model-endpoint-smoke-manifest.json`
 - `live-model-endpoint-decision-trace.json`
+
+Those files prove production readiness only when the smoke manifest carries real provider provenance, including `fixtureOnly=false`, `contractFixtureMode=false`, `realProviderAccessProven=true`, `liveSmokeExecuted=true`, `productionLiveEndpointAccessProven=true`, and `evidenceProvenance=direct_live_http_endpoint_pass`. Contract fixture manifests are useful for release-pipeline shape checks, but they do not prove provider access even if a contract probe promoted them to the canonical filenames.

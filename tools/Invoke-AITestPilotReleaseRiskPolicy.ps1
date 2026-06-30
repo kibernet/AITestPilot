@@ -5,7 +5,8 @@ param(
     [string]$ReportPath,
     [switch]$RequireProductionReplayDriverBound,
     [switch]$RequireProductionLuaPatched,
-    [switch]$RequireLiveModelEndpointSmoke
+    [switch]$RequireLiveModelEndpointSmoke,
+    [switch]$ContractFixtureMode
 )
 
 Set-StrictMode -Version Latest
@@ -514,18 +515,42 @@ Add-PolicyCheck "production_lua_external_bundle_intake_policy" $productionLuaExt
 
 $liveModelPolicyAccepted = $false
 $liveModelPolicyStatus = "BLOCKED"
+$liveModelSmokeFixtureOnly = Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "fixtureOnly" $false)
+$liveModelSmokeContractFixtureMode = Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "contractFixtureMode" $false)
+$liveModelSmokeRealProviderAccessProven = Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "realProviderAccessProven" $false)
+$liveModelSmokeLiveSmokeExecuted = Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "liveSmokeExecuted" $false)
+$liveModelSmokeProductionLiveEndpointAccessProven = Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "productionLiveEndpointAccessProven" $false)
+$liveModelSmokeFixtureEvidenceDetected = $liveModelSmokeFixtureOnly -or $liveModelSmokeContractFixtureMode
+$liveModelProductionEvidenceAccepted = $false
+$liveModelContractFixtureEvidenceAccepted = $false
 
 if ($null -ne $liveModelSmokeManifest -and $null -ne $liveModelFailureProbeManifest) {
     if ([bool]$RequireLiveModelEndpointSmoke) {
-        $liveModelPolicyAccepted = (
+        $liveModelSmokeShapeAccepted = (
             $liveModelSmokeManifest.status -eq "PASS" -and
             (Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "endpointConfigured" $false)) -and
             (Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "modelConfigured" $false)) -and
             (Convert-ToBool (Get-JsonValue $liveModelSmokeManifest "responseValidated" $false)) -and
             (Get-JsonValue $liveModelSmokeManifest "traceStatus" "") -eq "PASS"
         )
+        $liveModelProductionEvidenceAccepted = $liveModelSmokeShapeAccepted -and
+            -not $liveModelSmokeFixtureEvidenceDetected -and
+            $liveModelSmokeRealProviderAccessProven -and
+            $liveModelSmokeLiveSmokeExecuted -and
+            $liveModelSmokeProductionLiveEndpointAccessProven
+        $liveModelContractFixtureEvidenceAccepted = $liveModelSmokeShapeAccepted -and
+            [bool]$ContractFixtureMode -and
+            $liveModelSmokeFixtureEvidenceDetected -and
+            $liveModelSmokeContractFixtureMode -and
+            -not $liveModelSmokeRealProviderAccessProven -and
+            -not $liveModelSmokeProductionLiveEndpointAccessProven
+        $liveModelPolicyAccepted = $liveModelProductionEvidenceAccepted -or $liveModelContractFixtureEvidenceAccepted
         if ($liveModelPolicyAccepted) {
-            $liveModelPolicyStatus = "LIVE_MODEL_SMOKE_ACCEPTED"
+            $liveModelPolicyStatus = if ($liveModelProductionEvidenceAccepted) {
+                "LIVE_MODEL_SMOKE_ACCEPTED"
+            } else {
+                "LIVE_MODEL_SMOKE_CONTRACT_FIXTURE_ACCEPTED"
+            }
         }
         else {
             $liveModelPolicyStatus = "LIVE_MODEL_SMOKE_REQUIRED_BUT_NOT_READY"
@@ -623,7 +648,17 @@ $liveModelSmokeEvidenceContractAccepted = (
     (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureIntakePassed" $false)) -and
     (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureSmokeEvidenceAccepted" $false)) -and
-    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureProductionLiveEndpointAccessProven" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureProductionLiveEndpointAccessProven" $true)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureContractFixtureMode" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureContractFixtureAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureFixtureOnly" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureSourceContractFixtureMode" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureFixtureEvidenceDetected" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureRealProviderAccessProven" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureLiveSmokeExecuted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureFixtureEvidencePromoted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "fixtureRejectedWithoutContractMode" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "fixtureRejectedWithoutContractBlockingReasonFound" $false)) -and
     (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureCanonicalSmokePromoted" $false)) -and
     (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureCanonicalTracePromoted" $false)) -and
     (Convert-ToBool (Get-JsonValue $liveModelSmokeEvidenceContractProbeManifest "acceptedFixtureSmokeContractPassed" $false)) -and
@@ -723,6 +758,7 @@ $productionHandoffExternalEvidencePreflightAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightPassed" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightRunIntake" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightRequireAllEvidence" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightContractFixtureMode" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightAllRequiredFilesPresent" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightMissingAreaCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "acceptedPreflightIntakeResultCount" 0)) -eq 3 -and
@@ -736,7 +772,7 @@ $productionHandoffExternalEvidencePreflightAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_preflight_contract_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "checkCount" 0)) -eq 7 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExternalEvidencePreflightProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -1937,12 +1973,15 @@ $productionHardModeSuccessContractAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexPassedAsExpected" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "releaseGatePassedAsExpected" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "sourceCanonicalEvidencePreserved" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "contractFixtureMode" $false)) -and
     (Get-JsonValue $productionHardModeSuccessContractProbeManifest "riskPolicyStatus" "") -eq "PASS" -and
     (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexStatus" "") -eq "PASS" -and
     (Get-JsonValue $productionHardModeSuccessContractProbeManifest "releaseGateStatus" "") -eq "PASS" -and
     (Get-JsonValue $productionHardModeSuccessContractProbeManifest "driverEvidenceStatus" "") -eq "PRODUCTION_BOUND_ACCEPTED" -and
     (Get-JsonValue $productionHardModeSuccessContractProbeManifest "productionLuaEvidenceStatus" "") -eq "PRODUCTION_LUA_PATCH_ACCEPTED" -and
-    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "liveModelPolicyStatus" "") -eq "LIVE_MODEL_SMOKE_ACCEPTED" -and
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "liveModelPolicyStatus" "") -eq "LIVE_MODEL_SMOKE_CONTRACT_FIXTURE_ACCEPTED" -and
+    -not (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "liveModelProductionEvidenceAccepted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "liveModelContractFixtureEvidenceAccepted" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "fixtureEvidencePromoted" $true)) -and
@@ -2041,6 +2080,7 @@ $manifest = [ordered]@{
     requireProductionReplayDriverBound = [bool]$RequireProductionReplayDriverBound
     requireProductionLuaPatched = [bool]$RequireProductionLuaPatched
     requireLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke
+    contractFixtureMode = [bool]$ContractFixtureMode
     aiExplorationAccepted = [bool]$aiExplorationAccepted
     unexpectedFailedRunReportCount = [int]$unexpectedFailedRunReports.Count
     bugDetectedRunReportCount = [int]$bugDetectedRunReports.Count
@@ -2065,6 +2105,14 @@ $manifest = [ordered]@{
     productionLuaBlockingReasons = @($luaBlockingReasons)
     liveModelPolicyAccepted = [bool]$liveModelPolicyAccepted
     liveModelPolicyStatus = $liveModelPolicyStatus
+    liveModelProductionEvidenceAccepted = [bool]$liveModelProductionEvidenceAccepted
+    liveModelContractFixtureEvidenceAccepted = [bool]$liveModelContractFixtureEvidenceAccepted
+    liveModelSmokeFixtureOnly = [bool]$liveModelSmokeFixtureOnly
+    liveModelSmokeContractFixtureMode = [bool]$liveModelSmokeContractFixtureMode
+    liveModelSmokeFixtureEvidenceDetected = [bool]$liveModelSmokeFixtureEvidenceDetected
+    liveModelSmokeRealProviderAccessProven = [bool]$liveModelSmokeRealProviderAccessProven
+    liveModelSmokeLiveSmokeExecuted = [bool]$liveModelSmokeLiveSmokeExecuted
+    liveModelSmokeProductionLiveEndpointAccessProven = [bool]$liveModelSmokeProductionLiveEndpointAccessProven
     liveModelConfigKitAccepted = [bool]$liveModelConfigKitAccepted
     liveModelExternalSmokeIntakeAccepted = [bool]$liveModelExternalSmokeIntakeAccepted
     liveModelSmokeEvidenceContractAccepted = [bool]$liveModelSmokeEvidenceContractAccepted

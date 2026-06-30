@@ -7,7 +7,8 @@ param(
     [string[]]$SourceManifestNames,
     [switch]$RequireProductionReplayDriverBound,
     [switch]$RequireProductionLuaPatched,
-    [switch]$RequireLiveModelEndpointSmoke
+    [switch]$RequireLiveModelEndpointSmoke,
+    [switch]$ContractFixtureMode
 )
 
 Set-StrictMode -Version Latest
@@ -79,6 +80,32 @@ function Convert-ToArray {
     return @($Value)
 }
 
+function Convert-ToBool {
+    param(
+        [object]$Value,
+        [bool]$DefaultValue = $false
+    )
+
+    if ($null -eq $Value) {
+        return $DefaultValue
+    }
+
+    if ($Value -is [bool]) {
+        return [bool]$Value
+    }
+
+    $text = [string]$Value
+    if ($text -ieq "true" -or $text -eq "1") {
+        return $true
+    }
+
+    if ($text -ieq "false" -or $text -eq "0") {
+        return $false
+    }
+
+    return [bool]$Value
+}
+
 function Convert-ToInt {
     param([object]$Value)
 
@@ -92,8 +119,18 @@ function Convert-ToInt {
 function Test-StatusAccepted {
     param(
         [string]$ManifestName,
-        [string]$Status
+        [string]$Status,
+        [bool]$LiveModelEndpointSmokeProvenanceAccepted = $false,
+        [bool]$LiveModelEndpointSmokeContractFixtureAccepted = $false
     )
+
+    if ($ManifestName -eq "live-model-endpoint-smoke-manifest.json" -and
+        [bool]$RequireLiveModelEndpointSmoke) {
+        return ($Status -eq "PASS" -and (
+            [bool]$LiveModelEndpointSmokeProvenanceAccepted -or
+            ([bool]$ContractFixtureMode -and [bool]$LiveModelEndpointSmokeContractFixtureAccepted)
+        ))
+    }
 
     if ($Status -eq "PASS") {
         return $true
@@ -139,6 +176,14 @@ function Read-ManifestEntry {
     $listedFileCount = 0
     $listedFilePresentCount = 0
     $missingListedFiles = @()
+    $liveModelEndpointSmokeManifest = $FileName -eq "live-model-endpoint-smoke-manifest.json"
+    $liveModelEndpointSmokeFixtureOnly = $null
+    $liveModelEndpointSmokeContractFixtureMode = $null
+    $liveModelEndpointSmokeRealProviderAccessProven = $null
+    $liveModelEndpointSmokeProductionLiveEndpointAccessProven = $null
+    $liveModelEndpointSmokeExecuted = $null
+    $liveModelEndpointSmokeProvenanceAccepted = $false
+    $liveModelEndpointSmokeContractFixtureAccepted = $false
 
     if ($parseable) {
         $schemaVersion = [string](Get-JsonValue $manifest "schemaVersion" "")
@@ -158,11 +203,49 @@ function Read-ManifestEntry {
                 $missingListedFiles += [string]$listedFile
             }
         }
+
+        if ($liveModelEndpointSmokeManifest) {
+            $fixtureOnlyRaw = Get-JsonValue $manifest "fixtureOnly" $null
+            $contractFixtureModeRaw = Get-JsonValue $manifest "contractFixtureMode" $null
+            $realProviderAccessProvenRaw = Get-JsonValue $manifest "realProviderAccessProven" $null
+            $productionLiveEndpointAccessProvenRaw = Get-JsonValue $manifest "productionLiveEndpointAccessProven" $null
+            $liveSmokeExecutedRaw = Get-JsonValue $manifest "liveSmokeExecuted" $null
+            $liveModelEndpointSmokeFixtureOnly = Convert-ToBool -Value $fixtureOnlyRaw -DefaultValue $true
+            $liveModelEndpointSmokeContractFixtureMode = Convert-ToBool -Value $contractFixtureModeRaw -DefaultValue $true
+            $liveModelEndpointSmokeRealProviderAccessProven = Convert-ToBool -Value $realProviderAccessProvenRaw -DefaultValue $false
+            $liveModelEndpointSmokeProductionLiveEndpointAccessProven = Convert-ToBool -Value $productionLiveEndpointAccessProvenRaw -DefaultValue $false
+            $liveModelEndpointSmokeExecuted = Convert-ToBool -Value $liveSmokeExecutedRaw -DefaultValue $false
+            $liveModelEndpointSmokeProvenanceAccepted = (
+                $status -eq "PASS" -and
+                -not [bool]$liveModelEndpointSmokeFixtureOnly -and
+                -not [bool]$liveModelEndpointSmokeContractFixtureMode -and
+                [bool]$liveModelEndpointSmokeRealProviderAccessProven -and
+                [bool]$liveModelEndpointSmokeProductionLiveEndpointAccessProven -and
+                [bool]$liveModelEndpointSmokeExecuted
+            )
+            $liveModelEndpointSmokeContractFixtureAccepted = (
+                $status -eq "PASS" -and
+                $null -ne $fixtureOnlyRaw -and
+                $null -ne $contractFixtureModeRaw -and
+                $null -ne $realProviderAccessProvenRaw -and
+                $null -ne $productionLiveEndpointAccessProvenRaw -and
+                $null -ne $liveSmokeExecutedRaw -and
+                [bool]$liveModelEndpointSmokeFixtureOnly -and
+                [bool]$liveModelEndpointSmokeContractFixtureMode -and
+                -not [bool]$liveModelEndpointSmokeRealProviderAccessProven -and
+                -not [bool]$liveModelEndpointSmokeProductionLiveEndpointAccessProven -and
+                -not [bool]$liveModelEndpointSmokeExecuted
+            )
+        }
     }
 
     $statusAccepted = $false
     if ($parseable) {
-        $statusAccepted = Test-StatusAccepted $FileName $status
+        $statusAccepted = Test-StatusAccepted `
+            -ManifestName $FileName `
+            -Status $status `
+            -LiveModelEndpointSmokeProvenanceAccepted $liveModelEndpointSmokeProvenanceAccepted `
+            -LiveModelEndpointSmokeContractFixtureAccepted $liveModelEndpointSmokeContractFixtureAccepted
     }
 
     return [pscustomobject][ordered]@{
@@ -181,6 +264,14 @@ function Read-ManifestEntry {
         missingListedFileCount = [int]$missingListedFiles.Count
         missingListedFiles = @($missingListedFiles)
         parseError = $parseError
+        liveModelEndpointSmokeManifest = [bool]$liveModelEndpointSmokeManifest
+        fixtureOnly = $liveModelEndpointSmokeFixtureOnly
+        contractFixtureMode = $liveModelEndpointSmokeContractFixtureMode
+        realProviderAccessProven = $liveModelEndpointSmokeRealProviderAccessProven
+        productionLiveEndpointAccessProven = $liveModelEndpointSmokeProductionLiveEndpointAccessProven
+        liveSmokeExecuted = $liveModelEndpointSmokeExecuted
+        liveModelEndpointSmokeProvenanceAccepted = [bool]$liveModelEndpointSmokeProvenanceAccepted
+        liveModelEndpointSmokeContractFixtureAccepted = [bool]$liveModelEndpointSmokeContractFixtureAccepted
     }
 }
 
@@ -327,6 +418,40 @@ foreach ($file in $manifestFiles) {
     $allManifestEntries += Read-ManifestEntry -FileName $file.Name -SourceManifest $isSourceManifest
 }
 
+$liveModelEndpointSmokeSourceEntry = $null
+foreach ($entry in $sourceEntries) {
+    if ([string]$entry.name -eq "live-model-endpoint-smoke-manifest.json") {
+        $liveModelEndpointSmokeSourceEntry = $entry
+        break
+    }
+}
+
+$liveModelEndpointSmokeSourceManifestIncluded = $null -ne $liveModelEndpointSmokeSourceEntry
+$liveModelEndpointSmokeSourceManifestExists = $false
+$liveModelEndpointSmokeSourceManifestParseable = $false
+$liveModelEndpointSmokeStatus = ""
+$liveModelEndpointSmokeStatusAccepted = $false
+$liveModelEndpointSmokeFixtureOnly = $null
+$liveModelEndpointSmokeContractFixtureMode = $null
+$liveModelEndpointSmokeRealProviderAccessProven = $null
+$liveModelEndpointSmokeProductionLiveEndpointAccessProven = $null
+$liveModelEndpointSmokeExecuted = $null
+$liveModelEndpointSmokeProvenanceAccepted = $false
+$liveModelEndpointSmokeContractFixtureAccepted = $false
+if ($null -ne $liveModelEndpointSmokeSourceEntry) {
+    $liveModelEndpointSmokeSourceManifestExists = [bool]$liveModelEndpointSmokeSourceEntry.exists
+    $liveModelEndpointSmokeSourceManifestParseable = [bool]$liveModelEndpointSmokeSourceEntry.parseable
+    $liveModelEndpointSmokeStatus = [string]$liveModelEndpointSmokeSourceEntry.status
+    $liveModelEndpointSmokeStatusAccepted = [bool]$liveModelEndpointSmokeSourceEntry.statusAccepted
+    $liveModelEndpointSmokeFixtureOnly = $liveModelEndpointSmokeSourceEntry.fixtureOnly
+    $liveModelEndpointSmokeContractFixtureMode = $liveModelEndpointSmokeSourceEntry.contractFixtureMode
+    $liveModelEndpointSmokeRealProviderAccessProven = $liveModelEndpointSmokeSourceEntry.realProviderAccessProven
+    $liveModelEndpointSmokeProductionLiveEndpointAccessProven = $liveModelEndpointSmokeSourceEntry.productionLiveEndpointAccessProven
+    $liveModelEndpointSmokeExecuted = $liveModelEndpointSmokeSourceEntry.liveSmokeExecuted
+    $liveModelEndpointSmokeProvenanceAccepted = [bool]$liveModelEndpointSmokeSourceEntry.liveModelEndpointSmokeProvenanceAccepted
+    $liveModelEndpointSmokeContractFixtureAccepted = [bool]$liveModelEndpointSmokeSourceEntry.liveModelEndpointSmokeContractFixtureAccepted
+}
+
 $missingSourceEntries = @($sourceEntries | Where-Object { -not [bool]$_.exists })
 $unparseableSourceEntries = @($sourceEntries | Where-Object { [bool]$_.exists -and -not [bool]$_.parseable })
 $failedSourceEntries = @($sourceEntries | Where-Object { [bool]$_.parseable -and [string]$_.status -eq "FAIL" })
@@ -385,6 +510,19 @@ $manifest = [ordered]@{
     requireProductionReplayDriverBound = [bool]$RequireProductionReplayDriverBound
     requireProductionLuaPatched = [bool]$RequireProductionLuaPatched
     requireLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke
+    contractFixtureMode = [bool]$ContractFixtureMode
+    liveModelEndpointSmokeSourceManifestIncluded = [bool]$liveModelEndpointSmokeSourceManifestIncluded
+    liveModelEndpointSmokeSourceManifestExists = [bool]$liveModelEndpointSmokeSourceManifestExists
+    liveModelEndpointSmokeSourceManifestParseable = [bool]$liveModelEndpointSmokeSourceManifestParseable
+    liveModelEndpointSmokeStatus = $liveModelEndpointSmokeStatus
+    liveModelEndpointSmokeStatusAccepted = [bool]$liveModelEndpointSmokeStatusAccepted
+    liveModelEndpointSmokeFixtureOnly = $liveModelEndpointSmokeFixtureOnly
+    liveModelEndpointSmokeContractFixtureMode = $liveModelEndpointSmokeContractFixtureMode
+    liveModelEndpointSmokeRealProviderAccessProven = $liveModelEndpointSmokeRealProviderAccessProven
+    liveModelEndpointSmokeProductionLiveEndpointAccessProven = $liveModelEndpointSmokeProductionLiveEndpointAccessProven
+    liveModelEndpointSmokeExecuted = $liveModelEndpointSmokeExecuted
+    liveModelEndpointSmokeProvenanceAccepted = [bool]$liveModelEndpointSmokeProvenanceAccepted
+    liveModelEndpointSmokeContractFixtureAccepted = [bool]$liveModelEndpointSmokeContractFixtureAccepted
     evidenceBundlePath = $evidenceBundlePath
     requiredSourceManifestCount = [int]$SourceManifestNames.Count
     indexedSourceManifestCount = [int]@($sourceEntries | Where-Object { [bool]$_.exists -and [bool]$_.parseable }).Count

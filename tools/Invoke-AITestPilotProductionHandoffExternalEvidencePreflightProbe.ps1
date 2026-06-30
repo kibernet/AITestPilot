@@ -195,6 +195,7 @@ $acceptedPreflightManifestPath = Join-Path $probeBundlePath $acceptedPreflightNa
     -GameReplayDriverType "Your.Game.Tests.AcceptedProductionReplayDriver" `
     -OutputPath $acceptedPreflightManifestPath `
     -RequireAllEvidence `
+    -ContractFixtureMode `
     -RunIntake
 
 $acceptedPreflight = Read-JsonFile $acceptedPreflightManifestPath "Accepted external evidence preflight manifest"
@@ -224,6 +225,7 @@ $fixtureDirsGenerated = (Test-Path $externalDriverDir) -and (Test-Path $external
 $acceptedPreflightPassed = $acceptedPreflight.schemaVersion -eq "aitestpilot.production_handoff_external_evidence_preflight.v1" -and
     $acceptedPreflight.status -eq "PASS" -and
     [bool]$acceptedPreflight.requireAllEvidence -and
+    [bool]$acceptedPreflight.contractFixtureMode -and
     [bool]$acceptedPreflight.runIntake -and
     [bool]$acceptedPreflight.allRequiredExternalEvidenceFilesPresent -and
     [int]$acceptedPreflight.missingExternalEvidenceAreaCount -eq 0 -and
@@ -257,6 +259,7 @@ $handoffBoundaryPreserved = $handoffManifest.status -eq "PASS" -and
 $checks = @()
 Add-ProbeCheck "external_fixture_dirs_generated" $fixtureDirsGenerated "Accepted fixture directories must be generated outside the repository for preflight only."
 Add-ProbeCheck "accepted_preflight_passed" $acceptedPreflightPassed "Generated handoff preflight must pass when accepted fixture evidence is supplied with RunIntake."
+Add-ProbeCheck "accepted_preflight_contract_fixture_mode" ([bool]$acceptedPreflight.contractFixtureMode) "Generated handoff preflight must report ContractFixtureMode for accepted fixture evidence."
 Add-ProbeCheck "accepted_preflight_intake_passed" $acceptedPreflightIntakePassed "Preflight RunIntake must pass driver, Lua, and live-model intake commands."
 Add-ProbeCheck "accepted_preflight_required_files" $acceptedPreflightRequiredFilesPassed "Preflight must see all required files for driver, Lua, and live-model evidence."
 Add-ProbeCheck "handoff_boundary_preserved" $handoffBoundaryPreserved "Accepted preflight fixture must not promote fixture data as real host-project evidence."
@@ -296,6 +299,7 @@ $manifest = [ordered]@{
     acceptedPreflightPassed = [bool]$acceptedPreflightPassed
     acceptedPreflightRunIntake = [bool]$acceptedPreflight.runIntake
     acceptedPreflightRequireAllEvidence = [bool]$acceptedPreflight.requireAllEvidence
+    acceptedPreflightContractFixtureMode = [bool]$acceptedPreflight.contractFixtureMode
     acceptedPreflightAllRequiredFilesPresent = [bool]$acceptedPreflight.allRequiredExternalEvidenceFilesPresent
     acceptedPreflightMissingAreaCount = [int]$acceptedPreflight.missingExternalEvidenceAreaCount
     acceptedPreflightIntakeResultCount = [int]@($acceptedPreflight.intakeResults).Count

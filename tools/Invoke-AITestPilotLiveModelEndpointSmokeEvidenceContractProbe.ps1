@@ -140,7 +140,12 @@ $trace = [ordered]@{
         target = "LiveModel.AcceptedSmoke"
     }
     fixtureOnly = $true
+    contractFixtureMode = $true
+    fixtureBoundary = "accepted_live_smoke_contract_only"
     realProviderAccessProven = $false
+    liveSmokeExecuted = $false
+    productionLiveEndpointAccessProven = $false
+    evidenceProvenance = "contract_fixture_live_smoke_shape"
 }
 
 $smoke = [ordered]@{
@@ -170,8 +175,12 @@ $smoke = [ordered]@{
         target = "LiveModel.AcceptedSmoke"
     }
     fixtureOnly = $true
+    contractFixtureMode = $true
     fixtureBoundary = "accepted_live_smoke_contract_only"
     realProviderAccessProven = $false
+    liveSmokeExecuted = $false
+    productionLiveEndpointAccessProven = $false
+    evidenceProvenance = "contract_fixture_live_smoke_shape"
     files = @(
         "live-model-endpoint-smoke-manifest.json",
         "live-model-endpoint-decision-trace.json"
@@ -187,11 +196,32 @@ $acceptedIntakeManifestPath = Join-Path $probeBundlePath "live-model-endpoint-sm
     -ManifestPath $acceptedIntakeManifestPath `
     -SmokeEvidenceDir $externalBundlePath `
     -RequireLiveModelEndpointSmoke `
-    -PromoteToCanonical
+    -PromoteToCanonical `
+    -ContractFixtureMode
 
 $acceptedIntake = Read-JsonFile $acceptedIntakeManifestPath "Accepted live model endpoint smoke evidence intake manifest"
 $acceptedSmoke = Read-JsonFile (Join-Path $probeBundlePath "live-model-endpoint-smoke-manifest.json") "Promoted accepted live smoke manifest"
 $acceptedTrace = Read-JsonFile (Join-Path $probeBundlePath "live-model-endpoint-decision-trace.json") "Promoted accepted live smoke trace"
+
+$rejectedIntakeManifestPath = Join-Path $probeBundlePath "live-model-endpoint-smoke-evidence-rejected-without-contract-intake-manifest.json"
+$fixtureRejectedWithoutContractMode = $false
+$fixtureRejectedWithoutContractBlockingReasonFound = $false
+try {
+    & (Join-Path $PSScriptRoot "Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1") `
+        -EvidenceBundleDir $probeBundlePath `
+        -ManifestPath $rejectedIntakeManifestPath `
+        -SmokeEvidenceDir $externalBundlePath `
+        -RequireLiveModelEndpointSmoke | Out-Null
+} catch {
+    $fixtureRejectedWithoutContractMode = $true
+}
+
+if (Test-Path $rejectedIntakeManifestPath) {
+    $rejectedIntake = Read-JsonFile $rejectedIntakeManifestPath "Rejected live model endpoint smoke evidence intake manifest"
+    $fixtureRejectedWithoutContractBlockingReasonFound = @($rejectedIntake.blockingReasons) -contains "live_model_endpoint_fixture_smoke_not_allowed"
+} else {
+    $rejectedIntake = $null
+}
 
 $externalBundleUnderRepo = $externalBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
 $acceptedFixtureGenerated = (Test-Path $sourceSmokeManifestPath) -and (Test-Path $sourceTracePath)
@@ -214,10 +244,17 @@ $acceptedFixtureSmokeContractPassed = $acceptedSmoke.status -eq "PASS" -and
 
 $acceptedFixtureIntakePassed = $acceptedIntake.status -eq "PASS" -and
     [bool]$acceptedIntake.requireLiveModelEndpointSmoke -and
+    [bool]$acceptedIntake.contractFixtureMode -and
     [bool]$acceptedIntake.smokeEvidenceRead -and
     $acceptedIntake.smokeStatus -eq "PASS" -and
     [bool]$acceptedIntake.smokeEvidenceAccepted -and
-    [bool]$acceptedIntake.productionLiveEndpointAccessProven -and
+    [bool]$acceptedIntake.contractFixtureAccepted -and
+    [bool]$acceptedIntake.fixtureEvidenceDetected -and
+    [bool]$acceptedIntake.fixtureOnly -and
+    [bool]$acceptedIntake.sourceContractFixtureMode -and
+    -not [bool]$acceptedIntake.productionLiveEndpointAccessProven -and
+    -not [bool]$acceptedIntake.realProviderAccessProven -and
+    -not [bool]$acceptedIntake.liveSmokeExecuted -and
     [bool]$acceptedIntake.canonicalSmokePromoted -and
     [bool]$acceptedIntake.canonicalTracePromoted -and
     [int]$acceptedIntake.blockingReasonCount -eq 0
@@ -225,6 +262,9 @@ $acceptedFixtureIntakePassed = $acceptedIntake.status -eq "PASS" -and
 $checks = @()
 Add-ProbeCheck "accepted_fixture_generated" $acceptedFixtureGenerated "Accepted live smoke fixture must include smoke manifest and trace files."
 Add-ProbeCheck "accepted_fixture_intake_passed" $acceptedFixtureIntakePassed "Live smoke evidence intake must accept and promote the isolated PASS fixture."
+Add-ProbeCheck "fixture_rejected_without_contract_mode" `
+    ([bool]$fixtureRejectedWithoutContractMode -and [bool]$fixtureRejectedWithoutContractBlockingReasonFound -and $null -ne $rejectedIntake -and -not [bool]$rejectedIntake.smokeEvidenceAccepted -and -not [bool]$rejectedIntake.productionLiveEndpointAccessProven) `
+    "Live smoke evidence intake must reject the same fixture without ContractFixtureMode."
 Add-ProbeCheck "accepted_fixture_smoke_contract" $acceptedFixtureSmokeContractPassed "Accepted fixture smoke manifest must satisfy the live smoke contract."
 Add-ProbeCheck "accepted_fixture_trace_contract" $acceptedFixtureTraceContractPassed "Accepted fixture trace must satisfy the live smoke trace contract."
 
@@ -258,6 +298,16 @@ $manifest = [ordered]@{
     acceptedFixtureIntakePassed = [bool]$acceptedFixtureIntakePassed
     acceptedFixtureSmokeEvidenceAccepted = [bool]$acceptedIntake.smokeEvidenceAccepted
     acceptedFixtureProductionLiveEndpointAccessProven = [bool]$acceptedIntake.productionLiveEndpointAccessProven
+    acceptedFixtureContractFixtureMode = [bool]$acceptedIntake.contractFixtureMode
+    acceptedFixtureContractFixtureAccepted = [bool]$acceptedIntake.contractFixtureAccepted
+    acceptedFixtureFixtureOnly = [bool]$acceptedIntake.fixtureOnly
+    acceptedFixtureSourceContractFixtureMode = [bool]$acceptedIntake.sourceContractFixtureMode
+    acceptedFixtureFixtureEvidenceDetected = [bool]$acceptedIntake.fixtureEvidenceDetected
+    acceptedFixtureRealProviderAccessProven = [bool]$acceptedIntake.realProviderAccessProven
+    acceptedFixtureLiveSmokeExecuted = [bool]$acceptedIntake.liveSmokeExecuted
+    acceptedFixtureFixtureEvidencePromoted = [bool]$acceptedIntake.fixtureEvidencePromoted
+    fixtureRejectedWithoutContractMode = [bool]$fixtureRejectedWithoutContractMode
+    fixtureRejectedWithoutContractBlockingReasonFound = [bool]$fixtureRejectedWithoutContractBlockingReasonFound
     acceptedFixtureCanonicalSmokePromoted = [bool]$acceptedIntake.canonicalSmokePromoted
     acceptedFixtureCanonicalTracePromoted = [bool]$acceptedIntake.canonicalTracePromoted
     acceptedFixtureSmokeContractPassed = [bool]$acceptedFixtureSmokeContractPassed

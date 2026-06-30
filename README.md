@@ -536,7 +536,7 @@ To intake live smoke evidence exported by a host project:
 .\tools\Invoke-AITestPilotLiveModelEndpointExternalSmokeIntakeProbe.ps1
 ```
 
-The intake expects `live-model-endpoint-smoke-manifest.json` plus `live-model-endpoint-decision-trace.json` with a real `status=PASS` live HTTP request, validated action response, action schema evidence, and trace payload. `-PromoteToCanonical` copies accepted evidence into the canonical release-gate filenames so production CI can satisfy `-RequireLiveModelEndpointSmoke` from a host-project evidence directory. The release pipeline always runs the external smoke intake probe, which generates a SKIPPED fixture outside the repository and proves hard live-smoke mode rejects it.
+The intake expects `live-model-endpoint-smoke-manifest.json` plus `live-model-endpoint-decision-trace.json` with a real `status=PASS` live HTTP request, validated action response, action schema evidence, and trace payload. Production readiness depends on direct live-provider provenance in the smoke manifest: `fixtureOnly=false`, `contractFixtureMode=false`, `realProviderAccessProven=true`, `liveSmokeExecuted=true`, `productionLiveEndpointAccessProven=true`, `evidenceProvenance=direct_live_http_endpoint_pass`, `endpointMode=live_http_endpoint`, `clientType=ModelEndpointDecisionClient`, configured endpoint/API-key/model evidence, `requestFormat`, `attemptCount`, validated request/response contract fields, and a PASS trace with request and response JSON. `-PromoteToCanonical` copies accepted evidence into the canonical release-gate filenames so production CI can satisfy `-RequireLiveModelEndpointSmoke` from a host-project evidence directory. Contract fixture promotion is permitted only inside contract-mode probes and bundles; it does not prove production live endpoint/provider access. The release pipeline always runs the external smoke intake probe, which generates a SKIPPED fixture outside the repository and proves hard live-smoke mode rejects it.
 
 To prove the accepted live-smoke evidence contract without promoting fixture provider access:
 
@@ -544,7 +544,7 @@ To prove the accepted live-smoke evidence contract without promoting fixture pro
 .\tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceContractProbe.ps1
 ```
 
-That probe generates a PASS-shaped host-project smoke bundle outside the repository, runs the same intake path with `-RequireLiveModelEndpointSmoke -PromoteToCanonical` in an isolated bundle, and records that canonical smoke and trace evidence can be accepted while `releasePipelineUsesFixture=false` and `realProductionLiveEndpointAccessProven=false` remain explicit.
+That probe generates a PASS-shaped host-project smoke bundle outside the repository, runs the same intake path with `-RequireLiveModelEndpointSmoke -PromoteToCanonical` in an isolated contract-mode bundle, and records that canonical smoke and trace evidence can be accepted by the contract without claiming production provider access. The promoted files remain fixture evidence only; the outer probe records `releasePipelineUsesFixture=false`, `realProductionLiveEndpointAccessProven=false`, and `realLiveSmokeExecuted=false`, while the fixture manifest records `fixtureOnly=true` and `realProviderAccessProven=false`.
 
 To prove Lua static analysis and patch-plan evidence for replay repair candidates:
 
@@ -698,7 +698,7 @@ Implemented now:
 - Provider-specific live-smoke retry tuning and alert routing manifest for native, OpenAI, OpenAI-compatible, and local gateways.
 - Live model endpoint configuration kit generator, static config intake, and release-gated probe proving host-project endpoint configs can be validated while secrets and real provider access remain outside repo evidence.
 - Live model endpoint smoke evidence intake plus release-gated repo-external SKIPPED evidence rejection for host-project live-smoke handoff.
-- Live model endpoint smoke evidence accepted-contract probe proving PASS-shaped host-project evidence can be accepted in isolation without claiming real provider access.
+- Live model endpoint smoke evidence accepted-contract probe proving PASS-shaped host-project evidence can be accepted and promoted only inside an isolated contract-mode bundle, without claiming real endpoint/provider access.
 - Core Lua static analyzer plus release-gated Lua static analysis manifest for unguarded field access, global writes, dynamic `require`, unprotected game API calls, safe-fixture checks, and patch-plan evidence.
 - Release-gated Lua auto-patch sandbox evidence proving deterministic fixture patches clear findings without mutating production Lua.
 - Production Lua patch readiness manifest and hard-bound failure probe separating sandbox-proven patches from real production Lua analysis, patch, retest, and rollback evidence.
@@ -711,7 +711,7 @@ Implemented now:
 Not implemented yet:
 
 - Cloud/local cluster orchestration.
-- Real live model endpoint credentials, provider access, and required live-smoke evidence for the selected deployment.
+- Real live model endpoint credentials, provider access, and required live-smoke evidence for the selected deployment, with direct smoke-manifest provenance fields such as `realProviderAccessProven=true`, `liveSmokeExecuted=true`, `productionLiveEndpointAccessProven=true`, and `evidenceProvenance=direct_live_http_endpoint_pass`.
 - Real production Lua patch execution with host-project analysis, retest, rollback, and evidence export.
 - Prefab mutation and retest orchestration across Unity editor restarts.
 - Further CI providers beyond GitHub Actions and Azure Pipelines if required.

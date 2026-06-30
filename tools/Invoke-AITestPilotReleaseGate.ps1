@@ -5,7 +5,8 @@ param(
     [switch]$ExpectBlocked,
     [switch]$RequireProductionReplayDriverBound,
     [switch]$RequireProductionLuaPatched,
-    [switch]$RequireLiveModelEndpointSmoke
+    [switch]$RequireLiveModelEndpointSmoke,
+    [switch]$ContractFixtureMode
 )
 
 Set-StrictMode -Version Latest
@@ -1288,7 +1289,17 @@ if ($null -ne $liveModelEndpointSmokeEvidenceContractProbeManifest) {
             [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureGenerated -and
             [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureIntakePassed -and
             [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureSmokeEvidenceAccepted -and
-            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureProductionLiveEndpointAccessProven -and
+            -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureProductionLiveEndpointAccessProven -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureContractFixtureMode -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureContractFixtureAccepted -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureFixtureOnly -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureSourceContractFixtureMode -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureFixtureEvidenceDetected -and
+            -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureRealProviderAccessProven -and
+            -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureLiveSmokeExecuted -and
+            -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureFixtureEvidencePromoted -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.fixtureRejectedWithoutContractMode -and
+            [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.fixtureRejectedWithoutContractBlockingReasonFound -and
             [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureCanonicalSmokePromoted -and
             [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureCanonicalTracePromoted -and
             [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.acceptedFixtureSmokeContractPassed -and
@@ -1298,7 +1309,7 @@ if ($null -ne $liveModelEndpointSmokeEvidenceContractProbeManifest) {
             -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.realProductionLiveEndpointAccessProven -and
             -not [bool]$liveModelEndpointSmokeEvidenceContractProbeManifest.realLiveSmokeExecuted -and
             $liveModelEndpointSmokeEvidenceContractProbeManifest.productionOutputBoundary -eq "accepted_fixture_contract_only" -and
-            [int]$liveModelEndpointSmokeEvidenceContractProbeManifest.checkCount -eq 4 -and
+            [int]$liveModelEndpointSmokeEvidenceContractProbeManifest.checkCount -eq 5 -and
             [int]$liveModelEndpointSmokeEvidenceContractProbeManifest.failedCheckCount -eq 0) `
         "Live model endpoint smoke evidence contract probe must prove PASS external smoke evidence can be accepted and promoted inside an isolated bundle without claiming real provider access."
 
@@ -1527,19 +1538,42 @@ if ($null -ne $liveModelEndpointManifest) {
         }
 
         $liveApiKeyAccepted = [bool]$liveModelEndpointManifest.apiKeyConfigured -or -not $liveApiKeyRequired
+        $liveSmokeFixtureOnly = [bool](Get-JsonValue $liveModelEndpointManifest "fixtureOnly" $true)
+        $liveSmokeContractFixtureMode = [bool](Get-JsonValue $liveModelEndpointManifest "contractFixtureMode" $true)
+        $liveSmokeRealProviderAccessProven = [bool](Get-JsonValue $liveModelEndpointManifest "realProviderAccessProven" $false)
+        $liveSmokeExecuted = [bool](Get-JsonValue $liveModelEndpointManifest "liveSmokeExecuted" $false)
+        $liveSmokeProductionLiveEndpointAccessProven = [bool](Get-JsonValue $liveModelEndpointManifest "productionLiveEndpointAccessProven" $false)
+        $liveSmokeFixtureEvidenceDetected = $liveSmokeFixtureOnly -or $liveSmokeContractFixtureMode
+        $liveSmokeShapeAccepted = $liveModelEndpointManifest.endpointMode -eq "live_http_endpoint" -and
+            $liveModelEndpointManifest.clientType -eq "ModelEndpointDecisionClient" -and
+            [bool]$liveModelEndpointManifest.endpointConfigured -and
+            $liveApiKeyAccepted -and
+            [int]$liveModelEndpointManifest.attemptCount -ge 1 -and
+            -not [string]::IsNullOrWhiteSpace($liveModelEndpointManifest.requestFormat) -and
+            $liveModelEndpointManifest.actionSchemaVersion -eq "ai-testpilot.action.v1" -and
+            [bool]$liveModelEndpointManifest.requestContainsActionSchema -and
+            [bool]$liveModelEndpointManifest.requestContainsAllowedActions -and
+            [bool]$liveModelEndpointManifest.responseValidated -and
+            $liveModelEndpointManifest.traceStatus -eq "PASS"
+        $liveSmokeProductionEvidenceAccepted = $liveSmokeShapeAccepted -and
+            -not $liveSmokeFixtureEvidenceDetected -and
+            $liveSmokeRealProviderAccessProven -and
+            $liveSmokeExecuted -and
+            $liveSmokeProductionLiveEndpointAccessProven
+        $liveSmokeContractFixtureAccepted = $liveSmokeShapeAccepted -and
+            [bool]$ContractFixtureMode -and
+            $liveSmokeFixtureEvidenceDetected -and
+            $liveSmokeContractFixtureMode -and
+            -not $liveSmokeRealProviderAccessProven -and
+            -not $liveSmokeProductionLiveEndpointAccessProven -and
+            -not $liveSmokeExecuted
         Add-ReleaseCheck "live_model_endpoint_smoke" `
-            ($liveModelEndpointManifest.endpointMode -eq "live_http_endpoint" -and
-                $liveModelEndpointManifest.clientType -eq "ModelEndpointDecisionClient" -and
-                [bool]$liveModelEndpointManifest.endpointConfigured -and
-                $liveApiKeyAccepted -and
-                [int]$liveModelEndpointManifest.attemptCount -ge 1 -and
-                -not [string]::IsNullOrWhiteSpace($liveModelEndpointManifest.requestFormat) -and
-                $liveModelEndpointManifest.actionSchemaVersion -eq "ai-testpilot.action.v1" -and
-                [bool]$liveModelEndpointManifest.requestContainsActionSchema -and
-                [bool]$liveModelEndpointManifest.requestContainsAllowedActions -and
-                [bool]$liveModelEndpointManifest.responseValidated -and
-                $liveModelEndpointManifest.traceStatus -eq "PASS") `
-            "Live model endpoint smoke must prove live request, response validation, and trace output."
+            ($liveSmokeProductionEvidenceAccepted -or $liveSmokeContractFixtureAccepted) `
+            "Live model endpoint smoke must prove real provider access, or remain inside explicit ContractFixtureMode."
+
+        Add-ReleaseCheck "live_model_endpoint_smoke_provenance" `
+            ($liveSmokeProductionEvidenceAccepted -or $liveSmokeContractFixtureAccepted) `
+            "Live model endpoint smoke provenance must distinguish real provider evidence from fixture contract evidence."
 
         Add-ReleaseCheck "live_model_endpoint_action" `
             (-not [string]::IsNullOrWhiteSpace($liveModelEndpointManifest.parsedAction.action)) `
@@ -1734,6 +1768,7 @@ if ($null -ne $productionHandoffExternalEvidencePreflightProbeManifest) {
             [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightPassed -and
             [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightRunIntake -and
             [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightRequireAllEvidence -and
+            [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightContractFixtureMode -and
             [bool]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightAllRequiredFilesPresent -and
             [int]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightMissingAreaCount -eq 0 -and
             [int]$productionHandoffExternalEvidencePreflightProbeManifest.acceptedPreflightIntakeResultCount -eq 3 -and
@@ -1747,7 +1782,7 @@ if ($null -ne $productionHandoffExternalEvidencePreflightProbeManifest) {
             -not [bool]$productionHandoffExternalEvidencePreflightProbeManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffExternalEvidencePreflightProbeManifest.realHostProjectEvidenceAccepted -and
             $productionHandoffExternalEvidencePreflightProbeManifest.productionOutputBoundary -eq "accepted_fixture_preflight_contract_only" -and
-            [int]$productionHandoffExternalEvidencePreflightProbeManifest.checkCount -eq 6 -and
+            [int]$productionHandoffExternalEvidencePreflightProbeManifest.checkCount -eq 7 -and
             [int]$productionHandoffExternalEvidencePreflightProbeManifest.failedCheckCount -eq 0) `
         "Production handoff external evidence preflight probe must prove the generated preflight and acceptance-wrapper scripts accept complete host-project-shaped fixture evidence without promoting fixture data."
 
@@ -2849,12 +2884,15 @@ if ($null -ne $productionHardModeSuccessContractProbeManifest) {
             [bool]$productionHardModeSuccessContractProbeManifest.evidenceIndexPassedAsExpected -and
             [bool]$productionHardModeSuccessContractProbeManifest.releaseGatePassedAsExpected -and
             [bool]$productionHardModeSuccessContractProbeManifest.sourceCanonicalEvidencePreserved -and
+            [bool]$productionHardModeSuccessContractProbeManifest.contractFixtureMode -and
             $productionHardModeSuccessContractProbeManifest.riskPolicyStatus -eq "PASS" -and
             $productionHardModeSuccessContractProbeManifest.evidenceIndexStatus -eq "PASS" -and
             $productionHardModeSuccessContractProbeManifest.releaseGateStatus -eq "PASS" -and
             $productionHardModeSuccessContractProbeManifest.driverEvidenceStatus -eq "PRODUCTION_BOUND_ACCEPTED" -and
             $productionHardModeSuccessContractProbeManifest.productionLuaEvidenceStatus -eq "PRODUCTION_LUA_PATCH_ACCEPTED" -and
-            $productionHardModeSuccessContractProbeManifest.liveModelPolicyStatus -eq "LIVE_MODEL_SMOKE_ACCEPTED" -and
+            $productionHardModeSuccessContractProbeManifest.liveModelPolicyStatus -eq "LIVE_MODEL_SMOKE_CONTRACT_FIXTURE_ACCEPTED" -and
+            -not [bool]$productionHardModeSuccessContractProbeManifest.liveModelProductionEvidenceAccepted -and
+            [bool]$productionHardModeSuccessContractProbeManifest.liveModelContractFixtureEvidenceAccepted -and
             -not [bool]$productionHardModeSuccessContractProbeManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHardModeSuccessContractProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHardModeSuccessContractProbeManifest.fixtureEvidencePromoted -and
@@ -2869,15 +2907,24 @@ if ($null -ne $releaseRiskPolicyManifest) {
     $expectedDriverEvidenceStatus = if ($RequireProductionReplayDriverBound) { "PRODUCTION_BOUND_ACCEPTED" } else { "EXPLICIT_SAMPLE_BOUNDARY_ACCEPTED" }
     $expectedProductionLuaEvidenceStatus = if ($RequireProductionLuaPatched) { "PRODUCTION_LUA_PATCH_ACCEPTED" } else { "EXPLICIT_NO_PRODUCTION_LUA_BOUNDARY_ACCEPTED" }
     $liveModelStatusAccepted = $releaseRiskPolicyManifest.liveModelPolicyStatus -eq "LIVE_MODEL_SMOKE_ACCEPTED" -or
+        ([bool]$ContractFixtureMode -and
+            $releaseRiskPolicyManifest.liveModelPolicyStatus -eq "LIVE_MODEL_SMOKE_CONTRACT_FIXTURE_ACCEPTED") -or
         (-not [bool]$RequireLiveModelEndpointSmoke -and
             ($releaseRiskPolicyManifest.liveModelPolicyStatus -eq "OPTIONAL_LIVE_MODEL_SMOKE_ACCEPTED" -or
                 $releaseRiskPolicyManifest.liveModelPolicyStatus -eq "OPTIONAL_LIVE_MODEL_SKIP_ACCEPTED_WITH_FAILURE_POLICY"))
+    $releaseRiskPolicyContractFixtureMode = [bool](Get-JsonValue $releaseRiskPolicyManifest "contractFixtureMode" $false)
+    $releaseRiskPolicyLiveModelProductionEvidenceAccepted = [bool](Get-JsonValue $releaseRiskPolicyManifest "liveModelProductionEvidenceAccepted" $false)
+    $releaseRiskPolicyLiveModelContractFixtureEvidenceAccepted = [bool](Get-JsonValue $releaseRiskPolicyManifest "liveModelContractFixtureEvidenceAccepted" $false)
+    $liveModelRiskEvidenceAccepted = -not [bool]$RequireLiveModelEndpointSmoke -or
+        $releaseRiskPolicyLiveModelProductionEvidenceAccepted -or
+        ([bool]$ContractFixtureMode -and $releaseRiskPolicyLiveModelContractFixtureEvidenceAccepted)
 
     Add-ReleaseCheck "release_risk_policy" `
         ($releaseRiskPolicyManifest.status -eq "PASS" -and
             $releaseRiskPolicyManifest.schemaVersion -eq "aitestpilot.release_risk_policy.v1" -and
             [bool]$releaseRiskPolicyManifest.allowPackageRelease -and
             [int]$releaseRiskPolicyManifest.releaseBlockerCount -eq 0 -and
+            $releaseRiskPolicyContractFixtureMode -eq [bool]$ContractFixtureMode -and
             [bool]$releaseRiskPolicyManifest.aiExplorationAccepted -and
             [int]$releaseRiskPolicyManifest.unexpectedFailedRunReportCount -eq 0 -and
             [bool]$releaseRiskPolicyManifest.highRiskPolicyAccepted -and
@@ -2896,6 +2943,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.liveModelExternalSmokeIntakeAccepted -and
             [bool]$releaseRiskPolicyManifest.liveModelSmokeEvidenceContractAccepted -and
             $liveModelStatusAccepted -and
+            $liveModelRiskEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.ciProviderEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.githubActionsAccepted -and
             [bool]$releaseRiskPolicyManifest.azurePipelinesAccepted -and
@@ -3207,6 +3255,7 @@ $manifest = [ordered]@{
     requireProductionReplayDriverBound = [bool]$RequireProductionReplayDriverBound
     requireProductionLuaPatched = [bool]$RequireProductionLuaPatched
     requireLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke
+    contractFixtureMode = [bool]$ContractFixtureMode
     checks = @($checks)
     sourceManifests = @($sourceManifests)
 }

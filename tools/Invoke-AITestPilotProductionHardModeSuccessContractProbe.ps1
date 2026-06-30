@@ -203,9 +203,12 @@ $selfPlaceholder = [ordered]@{
     evidenceIndexPassedAsExpected = $true
     releaseGateStatus = "PASS"
     releaseGatePassedAsExpected = $true
+    contractFixtureMode = $true
     driverEvidenceStatus = "PRODUCTION_BOUND_ACCEPTED"
     productionLuaEvidenceStatus = "PRODUCTION_LUA_PATCH_ACCEPTED"
-    liveModelPolicyStatus = "LIVE_MODEL_SMOKE_ACCEPTED"
+    liveModelPolicyStatus = "LIVE_MODEL_SMOKE_CONTRACT_FIXTURE_ACCEPTED"
+    liveModelProductionEvidenceAccepted = $false
+    liveModelContractFixtureEvidenceAccepted = $true
     sourceCanonicalEvidencePreserved = $true
     releasePipelineUsesFixture = $false
     realHostProjectEvidenceAccepted = $false
@@ -274,7 +277,8 @@ $gateManifestPath = Join-Path $probeBundlePath "release-gate-manifest.json"
     -ReportPath $riskReportPath `
     -RequireProductionReplayDriverBound `
     -RequireProductionLuaPatched `
-    -RequireLiveModelEndpointSmoke
+    -RequireLiveModelEndpointSmoke `
+    -ContractFixtureMode
 
 & (Join-Path $PSScriptRoot "Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
     -EvidenceBundleDir $probeBundlePath `
@@ -283,14 +287,16 @@ $gateManifestPath = Join-Path $probeBundlePath "release-gate-manifest.json"
     -ReportPath $indexReportPath `
     -RequireProductionReplayDriverBound `
     -RequireProductionLuaPatched `
-    -RequireLiveModelEndpointSmoke
+    -RequireLiveModelEndpointSmoke `
+    -ContractFixtureMode
 
 & (Join-Path $PSScriptRoot "Invoke-AITestPilotReleaseGate.ps1") `
     -EvidenceBundleDir $probeBundlePath `
     -ReleaseGateManifestPath $gateManifestPath `
     -RequireProductionReplayDriverBound `
     -RequireProductionLuaPatched `
-    -RequireLiveModelEndpointSmoke
+    -RequireLiveModelEndpointSmoke `
+    -ContractFixtureMode
 
 $riskManifest = Read-JsonFile $riskManifestPath "Hard-mode success risk policy manifest"
 $indexManifest = Read-JsonFile $indexManifestPath "Hard-mode success release evidence index manifest"
@@ -305,8 +311,11 @@ $riskPolicyPassedAsExpected = $riskManifest.status -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $riskManifest "productionDriverReady" $false)) -and
     (Get-JsonValue $riskManifest "productionLuaEvidenceStatus" "") -eq "PRODUCTION_LUA_PATCH_ACCEPTED" -and
     (Convert-ToBool (Get-JsonValue $riskManifest "productionLuaReady" $false)) -and
-    (Get-JsonValue $riskManifest "liveModelPolicyStatus" "") -eq "LIVE_MODEL_SMOKE_ACCEPTED" -and
+    (Convert-ToBool (Get-JsonValue $riskManifest "contractFixtureMode" $false)) -and
+    (Get-JsonValue $riskManifest "liveModelPolicyStatus" "") -eq "LIVE_MODEL_SMOKE_CONTRACT_FIXTURE_ACCEPTED" -and
     (Convert-ToBool (Get-JsonValue $riskManifest "liveModelPolicyAccepted" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $riskManifest "liveModelProductionEvidenceAccepted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $riskManifest "liveModelContractFixtureEvidenceAccepted" $false)) -and
     (Convert-ToInt (Get-JsonValue $riskManifest "releaseBlockerCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $riskManifest "failedRiskPolicyCheckCount" 1)) -eq 0
 
@@ -315,6 +324,9 @@ $evidenceIndexPassedAsExpected = $indexManifest.status -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $indexManifest "requireProductionReplayDriverBound" $false)) -and
     (Convert-ToBool (Get-JsonValue $indexManifest "requireProductionLuaPatched" $false)) -and
     (Convert-ToBool (Get-JsonValue $indexManifest "requireLiveModelEndpointSmoke" $false)) -and
+    (Convert-ToBool (Get-JsonValue $indexManifest "contractFixtureMode" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $indexManifest "liveModelEndpointSmokeProvenanceAccepted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $indexManifest "liveModelEndpointSmokeContractFixtureAccepted" $false)) -and
     (Convert-ToInt (Get-JsonValue $indexManifest "missingSourceManifestCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $indexManifest "unparseableSourceManifestCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $indexManifest "failedSourceManifestCount" 1)) -eq 0 -and
@@ -328,6 +340,7 @@ $releaseGatePassedAsExpected = $gateManifest.status -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $gateManifest "requireProductionReplayDriverBound" $false)) -and
     (Convert-ToBool (Get-JsonValue $gateManifest "requireProductionLuaPatched" $false)) -and
     (Convert-ToBool (Get-JsonValue $gateManifest "requireLiveModelEndpointSmoke" $false)) -and
+    (Convert-ToBool (Get-JsonValue $gateManifest "contractFixtureMode" $false)) -and
     (Convert-ToInt (Get-JsonValue $gateManifest "failedReasonCount" 1)) -eq 0
 
 $sourceHashesAfter = [ordered]@{}
@@ -431,6 +444,7 @@ $manifest = [ordered]@{
     requireProductionReplayDriverBound = $true
     requireProductionLuaPatched = $true
     requireLiveModelEndpointSmoke = $true
+    contractFixtureMode = $true
     hardModeContractAccepted = [bool]($status -eq "PASS")
     acceptedFixtureSourcesCopied = [bool]$acceptedFixtureSourcesCopied
     riskPolicyStatus = $riskManifest.status
@@ -443,6 +457,8 @@ $manifest = [ordered]@{
     productionLuaReady = Convert-ToBool (Get-JsonValue $riskManifest "productionLuaReady" $false)
     liveModelPolicyStatus = Get-JsonValue $riskManifest "liveModelPolicyStatus" ""
     liveModelPolicyAccepted = Convert-ToBool (Get-JsonValue $riskManifest "liveModelPolicyAccepted" $false)
+    liveModelProductionEvidenceAccepted = Convert-ToBool (Get-JsonValue $riskManifest "liveModelProductionEvidenceAccepted" $false)
+    liveModelContractFixtureEvidenceAccepted = Convert-ToBool (Get-JsonValue $riskManifest "liveModelContractFixtureEvidenceAccepted" $false)
     evidenceIndexStatus = $indexManifest.status
     evidenceIndexPassedAsExpected = [bool]$evidenceIndexPassedAsExpected
     evidenceIndexRequiredSourceManifestCount = Convert-ToInt (Get-JsonValue $indexManifest "requiredSourceManifestCount" 0)

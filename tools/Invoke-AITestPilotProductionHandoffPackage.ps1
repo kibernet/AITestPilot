@@ -560,6 +560,7 @@ param(
     [string]$GameReplayDriverType = "Your.Game.Tests.ProductionReplayDriver",
     [string]$OutputPath,
     [switch]$RequireAllEvidence,
+    [switch]$ContractFixtureMode,
     [switch]$RunIntake
 )
 
@@ -747,7 +748,7 @@ if ([bool]$RunIntake) {
 
     if ([bool]$liveModelEvidence.allPresent) {
         $intakeResults += Invoke-PreflightCommand "live_model_smoke_intake" {
-            & (Join-Path $repoPath "tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1") -EvidenceBundleDir $evidencePath -SmokeEvidenceDir $liveModelEvidence.path -RequireLiveModelEndpointSmoke
+            & (Join-Path $repoPath "tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1") -EvidenceBundleDir $evidencePath -SmokeEvidenceDir $liveModelEvidence.path -RequireLiveModelEndpointSmoke -ContractFixtureMode:$ContractFixtureMode
         }
     }
 }
@@ -769,6 +770,7 @@ $manifest = [ordered]@{
     repoRoot = $repoPath
     evidenceBundleDir = $evidencePath
     requireAllEvidence = [bool]$RequireAllEvidence
+    contractFixtureMode = [bool]$ContractFixtureMode
     runIntake = [bool]$RunIntake
     allRequiredExternalEvidenceFilesPresent = [bool]$allRequiredExternalEvidenceFilesPresent
     missingExternalEvidenceAreaCount = [int]$actionItems.Count
@@ -1229,12 +1231,15 @@ $preflightScriptContentValid = $preflightScriptText.Contains("aitestpilot.produc
     $preflightScriptText.Contains("ProductionLuaEvidenceDir") -and
     $preflightScriptText.Contains("LiveModelEndpointSmokeEvidenceDir") -and
     $preflightScriptText.Contains("RequireAllEvidence") -and
+    $preflightScriptText.Contains("ContractFixtureMode") -and
+    $preflightScriptText.Contains("contractFixtureMode") -and
     $preflightScriptText.Contains("RunIntake") -and
     -not ($preflightScriptText -match "System\.Collections|OrderedDictionary")
 
 $preflightSelfCheckValid = $preflightSelfCheck.schemaVersion -eq "aitestpilot.production_handoff_external_evidence_preflight.v1" -and
     $preflightSelfCheck.status -eq "PENDING_EXTERNAL_EVIDENCE" -and
     [int]$preflightSelfCheck.missingExternalEvidenceAreaCount -eq 3 -and
+    -not [bool]$preflightSelfCheck.contractFixtureMode -and
     -not [bool]$preflightSelfCheck.allRequiredExternalEvidenceFilesPresent
 
 $acceptanceWrapperScriptContentValid = $acceptanceWrapperScriptText.Contains("aitestpilot.production_handoff_external_evidence_acceptance_wrapper.v1") -and

@@ -296,7 +296,8 @@ if ([bool]$liveModelEvidence.allPresent) {
             -SmokeEvidenceDir $liveModelEvidence.path `
             -ManifestPath $liveSmokeIntakeManifestPath `
             -RequireLiveModelEndpointSmoke `
-            -PromoteToCanonical
+            -PromoteToCanonical `
+            -ContractFixtureMode:$ContractFixtureMode
     }
 
     if (Test-Path $liveSmokeIntakeManifestPath) {
@@ -317,7 +318,18 @@ $luaAccepted = $null -ne $luaManifest -and
 $liveAccepted = $null -ne $liveManifest -and
     $liveManifest.status -eq "PASS" -and
     [bool]$liveManifest.smokeEvidenceAccepted -and
-    [bool]$liveManifest.productionLiveEndpointAccessProven -and
+    (([bool]$ContractFixtureMode -and
+            [bool]$liveManifest.contractFixtureAccepted -and
+            [bool]$liveManifest.fixtureOnly -and
+            [bool]$liveManifest.sourceContractFixtureMode -and
+            -not [bool]$liveManifest.productionLiveEndpointAccessProven -and
+            -not [bool]$liveManifest.realProviderAccessProven) -or
+        (-not [bool]$ContractFixtureMode -and
+            [bool]$liveManifest.realProviderEvidenceAccepted -and
+            [bool]$liveManifest.productionLiveEndpointAccessProven -and
+            [bool]$liveManifest.realProviderAccessProven -and
+            [bool]$liveManifest.liveSmokeExecuted -and
+            -not [bool]$liveManifest.fixtureEvidenceDetected)) -and
     [bool]$liveManifest.canonicalSmokePromoted -and
     [bool]$liveManifest.canonicalTracePromoted -and
     [int]$liveManifest.blockingReasonCount -eq 0
@@ -463,6 +475,14 @@ $manifest = [ordered]@{
     productionDriverEvidenceAccepted = [bool]$driverAccepted
     productionLuaEvidenceAccepted = [bool]$luaAccepted
     liveModelSmokeEvidenceAccepted = [bool]$liveAccepted
+    liveModelSmokeContractFixtureAccepted = [bool](Get-ReportValue $liveManifest "contractFixtureAccepted" $false)
+    liveModelSmokeRealProviderEvidenceAccepted = [bool](Get-ReportValue $liveManifest "realProviderEvidenceAccepted" $false)
+    liveModelSmokeProductionLiveEndpointAccessProven = [bool](Get-ReportValue $liveManifest "productionLiveEndpointAccessProven" $false)
+    liveModelSmokeRealProviderAccessProven = [bool](Get-ReportValue $liveManifest "realProviderAccessProven" $false)
+    liveModelSmokeLiveSmokeExecuted = [bool](Get-ReportValue $liveManifest "liveSmokeExecuted" $false)
+    liveModelSmokeFixtureOnly = [bool](Get-ReportValue $liveManifest "fixtureOnly" $false)
+    liveModelSmokeSourceContractFixtureMode = [bool](Get-ReportValue $liveManifest "sourceContractFixtureMode" $false)
+    liveModelSmokeFixtureEvidenceDetected = [bool](Get-ReportValue $liveManifest "fixtureEvidenceDetected" $false)
     allExternalEvidenceAccepted = [bool]$allExternalEvidenceAccepted
     realHostProjectEvidenceAccepted = [bool]$realHostProjectEvidenceAccepted
     releasePipelineUsesFixture = $false

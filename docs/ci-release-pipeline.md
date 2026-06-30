@@ -38,7 +38,7 @@ The pipeline runs:
 - model endpoint provider retry policy probe.
 - live model endpoint config kit probe, proving host-project endpoint configuration templates, accepted static intake, and blocked repo-external pending config without serializing secrets or claiming live provider access.
 - live model endpoint external smoke intake probe, proving repo-external skipped live-smoke evidence is read and blocked when live smoke is required.
-- live model endpoint smoke evidence contract probe, proving PASS-shaped host-project smoke evidence can be accepted in isolation without promoting fixture provider access.
+- live model endpoint smoke evidence contract probe, proving PASS-shaped host-project smoke evidence can be accepted and promoted only inside an isolated contract-mode bundle without proving fixture provider access.
 - Lua static analysis probe, proving repair-risk rule coverage, safe-fixture behavior, and patch-plan evidence.
 - Lua auto-patch sandbox probe, proving deterministic fixture patches clear findings without mutating production Lua.
 - production Lua patch readiness and hard-bound failure probe, proving real production Lua evidence is required when production Lua patching is enforced.
@@ -239,10 +239,11 @@ The pipeline also runs `Invoke-AITestPilotLiveModelEndpointConfigKitProbe.ps1`. 
 
 The pipeline also runs `Invoke-AITestPilotLiveModelEndpointExternalSmokeIntakeProbe.ps1`. It creates a SKIPPED live-smoke fixture under system temp, runs smoke evidence intake with `-RequireLiveModelEndpointSmoke`, and expects rejection. This proves host-project smoke evidence directories are inspected without allowing skipped evidence to satisfy a required live smoke.
 
-The pipeline also runs `Invoke-AITestPilotLiveModelEndpointSmokeEvidenceContractProbe.ps1`. It creates a PASS-shaped live-smoke fixture under system temp, accepts it through the same smoke evidence intake path inside an isolated bundle, and records that canonical manifest/trace promotion works while `releasePipelineUsesFixture=false` and `realProductionLiveEndpointAccessProven=false` stay explicit.
+The pipeline also runs `Invoke-AITestPilotLiveModelEndpointSmokeEvidenceContractProbe.ps1`. It creates a PASS-shaped live-smoke fixture under system temp, accepts it through the same smoke evidence intake path inside an isolated contract-mode bundle, and records that canonical manifest/trace promotion works while `releasePipelineUsesFixture=false`, `realProductionLiveEndpointAccessProven=false`, and `realLiveSmokeExecuted=false` stay explicit. The promoted fixture files prove the contract path only; they do not prove production live endpoint/provider access.
 
 The pipeline always writes `live-model-endpoint-smoke-manifest.json`. Without live endpoint environment variables it records `status=SKIPPED` and release remains allowed.
 When a configured live smoke fails, the manifest records `failureCategory`, `failureMessage`, `failureRemediation`, and `failurePolicy`. Retryable failures are retried by the wrapper before the release gate runs, and the final manifest includes `attemptCount` plus `attempts[]`.
+When production CI requires live smoke, the passing manifest must carry real provider provenance fields from the live path, including `fixtureOnly=false`, `contractFixtureMode=false`, `realProviderAccessProven=true`, `liveSmokeExecuted=true`, `productionLiveEndpointAccessProven=true`, `evidenceProvenance=direct_live_http_endpoint_pass`, `endpointMode=live_http_endpoint`, and `clientType=ModelEndpointDecisionClient`.
 Use `-LiveModelEndpointMaxPolicyRetries` and `-LiveModelEndpointMaxRetryBackoffSeconds` to cap live-smoke retry behavior through the release pipeline, or `-DisableLiveModelEndpointFailurePolicyRetry` when testing a single-attempt failure path. The lower-level live-smoke wrapper exposes the same controls as `-MaxPolicyRetries`, `-MaxRetryBackoffSeconds`, and `-DisableFailurePolicyRetry`.
 The pipeline also writes `model-endpoint-provider-retry-policy-manifest.json`, which maps provider presets and failure categories to provider-specific retry counts, backoff ceilings, escalation owners, alert routes, and recommended production live-smoke retry arguments.
 

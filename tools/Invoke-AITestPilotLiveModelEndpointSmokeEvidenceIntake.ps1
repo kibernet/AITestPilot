@@ -4,7 +4,8 @@ param(
     [string]$SmokeEvidenceDir,
     [string]$ManifestPath,
     [switch]$RequireLiveModelEndpointSmoke,
-    [switch]$PromoteToCanonical
+    [switch]$PromoteToCanonical,
+    [switch]$ContractFixtureMode
 )
 
 Set-StrictMode -Version Latest
@@ -130,6 +131,24 @@ $traceRunId = [string](Get-JsonValue $traceManifest "runId" "")
 $traceRequestJson = [string](Get-JsonValue $traceManifest "requestJson" "")
 $traceResponseJson = [string](Get-JsonValue $traceManifest "responseJson" "")
 $traceFilePresent = $null -ne $traceManifest
+$smokeFixtureOnly = [bool](Get-JsonValue $smokeManifest "fixtureOnly" $false)
+$traceFixtureOnly = [bool](Get-JsonValue $traceManifest "fixtureOnly" $false)
+$fixtureOnly = $smokeFixtureOnly -or $traceFixtureOnly
+$smokeContractFixtureMode = [bool](Get-JsonValue $smokeManifest "contractFixtureMode" $false)
+$traceContractFixtureMode = [bool](Get-JsonValue $traceManifest "contractFixtureMode" $false)
+$sourceContractFixtureMode = $smokeContractFixtureMode -or $traceContractFixtureMode
+$fixtureBoundary = [string](Get-JsonValue $smokeManifest "fixtureBoundary" (Get-JsonValue $traceManifest "fixtureBoundary" ""))
+$fixtureEvidenceDetected = $fixtureOnly -or $sourceContractFixtureMode -or -not [string]::IsNullOrWhiteSpace($fixtureBoundary)
+$smokeRealProviderAccessProven = [bool](Get-JsonValue $smokeManifest "realProviderAccessProven" $false)
+$traceRealProviderAccessProven = [bool](Get-JsonValue $traceManifest "realProviderAccessProven" $false)
+$realProviderAccessProven = $smokeRealProviderAccessProven -or $traceRealProviderAccessProven
+$smokeLiveSmokeExecuted = [bool](Get-JsonValue $smokeManifest "liveSmokeExecuted" $false)
+$traceLiveSmokeExecuted = [bool](Get-JsonValue $traceManifest "liveSmokeExecuted" $false)
+$liveSmokeExecuted = $smokeLiveSmokeExecuted -or $traceLiveSmokeExecuted
+$sourceProductionLiveEndpointAccessProven = [bool](Get-JsonValue $smokeManifest "productionLiveEndpointAccessProven" $false) -or
+    [bool](Get-JsonValue $traceManifest "productionLiveEndpointAccessProven" $false)
+$evidenceProvenance = [string](Get-JsonValue $smokeManifest "evidenceProvenance" (Get-JsonValue $traceManifest "evidenceProvenance" ""))
+$directEvidenceProvenance = [string](Get-JsonValue $smokeManifest "directEvidenceProvenance" (Get-JsonValue $traceManifest "directEvidenceProvenance" ""))
 
 if (-not $schemaValid) {
     Add-BlockingReason "live_model_endpoint_smoke_schema_invalid"
@@ -202,7 +221,7 @@ if ($smokeStatus -eq "PASS" -and
     Add-BlockingReason "live_model_endpoint_trace_contract_invalid"
 }
 
-$smokeEvidenceAccepted = $schemaValid -and
+$shapeEvidenceAccepted = $schemaValid -and
     $smokeStatus -eq "PASS" -and
     $endpointMode -eq "live_http_endpoint" -and
     $clientType -eq "ModelEndpointDecisionClient" -and
@@ -221,6 +240,51 @@ $smokeEvidenceAccepted = $schemaValid -and
     $traceRunId -eq "LIVE-MODEL-ENDPOINT-SMOKE" -and
     -not [string]::IsNullOrWhiteSpace($traceRequestJson) -and
     -not [string]::IsNullOrWhiteSpace($traceResponseJson)
+
+if ($smokeStatus -eq "PASS") {
+    if ([bool]$ContractFixtureMode) {
+        if (-not $fixtureEvidenceDetected -or -not $sourceContractFixtureMode) {
+            Add-BlockingReason "live_model_endpoint_contract_fixture_provenance_missing"
+        }
+
+        if ($realProviderAccessProven -or $sourceProductionLiveEndpointAccessProven) {
+            Add-BlockingReason "live_model_endpoint_contract_fixture_claims_real_provider_access"
+        }
+    } else {
+        if ($fixtureEvidenceDetected) {
+            Add-BlockingReason "live_model_endpoint_fixture_smoke_not_allowed"
+        }
+
+        if (-not $realProviderAccessProven) {
+            Add-BlockingReason "live_model_endpoint_real_provider_access_not_proven"
+        }
+
+        if (-not $liveSmokeExecuted) {
+            Add-BlockingReason "live_model_endpoint_live_smoke_execution_not_proven"
+        }
+
+        if (-not $sourceProductionLiveEndpointAccessProven) {
+            Add-BlockingReason "live_model_endpoint_production_access_not_proven"
+        }
+    }
+}
+
+$realProviderEvidenceAccepted = $shapeEvidenceAccepted -and
+    -not [bool]$ContractFixtureMode -and
+    -not $fixtureEvidenceDetected -and
+    $realProviderAccessProven -and
+    $liveSmokeExecuted -and
+    $sourceProductionLiveEndpointAccessProven
+
+$contractFixtureAccepted = $shapeEvidenceAccepted -and
+    [bool]$ContractFixtureMode -and
+    $fixtureEvidenceDetected -and
+    $sourceContractFixtureMode -and
+    -not $realProviderAccessProven -and
+    -not $sourceProductionLiveEndpointAccessProven
+
+$smokeEvidenceAccepted = $realProviderEvidenceAccepted -or $contractFixtureAccepted
+$productionLiveEndpointAccessProven = $realProviderEvidenceAccepted
 
 $externalSmokeManifestName = "live-model-endpoint-external-smoke-manifest.json"
 $externalTraceName = "live-model-endpoint-external-smoke-decision-trace.json"
@@ -250,6 +314,7 @@ $manifest = [ordered]@{
     status = "PASS"
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
     requireLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke
+    contractFixtureMode = [bool]$ContractFixtureMode
     smokeEvidenceProvided = [bool]$smokeEvidenceProvided
     smokeEvidenceDir = $smokeEvidencePath
     sourceSmokeManifestPath = $sourceSmokeManifestPath
@@ -257,7 +322,28 @@ $manifest = [ordered]@{
     smokeEvidenceRead = [bool]($null -ne $smokeManifest)
     smokeStatus = $smokeStatus
     smokeEvidenceAccepted = [bool]$smokeEvidenceAccepted
-    productionLiveEndpointAccessProven = [bool]$smokeEvidenceAccepted
+    shapeEvidenceAccepted = [bool]$shapeEvidenceAccepted
+    productionLiveEndpointAccessProven = [bool]$productionLiveEndpointAccessProven
+    sourceProductionLiveEndpointAccessProven = [bool]$sourceProductionLiveEndpointAccessProven
+    realProviderEvidenceAccepted = [bool]$realProviderEvidenceAccepted
+    contractFixtureAccepted = [bool]$contractFixtureAccepted
+    fixtureEvidencePromoted = $false
+    fixtureOnly = [bool]$fixtureOnly
+    smokeFixtureOnly = [bool]$smokeFixtureOnly
+    traceFixtureOnly = [bool]$traceFixtureOnly
+    sourceContractFixtureMode = [bool]$sourceContractFixtureMode
+    smokeContractFixtureMode = [bool]$smokeContractFixtureMode
+    traceContractFixtureMode = [bool]$traceContractFixtureMode
+    fixtureBoundary = $fixtureBoundary
+    fixtureEvidenceDetected = [bool]$fixtureEvidenceDetected
+    realProviderAccessProven = [bool]$realProviderAccessProven
+    smokeRealProviderAccessProven = [bool]$smokeRealProviderAccessProven
+    traceRealProviderAccessProven = [bool]$traceRealProviderAccessProven
+    liveSmokeExecuted = [bool]$liveSmokeExecuted
+    smokeLiveSmokeExecuted = [bool]$smokeLiveSmokeExecuted
+    traceLiveSmokeExecuted = [bool]$traceLiveSmokeExecuted
+    evidenceProvenance = $evidenceProvenance
+    directEvidenceProvenance = $directEvidenceProvenance
     endpointMode = $endpointMode
     clientType = $clientType
     endpointConfigured = [bool]$endpointConfigured

@@ -57,7 +57,7 @@
 - Provider-specific live-smoke retry tuning and alert routing for native, OpenAI, OpenAI-compatible, and local gateways.
 - Live model endpoint configuration kit, static config intake, and release-gated repo-external pending-config rejection evidence without serializing secrets or claiming provider access.
 - Live model endpoint smoke evidence intake with release-gated repo-external skipped-evidence rejection for host-project live smoke handoff.
-- Live model endpoint smoke evidence accepted-contract probe with isolated PASS-shaped host-project evidence intake and fixture boundary proof.
+- Live model endpoint smoke evidence accepted-contract probe with isolated PASS-shaped host-project evidence intake, contract-mode-only canonical promotion, and fixture boundary proof.
 - Core Lua static analyzer and release-gated static-analysis evidence for replay repair candidates.
 - Release-gated Lua auto-patch sandbox evidence that clears deterministic fixture findings without mutating production Lua.
 - Production Lua patch readiness gate plus hard-bound failure probe for real production Lua analysis, patch, retest, and rollback evidence.
@@ -86,7 +86,7 @@
 
 ## V0.3 Model Bridge
 
-- Real live endpoint credentials, provider access, and production smoke evidence for the selected deployment.
+- Real live endpoint credentials, provider access, and production smoke evidence for the selected deployment, with direct smoke-manifest provenance such as `realProviderAccessProven=true`, `liveSmokeExecuted=true`, `productionLiveEndpointAccessProven=true`, and `evidenceProvenance=direct_live_http_endpoint_pass`.
 
 ## V0.4 Retest and Repair Loop
 
