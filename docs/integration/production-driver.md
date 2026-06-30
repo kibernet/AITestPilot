@@ -10,7 +10,7 @@ Generate a host-project starter kit before wiring the real APIs:
 .\tools\New-AITestPilotProductionDriverBindingKit.ps1 -DriverTypeName "Your.Game.Tests.ProductionReplayDriver" -DriverId "your_game.production_replay"
 ```
 
-The kit writes a customized driver source file, an authoring checklist, a README, and `Invoke-ProductionDriverEvidence.ps1`. The generated hooks intentionally return `GameActionReplayHookResult.Fail(...)`; replace each hook with real game API calls and state verification before marking the integration plan `BOUND`.
+The kit writes a customized driver source file, an authoring checklist, a README, `Invoke-ProductionDriverEvidence.ps1`, and `Export-ProductionDriverEvidenceBundle.ps1`. The export helper packages the four required production driver evidence files only after production-bound readiness passes with zero blockers, and rejects sample or unbound evidence. The generated hooks intentionally return `GameActionReplayHookResult.Fail(...)`; replace each hook with real game API calls and state verification before marking the integration plan `BOUND`.
 
 ## Driver Shape
 

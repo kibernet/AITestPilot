@@ -260,9 +260,18 @@ $productionDriverReady = [bool](Get-JsonValue $driverReadiness "readyForProducti
 $productionLuaReady = [bool](Get-JsonValue $luaReadiness "readyForProductionLuaPatchRelease" $false)
 $liveModelAccessProven = [bool](Get-JsonValue $liveExternalSmoke "productionLiveEndpointAccessProven" $false)
 
+$productionDriverEvidenceExportHelperPath = "production-driver-binding-kit/Export-ProductionDriverEvidenceBundle.ps1"
+$productionDriverEvidenceExportHelperCommand = '.\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence"'
+$productionDriverEvidenceExportOutputDir = "production-driver-evidence-export/production-driver-evidence"
+$productionDriverEvidenceExportZipPath = "production-driver-evidence-export/production-driver-evidence.zip"
+$productionDriverEvidenceExportManifestPath = "production-driver-evidence-export/production-driver-evidence-export-manifest.json"
+
 $driverHandoffReady = $driverKit.status -eq "PASS" -and
     [bool](Get-JsonValue $driverKit "kitGenerated" $false) -and
     [bool](Get-JsonValue $driverKit "hostValidationScriptIncludesProductionBoundIntake" $false) -and
+    [bool](Get-JsonValue $driverKit "exportHelperGenerated" $false) -and
+    [bool](Get-JsonValue $driverKit "exportHelperRequiresProductionBoundReadiness" $false) -and
+    [bool](Get-JsonValue $driverKit "exportHelperRejectedSampleUnboundEvidence" $false) -and
     [bool](Get-JsonValue $driverKit "generatedKitOnly" $false) -and
     -not [bool](Get-JsonValue $driverKit "productionEvidenceAccepted" $true) -and
     $driverContract.status -eq "PASS" -and
@@ -337,6 +346,11 @@ if (-not $productionDriverReady) {
         remainingBlockingReasons = @($driverBlockingReasons)
         kitPath = "production-driver-binding-kit"
         requiredEvidenceFiles = @($driverRequiredEvidence)
+        evidenceExportHelperPath = $productionDriverEvidenceExportHelperPath
+        evidenceExportHelperCommand = $productionDriverEvidenceExportHelperCommand
+        evidenceExportOutputDir = $productionDriverEvidenceExportOutputDir
+        evidenceExportZipPath = $productionDriverEvidenceExportZipPath
+        evidenceExportManifestPath = $productionDriverEvidenceExportManifestPath
         validationCommand = '.\tools\Invoke-AITestPilotReleasePipeline.ps1 -GameReplayDriverType "Your.Game.Tests.ProductionReplayDriver" -RequireProductionReplayDriverBound'
     }
 }
@@ -384,6 +398,11 @@ $requiredEvidence = [ordered]@{
         handoffPathReady = [bool]$driverHandoffReady
         requiredFiles = @($driverRequiredEvidence)
         kitPath = "production-driver-binding-kit"
+        evidenceExportHelperPath = $productionDriverEvidenceExportHelperPath
+        evidenceExportHelperCommand = $productionDriverEvidenceExportHelperCommand
+        evidenceExportOutputDir = $productionDriverEvidenceExportOutputDir
+        evidenceExportZipPath = $productionDriverEvidenceExportZipPath
+        evidenceExportManifestPath = $productionDriverEvidenceExportManifestPath
         intakeCommand = '.\tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1 -EvidenceBundleDir "path\to\release-evidence"'
         releaseCommand = '.\tools\Invoke-AITestPilotReleasePipeline.ps1 -GameReplayDriverType "Your.Game.Tests.ProductionReplayDriver" -RequireProductionReplayDriverBound'
     }
@@ -474,6 +493,7 @@ $actionPlanLines += @(
     "",
     "- Fixture contracts prove acceptance schemas only; they are not promoted as real host-project evidence.",
     "- Production driver completion requires a non-sample driver type, BOUND checklist, retest, failure-probe, and profile-import evidence.",
+    "- Production driver owners can run ``$productionDriverEvidenceExportHelperCommand`` after production-bound readiness passes to package the four required driver files into ``$productionDriverEvidenceExportOutputDir`` and ``$productionDriverEvidenceExportZipPath``.",
     "- Production Lua completion requires real Lua analysis, patch, validation, retest, rollback, and clean source-control evidence.",
     "- Live model completion requires a real PASS smoke manifest and decision trace from the selected provider."
 )
@@ -1012,6 +1032,7 @@ foreach ($item in $actionItems) {
     $preflightCommand = ".\production-handoff-package\verify-external-evidence.ps1 -ProductionDriverEvidenceDir `"path\to\production-driver-evidence`" -ProductionLuaEvidenceDir `"path\to\production-lua-evidence`" -LiveModelEndpointSmokeEvidenceDir `"path\to\live-smoke-evidence`" -RequireAllEvidence -RunIntake"
     $acceptanceWrapperCommand = ".\production-handoff-package\accept-external-evidence.ps1 -ProductionDriverEvidenceDir `"path\to\production-driver-evidence`" -ProductionLuaEvidenceDir `"path\to\production-lua-evidence`" -LiveModelEndpointSmokeEvidenceDir `"path\to\live-smoke-evidence`" -RequireAllEvidence"
     $hardValidationCommand = [string]$item["validationCommand"]
+    $driverEvidenceExportHelperCommand = if ($area -eq "production_driver_binding") { [string]$item["evidenceExportHelperCommand"] } else { "" }
 
     $packetLines = @(
         "# Production Evidence Owner Packet: $owner",
@@ -1026,6 +1047,21 @@ foreach ($item in $actionItems) {
 
     foreach ($fileName in $requiredFiles) {
         $packetLines += "- ``$fileName``"
+    }
+
+    if ($area -eq "production_driver_binding") {
+        $packetLines += @(
+            "",
+            "## Driver Evidence Export",
+            "",
+            "Run this helper in the host-project release evidence bundle after production-bound readiness passes with zero blockers:",
+            "",
+            '```powershell',
+            $driverEvidenceExportHelperCommand,
+            '```',
+            "",
+            "It creates ``$productionDriverEvidenceExportOutputDir`` and ``$productionDriverEvidenceExportZipPath`` for owner response bundle return. It rejects sample or unbound evidence."
+        )
     }
 
     $packetLines += @(
@@ -1086,6 +1122,7 @@ foreach ($item in $actionItems) {
         blockerResolutionCount = [int]$areaResolutions.Count
         preflightCommand = $preflightCommand
         acceptanceWrapperCommand = $acceptanceWrapperCommand
+        driverEvidenceExportHelperCommand = $driverEvidenceExportHelperCommand
         hardValidationCommand = $hardValidationCommand
     }
 }
@@ -1145,6 +1182,8 @@ $actionPlanContentValid = $missingActionPlanSnippetCount -eq 0 -and
 
 $requiredEvidenceContentValid = $requiredEvidenceText.Contains("aitestpilot.production_handoff_required_evidence.v1") -and
     $requiredEvidenceText.Contains("production-replay-integration-checklist.json") -and
+    $requiredEvidenceText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+    $requiredEvidenceText.Contains("production-driver-evidence.zip") -and
     $requiredEvidenceText.Contains("production-lua-patch-evidence.json") -and
     $requiredEvidenceText.Contains("live-model-endpoint-smoke-manifest.json") -and
     -not ($requiredEvidenceText -match "System\.Collections|OrderedDictionary")
@@ -1222,6 +1261,9 @@ foreach ($item in $actionItems) {
         [string]$item["status"],
         [string]$item["validationCommand"]
     )
+    if ($item.Contains("evidenceExportHelperCommand")) {
+        $expectedOwnerPacketSnippets += [string]$item["evidenceExportHelperCommand"]
+    }
     $expectedOwnerPacketSnippets += @(Convert-ToArray $item["remainingBlockingReasons"] | ForEach-Object { [string]$_ })
     $expectedOwnerPacketSnippets += @(Convert-ToArray $item["requiredEvidenceFiles"] | ForEach-Object { [string]$_ })
 }
@@ -1304,6 +1346,12 @@ $manifest = [ordered]@{
     productionDriverBlockingReasons = @($driverBlockingReasons)
     productionDriverRequiredEvidenceFiles = @($driverRequiredEvidence)
     productionDriverKitPath = "production-driver-binding-kit"
+    productionDriverEvidenceExportHelperPath = $productionDriverEvidenceExportHelperPath
+    productionDriverEvidenceExportHelperCommand = $productionDriverEvidenceExportHelperCommand
+    productionDriverEvidenceExportHelperDocumented = [bool]($requiredEvidenceContentValid -and $ownerPacketMarkdownText.Contains($productionDriverEvidenceExportHelperCommand))
+    productionDriverEvidenceExportOutputDir = $productionDriverEvidenceExportOutputDir
+    productionDriverEvidenceExportZipPath = $productionDriverEvidenceExportZipPath
+    productionDriverEvidenceExportManifestPath = $productionDriverEvidenceExportManifestPath
     realProductionDriverEvidenceAccepted = [bool]$productionDriverReady
     productionLuaHandoffReady = [bool]$luaHandoffReady
     productionLuaReady = [bool]$productionLuaReady

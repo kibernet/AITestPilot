@@ -215,6 +215,9 @@ else {
 $ownerResponseBundleAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`" -RequireAllEvidence"
 $ownerResponseBundleZipAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`" -RequireAllEvidence"
 $ownerResponseBundleZipEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+$productionDriverEvidenceExportHelperPath = "production-driver-binding-kit/Export-ProductionDriverEvidenceBundle.ps1"
+$productionDriverEvidenceExportHelperCommand = ".\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 -EvidenceBundleDir `"path\to\release-evidence`""
+$productionDriverEvidenceExportZipPath = "production-driver-evidence-export/production-driver-evidence.zip"
 
 $queueItems = @()
 $totalMissing = 0
@@ -242,6 +245,9 @@ foreach ($item in $externalItems) {
     }
     $totalMissing += $missingCount
     $totalBlockers += $blockerCount
+    $driverExportHelperPath = if ($area -eq "production_driver_binding") { $productionDriverEvidenceExportHelperPath } else { "" }
+    $driverExportHelperCommand = if ($area -eq "production_driver_binding") { $productionDriverEvidenceExportHelperCommand } else { "" }
+    $driverExportZipPath = if ($area -eq "production_driver_binding") { $productionDriverEvidenceExportZipPath } else { "" }
 
     $queueItems += [ordered]@{
         owner = [string](Get-JsonValue $item "owner" "")
@@ -268,6 +274,9 @@ foreach ($item in $externalItems) {
         ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
         ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
         ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
+        productionDriverEvidenceExportHelperPath = $driverExportHelperPath
+        productionDriverEvidenceExportHelperCommand = $driverExportHelperCommand
+        productionDriverEvidenceExportZipPath = $driverExportZipPath
     }
 }
 
@@ -275,6 +284,12 @@ $localProgressMailRemainingActionCount = Convert-ToInt (Get-JsonValue $sourceSna
 $trackedRemainingWorkItemCount = Convert-ToInt (Get-JsonValue $sourceSnapshot "trackedRemainingWorkItemCount" ($externalItems.Count + $localProgressMailRemainingActionCount))
 $progressNotificationEmailSent = Convert-ToBool (Get-JsonValue $sourceSnapshot "progressNotificationEmailSent" (Get-JsonValue $sourceSnapshot "emailSent" $false))
 $notificationDispatchStatus = [string](Get-JsonValue $sourceSnapshot "notificationDispatchStatus" "")
+$productionDriverEvidenceExportHelperItemCount = @($queueItems | Where-Object {
+        [string](Get-JsonValue $_ "area" "") -eq "production_driver_binding" -and
+        ([string](Get-JsonValue $_ "productionDriverEvidenceExportHelperPath" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "productionDriverEvidenceExportZipPath" "")).Contains("production-driver-evidence.zip")
+    }).Count
 
 $checks = @()
 Add-QueueCheck "external_evidence_action_queue_sources_available" `
@@ -308,7 +323,7 @@ Add-QueueCheck "external_evidence_action_queue_auto_acceptance_commands" `
         $ownerResponseBundleZipAutoAcceptanceCommand.Contains("-RequireAllEvidence")) `
     "Action queue must expose one-command auto-acceptance paths for filled owner response bundle directories and zip files."
 Add-QueueCheck "external_evidence_action_queue_item_bundle_commands" `
-    (@($queueItems | Where-Object {
+    ((@($queueItems | Where-Object {
             [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")) -or
             [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" "")) -or
             -not ([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")).Contains([string](Get-JsonValue $_ "inboxDirectory" "")) -or
@@ -316,8 +331,8 @@ Add-QueueCheck "external_evidence_action_queue_item_bundle_commands" `
             -not ([string](Get-JsonValue $_ "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -or
             -not ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -or
             ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -ne $ownerResponseBundleZipEnvironmentVariable
-        }).Count -eq 0) `
-    "Every external evidence queue item must carry owner response bundle area paths and directory/zip auto-acceptance commands."
+        }).Count -eq 0) -and $productionDriverEvidenceExportHelperItemCount -eq 1) `
+    "Every external evidence queue item must carry owner response bundle area paths and directory/zip auto-acceptance commands, and the production driver item must expose the evidence export helper."
 Add-QueueCheck "external_evidence_action_queue_current_bundle_paths" `
     ((-not [string]::IsNullOrWhiteSpace($responseKitZipPath)) -and
         $responseKitZipPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase) -and
@@ -378,6 +393,10 @@ $manifest = [ordered]@{
     ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
     ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
     ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
+    productionDriverEvidenceExportHelperPath = $productionDriverEvidenceExportHelperPath
+    productionDriverEvidenceExportHelperCommand = $productionDriverEvidenceExportHelperCommand
+    productionDriverEvidenceExportZipPath = $productionDriverEvidenceExportZipPath
+    productionDriverEvidenceExportHelperItemCount = [int]$productionDriverEvidenceExportHelperItemCount
     actionQueue = @($queueItems)
     releasePipelineSendsEmail = $false
     realHostProjectEvidenceAccepted = $false
@@ -417,11 +436,12 @@ $reportLines = @(
     "| Response bundle kit zip | $(Format-MarkdownCell $responseKitZipPath) |",
     "| Owner response bundle auto acceptance | $(Format-MarkdownCell $ownerResponseBundleAutoAcceptanceCommand) |",
     "| Owner response bundle zip auto acceptance | $(Format-MarkdownCell $ownerResponseBundleZipAutoAcceptanceCommand) |",
+    "| Production driver evidence export helper | $(Format-MarkdownCell $productionDriverEvidenceExportHelperCommand) |",
     "",
     "## Queue",
     "",
-    "| Area | Owner | Missing Files | Blockers | Preflight | Inbox Acceptance | Bundle Area | Bundle Acceptance | Hard Validation |",
-    "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- |"
+    "| Area | Owner | Missing Files | Blockers | Preflight | Inbox Acceptance | Bundle Area | Bundle Acceptance | Driver Export | Hard Validation |",
+    "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- | --- |"
 )
 foreach ($item in $queueItems) {
     $area = Get-JsonValue $item "area" ""
@@ -432,8 +452,9 @@ foreach ($item in $queueItems) {
     $acceptanceWrapperCommand = Get-JsonValue $item "acceptanceWrapperCommand" ""
     $bundleAreaPath = Get-JsonValue $item "ownerResponseBundleAreaPath" ""
     $bundleAcceptanceCommand = Get-JsonValue $item "ownerResponseBundleZipAutoAcceptanceCommand" ""
+    $driverExportCommand = Get-JsonValue $item "productionDriverEvidenceExportHelperCommand" ""
     $hardValidationCommand = Get-JsonValue $item "hardValidationCommand" ""
-    $reportLines += "| $(Format-MarkdownCell $area) | $(Format-MarkdownCell $owner) | $missingFileCount | $blockingReasonCount | $(Format-MarkdownCell $preflightCommand) | $(Format-MarkdownCell $acceptanceWrapperCommand) | $(Format-MarkdownCell $bundleAreaPath) | $(Format-MarkdownCell $bundleAcceptanceCommand) | $(Format-MarkdownCell $hardValidationCommand) |"
+    $reportLines += "| $(Format-MarkdownCell $area) | $(Format-MarkdownCell $owner) | $missingFileCount | $blockingReasonCount | $(Format-MarkdownCell $preflightCommand) | $(Format-MarkdownCell $acceptanceWrapperCommand) | $(Format-MarkdownCell $bundleAreaPath) | $(Format-MarkdownCell $bundleAcceptanceCommand) | $(Format-MarkdownCell $driverExportCommand) | $(Format-MarkdownCell $hardValidationCommand) |"
 }
 $reportLines += @(
     "",

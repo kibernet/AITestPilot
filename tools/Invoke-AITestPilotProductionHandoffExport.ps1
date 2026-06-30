@@ -272,12 +272,13 @@ $exportReadmeLines = @(
     "",
     "1. Open `production-handoff-package\\owner-packets\\owner-packet-index.json`.",
     "2. Send each `production-handoff-package\\owner-packets\\*.md` packet to the listed owner.",
-    "3. Owners copy returned evidence into `production-external-evidence-inbox\\production-driver-evidence`, `production-external-evidence-inbox\\production-lua-evidence`, and `production-external-evidence-inbox\\live-smoke-evidence`.",
-    "4. Run `production-external-evidence-inbox\\accept-returned-evidence.ps1` to generate the Markdown acceptance report.",
-    "5. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`."
+    "3. Production driver owners can run `production-driver-binding-kit\\Export-ProductionDriverEvidenceBundle.ps1` after production-bound readiness passes; it creates `production-driver-evidence-export\\production-driver-evidence` and `production-driver-evidence-export\\production-driver-evidence.zip`.",
+    "4. Owners copy returned evidence into `production-external-evidence-inbox\\production-driver-evidence`, `production-external-evidence-inbox\\production-lua-evidence`, and `production-external-evidence-inbox\\live-smoke-evidence`.",
+    "5. Run `production-external-evidence-inbox\\accept-returned-evidence.ps1` to generate the Markdown acceptance report.",
+    "6. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`."
 )
 if ($operatorActionQueueAvailable) {
-    $exportReadmeLines += "6. Use `operator-actions\\production-external-evidence-action-queue.md` as the post-dispatch operator checklist for returned folder/zip auto acceptance."
+    $exportReadmeLines += "7. Use `operator-actions\\production-external-evidence-action-queue.md` as the post-dispatch operator checklist for returned folder/zip auto acceptance."
 }
 $exportReadmeLines += @(
     "",
@@ -287,7 +288,7 @@ $exportReadmeLines += @(
     "- `production-handoff-package/verify-external-evidence.ps1`: optional preflight for explicit evidence directories.",
     "- `production-handoff-package/accept-external-evidence.ps1`: optional wrapper for explicit evidence directories.",
     "- `production-external-evidence-inbox/`: returned-evidence directory layout and wrapper for accepting owner evidence.",
-    "- `production-driver-binding-kit/`: host-project production replay driver binding kit.",
+    "- `production-driver-binding-kit/`: host-project production replay driver binding kit, including `Export-ProductionDriverEvidenceBundle.ps1` for production-bound driver evidence folder/zip export.",
     "- `production-lua-patch-evidence-kit/`: host-project production Lua evidence template kit.",
     "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit."
 )
@@ -327,6 +328,8 @@ $requiredExportSnippets = @(
     "verify-external-evidence.ps1",
     "accept-external-evidence.ps1",
     "production-driver-binding-kit",
+    "Export-ProductionDriverEvidenceBundle.ps1",
+    "production-driver-evidence.zip",
     "production-lua-patch-evidence-kit",
     "live-model-endpoint-config-kit",
     "production-external-evidence-inbox",
@@ -358,6 +361,7 @@ $requiredExportPaths = @(
     "production-handoff-export\production-handoff-package\verify-external-evidence.ps1",
     "production-handoff-export\production-handoff-package\accept-external-evidence.ps1",
     "production-handoff-export\production-driver-binding-kit\README.md",
+    "production-handoff-export\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1",
     "production-handoff-export\production-lua-patch-evidence-kit\README.md",
     "production-handoff-export\production-external-evidence-inbox\README.md",
     "production-handoff-export\production-external-evidence-inbox\accept-returned-evidence.ps1",
@@ -387,6 +391,8 @@ if ($operatorActionQueueAvailable) {
     $requiredExportPaths += @($operatorActionQueueFiles | ForEach-Object { "production-handoff-export\" + $_["destination"] })
 }
 $missingExportPathCount = @($requiredExportPaths | Where-Object { $exportFiles -notcontains $_ }).Count
+$productionDriverEvidenceExportHelperRelativePath = "production-handoff-export\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1"
+$productionDriverEvidenceExportHelperIncluded = $exportFiles -contains $productionDriverEvidenceExportHelperRelativePath
 
 $ownerResponseBundleKitExportContentText = ""
 if ($ownerResponseBundleKitAvailable) {
@@ -422,6 +428,11 @@ if ($operatorActionQueueAvailable) {
             ([string](Get-ObjectProperty $_ "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
         }).Count
 }
+$productionDriverEvidenceExportHelperDocumented = (
+    $productionDriverEvidenceExportHelperIncluded -and
+    $exportReadmeText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+    $exportReadmeText.Contains("production-driver-evidence.zip")
+)
 $operatorActionQueueExportContentValidated = (
     $operatorActionQueueAvailable -and
     $operatorActionQueueManifest.status -eq "PASS" -and
@@ -438,6 +449,7 @@ $operatorActionQueueExportContentValidated = (
     ([string]$operatorActionQueueManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-OwnerResponseBundleZipPath") -and
     $operatorActionQueueManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     $operatorActionQueueReportText.Contains("-OwnerResponseBundleZipPath") -and
+    $operatorActionQueueReportText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
     $operatorActionQueueReportText.Contains("Owner response bundle zip auto acceptance") -and
     $operatorActionQueueReportText.Contains("Bundle Area") -and
     $operatorActionQueueReportText.Contains("Bundle Acceptance")
@@ -463,6 +475,11 @@ $checks = @(
         name = "export_content"
         passed = ($missingExportSnippetCount -eq 0 -and $missingExportPathCount -eq 0)
         message = "Export must include README, owner packets, handoff scripts, kits, and contract reports."
+    },
+    [ordered]@{
+        name = "production_driver_evidence_export_helper"
+        passed = ($productionDriverEvidenceExportHelperIncluded -and $productionDriverEvidenceExportHelperDocumented)
+        message = "Final export must include and document the production driver evidence export helper."
     },
     [ordered]@{
         name = "failure_contract_reports"
@@ -520,6 +537,9 @@ $manifest = [ordered]@{
     operatorActionQueueContentValidated = [bool]$operatorActionQueueExportContentValidated
     operatorActionFileCount = $(if ($operatorActionQueueAvailable) { [int]@($operatorActionQueueFiles).Count } else { 0 })
     operatorActionQueueItemAutoAcceptanceCommandCount = [int]$operatorActionQueueItemBundleCommandCount
+    productionDriverEvidenceExportHelperIncluded = [bool]$productionDriverEvidenceExportHelperIncluded
+    productionDriverEvidenceExportHelperDocumented = [bool]$productionDriverEvidenceExportHelperDocumented
+    productionDriverEvidenceExportHelperPath = $productionDriverEvidenceExportHelperRelativePath
     operatorActionQueueTrackedRemainingWorkItemCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.trackedRemainingWorkItemCount } else { 0 })
     operatorActionQueueExternalRemainingWorkItemCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingWorkItemCount } else { 0 })
     operatorActionQueueExternalRemainingMissingFileCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingMissingFileCount } else { 0 })

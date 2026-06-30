@@ -289,6 +289,7 @@ if (-not (Test-Path $templatePath)) {
 $ownerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleAutoAcceptanceCommand" "")
 $ownerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
 $ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $kitManifest "ownerResponseBundleZipEnvironmentVariable" "")
+$productionDriverEvidenceExportHelperCommand = [string](Get-JsonValue $kitManifest "productionDriverEvidenceExportHelperCommand" "")
 $kitReadmeText = if (Test-Path $kitReadmePath) { Get-Content -Path $kitReadmePath -Encoding UTF8 -Raw } else { "" }
 $requestDraftText = if (Test-Path $requestDraftPath) { Get-Content -Path $requestDraftPath -Encoding UTF8 -Raw } else { "" }
 $kitDocsText = [string]::Join([Environment]::NewLine, @($kitReadmeText, $requestDraftText))
@@ -305,7 +306,10 @@ $autoAcceptanceCommandsDocumented = (
     -not [string]::IsNullOrWhiteSpace($ownerResponseBundleAutoAcceptanceCommand) -and
     $kitDocsText.Contains($ownerResponseBundleAutoAcceptanceCommand) -and
     $kitDocsText.Contains("-OwnerResponseBundleDir") -and
-    $autoAcceptanceZipCommandDocumented
+    $autoAcceptanceZipCommandDocumented -and
+    -not [string]::IsNullOrWhiteSpace($productionDriverEvidenceExportHelperCommand) -and
+    $kitDocsText.Contains($productionDriverEvidenceExportHelperCommand) -and
+    $kitDocsText.Contains("Export-ProductionDriverEvidenceBundle.ps1")
 )
 
 $incompleteBundlePath = Join-Path $workPath "incomplete-owner-response-bundle"
@@ -566,6 +570,8 @@ $manifest = [ordered]@{
     ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
     ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
     ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
+    productionDriverEvidenceExportHelperCommand = $productionDriverEvidenceExportHelperCommand
+    productionDriverEvidenceExportHelperDocumented = [bool](-not [string]::IsNullOrWhiteSpace($productionDriverEvidenceExportHelperCommand) -and $kitDocsText.Contains($productionDriverEvidenceExportHelperCommand) -and $kitDocsText.Contains("Export-ProductionDriverEvidenceBundle.ps1"))
     importedRosterPath = $importedRosterPath
     importedInboxPath = $importedInboxPath
     releasePipelineSendsEmail = $false

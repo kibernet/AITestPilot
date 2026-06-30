@@ -289,6 +289,16 @@ $postDispatchQueueItemAutoAcceptanceCommandCount = @($postDispatchQueueItems | W
         ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
         ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
     }).Count
+$pendingQueueDriverExportHelperItemCount = @($pendingQueueItems | Where-Object {
+        [string](Get-JsonValue $_ "area" "") -eq "production_driver_binding" -and
+        ([string](Get-JsonValue $_ "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "productionDriverEvidenceExportZipPath" "")).Contains("production-driver-evidence.zip")
+    }).Count
+$postDispatchQueueDriverExportHelperItemCount = @($postDispatchQueueItems | Where-Object {
+        [string](Get-JsonValue $_ "area" "") -eq "production_driver_binding" -and
+        ([string](Get-JsonValue $_ "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+        ([string](Get-JsonValue $_ "productionDriverEvidenceExportZipPath" "")).Contains("production-driver-evidence.zip")
+    }).Count
 
 $checks = @()
 Add-ProbeCheck "action_queue_sources_available" `
@@ -334,8 +344,11 @@ Add-ProbeCheck "action_queue_exposes_owner_response_bundle_auto_acceptance" `
         (Get-JsonValue $postDispatchManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH") `
     "Pending and post-dispatch action queues must expose one-command owner response bundle directory and zip auto-acceptance paths."
 Add-ProbeCheck "action_queue_items_expose_bundle_auto_acceptance" `
-    ($pendingQueueItemAutoAcceptanceCommandCount -eq 3 -and $postDispatchQueueItemAutoAcceptanceCommandCount -eq 3) `
-    "Every pending and post-dispatch queue item must expose its bundle area path plus directory/zip auto-acceptance commands."
+    ($pendingQueueItemAutoAcceptanceCommandCount -eq 3 -and
+        $postDispatchQueueItemAutoAcceptanceCommandCount -eq 3 -and
+        $pendingQueueDriverExportHelperItemCount -eq 1 -and
+        $postDispatchQueueDriverExportHelperItemCount -eq 1) `
+    "Every pending and post-dispatch queue item must expose its bundle area path plus directory/zip auto-acceptance commands, and the production driver item must expose the evidence export helper."
 Add-ProbeCheck "missing_post_dispatch_rejected_when_required" `
     ($missingPostDispatchResult.exitCode -ne 0 -and $null -eq $missingPostDispatchManifest) `
     "RequirePostDispatch must reject a missing post-dispatch snapshot instead of falling back silently."
@@ -391,6 +404,9 @@ $manifest = [ordered]@{
     postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
     pendingQueueItemAutoAcceptanceCommandCount = [int]$pendingQueueItemAutoAcceptanceCommandCount
     postDispatchQueueItemAutoAcceptanceCommandCount = [int]$postDispatchQueueItemAutoAcceptanceCommandCount
+    pendingQueueDriverExportHelperItemCount = [int]$pendingQueueDriverExportHelperItemCount
+    postDispatchQueueDriverExportHelperItemCount = [int]$postDispatchQueueDriverExportHelperItemCount
+    postDispatchQueueProductionDriverEvidenceExportHelperCommand = [string](Get-JsonValue ($postDispatchQueueItems | Where-Object { [string](Get-JsonValue $_ "area" "") -eq "production_driver_binding" } | Select-Object -First 1) "productionDriverEvidenceExportHelperCommand" "")
     ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipEnvironmentVariable" "")
     missingPostDispatchRejected = [bool]($missingPostDispatchResult.exitCode -ne 0)
     releasePipelineSendsEmail = $false
@@ -414,6 +430,7 @@ $reportLines = @(
     "- External missing files: $($manifest.externalRemainingMissingFileCount)",
     "- Owner response bundle zip auto acceptance: $($manifest.postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand)",
     "- Queue item bundle command coverage: $($manifest.postDispatchQueueItemAutoAcceptanceCommandCount) / $($manifest.externalRemainingWorkItemCount)",
+    "- Production driver evidence export helper: $($manifest.postDispatchQueueProductionDriverEvidenceExportHelperCommand)",
     "- Missing post-dispatch rejected: $($manifest.missingPostDispatchRejected)",
     "",
     "## Boundary",
