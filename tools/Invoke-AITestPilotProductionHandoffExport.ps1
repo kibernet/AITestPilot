@@ -147,6 +147,41 @@ if ($ownerResponseBundleKitAvailable) {
     $ownerResponseBundleKitManifest = Read-JsonFile $ownerResponseBundleKitManifestPath "Production handoff owner response bundle kit manifest"
     $ownerResponseBundleKitWorkflowProbeManifest = Read-JsonFile $ownerResponseBundleKitWorkflowProbeManifestPath "Production handoff owner response bundle kit workflow probe manifest"
 }
+$canonicalOperatorActionQueueFileMap = @(
+    [ordered]@{ source = "production-external-evidence-action-queue-manifest.json"; destination = "operator-actions\production-external-evidence-action-queue-manifest.json" },
+    [ordered]@{ source = "production-external-evidence-action-queue.md"; destination = "operator-actions\production-external-evidence-action-queue.md" },
+    [ordered]@{ source = "production-external-evidence-action-queue-probe-manifest.json"; destination = "operator-actions\production-external-evidence-action-queue-probe-manifest.json" },
+    [ordered]@{ source = "production-external-evidence-action-queue-probe.md"; destination = "operator-actions\production-external-evidence-action-queue-probe.md" },
+    [ordered]@{ source = "release-progress-notification-post-dispatch-snapshot-manifest.json"; destination = "operator-actions\release-progress-notification-post-dispatch-snapshot-manifest.json" },
+    [ordered]@{ source = "release-progress-notification-post-dispatch-snapshot.md"; destination = "operator-actions\release-progress-notification-post-dispatch-snapshot.md" }
+)
+$probeOperatorActionQueueFileMap = @(
+    [ordered]@{ source = "production-external-evidence-action-queue-probe\post-dispatch-action-queue-manifest.json"; destination = "operator-actions\production-external-evidence-action-queue-manifest.json" },
+    [ordered]@{ source = "production-external-evidence-action-queue-probe\post-dispatch-action-queue.md"; destination = "operator-actions\production-external-evidence-action-queue.md" },
+    [ordered]@{ source = "production-external-evidence-action-queue-probe-manifest.json"; destination = "operator-actions\production-external-evidence-action-queue-probe-manifest.json" },
+    [ordered]@{ source = "production-external-evidence-action-queue-probe.md"; destination = "operator-actions\production-external-evidence-action-queue-probe.md" },
+    [ordered]@{ source = "production-external-evidence-action-queue-probe\contract-post-dispatch-snapshot-manifest.json"; destination = "operator-actions\release-progress-notification-post-dispatch-snapshot-manifest.json" },
+    [ordered]@{ source = "production-external-evidence-action-queue-probe\post-dispatch-action-queue-output.txt"; destination = "operator-actions\production-external-evidence-action-queue-output.txt" }
+)
+$canonicalOperatorActionQueueAvailable = (@($canonicalOperatorActionQueueFileMap | Where-Object { -not (Test-Path (Join-Path $evidenceBundlePath $_["source"])) }).Count -eq 0)
+$probeOperatorActionQueueAvailable = (@($probeOperatorActionQueueFileMap | Where-Object { -not (Test-Path (Join-Path $evidenceBundlePath $_["source"])) }).Count -eq 0)
+$operatorActionQueueFiles = @()
+$operatorActionQueueSourceKind = ""
+if ($canonicalOperatorActionQueueAvailable) {
+    $operatorActionQueueFiles = @($canonicalOperatorActionQueueFileMap)
+    $operatorActionQueueSourceKind = "canonical_post_dispatch_action_queue"
+}
+elseif ($probeOperatorActionQueueAvailable) {
+    $operatorActionQueueFiles = @($probeOperatorActionQueueFileMap)
+    $operatorActionQueueSourceKind = "probe_post_dispatch_action_queue"
+}
+$operatorActionQueueAvailable = @($operatorActionQueueFiles).Count -gt 0
+$operatorActionQueueManifest = $null
+$operatorActionQueueProbeManifest = $null
+if ($operatorActionQueueAvailable) {
+    $operatorActionQueueManifest = Read-JsonFile (Join-Path $evidenceBundlePath $operatorActionQueueFiles[0]["source"]) "Production external evidence action queue manifest"
+    $operatorActionQueueProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath $operatorActionQueueFiles[2]["source"]) "Production external evidence action queue probe manifest"
+}
 
 $requiredDirectories = @(
     "production-handoff-package",
@@ -198,6 +233,11 @@ if ($ownerResponseBundleKitAvailable) {
 foreach ($fileName in $requiredFiles) {
     Copy-ExportFile $fileName ("contract-evidence\" + $fileName)
 }
+if ($operatorActionQueueAvailable) {
+    foreach ($fileSpec in $operatorActionQueueFiles) {
+        Copy-ExportFile $fileSpec["source"] $fileSpec["destination"]
+    }
+}
 
 $ownerPacketCount = [int]$handoffManifest.ownerPacketCount
 $ownerPacketBlockingReasonCount = [int]$handoffManifest.ownerPacketBlockingReasonCount
@@ -215,7 +255,12 @@ $exportReadmeLines = @(
     "2. Send each `production-handoff-package\\owner-packets\\*.md` packet to the listed owner.",
     "3. Owners copy returned evidence into `production-external-evidence-inbox\\production-driver-evidence`, `production-external-evidence-inbox\\production-lua-evidence`, and `production-external-evidence-inbox\\live-smoke-evidence`.",
     "4. Run `production-external-evidence-inbox\\accept-returned-evidence.ps1` to generate the Markdown acceptance report.",
-    "5. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`.",
+    "5. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`."
+)
+if ($operatorActionQueueAvailable) {
+    $exportReadmeLines += "6. Use `operator-actions\\production-external-evidence-action-queue.md` as the post-dispatch operator checklist for returned folder/zip auto acceptance."
+}
+$exportReadmeLines += @(
     "",
     "## Contents",
     "",
@@ -225,8 +270,15 @@ $exportReadmeLines = @(
     "- `production-external-evidence-inbox/`: returned-evidence directory layout and wrapper for accepting owner evidence.",
     "- `production-driver-binding-kit/`: host-project production replay driver binding kit.",
     "- `production-lua-patch-evidence-kit/`: host-project production Lua evidence template kit.",
-    "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit.",
-    $(if ($ownerResponseBundleKitAvailable) { "- `production-handoff-owner-response-bundle-kit/`: fillable owner response bundle template with verifier, import helper, and returned folder/zip auto-acceptance commands." }),
+    "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit."
+)
+if ($ownerResponseBundleKitAvailable) {
+    $exportReadmeLines += "- `production-handoff-owner-response-bundle-kit/`: fillable owner response bundle template with verifier, import helper, and returned folder/zip auto-acceptance commands."
+}
+if ($operatorActionQueueAvailable) {
+    $exportReadmeLines += "- `operator-actions/`: post-dispatch action queue, action-queue probe, and progress-mail snapshot for the remaining external evidence work."
+}
+$exportReadmeLines += @(
     "- `contract-evidence/`: accepted-fixture and rejection reports proving the intake path without claiming real production evidence.",
     "- `contract-evidence/production-external-evidence-inbox-acceptance.md`: accepted returned-evidence inbox wrapper contract report.",
     "",
@@ -271,6 +323,13 @@ if ($ownerResponseBundleKitAvailable) {
         "auto-acceptance commands"
     )
 }
+if ($operatorActionQueueAvailable) {
+    $requiredExportSnippets += @(
+        "operator-actions",
+        "production-external-evidence-action-queue.md",
+        "post-dispatch operator checklist"
+    )
+}
 $exportReadmeText = Get-Content -Path $exportReadmePath -Encoding UTF8 -Raw
 $missingExportSnippetCount = @($requiredExportSnippets | Where-Object { -not $exportReadmeText.Contains($_) }).Count
 
@@ -305,6 +364,9 @@ if ($ownerResponseBundleKitAvailable) {
         "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit-workflow-probe.md"
     )
 }
+if ($operatorActionQueueAvailable) {
+    $requiredExportPaths += @($operatorActionQueueFiles | ForEach-Object { "production-handoff-export\" + $_["destination"] })
+}
 $missingExportPathCount = @($requiredExportPaths | Where-Object { $exportFiles -notcontains $_ }).Count
 
 $ownerResponseBundleKitExportContentText = ""
@@ -323,6 +385,29 @@ $ownerResponseBundleKitExportContentValidated = (
     $ownerResponseBundleKitExportContentText.Contains("-OwnerResponseBundleDir") -and
     $ownerResponseBundleKitExportContentText.Contains("-OwnerResponseBundleZipPath") -and
     $ownerResponseBundleKitExportContentText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH")
+)
+$operatorActionQueueReportText = ""
+if ($operatorActionQueueAvailable) {
+    $operatorActionQueueReportPath = Join-Path $exportPath "operator-actions\production-external-evidence-action-queue.md"
+    if (Test-Path $operatorActionQueueReportPath) {
+        $operatorActionQueueReportText = Get-Content -Path $operatorActionQueueReportPath -Encoding UTF8 -Raw
+    }
+}
+$operatorActionQueueExportContentValidated = (
+    $operatorActionQueueAvailable -and
+    $operatorActionQueueManifest.status -eq "PASS" -and
+    $operatorActionQueueProbeManifest.status -eq "PASS" -and
+    $operatorActionQueueManifest.sourceKind -eq "post_dispatch_snapshot" -and
+    [bool]$operatorActionQueueManifest.progressNotificationEmailSent -and
+    [int]$operatorActionQueueManifest.localProgressMailRemainingActionCount -eq 0 -and
+    [int]$operatorActionQueueManifest.externalRemainingWorkItemCount -eq 3 -and
+    [int]$operatorActionQueueManifest.externalRemainingMissingFileCount -eq 9 -and
+    [int]$operatorActionQueueManifest.externalRemainingBlockingReasonCount -eq 11 -and
+    ([string]$operatorActionQueueManifest.ownerResponseBundleAutoAcceptanceCommand).Contains("-OwnerResponseBundleDir") -and
+    ([string]$operatorActionQueueManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-OwnerResponseBundleZipPath") -and
+    $operatorActionQueueManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+    $operatorActionQueueReportText.Contains("-OwnerResponseBundleZipPath") -and
+    $operatorActionQueueReportText.Contains("Owner response bundle zip auto acceptance")
 )
 
 $checks = @(
@@ -360,6 +445,11 @@ $checks = @(
         name = "owner_response_bundle_kit_export"
         passed = ((-not $ownerResponseBundleKitAvailable) -or ($exportFiles -contains "production-handoff-export\production-handoff-owner-response-bundle-kit\README.md" -and $exportFiles -contains "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-bundle-request-draft.md" -and $ownerResponseBundleKitManifest.status -eq "PASS" -and $ownerResponseBundleKitWorkflowProbeManifest.status -eq "PASS" -and $ownerResponseBundleKitExportContentValidated))
         message = "Final export must include the owner response bundle kit and its returned folder/zip auto-acceptance handoff text once the kit is available."
+    },
+    [ordered]@{
+        name = "operator_action_queue_export"
+        passed = ((-not $operatorActionQueueAvailable) -or ($exportFiles -contains "production-handoff-export\operator-actions\production-external-evidence-action-queue.md" -and $exportFiles -contains "production-handoff-export\operator-actions\production-external-evidence-action-queue-probe-manifest.json" -and $operatorActionQueueExportContentValidated))
+        message = "Final export must include the post-dispatch operator action queue, source snapshot, probe proof, and returned folder/zip auto-acceptance commands once the action queue is available."
     }
 )
 
@@ -389,6 +479,17 @@ $manifest = [ordered]@{
     ownerResponseBundleKitIncluded = [bool]$ownerResponseBundleKitAvailable
     ownerResponseBundleKitWorkflowProbeIncluded = [bool]$ownerResponseBundleKitAvailable
     ownerResponseBundleKitAutoAcceptanceCommandsDocumented = [bool]$ownerResponseBundleKitExportContentValidated
+    operatorActionQueueAvailable = [bool]$operatorActionQueueAvailable
+    operatorActionQueueIncluded = [bool]$operatorActionQueueAvailable
+    operatorActionQueueSourceKind = $operatorActionQueueSourceKind
+    operatorActionQueueProbeIncluded = [bool]$operatorActionQueueAvailable
+    operatorActionQueuePostDispatchSnapshotIncluded = [bool]$operatorActionQueueAvailable
+    operatorActionQueueContentValidated = [bool]$operatorActionQueueExportContentValidated
+    operatorActionFileCount = $(if ($operatorActionQueueAvailable) { [int]@($operatorActionQueueFiles).Count } else { 0 })
+    operatorActionQueueTrackedRemainingWorkItemCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.trackedRemainingWorkItemCount } else { 0 })
+    operatorActionQueueExternalRemainingWorkItemCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingWorkItemCount } else { 0 })
+    operatorActionQueueExternalRemainingMissingFileCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingMissingFileCount } else { 0 })
+    operatorActionQueueExternalRemainingBlockingReasonCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingBlockingReasonCount } else { 0 })
     externalEvidenceInboxIncluded = $true
     contractEvidenceFileCount = [int]$requiredFiles.Count
     exportFileCount = [int]$exportFiles.Count

@@ -1760,15 +1760,26 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitIncluded -and
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitWorkflowProbeIncluded -and
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitAutoAcceptanceCommandsDocumented -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueAvailable -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueIncluded -and
+            @("canonical_post_dispatch_action_queue", "probe_post_dispatch_action_queue").Contains([string]$productionHandoffExportManifest.operatorActionQueueSourceKind) -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueProbeIncluded -and
+            [bool]$productionHandoffExportManifest.operatorActionQueuePostDispatchSnapshotIncluded -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueContentValidated -and
+            [int]$productionHandoffExportManifest.operatorActionFileCount -ge 6 -and
+            [int]$productionHandoffExportManifest.operatorActionQueueTrackedRemainingWorkItemCount -eq 3 -and
+            [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingWorkItemCount -eq 3 -and
+            [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingMissingFileCount -eq 9 -and
+            [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingBlockingReasonCount -eq 11 -and
             [bool]$productionHandoffExportManifest.externalEvidenceInboxIncluded -and
             [int]$productionHandoffExportManifest.contractEvidenceFileCount -ge 18 -and
-            [int]$productionHandoffExportManifest.exportFileCount -ge 50 -and
+            [int]$productionHandoffExportManifest.exportFileCount -ge 80 -and
             [bool]$productionHandoffExportManifest.zipGenerated -and
             -not [bool]$productionHandoffExportManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 7 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 8 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 
@@ -2874,6 +2885,9 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffExportAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitAutoAcceptanceDocumented -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueIncluded -and
+            @("canonical_post_dispatch_action_queue", "probe_post_dispatch_action_queue").Contains([string]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueSourceKind) -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueContentValidated -and
             [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and
