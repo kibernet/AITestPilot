@@ -169,6 +169,11 @@ Copy-RequiredFiles $driverAcceptedSourceDir $externalDriverDir $driverRequiredFi
 Copy-RequiredFiles $luaAcceptedSourceDir $externalLuaDir $luaRequiredFiles "Accepted production Lua fixture"
 Copy-RequiredFiles $liveAcceptedSourceDir $externalLiveDir $liveModelRequiredFiles "Accepted live model smoke fixture"
 
+$ownerResponseBundlePath = Join-Path $externalBundlePath "owner-response-bundle"
+Copy-RequiredFiles $driverAcceptedSourceDir (Join-Path $ownerResponseBundlePath "production-driver-evidence") $driverRequiredFiles "Owner response production driver fixture"
+Copy-RequiredFiles $luaAcceptedSourceDir (Join-Path $ownerResponseBundlePath "production-lua-evidence") $luaRequiredFiles "Owner response production Lua fixture"
+Copy-RequiredFiles $liveAcceptedSourceDir (Join-Path $ownerResponseBundlePath "live-smoke-evidence") $liveModelRequiredFiles "Owner response live smoke fixture"
+
 & (Join-Path $PSScriptRoot "Invoke-AITestPilotProductionExternalEvidenceInbox.ps1") `
     -EvidenceBundleDir $evidenceBundlePath `
     -InboxDir $externalInboxPath `
@@ -192,6 +197,44 @@ $acceptedAcceptanceReportPath = Join-Path $acceptedOutputPath "production-extern
 $acceptedWrapper = Read-JsonFile $acceptedWrapperManifestPath "Accepted inbox wrapper manifest"
 $acceptedAcceptance = Read-JsonFile $acceptedAcceptanceManifestPath "Accepted inbox acceptance manifest"
 
+$ownerResponseBundleDirOutputPath = Join-Path $probeBundlePath "owner-response-bundle-acceptance-output"
+$ownerResponseBundleDirWrapperManifestPath = Join-Path $ownerResponseBundleDirOutputPath "external-evidence-acceptance-wrapper-manifest.json"
+$ownerResponseBundleDirAcceptanceManifestPath = Join-Path $ownerResponseBundleDirOutputPath "production-external-evidence-acceptance-manifest.json"
+$ownerResponseBundleDirAcceptanceReportPath = Join-Path $ownerResponseBundleDirOutputPath "production-external-evidence-acceptance.md"
+
+& (Join-Path $externalInboxPath "accept-returned-evidence.ps1") `
+    -RepoRoot $repoRoot `
+    -EvidenceBundleDir $evidenceBundlePath `
+    -OutputDir $ownerResponseBundleDirOutputPath `
+    -OwnerResponseBundleDir $ownerResponseBundlePath `
+    -GameReplayDriverType "Your.Game.Tests.AcceptedProductionReplayDriver" `
+    -ContractFixtureMode | Out-Null
+
+$ownerResponseBundleDirWrapper = Read-JsonFile $ownerResponseBundleDirWrapperManifestPath "Owner response bundle directory wrapper manifest"
+$ownerResponseBundleDirAcceptance = Read-JsonFile $ownerResponseBundleDirAcceptanceManifestPath "Owner response bundle directory acceptance manifest"
+
+$ownerResponseBundleZipPath = Join-Path $probeBundlePath "owner-response-bundle.zip"
+if (Test-Path $ownerResponseBundleZipPath) {
+    Remove-Item -LiteralPath $ownerResponseBundleZipPath -Force
+}
+Compress-Archive -Path (Join-Path $ownerResponseBundlePath "*") -DestinationPath $ownerResponseBundleZipPath -Force
+
+$ownerResponseBundleZipOutputPath = Join-Path $probeBundlePath "owner-response-bundle-zip-acceptance-output"
+$ownerResponseBundleZipWrapperManifestPath = Join-Path $ownerResponseBundleZipOutputPath "external-evidence-acceptance-wrapper-manifest.json"
+$ownerResponseBundleZipAcceptanceManifestPath = Join-Path $ownerResponseBundleZipOutputPath "production-external-evidence-acceptance-manifest.json"
+$ownerResponseBundleZipAcceptanceReportPath = Join-Path $ownerResponseBundleZipOutputPath "production-external-evidence-acceptance.md"
+
+& (Join-Path $externalInboxPath "accept-returned-evidence.ps1") `
+    -RepoRoot $repoRoot `
+    -EvidenceBundleDir $evidenceBundlePath `
+    -OutputDir $ownerResponseBundleZipOutputPath `
+    -OwnerResponseBundleZipPath $ownerResponseBundleZipPath `
+    -GameReplayDriverType "Your.Game.Tests.AcceptedProductionReplayDriver" `
+    -ContractFixtureMode | Out-Null
+
+$ownerResponseBundleZipWrapper = Read-JsonFile $ownerResponseBundleZipWrapperManifestPath "Owner response bundle zip wrapper manifest"
+$ownerResponseBundleZipAcceptance = Read-JsonFile $ownerResponseBundleZipAcceptanceManifestPath "Owner response bundle zip acceptance manifest"
+
 $wrapperManifestName = "production-external-evidence-inbox-acceptance-wrapper-manifest.json"
 $acceptanceManifestName = "production-external-evidence-inbox-acceptance-manifest.json"
 $acceptanceReportName = "production-external-evidence-inbox-acceptance.md"
@@ -199,7 +242,22 @@ Copy-Item -LiteralPath $acceptedWrapperManifestPath -Destination (Join-Path $evi
 Copy-Item -LiteralPath $acceptedAcceptanceManifestPath -Destination (Join-Path $evidenceBundlePath $acceptanceManifestName) -Force
 Copy-Item -LiteralPath $acceptedAcceptanceReportPath -Destination (Join-Path $evidenceBundlePath $acceptanceReportName) -Force
 
+$ownerResponseBundleDirWrapperManifestName = "production-external-evidence-inbox-owner-response-bundle-wrapper-manifest.json"
+$ownerResponseBundleDirAcceptanceManifestName = "production-external-evidence-inbox-owner-response-bundle-acceptance-manifest.json"
+$ownerResponseBundleDirAcceptanceReportName = "production-external-evidence-inbox-owner-response-bundle-acceptance.md"
+$ownerResponseBundleZipWrapperManifestName = "production-external-evidence-inbox-owner-response-bundle-zip-wrapper-manifest.json"
+$ownerResponseBundleZipAcceptanceManifestName = "production-external-evidence-inbox-owner-response-bundle-zip-acceptance-manifest.json"
+$ownerResponseBundleZipAcceptanceReportName = "production-external-evidence-inbox-owner-response-bundle-zip-acceptance.md"
+
+Copy-Item -LiteralPath $ownerResponseBundleDirWrapperManifestPath -Destination (Join-Path $evidenceBundlePath $ownerResponseBundleDirWrapperManifestName) -Force
+Copy-Item -LiteralPath $ownerResponseBundleDirAcceptanceManifestPath -Destination (Join-Path $evidenceBundlePath $ownerResponseBundleDirAcceptanceManifestName) -Force
+Copy-Item -LiteralPath $ownerResponseBundleDirAcceptanceReportPath -Destination (Join-Path $evidenceBundlePath $ownerResponseBundleDirAcceptanceReportName) -Force
+Copy-Item -LiteralPath $ownerResponseBundleZipWrapperManifestPath -Destination (Join-Path $evidenceBundlePath $ownerResponseBundleZipWrapperManifestName) -Force
+Copy-Item -LiteralPath $ownerResponseBundleZipAcceptanceManifestPath -Destination (Join-Path $evidenceBundlePath $ownerResponseBundleZipAcceptanceManifestName) -Force
+Copy-Item -LiteralPath $ownerResponseBundleZipAcceptanceReportPath -Destination (Join-Path $evidenceBundlePath $ownerResponseBundleZipAcceptanceReportName) -Force
+
 $externalBundleUnderRepo = $externalBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
+$ownerResponseBundleUnderRepo = $ownerResponseBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
 $filledInboxComplete = $filledInboxManifest.status -eq "PASS" -and
     [int]$filledInboxManifest.evidenceAreaCount -eq 3 -and
     [int]$filledInboxManifest.completeAreaCount -eq 3 -and
@@ -226,6 +284,42 @@ $acceptedAcceptancePassed = $acceptedAcceptance.schemaVersion -eq "aitestpilot.p
     -not [bool]$acceptedAcceptance.realHostProjectEvidenceAccepted -and
     -not [bool]$acceptedAcceptance.releasePipelineUsesFixture -and
     $acceptedAcceptance.productionOutputBoundary -eq "accepted_fixture_external_evidence_acceptance_contract_only"
+$ownerResponseBundleDirWrapperPassed = $ownerResponseBundleDirWrapper.schemaVersion -eq "aitestpilot.production_handoff_external_evidence_acceptance_wrapper.v1" -and
+    $ownerResponseBundleDirWrapper.status -eq "PASS" -and
+    [bool]$ownerResponseBundleDirWrapper.acceptanceCommandPassed -and
+    $ownerResponseBundleDirWrapper.acceptanceStatus -eq "PASS" -and
+    [bool]$ownerResponseBundleDirWrapper.allExternalEvidenceAccepted -and
+    [bool]$ownerResponseBundleDirWrapper.contractFixtureMode -and
+    -not [bool]$ownerResponseBundleDirWrapper.realHostProjectEvidenceAccepted
+$ownerResponseBundleDirAcceptancePassed = $ownerResponseBundleDirAcceptance.schemaVersion -eq "aitestpilot.production_external_evidence_acceptance.v1" -and
+    $ownerResponseBundleDirAcceptance.status -eq "PASS" -and
+    [bool]$ownerResponseBundleDirAcceptance.contractFixtureMode -and
+    [bool]$ownerResponseBundleDirAcceptance.allRequiredExternalEvidenceFilesPresent -and
+    [bool]$ownerResponseBundleDirAcceptance.productionDriverEvidenceAccepted -and
+    [bool]$ownerResponseBundleDirAcceptance.productionLuaEvidenceAccepted -and
+    [bool]$ownerResponseBundleDirAcceptance.liveModelSmokeEvidenceAccepted -and
+    [bool]$ownerResponseBundleDirAcceptance.allExternalEvidenceAccepted -and
+    -not [bool]$ownerResponseBundleDirAcceptance.realHostProjectEvidenceAccepted -and
+    -not [bool]$ownerResponseBundleDirAcceptance.releasePipelineUsesFixture -and
+    $ownerResponseBundleDirAcceptance.productionOutputBoundary -eq "accepted_fixture_external_evidence_acceptance_contract_only"
+$ownerResponseBundleZipWrapperPassed = $ownerResponseBundleZipWrapper.schemaVersion -eq "aitestpilot.production_handoff_external_evidence_acceptance_wrapper.v1" -and
+    $ownerResponseBundleZipWrapper.status -eq "PASS" -and
+    [bool]$ownerResponseBundleZipWrapper.acceptanceCommandPassed -and
+    $ownerResponseBundleZipWrapper.acceptanceStatus -eq "PASS" -and
+    [bool]$ownerResponseBundleZipWrapper.allExternalEvidenceAccepted -and
+    [bool]$ownerResponseBundleZipWrapper.contractFixtureMode -and
+    -not [bool]$ownerResponseBundleZipWrapper.realHostProjectEvidenceAccepted
+$ownerResponseBundleZipAcceptancePassed = $ownerResponseBundleZipAcceptance.schemaVersion -eq "aitestpilot.production_external_evidence_acceptance.v1" -and
+    $ownerResponseBundleZipAcceptance.status -eq "PASS" -and
+    [bool]$ownerResponseBundleZipAcceptance.contractFixtureMode -and
+    [bool]$ownerResponseBundleZipAcceptance.allRequiredExternalEvidenceFilesPresent -and
+    [bool]$ownerResponseBundleZipAcceptance.productionDriverEvidenceAccepted -and
+    [bool]$ownerResponseBundleZipAcceptance.productionLuaEvidenceAccepted -and
+    [bool]$ownerResponseBundleZipAcceptance.liveModelSmokeEvidenceAccepted -and
+    [bool]$ownerResponseBundleZipAcceptance.allExternalEvidenceAccepted -and
+    -not [bool]$ownerResponseBundleZipAcceptance.realHostProjectEvidenceAccepted -and
+    -not [bool]$ownerResponseBundleZipAcceptance.releasePipelineUsesFixture -and
+    $ownerResponseBundleZipAcceptance.productionOutputBoundary -eq "accepted_fixture_external_evidence_acceptance_contract_only"
 
 $checks = @()
 Add-ProbeCheck "external_inbox_generated" `
@@ -237,6 +331,12 @@ Add-ProbeCheck "accepted_fixture_files_loaded" `
 Add-ProbeCheck "inbox_wrapper_acceptance_passed" `
     ($acceptedWrapperPassed -and $acceptedAcceptancePassed) `
     "Returned-evidence inbox wrapper must accept complete host-project-shaped fixture evidence in contract mode."
+Add-ProbeCheck "owner_response_bundle_directory_acceptance_passed" `
+    ($ownerResponseBundleDirWrapperPassed -and $ownerResponseBundleDirAcceptancePassed -and -not [bool]$ownerResponseBundleUnderRepo) `
+    "Returned-evidence inbox wrapper must accept a filled owner response bundle directory in contract mode."
+Add-ProbeCheck "owner_response_bundle_zip_acceptance_passed" `
+    ($ownerResponseBundleZipWrapperPassed -and $ownerResponseBundleZipAcceptancePassed -and (Test-Path $ownerResponseBundleZipPath)) `
+    "Returned-evidence inbox wrapper must accept a filled owner response bundle zip in contract mode."
 Add-ProbeCheck "driver_lua_live_accepted" `
     ([bool]$acceptedAcceptance.productionDriverEvidenceAccepted -and [bool]$acceptedAcceptance.productionLuaEvidenceAccepted -and [bool]$acceptedAcceptance.liveModelSmokeEvidenceAccepted) `
     "Driver, Lua, and live model evidence acceptance must all pass through the inbox wrapper."
@@ -254,7 +354,13 @@ $files = @(
     "production-external-evidence-inbox-contract-probe-manifest.json",
     $wrapperManifestName,
     $acceptanceManifestName,
-    $acceptanceReportName
+    $acceptanceReportName,
+    $ownerResponseBundleDirWrapperManifestName,
+    $ownerResponseBundleDirAcceptanceManifestName,
+    $ownerResponseBundleDirAcceptanceReportName,
+    $ownerResponseBundleZipWrapperManifestName,
+    $ownerResponseBundleZipAcceptanceManifestName,
+    $ownerResponseBundleZipAcceptanceReportName
 )
 
 $manifest = [ordered]@{
@@ -264,9 +370,13 @@ $manifest = [ordered]@{
     evidenceBundleDir = $evidenceBundlePath
     externalBundleRoot = $externalBundlePath
     externalInboxDir = $externalInboxPath
+    ownerResponseBundleDir = $ownerResponseBundlePath
+    ownerResponseBundleZipPath = $ownerResponseBundleZipPath
     probeBundleDir = $probeBundlePath
     externalBundleUnderRepo = [bool]$externalBundleUnderRepo
+    ownerResponseBundleUnderRepo = [bool]$ownerResponseBundleUnderRepo
     inboxTemplateGenerated = [bool]$filledInboxManifest.inboxTemplateGenerated
+    inboxAcceptanceWrapperSupportsOwnerResponseBundle = [bool]$filledInboxManifest.acceptanceWrapperSupportsOwnerResponseBundle
     filledInboxComplete = [bool]$filledInboxComplete
     filledInboxEvidenceAreaCount = [int]$filledInboxManifest.evidenceAreaCount
     filledInboxCompleteAreaCount = [int]$filledInboxManifest.completeAreaCount
@@ -280,6 +390,13 @@ $manifest = [ordered]@{
     acceptedProductionLuaEvidenceAccepted = [bool]$acceptedAcceptance.productionLuaEvidenceAccepted
     acceptedLiveModelSmokeEvidenceAccepted = [bool]$acceptedAcceptance.liveModelSmokeEvidenceAccepted
     acceptedAllExternalEvidenceAccepted = [bool]$acceptedAcceptance.allExternalEvidenceAccepted
+    ownerResponseBundleDirectoryWrapperPassed = [bool]$ownerResponseBundleDirWrapperPassed
+    ownerResponseBundleDirectoryAcceptancePassed = [bool]$ownerResponseBundleDirAcceptancePassed
+    ownerResponseBundleDirectoryAllExternalEvidenceAccepted = [bool]$ownerResponseBundleDirAcceptance.allExternalEvidenceAccepted
+    ownerResponseBundleZipGenerated = (Test-Path $ownerResponseBundleZipPath)
+    ownerResponseBundleZipWrapperPassed = [bool]$ownerResponseBundleZipWrapperPassed
+    ownerResponseBundleZipAcceptancePassed = [bool]$ownerResponseBundleZipAcceptancePassed
+    ownerResponseBundleZipAllExternalEvidenceAccepted = [bool]$ownerResponseBundleZipAcceptance.allExternalEvidenceAccepted
     realHostProjectEvidenceAccepted = $false
     releasePipelineUsesFixture = $false
     productionOutputBoundary = "accepted_fixture_external_evidence_inbox_contract_only"

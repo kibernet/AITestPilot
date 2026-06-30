@@ -182,6 +182,8 @@ param(
     [string]$RepoRoot,
     [string]$EvidenceBundleDir,
     [string]$OutputDir,
+    [string]$OwnerResponseBundleDir,
+    [string]$OwnerResponseBundleZipPath,
     [string]$GameReplayDriverType = "Your.Game.Tests.ProductionReplayDriver",
     [switch]$ContractFixtureMode,
     [switch]$RunHardValidation
@@ -218,6 +220,42 @@ function Find-RepoRoot {
     }
 }
 
+function Test-OwnerResponseBundleRoot {
+    param([string]$Path)
+
+    return (-not [string]::IsNullOrWhiteSpace($Path)) -and
+        (Test-Path (Join-Path $Path "production-driver-evidence")) -and
+        (Test-Path (Join-Path $Path "production-lua-evidence")) -and
+        (Test-Path (Join-Path $Path "live-smoke-evidence"))
+}
+
+function Resolve-OwnerResponseBundleRoot {
+    param([string]$Path)
+
+    $bundlePath = Resolve-FullPath $Path
+    $candidates = @(
+        $bundlePath,
+        (Join-Path $bundlePath "owner-response-bundle-template")
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-OwnerResponseBundleRoot $candidate) {
+            return (Resolve-FullPath $candidate)
+        }
+    }
+
+    $manifestCandidates = @(
+        Get-ChildItem -LiteralPath $bundlePath -Recurse -Filter "owner-response-bundle-manifest.json" -File -ErrorAction SilentlyContinue |
+            ForEach-Object { Split-Path $_.FullName -Parent }
+    )
+    foreach ($candidate in $manifestCandidates) {
+        if (Test-OwnerResponseBundleRoot $candidate) {
+            return (Resolve-FullPath $candidate)
+        }
+    }
+
+    throw "Could not locate owner response bundle evidence directories under $bundlePath."
+}
+
 if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
     $RepoRoot = Find-RepoRoot $PSScriptRoot
 }
@@ -231,6 +269,38 @@ $evidencePath = Resolve-FullPath $EvidenceBundleDir
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     $OutputDir = Join-Path $PSScriptRoot "acceptance-output"
 }
+$outputPath = Resolve-FullPath $OutputDir
+New-Item -ItemType Directory -Force $outputPath | Out-Null
+
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and -not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    throw "Pass either -OwnerResponseBundleDir or -OwnerResponseBundleZipPath, not both."
+}
+
+$driverEvidenceDir = Join-Path $PSScriptRoot "production-driver-evidence"
+$luaEvidenceDir = Join-Path $PSScriptRoot "production-lua-evidence"
+$liveSmokeEvidenceDir = Join-Path $PSScriptRoot "live-smoke-evidence"
+
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    $zipPath = Resolve-FullPath $OwnerResponseBundleZipPath
+    if (-not (Test-Path $zipPath)) {
+        throw "Owner response bundle zip does not exist: $zipPath"
+    }
+
+    $expandedBundlePath = Join-Path $outputPath "expanded-owner-response-bundle"
+    if (Test-Path $expandedBundlePath) {
+        Remove-Item -LiteralPath $expandedBundlePath -Recurse -Force
+    }
+    New-Item -ItemType Directory -Force $expandedBundlePath | Out-Null
+    Expand-Archive -LiteralPath $zipPath -DestinationPath $expandedBundlePath -Force
+    $OwnerResponseBundleDir = $expandedBundlePath
+}
+
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
+    $ownerResponseBundleRoot = Resolve-OwnerResponseBundleRoot $OwnerResponseBundleDir
+    $driverEvidenceDir = Join-Path $ownerResponseBundleRoot "production-driver-evidence"
+    $luaEvidenceDir = Join-Path $ownerResponseBundleRoot "production-lua-evidence"
+    $liveSmokeEvidenceDir = Join-Path $ownerResponseBundleRoot "live-smoke-evidence"
+}
 
 $handoffWrapper = Join-Path (Split-Path $PSScriptRoot -Parent) "production-handoff-package\accept-external-evidence.ps1"
 if (-not (Test-Path $handoffWrapper)) {
@@ -243,16 +313,19 @@ if (-not (Test-Path $handoffWrapper)) {
 & $handoffWrapper `
     -RepoRoot $repoPath `
     -EvidenceBundleDir $evidencePath `
-    -OutputDir $OutputDir `
-    -ProductionDriverEvidenceDir (Join-Path $PSScriptRoot "production-driver-evidence") `
-    -ProductionLuaEvidenceDir (Join-Path $PSScriptRoot "production-lua-evidence") `
-    -LiveModelEndpointSmokeEvidenceDir (Join-Path $PSScriptRoot "live-smoke-evidence") `
+    -OutputDir $outputPath `
+    -ProductionDriverEvidenceDir $driverEvidenceDir `
+    -ProductionLuaEvidenceDir $luaEvidenceDir `
+    -LiveModelEndpointSmokeEvidenceDir $liveSmokeEvidenceDir `
     -GameReplayDriverType $GameReplayDriverType `
     -RequireAllEvidence `
     -ContractFixtureMode:$ContractFixtureMode `
     -RunHardValidation:$RunHardValidation
 '@
 $acceptScript | Set-Content -Path $acceptScriptPath -Encoding UTF8
+$acceptanceWrapperSupportsOwnerResponseBundle = $acceptScript.Contains("OwnerResponseBundleDir") -and
+    $acceptScript.Contains("OwnerResponseBundleZipPath") -and
+    $acceptScript.Contains("Expand-Archive")
 
 $areaStatuses = @()
 foreach ($packet in @(Convert-ToArray $ownerPacketIndex.packets)) {
@@ -294,6 +367,8 @@ foreach ($packet in @(Convert-ToArray $ownerPacketIndex.packets)) {
         '```powershell',
         ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`"",
         '```',
+        "",
+        "If the owners return a filled owner response bundle, pass `-OwnerResponseBundleDir` or `-OwnerResponseBundleZipPath` instead of copying files into this inbox first.",
         "",
         "This directory is incomplete until every required file exists and the acceptance wrapper passes."
     )
@@ -352,6 +427,13 @@ $rootReadmeLines += @(
     "",
     '```powershell',
         ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`"",
+        '```',
+        "",
+        "For a returned owner response bundle directory or zip, use:",
+        "",
+        '```powershell',
+        ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`" -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`"",
+        ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`" -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`"",
         '```',
         "",
         "Add `-ContractFixtureMode` only for repository contract probes that use accepted fixture evidence.",
@@ -438,6 +520,9 @@ Add-InboxCheck "required_evidence_contract" `
 Add-InboxCheck "inbox_files_generated" `
     ((Test-Path $rootReadmePath) -and (Test-Path $acceptScriptPath) -and $inboxFiles.Count -ge 6) `
     "Inbox must generate README files and the returned-evidence acceptance wrapper."
+Add-InboxCheck "owner_response_bundle_entrypoint_generated" `
+    ([bool]$acceptanceWrapperSupportsOwnerResponseBundle) `
+    "Returned-evidence acceptance wrapper must support filled owner response bundle directories and zip files."
 Add-InboxCheck "report_content" `
     ([bool]$reportContentValidated) `
     "Inbox report must summarize area status, missing files, next command, and evidence boundary."
@@ -469,6 +554,7 @@ $manifest = [ordered]@{
     reportContentValidated = [bool]$reportContentValidated
     inboxTemplateGenerated = $true
     acceptanceWrapperGenerated = (Test-Path $acceptScriptPath)
+    acceptanceWrapperSupportsOwnerResponseBundle = [bool]$acceptanceWrapperSupportsOwnerResponseBundle
     acceptanceCommand = $acceptanceCommand
     gameReplayDriverType = $GameReplayDriverType
     ownerPacketCount = [int]$ownerPacketIndex.ownerPacketCount

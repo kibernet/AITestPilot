@@ -2598,6 +2598,7 @@ if ($null -ne $productionExternalEvidenceInboxManifest) {
             $productionExternalEvidenceInboxManifest.schemaVersion -eq "aitestpilot.production_external_evidence_inbox.v1" -and
             [bool]$productionExternalEvidenceInboxManifest.inboxTemplateGenerated -and
             [bool]$productionExternalEvidenceInboxManifest.acceptanceWrapperGenerated -and
+            [bool]$productionExternalEvidenceInboxManifest.acceptanceWrapperSupportsOwnerResponseBundle -and
             [bool]$productionExternalEvidenceInboxManifest.reportGenerated -and
             [bool]$productionExternalEvidenceInboxManifest.reportContentValidated -and
             [int]$productionExternalEvidenceInboxManifest.ownerPacketCount -eq 3 -and
@@ -2609,9 +2610,9 @@ if ($null -ne $productionExternalEvidenceInboxManifest) {
             -not [bool]$productionExternalEvidenceInboxManifest.releasePipelineUsesFixture -and
             -not [bool]$productionExternalEvidenceInboxManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceInboxManifest.productionOutputBoundary -eq "host_project_external_evidence_inbox_inspection_only" -and
-            [int]$productionExternalEvidenceInboxManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceInboxManifest.checkCount -eq 7 -and
             [int]$productionExternalEvidenceInboxManifest.failedCheckCount -eq 0) `
-        "Production external evidence inbox must provide a returned-evidence directory layout and acceptance wrapper without claiming production evidence."
+        "Production external evidence inbox must provide a returned-evidence directory layout and acceptance wrapper that accepts direct inbox files or owner response bundle directories/zips without claiming production evidence."
 
     Test-ListedFiles $productionExternalEvidenceInboxManifest "production_external_evidence_inbox"
 }
@@ -2622,6 +2623,7 @@ if ($null -ne $productionExternalEvidenceInboxContractProbeManifest) {
             $productionExternalEvidenceInboxContractProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_inbox_contract_probe.v1" -and
             -not [bool]$productionExternalEvidenceInboxContractProbeManifest.externalBundleUnderRepo -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.inboxTemplateGenerated -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.inboxAcceptanceWrapperSupportsOwnerResponseBundle -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.filledInboxComplete -and
             [int]$productionExternalEvidenceInboxContractProbeManifest.filledInboxEvidenceAreaCount -eq 3 -and
             [int]$productionExternalEvidenceInboxContractProbeManifest.filledInboxCompleteAreaCount -eq 3 -and
@@ -2635,12 +2637,20 @@ if ($null -ne $productionExternalEvidenceInboxContractProbeManifest) {
             [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedProductionLuaEvidenceAccepted -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedLiveModelSmokeEvidenceAccepted -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.acceptedAllExternalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleUnderRepo -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleDirectoryWrapperPassed -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleDirectoryAcceptancePassed -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleDirectoryAllExternalEvidenceAccepted -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleZipGenerated -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleZipWrapperPassed -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleZipAcceptancePassed -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleZipAllExternalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceInboxContractProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceInboxContractProbeManifest.releasePipelineUsesFixture -and
             $productionExternalEvidenceInboxContractProbeManifest.productionOutputBoundary -eq "accepted_fixture_external_evidence_inbox_contract_only" -and
-            [int]$productionExternalEvidenceInboxContractProbeManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceInboxContractProbeManifest.checkCount -eq 8 -and
             [int]$productionExternalEvidenceInboxContractProbeManifest.failedCheckCount -eq 0) `
-        "Production external evidence inbox contract probe must prove returned complete evidence can pass the wrapper while preserving the fixture boundary."
+        "Production external evidence inbox contract probe must prove returned complete evidence can pass the wrapper from direct inbox files, owner response bundle directories, and owner response bundle zips while preserving the fixture boundary."
 
     Test-ListedFiles $productionExternalEvidenceInboxContractProbeManifest "production_external_evidence_inbox_contract_probe"
 }

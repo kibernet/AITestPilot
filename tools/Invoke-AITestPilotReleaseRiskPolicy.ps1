@@ -1663,6 +1663,7 @@ $productionExternalEvidenceInboxAccepted = (
     (Get-JsonValue $productionExternalEvidenceInboxManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_inbox.v1" -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "inboxTemplateGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "acceptanceWrapperGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "acceptanceWrapperSupportsOwnerResponseBundle" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "reportGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "reportContentValidated" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "ownerPacketCount" 0)) -eq 3 -and
@@ -1675,12 +1676,12 @@ $productionExternalEvidenceInboxAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionExternalEvidenceInboxManifest "productionOutputBoundary" "") -eq "host_project_external_evidence_inbox_inspection_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "checkCount" 0)) -eq 7 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_external_evidence_inbox_policy" $productionExternalEvidenceInboxAccepted `
-    "Production evidence handoff must include a returned-evidence inbox layout and acceptance wrapper without promoting fixture data." `
+    "Production evidence handoff must include a returned-evidence inbox layout and acceptance wrapper that can accept direct inbox files or owner response bundle directories/zips without promoting fixture data." `
     "production_external_evidence_inbox_not_accepted"
 
 $productionExternalEvidenceInboxContractAccepted = (
@@ -1689,6 +1690,7 @@ $productionExternalEvidenceInboxContractAccepted = (
     (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_inbox_contract_probe.v1" -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "externalBundleUnderRepo" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "inboxTemplateGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "inboxAcceptanceWrapperSupportsOwnerResponseBundle" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxComplete" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxEvidenceAreaCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxCompleteAreaCount" 0)) -eq 3 -and
@@ -1702,15 +1704,23 @@ $productionExternalEvidenceInboxContractAccepted = (
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedProductionLuaEvidenceAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedLiveModelSmokeEvidenceAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "acceptedAllExternalEvidenceAccepted" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleDirectoryWrapperPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleDirectoryAcceptancePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleDirectoryAllExternalEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleZipGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleZipWrapperPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleZipAcceptancePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleZipAllExternalEvidenceAccepted" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "releasePipelineUsesFixture" $true)) -and
     (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_external_evidence_inbox_contract_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "checkCount" 0)) -eq 8 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_external_evidence_inbox_contract_policy" $productionExternalEvidenceInboxContractAccepted `
-    "Production evidence handoff must prove the returned-evidence inbox wrapper can accept complete host-project-shaped evidence without promoting fixture data." `
+    "Production evidence handoff must prove the returned-evidence inbox wrapper can accept complete host-project-shaped evidence from direct inbox files, owner response bundle directories, and owner response bundle zips without promoting fixture data." `
     "production_external_evidence_inbox_contract_not_accepted"
 
 $productionExternalEvidenceAutoAcceptanceProbeAccepted = (
@@ -2073,7 +2083,10 @@ $manifest = [ordered]@{
     productionHandoffPendingOwnerPacketCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "pendingOwnerPacketCount" 0))
     productionExternalEvidenceInboxAccepted = [bool]$productionExternalEvidenceInboxAccepted
     productionExternalEvidenceInboxMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "missingRequiredFileCount" 0))
+    productionExternalEvidenceInboxSupportsOwnerResponseBundle = (Get-JsonValue $productionExternalEvidenceInboxManifest "acceptanceWrapperSupportsOwnerResponseBundle" $false)
     productionExternalEvidenceInboxContractAccepted = [bool]$productionExternalEvidenceInboxContractAccepted
+    productionExternalEvidenceInboxContractOwnerResponseBundleDirectoryAccepted = (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleDirectoryAcceptancePassed" $false)
+    productionExternalEvidenceInboxContractOwnerResponseBundleZipAccepted = (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleZipAcceptancePassed" $false)
     productionExternalEvidenceAutoAcceptanceProbeAccepted = [bool]$productionExternalEvidenceAutoAcceptanceProbeAccepted
     productionExternalEvidenceAutoAcceptancePendingStatus = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultStatus" "")
     productionExternalEvidenceAutoAcceptancePendingMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultMissingFileCount" 0))
@@ -2204,7 +2217,10 @@ $reportLines = @(
     "- Production handoff remaining blockers: $($manifest.productionHandoffRemainingBlockingReasonCount)",
     "- Production external evidence inbox accepted: $($manifest.productionExternalEvidenceInboxAccepted)",
     "- Production external evidence inbox missing files: $($manifest.productionExternalEvidenceInboxMissingFileCount)",
+    "- Production external evidence inbox supports owner response bundle: $($manifest.productionExternalEvidenceInboxSupportsOwnerResponseBundle)",
     "- Production external evidence inbox contract accepted: $($manifest.productionExternalEvidenceInboxContractAccepted)",
+    "- Production external evidence inbox owner response bundle directory accepted: $($manifest.productionExternalEvidenceInboxContractOwnerResponseBundleDirectoryAccepted)",
+    "- Production external evidence inbox owner response bundle zip accepted: $($manifest.productionExternalEvidenceInboxContractOwnerResponseBundleZipAccepted)",
     "- Production external evidence auto acceptance probe accepted: $($manifest.productionExternalEvidenceAutoAcceptanceProbeAccepted)",
     "- Production external evidence auto acceptance pending status: $($manifest.productionExternalEvidenceAutoAcceptancePendingStatus)",
     "- Production external evidence auto acceptance pending missing files: $($manifest.productionExternalEvidenceAutoAcceptancePendingMissingFileCount)",
