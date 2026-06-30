@@ -2196,6 +2196,12 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             [bool]$productionHandoffOwnerResponseBundleKitManifest.requestDraftGenerated -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.reportGenerated -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.zipGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.autoAcceptanceCommandsGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.autoAcceptanceCommandsContentValidated -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleAutoAcceptanceCommand).Contains("-OwnerResponseBundleDir") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-OwnerResponseBundleZipPath") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-RequireAllEvidence") -and
+            $productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.ownerContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.requiredEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.templateDirectoryCount -eq 3 -and
@@ -2211,7 +2217,7 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             -not [bool]$productionHandoffOwnerResponseBundleKitManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffOwnerResponseBundleKitManifest.fixtureEvidencePromoted -and
             $productionHandoffOwnerResponseBundleKitManifest.productionOutputBoundary -eq "owner_response_bundle_template_kit_only" -and
-            [int]$productionHandoffOwnerResponseBundleKitManifest.checkCount -eq 6 -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.checkCount -eq 7 -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.failedCheckCount -eq 0) `
         "Production handoff owner response bundle kit must package fillable owner evidence directories, roster, scripts, request draft, and zip without sending email or accepting real evidence."
 
@@ -2232,6 +2238,12 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.completeTemplateMissingEvidenceFileCount -eq 0 -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.importHelperSucceeded -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.importCopiedBundle -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.autoAcceptanceCommandsDocumented -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.autoAcceptanceZipCommandDocumented -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleAutoAcceptanceCommand).Contains("-OwnerResponseBundleDir") -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-OwnerResponseBundleZipPath") -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipAutoAcceptanceCommand).Contains("-RequireAllEvidence") -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.importedEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.writtenEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
             -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.releasePipelineSendsEmail -and
@@ -2243,7 +2255,7 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.fixtureEvidencePromoted -and
             $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionOutputBoundary -eq "owner_response_bundle_kit_workflow_probe_only" -and
-            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 6 -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 7 -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.failedCheckCount -eq 0) `
         "Production handoff owner response bundle kit workflow probe must execute generated verify/import helpers against incomplete and complete isolated bundles without sending email or accepting production evidence."
 
@@ -2874,6 +2886,13 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitZipGenerated -and
             [int]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitRequiredFileCount -gt 0 -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitAutoAcceptanceCommandsDocumented -and
+            ([string]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitAutoAcceptanceCommand).Contains("-OwnerResponseBundleDir") -and
+            ([string]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitZipAutoAcceptanceCommand).Contains("-OwnerResponseBundleZipPath") -and
+            ([string]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitZipAutoAcceptanceCommand).Contains("-RequireAllEvidence") -and
+            $releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceCommandsDocumented -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceZipCommandDocumented -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationCadencePolicy -eq "BIG_NODE_ONLY" -and

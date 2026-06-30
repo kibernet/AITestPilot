@@ -453,6 +453,8 @@ That command runs the production driver intake, production Lua readiness, and li
 
 That operator-side entry point discovers evidence directories from explicit parameters, `AITESTPILOT_*` environment variables, an owner response bundle directory or `-OwnerResponseBundleZipPath` / `AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH`, an evidence root, or the returned-evidence inbox. The generated `accept-returned-evidence.ps1` also accepts a filled owner response bundle directory or zip directly, so returned kit archives do not need a manual copy step before acceptance. It stays `PENDING_EXTERNAL_EVIDENCE` and does not run acceptance until all nine required files are present; once ready, it delegates to `Invoke-AITestPilotProductionExternalEvidenceAcceptance.ps1`. The paired probes prove missing default evidence stays pending and complete external fixture evidence from an evidence root, owner response bundle directory, or owner response bundle zip passes only in contract mode without sending mail or accepting real host-project evidence.
 
+The generated owner response bundle kit README and request draft include the exact folder and zip auto-acceptance commands, and the kit workflow probe gates that handoff text before release.
+
 To prove all production hard-mode switches block the current sample or missing-evidence state together:
 
 ```powershell

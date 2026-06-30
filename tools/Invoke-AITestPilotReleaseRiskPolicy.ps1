@@ -1231,6 +1231,12 @@ $productionHandoffOwnerResponseBundleKitAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "requestDraftGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "reportGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "zipGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "autoAcceptanceCommandsGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "autoAcceptanceCommandsContentValidated" $false)) -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-RequireAllEvidence") -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerContactCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "requiredEvidenceFileCount" -1)) -eq
@@ -1248,7 +1254,7 @@ $productionHandoffOwnerResponseBundleKitAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionOutputBoundary" "") -eq "owner_response_bundle_template_kit_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "checkCount" 0)) -eq 7 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -1273,6 +1279,12 @@ $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateMissingEvidenceFileCount" -1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importHelperSucceeded" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importCopiedBundle" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceCommandsDocumented" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceZipCommandDocumented" $false)) -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-RequireAllEvidence") -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importedEvidenceFileCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "writtenEvidenceFileCount" -1)) -eq
@@ -1286,7 +1298,7 @@ $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionOutputBoundary" "") -eq "owner_response_bundle_kit_workflow_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "checkCount" 0)) -eq 7 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2032,11 +2044,17 @@ $manifest = [ordered]@{
     productionHandoffOwnerResponseBundleKitAccepted = [bool]$productionHandoffOwnerResponseBundleKitAccepted
     productionHandoffOwnerResponseBundleKitZipGenerated = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "zipGenerated" $false)
     productionHandoffOwnerResponseBundleKitRequiredFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "requiredEvidenceFileCount" 0))
+    productionHandoffOwnerResponseBundleKitAutoAcceptanceCommandsDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "autoAcceptanceCommandsContentValidated" $false)
+    productionHandoffOwnerResponseBundleKitAutoAcceptanceCommand = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleAutoAcceptanceCommand" "")
+    productionHandoffOwnerResponseBundleKitZipAutoAcceptanceCommand = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
+    productionHandoffOwnerResponseBundleKitZipEnvironmentVariable = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipEnvironmentVariable" "")
     productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted
     productionHandoffOwnerResponseBundleKitWorkflowEmptyTemplateRejected = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emptyTemplateRejected" $false)
     productionHandoffOwnerResponseBundleKitWorkflowCompleteTemplateAccepted = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateAccepted" $false)
     productionHandoffOwnerResponseBundleKitWorkflowImportCopiedBundle = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importCopiedBundle" $false)
     productionHandoffOwnerResponseBundleKitWorkflowImportedEvidenceFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importedEvidenceFileCount" 0))
+    productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceCommandsDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceCommandsDocumented" $false)
+    productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceZipCommandDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceZipCommandDocumented" $false)
     releaseProgressNotificationOutboxAccepted = [bool]$releaseProgressNotificationOutboxAccepted
     releaseProgressNotificationDispatchStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "")
     releaseProgressNotificationRecipient = (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "")
@@ -2172,10 +2190,12 @@ $reportLines = @(
     "- Production handoff owner response bundle kit accepted: $($manifest.productionHandoffOwnerResponseBundleKitAccepted)",
     "- Production handoff owner response bundle kit zip generated: $($manifest.productionHandoffOwnerResponseBundleKitZipGenerated)",
     "- Production handoff owner response bundle kit required files: $($manifest.productionHandoffOwnerResponseBundleKitRequiredFileCount)",
+    "- Production handoff owner response bundle kit auto acceptance documented: $($manifest.productionHandoffOwnerResponseBundleKitAutoAcceptanceCommandsDocumented)",
     "- Production handoff owner response bundle kit workflow accepted: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted)",
     "- Production handoff owner response bundle kit workflow empty rejected: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowEmptyTemplateRejected)",
     "- Production handoff owner response bundle kit workflow complete accepted: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowCompleteTemplateAccepted)",
     "- Production handoff owner response bundle kit workflow imported files: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowImportedEvidenceFileCount)",
+    "- Production handoff owner response bundle kit workflow auto acceptance documented: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceCommandsDocumented)",
     "- Release progress notification outbox accepted: $($manifest.releaseProgressNotificationOutboxAccepted)",
     "- Release progress notification dispatch status: $($manifest.releaseProgressNotificationDispatchStatus)",
     "- Release progress notification recipient: $($manifest.releaseProgressNotificationRecipient)",

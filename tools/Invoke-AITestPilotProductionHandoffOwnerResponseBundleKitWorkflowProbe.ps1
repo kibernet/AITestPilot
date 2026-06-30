@@ -273,6 +273,8 @@ Copy-Item -LiteralPath $sourceKitPath -Destination $copiedKitPath -Recurse -Forc
 
 $verifyScriptPath = Join-Path $copiedKitPath "verify-owner-response-bundle.ps1"
 $importScriptPath = Join-Path $copiedKitPath "import-owner-response-bundle.ps1"
+$kitReadmePath = Join-Path $copiedKitPath "README.md"
+$requestDraftPath = Join-Path $copiedKitPath "owner-response-bundle-request-draft.md"
 $templatePath = Join-Path $copiedKitPath "owner-response-bundle-template"
 if (-not (Test-Path $verifyScriptPath)) {
     throw "Copied kit is missing verify helper: $verifyScriptPath"
@@ -283,6 +285,28 @@ if (-not (Test-Path $importScriptPath)) {
 if (-not (Test-Path $templatePath)) {
     throw "Copied kit is missing owner response template: $templatePath"
 }
+
+$ownerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleAutoAcceptanceCommand" "")
+$ownerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
+$ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $kitManifest "ownerResponseBundleZipEnvironmentVariable" "")
+$kitReadmeText = if (Test-Path $kitReadmePath) { Get-Content -Path $kitReadmePath -Encoding UTF8 -Raw } else { "" }
+$requestDraftText = if (Test-Path $requestDraftPath) { Get-Content -Path $requestDraftPath -Encoding UTF8 -Raw } else { "" }
+$kitDocsText = [string]::Join([Environment]::NewLine, @($kitReadmeText, $requestDraftText))
+$autoAcceptanceZipCommandDocumented = (
+    -not [string]::IsNullOrWhiteSpace($ownerResponseBundleZipAutoAcceptanceCommand) -and
+    -not [string]::IsNullOrWhiteSpace($ownerResponseBundleZipEnvironmentVariable) -and
+    $kitDocsText.Contains($ownerResponseBundleZipAutoAcceptanceCommand) -and
+    $kitDocsText.Contains("-OwnerResponseBundleZipPath") -and
+    $kitDocsText.Contains("-RequireAllEvidence") -and
+    $kitDocsText.Contains($ownerResponseBundleZipEnvironmentVariable)
+)
+$autoAcceptanceCommandsDocumented = (
+    (Convert-ToBool (Get-JsonValue $kitManifest "autoAcceptanceCommandsContentValidated" $false)) -and
+    -not [string]::IsNullOrWhiteSpace($ownerResponseBundleAutoAcceptanceCommand) -and
+    $kitDocsText.Contains($ownerResponseBundleAutoAcceptanceCommand) -and
+    $kitDocsText.Contains("-OwnerResponseBundleDir") -and
+    $autoAcceptanceZipCommandDocumented
+)
 
 $incompleteBundlePath = Join-Path $workPath "incomplete-owner-response-bundle"
 $completeBundlePath = Join-Path $workPath "complete-owner-response-bundle"
@@ -429,6 +453,8 @@ $reportLines = @(
     "| Owner contacts | $ownerContactCount |",
     "| Required evidence files | $kitRequiredEvidenceFileCount |",
     "| Imported evidence files | $(@($importedEvidenceFiles).Count) |",
+    "| Auto acceptance commands documented | $autoAcceptanceCommandsDocumented |",
+    "| Auto acceptance zip command documented | $autoAcceptanceZipCommandDocumented |",
     "| Import error | $(Format-MarkdownCell $importErrorMessage) |",
     "",
     "## Boundary",
@@ -461,6 +487,9 @@ Add-ProbeCheck "complete_template_ready_for_import" `
 Add-ProbeCheck "import_helper_copies_bundle" `
     $importCopiedBundle `
     "Generated import helper must copy the filled roster and all required evidence files into an isolated evidence bundle."
+Add-ProbeCheck "auto_acceptance_commands_documented" `
+    $autoAcceptanceCommandsDocumented `
+    "Generated owner response bundle kit must document operator-side auto acceptance commands for returned folders and zip archives."
 Add-ProbeCheck "workflow_counts_match_kit_contract" `
     ($ownerContactCount -eq (Convert-ToInt (Get-JsonValue $ownerInputRequest "ownerActionCount" 0)) -and
         $kitRequiredEvidenceFileCount -eq (Convert-ToInt (Get-JsonValue $ownerInputRequest "missingRequiredFileCount" 0)) -and
@@ -500,6 +529,8 @@ foreach ($file in @(Get-ChildItem -LiteralPath $importSnapshotPath -Recurse -Fil
 
 $sourceFiles = @(
     "production-handoff-owner-response-bundle-kit-manifest.json",
+    "production-handoff-owner-response-bundle-kit/README.md",
+    "production-handoff-owner-response-bundle-kit/owner-response-bundle-request-draft.md",
     "production-handoff-owner-response-bundle-kit/verify-owner-response-bundle.ps1",
     "production-handoff-owner-response-bundle-kit/import-owner-response-bundle.ps1",
     "production-handoff-owner-response-bundle-kit/owner-response-bundle-template/owner-contact-roster.json",
@@ -530,6 +561,11 @@ $manifest = [ordered]@{
     completeTemplateMissingEvidenceFileCount = Convert-ToInt (Get-JsonValue $completePreflight "missingEvidenceFileCount" 0)
     importHelperSucceeded = [bool]$importSucceeded
     importCopiedBundle = [bool]$importCopiedBundle
+    autoAcceptanceCommandsDocumented = [bool]$autoAcceptanceCommandsDocumented
+    autoAcceptanceZipCommandDocumented = [bool]$autoAcceptanceZipCommandDocumented
+    ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
+    ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
+    ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
     importedRosterPath = $importedRosterPath
     importedInboxPath = $importedInboxPath
     releasePipelineSendsEmail = $false

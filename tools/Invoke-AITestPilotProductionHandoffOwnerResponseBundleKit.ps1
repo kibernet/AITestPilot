@@ -481,6 +481,10 @@ Write-Output "Imported owner response bundle into $evidencePath"
 '@
 $importScript | Set-Content -Path $importScriptPath -Encoding UTF8
 
+$ownerResponseBundleAutoAcceptanceCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle" -RequireAllEvidence'
+$ownerResponseBundleZipAutoAcceptanceCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip" -RequireAllEvidence'
+$ownerResponseBundleZipEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+
 $kitReadmePath = Join-Path $kitPath "README.md"
 $kitReadmeLines = @(
     "# AI TestPilot Owner Response Bundle Kit",
@@ -494,6 +498,9 @@ $kitReadmeLines = @(
     "3. Copy required evidence files into production-driver-evidence, production-lua-evidence, and live-smoke-evidence.",
     "4. Run verify-owner-response-bundle.ps1 against the filled bundle.",
     "5. Run import-owner-response-bundle.ps1 -ResponseBundleDir path\\to\\filled-bundle -RunReadiness.",
+    "6. Operator-side auto acceptance from a returned folder: $ownerResponseBundleAutoAcceptanceCommand",
+    "7. Operator-side auto acceptance from a returned zip: $ownerResponseBundleZipAutoAcceptanceCommand",
+    "8. Zip path can also be provided with $ownerResponseBundleZipEnvironmentVariable.",
     "",
     "Boundary:",
     "",
@@ -515,6 +522,7 @@ $templateReadmeLines = @(
     "1. Fill owner-contact-roster.json.",
     "2. Add the required files listed under each evidence directory.",
     "3. Run ../verify-owner-response-bundle.ps1 -BundleDir .",
+    "4. Return this folder, or a zip of this folder, to the operator for auto acceptance.",
     "",
     "The template is incomplete until every required file is present and every contact is configured."
 )
@@ -533,6 +541,13 @@ $requestDraftLines = @(
     "- Required evidence files total: $requiredEvidenceFileCount",
     "",
     "Use verify-owner-response-bundle.ps1 before returning the filled bundle.",
+    "Return either the filled folder or a zip of that folder.",
+    "",
+    "Operator-side acceptance after return:",
+    "",
+    "- $ownerResponseBundleAutoAcceptanceCommand",
+    "- $ownerResponseBundleZipAutoAcceptanceCommand",
+    "- Zip path environment variable: $ownerResponseBundleZipEnvironmentVariable",
     "",
     "This request does not mean production evidence has been accepted yet."
 )
@@ -554,6 +569,9 @@ $reportLines = @(
     "| Missing evidence files in default bundle | $missingRequiredFileCount |",
     "| Response bundle probe ready | $(Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "ownerResponseReadyForConfirmation" $false)) |",
     "| Kit zip | $(Split-Path $zipFullPath -Leaf) |",
+    "| Owner response bundle auto acceptance | $(Format-MarkdownCell $ownerResponseBundleAutoAcceptanceCommand) |",
+    "| Owner response bundle zip auto acceptance | $(Format-MarkdownCell $ownerResponseBundleZipAutoAcceptanceCommand) |",
+    "| Owner response bundle zip environment variable | $ownerResponseBundleZipEnvironmentVariable |",
     "",
     "## Directories",
     "",
@@ -587,6 +605,14 @@ $contentFiles = @(
 )
 $contentText = [string]::Join([Environment]::NewLine, @($contentFiles | ForEach-Object { Get-Content -Path $_ -Encoding UTF8 -Raw }))
 $noObjectLeakage = -not $contentText.Contains("System.Collections") -and -not $contentText.Contains("@{")
+$autoAcceptanceCommandsContentValidated = (
+    $contentText.Contains($ownerResponseBundleAutoAcceptanceCommand) -and
+    $contentText.Contains($ownerResponseBundleZipAutoAcceptanceCommand) -and
+    $contentText.Contains("-OwnerResponseBundleDir") -and
+    $contentText.Contains("-OwnerResponseBundleZipPath") -and
+    $contentText.Contains("-RequireAllEvidence") -and
+    $contentText.Contains($ownerResponseBundleZipEnvironmentVariable)
+)
 
 $kitFiles = @(
     Get-ChildItem -LiteralPath $kitPath -Recurse -File |
@@ -614,6 +640,9 @@ Add-KitCheck "owner_response_bundle_counts_match" `
 Add-KitCheck "owner_response_bundle_content_validated" `
     ($contentText.Contains("Owner Response Bundle Kit") -and $contentText.Contains("host_project_gameplay_qa") -and $contentText.Contains("production-driver-evidence") -and $contentText.Contains("live-smoke-evidence") -and $contentText.Contains("does not send email") -and $noObjectLeakage) `
     "Owner response bundle kit content must include concrete owners, directories, validation flow, and boundary text."
+Add-KitCheck "owner_response_bundle_auto_acceptance_commands_documented" `
+    $autoAcceptanceCommandsContentValidated `
+    "Owner response bundle kit must document operator-side auto acceptance commands for returned folders and zip archives."
 Add-KitCheck "owner_response_bundle_boundary_preserved" `
     (-not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "emailSent" $true)) -and -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "realHostProjectEvidenceAccepted" $true)) -and -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "fixtureEvidencePromoted" $true))) `
     "Owner response bundle kit must preserve not-sent, no-real-evidence, and no-fixture-promotion boundaries."
@@ -648,6 +677,11 @@ $manifest = [ordered]@{
     importScriptGenerated = (Test-Path $importScriptPath)
     requestDraftGenerated = (Test-Path $requestDraftPath)
     reportGenerated = (Test-Path $reportFullPath)
+    autoAcceptanceCommandsGenerated = $true
+    autoAcceptanceCommandsContentValidated = [bool]$autoAcceptanceCommandsContentValidated
+    ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
+    ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
+    ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
     templateDirectoryCount = [int]$templateDirectoryCount
     requiredFilesJsonCount = [int]$requiredFilesJsonCount
     areaReadmeCount = [int]$areaReadmeCount
