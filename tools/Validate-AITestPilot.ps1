@@ -125,6 +125,8 @@ try {
         "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidenceGapAnalysis.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidencePartialMatrixProbe.ps1",
+        "tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
+        "tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflightProbe.ps1",
         "tools\Invoke-AITestPilotProductionHandoffExportZipIndex.ps1",
         "tools\Invoke-AITestPilotReleaseDocsFreshnessProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1",

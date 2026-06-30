@@ -219,6 +219,7 @@ $releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-PolicyJson 
 $productionExternalEvidenceActionQueueProbeManifest = Read-PolicyJson "production-external-evidence-action-queue-probe-manifest.json" "Production external evidence action queue probe manifest"
 $productionExternalEvidenceGapAnalysisManifest = Read-PolicyJson "production-external-evidence-gap-analysis-manifest.json" "Production external evidence gap analysis manifest"
 $productionExternalEvidencePartialMatrixProbeManifest = Read-PolicyJson "production-external-evidence-partial-matrix-probe-manifest.json" "Production external evidence partial matrix probe manifest"
+$productionExternalEvidenceSemanticPreflightProbeManifest = Read-PolicyJson "production-external-evidence-semantic-preflight-probe-manifest.json" "Production external evidence semantic preflight probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -1958,6 +1959,41 @@ Add-PolicyCheck "production_external_evidence_partial_matrix_probe_policy" $prod
     "Production evidence handoff must prove partial or malformed owner response bundles are rejected before acceptance runs or fixture evidence is promoted." `
     "production_external_evidence_partial_matrix_probe_not_accepted"
 
+$productionExternalEvidenceSemanticPreflightProbeAccepted = (
+    $null -ne $productionExternalEvidenceSemanticPreflightProbeManifest -and
+    $productionExternalEvidenceSemanticPreflightProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_semantic_preflight_probe.v1" -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "readOnly" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "acceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "hardValidationRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "caseCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "completeCandidateCaseCount" 0)) -eq 2 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "rejectedCaseCount" 0)) -eq 3 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "defaultPendingAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "completeExternalRootReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "partialBundleRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "semanticBadBundleRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "fixtureSignalRejectedWithoutContractMode" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "semanticFailCaseCount" 0)) -ge 1 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerRepairRouteCaseCount" 0)) -ge 1 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "missingEvidenceCaseCount" 0)) -ge 1 -and
+    (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_semantic_preflight_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "checkCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_semantic_preflight_probe_policy" $productionExternalEvidenceSemanticPreflightProbeAccepted `
+    "Production evidence handoff must prove returned owner bundles are semantically preflighted before acceptance, with missing, partial, and fixture/template-shaped content rejected without accepting evidence, sending mail, or promoting fixtures." `
+    "production_external_evidence_semantic_preflight_probe_not_accepted"
+
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
     $productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2276,6 +2312,7 @@ $sourceFiles = @(
     "production-external-evidence-action-queue-probe-manifest.json",
     "production-external-evidence-gap-analysis-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
+    "production-external-evidence-semantic-preflight-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "production-hard-mode-success-contract-probe-manifest.json"
 )
@@ -2482,6 +2519,17 @@ $manifest = [ordered]@{
     productionExternalEvidencePartialMatrixSingleAreaRejected = (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "singleAreaCasesRejected" $false)
     productionExternalEvidencePartialMatrixSingleFileMissingRejected = (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "singleFileMissingRejected" $false)
     productionExternalEvidencePartialMatrixMalformedZipRejected = (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "malformedZipRejected" $false)
+    productionExternalEvidenceSemanticPreflightProbeAccepted = [bool]$productionExternalEvidenceSemanticPreflightProbeAccepted
+    productionExternalEvidenceSemanticPreflightCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "caseCount" 0))
+    productionExternalEvidenceSemanticPreflightCandidateCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "completeCandidateCaseCount" 0))
+    productionExternalEvidenceSemanticPreflightRejectedCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "rejectedCaseCount" 0))
+    productionExternalEvidenceSemanticPreflightDefaultPendingAccepted = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "defaultPendingAccepted" $false)
+    productionExternalEvidenceSemanticPreflightOwnerResponseBundleReady = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleReady" $false)
+    productionExternalEvidenceSemanticPreflightPartialBundleRejected = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "partialBundleRejected" $false)
+    productionExternalEvidenceSemanticPreflightSemanticBadBundleRejected = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "semanticBadBundleRejected" $false)
+    productionExternalEvidenceSemanticPreflightFixtureSignalRejected = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "fixtureSignalRejectedWithoutContractMode" $false)
+    productionExternalEvidenceSemanticPreflightAcceptanceRun = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "acceptanceRun" $true)
+    productionExternalEvidenceSemanticPreflightEmailSent = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "emailSent" $true)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
@@ -2657,6 +2705,12 @@ $reportLines = @(
     "- Production external evidence partial matrix single-area rejected: $($manifest.productionExternalEvidencePartialMatrixSingleAreaRejected)",
     "- Production external evidence partial matrix single-file-missing rejected: $($manifest.productionExternalEvidencePartialMatrixSingleFileMissingRejected)",
     "- Production external evidence partial matrix malformed zip rejected: $($manifest.productionExternalEvidencePartialMatrixMalformedZipRejected)",
+    "- Production external evidence semantic preflight accepted: $($manifest.productionExternalEvidenceSemanticPreflightProbeAccepted)",
+    "- Production external evidence semantic preflight cases: $($manifest.productionExternalEvidenceSemanticPreflightRejectedCaseCount) rejected / $($manifest.productionExternalEvidenceSemanticPreflightCaseCount) total",
+    "- Production external evidence semantic preflight candidate cases: $($manifest.productionExternalEvidenceSemanticPreflightCandidateCaseCount)",
+    "- Production external evidence semantic preflight partial bundle rejected: $($manifest.productionExternalEvidenceSemanticPreflightPartialBundleRejected)",
+    "- Production external evidence semantic preflight semantic-bad bundle rejected: $($manifest.productionExternalEvidenceSemanticPreflightSemanticBadBundleRejected)",
+    "- Production external evidence semantic preflight fixture signal rejected: $($manifest.productionExternalEvidenceSemanticPreflightFixtureSignalRejected)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",

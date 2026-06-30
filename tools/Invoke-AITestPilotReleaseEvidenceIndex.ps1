@@ -352,6 +352,7 @@ function Get-DefaultSourceManifestNames {
         "production-external-evidence-action-queue-probe-manifest.json",
         "production-external-evidence-gap-analysis-manifest.json",
         "production-external-evidence-partial-matrix-probe-manifest.json",
+        "production-external-evidence-semantic-preflight-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "production-hard-mode-success-contract-probe-manifest.json",
         "release-risk-policy-manifest.json"

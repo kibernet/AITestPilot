@@ -236,6 +236,7 @@ $releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-Manifest "r
 $productionExternalEvidenceActionQueueProbeManifest = Read-Manifest "production-external-evidence-action-queue-probe-manifest.json"
 $productionExternalEvidenceGapAnalysisManifest = Read-Manifest "production-external-evidence-gap-analysis-manifest.json"
 $productionExternalEvidencePartialMatrixProbeManifest = Read-Manifest "production-external-evidence-partial-matrix-probe-manifest.json"
+$productionExternalEvidenceSemanticPreflightProbeManifest = Read-Manifest "production-external-evidence-semantic-preflight-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2840,6 +2841,40 @@ if ($null -ne $productionExternalEvidencePartialMatrixProbeManifest) {
     Test-ListedFiles $productionExternalEvidencePartialMatrixProbeManifest "production_external_evidence_partial_matrix_probe"
 }
 
+if ($null -ne $productionExternalEvidenceSemanticPreflightProbeManifest) {
+    Add-ReleaseCheck "production_external_evidence_semantic_preflight_probe" `
+        ($productionExternalEvidenceSemanticPreflightProbeManifest.status -eq "PASS" -and
+            $productionExternalEvidenceSemanticPreflightProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_semantic_preflight_probe.v1" -and
+            -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.externalBundleUnderRepo -and
+            [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.readOnly -and
+            -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.acceptanceRun -and
+            -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.hardValidationRun -and
+            -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.emailSent -and
+            -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.externalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.fixtureEvidencePromoted -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.caseCount -eq 5 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.completeCandidateCaseCount -eq 2 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.rejectedCaseCount -eq 3 -and
+            [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.defaultPendingAccepted -and
+            [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.completeExternalRootReady -and
+            [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.ownerResponseBundleReady -and
+            [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.partialBundleRejected -and
+            [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.semanticBadBundleRejected -and
+            [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.fixtureSignalRejectedWithoutContractMode -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.semanticFailCaseCount -ge 1 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.ownerRepairRouteCaseCount -ge 1 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.missingEvidenceCaseCount -ge 1 -and
+            $productionExternalEvidenceSemanticPreflightProbeManifest.productionOutputBoundary -eq "production_external_evidence_semantic_preflight_probe_only" -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.checkCount -eq 7 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.failedCheckCount -eq 0) `
+        "Production external evidence semantic preflight probe must reject missing, partial, and fixture/template-shaped returned owner bundles before acceptance, without sending mail or promoting fixtures."
+
+    Test-ListedFiles $productionExternalEvidenceSemanticPreflightProbeManifest "production_external_evidence_semantic_preflight_probe"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -3332,6 +3367,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-external-evidence-action-queue-probe-manifest.json",
         "production-external-evidence-gap-analysis-manifest.json",
         "production-external-evidence-partial-matrix-probe-manifest.json",
+        "production-external-evidence-semantic-preflight-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "production-hard-mode-success-contract-probe-manifest.json",
         "release-risk-policy-manifest.json"
@@ -3455,6 +3491,7 @@ $sourceManifests = @(
     "production-external-evidence-action-queue-probe-manifest.json",
     "production-external-evidence-gap-analysis-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
+    "production-external-evidence-semantic-preflight-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "production-hard-mode-success-contract-probe-manifest.json",
     "release-risk-policy-manifest.json",

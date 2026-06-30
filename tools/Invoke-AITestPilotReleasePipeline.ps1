@@ -616,6 +616,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_external_evidence_semantic_preflight_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflightProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_handoff_export_final_refresh" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffExport.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

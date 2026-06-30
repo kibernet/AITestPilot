@@ -203,6 +203,7 @@ $requiredArtifactNames = @(
     "release-evidence-index-manifest.json",
     "release-gate-manifest.json",
     "production-handoff-export-zip-index-manifest.json",
+    "production-external-evidence-semantic-preflight-probe-manifest.json",
     "release-docs-freshness-manifest.json"
 )
 $combinedDocsText = [string]::Join([Environment]::NewLine, @(
@@ -258,6 +259,7 @@ $requiredSourceManifestNames = @(
     "production-handoff-export-zip-index-manifest.json",
     "production-external-evidence-gap-analysis-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
+    "production-external-evidence-semantic-preflight-probe-manifest.json",
     "release-docs-freshness-manifest.json"
 )
 $missingSourceManifestReferences = @()
