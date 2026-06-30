@@ -157,6 +157,7 @@ function Invoke-ActionQueue {
     param(
         [string]$Name,
         [string]$PostDispatchSnapshotPath,
+        [switch]$IgnorePostDispatchSnapshot,
         [switch]$RequirePostDispatch
     )
 
@@ -179,6 +180,9 @@ function Invoke-ActionQueue {
     )
     if (-not [string]::IsNullOrWhiteSpace($PostDispatchSnapshotPath)) {
         $powerShellArgs += @("-PostDispatchSnapshotPath", $PostDispatchSnapshotPath)
+    }
+    if ([bool]$IgnorePostDispatchSnapshot) {
+        $powerShellArgs += "-IgnorePostDispatchSnapshot"
     }
     if ([bool]$RequirePostDispatch) {
         $powerShellArgs += "-RequirePostDispatch"
@@ -227,7 +231,7 @@ $ownerInputRequest = Read-JsonFile (Join-Path $evidenceBundlePath "production-ha
 $responseBundleKit = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-response-bundle-kit-manifest.json") "Production handoff owner response bundle kit manifest"
 $externalInbox = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-inbox-manifest.json") "Production external evidence inbox manifest"
 
-$pendingResult = Invoke-ActionQueue -Name "pending-progress-mail-action-queue"
+$pendingResult = Invoke-ActionQueue -Name "pending-progress-mail-action-queue" -IgnorePostDispatchSnapshot
 
 $contractPostDispatchPath = Join-Path $probePath "contract-post-dispatch-snapshot-manifest.json"
 $contractPostDispatch = [ordered]@{
@@ -278,6 +282,7 @@ Add-ProbeCheck "pending_queue_keeps_progress_mail_action" `
     ($pendingResult.exitCode -eq 0 -and
         (Get-JsonValue $pendingManifest "status" "") -eq "PASS" -and
         (Get-JsonValue $pendingManifest "sourceKind" "") -eq "remaining_work_snapshot" -and
+        (Convert-ToBool (Get-JsonValue $pendingManifest "ignorePostDispatchSnapshot" $false)) -and
         -not (Convert-ToBool (Get-JsonValue $pendingManifest "progressNotificationEmailSent" $true)) -and
         (Convert-ToInt (Get-JsonValue $pendingManifest "localProgressMailRemainingActionCount" 0)) -eq 1 -and
         (Convert-ToInt (Get-JsonValue $pendingManifest "trackedRemainingWorkItemCount" 0)) -eq 4) `

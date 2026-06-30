@@ -4,6 +4,7 @@ param(
     [string]$PostDispatchSnapshotPath,
     [string]$ManifestPath,
     [string]$ReportPath,
+    [switch]$IgnorePostDispatchSnapshot,
     [switch]$RequirePostDispatch
 )
 
@@ -170,7 +171,7 @@ if (-not (Test-Path $evidenceBundlePath)) {
 }
 
 $defaultPostDispatchPath = Join-Path $evidenceBundlePath "release-progress-notification-post-dispatch-snapshot-manifest.json"
-if ([string]::IsNullOrWhiteSpace($PostDispatchSnapshotPath) -and (Test-Path $defaultPostDispatchPath)) {
+if (-not [bool]$IgnorePostDispatchSnapshot -and [string]::IsNullOrWhiteSpace($PostDispatchSnapshotPath) -and (Test-Path $defaultPostDispatchPath)) {
     $PostDispatchSnapshotPath = $defaultPostDispatchPath
 }
 
@@ -338,6 +339,7 @@ $manifest = [ordered]@{
     sourceKind = $sourceKind
     sourceSnapshotPath = $sourceSnapshotPath
     requirePostDispatch = [bool]$RequirePostDispatch
+    ignorePostDispatchSnapshot = [bool]$IgnorePostDispatchSnapshot
     notificationDispatchStatus = $notificationDispatchStatus
     progressNotificationEmailSent = [bool]$progressNotificationEmailSent
     localProgressMailRemainingActionCount = [int]$localProgressMailRemainingActionCount
