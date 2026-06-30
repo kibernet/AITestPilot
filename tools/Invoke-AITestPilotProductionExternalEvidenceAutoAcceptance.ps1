@@ -6,6 +6,7 @@ param(
     [string]$AcceptanceBundleDir,
     [string]$EvidenceRoot,
     [string]$OwnerResponseBundleDir,
+    [string]$OwnerResponseBundleZipPath,
     [string]$ProductionDriverEvidenceDir,
     [string]$ProductionLuaEvidenceDir,
     [string]$LiveModelEndpointSmokeEvidenceDir,
@@ -18,6 +19,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -194,6 +196,42 @@ function Resolve-CandidateDir {
     }
 }
 
+function Test-OwnerResponseBundleRoot {
+    param([string]$Path)
+
+    return (-not [string]::IsNullOrWhiteSpace($Path)) -and
+        (Test-Path (Join-Path $Path "production-driver-evidence")) -and
+        (Test-Path (Join-Path $Path "production-lua-evidence")) -and
+        (Test-Path (Join-Path $Path "live-smoke-evidence"))
+}
+
+function Resolve-OwnerResponseBundleRoot {
+    param([string]$Path)
+
+    $bundlePath = Resolve-FullPath $Path
+    $candidates = @(
+        $bundlePath,
+        (Join-Path $bundlePath "owner-response-bundle-template")
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-OwnerResponseBundleRoot $candidate) {
+            return (Resolve-FullPath $candidate)
+        }
+    }
+
+    $manifestCandidates = @(
+        Get-ChildItem -LiteralPath $bundlePath -Recurse -Filter "owner-response-bundle-manifest.json" -File -ErrorAction SilentlyContinue |
+            ForEach-Object { Split-Path $_.FullName -Parent }
+    )
+    foreach ($candidate in $manifestCandidates) {
+        if (Test-OwnerResponseBundleRoot $candidate) {
+            return (Resolve-FullPath $candidate)
+        }
+    }
+
+    throw "Could not locate owner response bundle evidence directories under $bundlePath."
+}
+
 function Test-EvidenceDir {
     param(
         [string]$Area,
@@ -258,6 +296,35 @@ if ([string]::IsNullOrWhiteSpace($EvidenceRoot) -and -not [string]::IsNullOrWhit
 }
 if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable("AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR"))) {
     $OwnerResponseBundleDir = [Environment]::GetEnvironmentVariable("AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR")
+}
+if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath) -and -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"))) {
+    $OwnerResponseBundleZipPath = [Environment]::GetEnvironmentVariable("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH")
+}
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and -not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    throw "Pass either -OwnerResponseBundleDir or -OwnerResponseBundleZipPath, not both."
+}
+
+$expandedOwnerResponseBundleDir = ""
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    $ownerResponseBundleZipFullPath = Resolve-FullPath $OwnerResponseBundleZipPath
+    if (-not (Test-Path $ownerResponseBundleZipFullPath)) {
+        throw "Owner response bundle zip does not exist: $ownerResponseBundleZipFullPath"
+    }
+
+    $zipStem = [System.IO.Path]::GetFileNameWithoutExtension($ownerResponseBundleZipFullPath)
+    if ([string]::IsNullOrWhiteSpace($zipStem)) {
+        $zipStem = "owner-response-bundle"
+    }
+    $expandedOwnerResponseBundleDir = Join-Path $tempRoot (Join-Path "AITestPilot\production-external-evidence-auto-acceptance" $zipStem)
+    if (Test-Path $expandedOwnerResponseBundleDir) {
+        Remove-Item -LiteralPath $expandedOwnerResponseBundleDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Force $expandedOwnerResponseBundleDir | Out-Null
+    Expand-Archive -LiteralPath $ownerResponseBundleZipFullPath -DestinationPath $expandedOwnerResponseBundleDir -Force
+    $OwnerResponseBundleDir = $expandedOwnerResponseBundleDir
+}
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
+    $OwnerResponseBundleDir = Resolve-OwnerResponseBundleRoot $OwnerResponseBundleDir
 }
 
 $driverRequiredFiles = @(
@@ -414,6 +481,8 @@ $manifest = [ordered]@{
     evidenceBundleDir = $evidenceBundlePath
     evidenceRoot = if ([string]::IsNullOrWhiteSpace($EvidenceRoot)) { "" } else { Resolve-FullPath $EvidenceRoot }
     ownerResponseBundleDir = if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) { "" } else { Resolve-FullPath $OwnerResponseBundleDir }
+    ownerResponseBundleZipPath = if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) { "" } else { Resolve-FullPath $OwnerResponseBundleZipPath }
+    expandedOwnerResponseBundleDir = if ([string]::IsNullOrWhiteSpace($expandedOwnerResponseBundleDir)) { "" } else { Resolve-FullPath $expandedOwnerResponseBundleDir }
     acceptanceBundleDir = $acceptanceBundlePath
     contractFixtureMode = [bool]$ContractFixtureMode
     requireAllEvidence = [bool]$RequireAllEvidence
@@ -459,6 +528,8 @@ $reportLines = @(
     "| All external evidence accepted | $allExternalEvidenceAccepted |",
     "| Real host-project evidence accepted | $realHostProjectEvidenceAccepted |",
     "| Contract fixture mode | $([bool]$ContractFixtureMode) |",
+    "| Owner response bundle zip | $(Format-MarkdownCell $OwnerResponseBundleZipPath) |",
+    "| Expanded owner response bundle | $(Format-MarkdownCell $expandedOwnerResponseBundleDir) |",
     "",
     "## Areas",
     "",
