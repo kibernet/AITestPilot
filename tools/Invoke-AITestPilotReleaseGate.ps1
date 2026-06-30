@@ -228,6 +228,7 @@ $releaseProgressNotificationReceiptProbeManifest = Read-Manifest "release-progre
 $releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-Manifest "release-progress-notification-dispatch-receipt-intake-probe-manifest.json"
 $releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-Manifest "release-progress-notification-local-send-workflow-probe-manifest.json"
 $releaseProgressNotificationRealReceiptGuardProbeManifest = Read-Manifest "release-progress-notification-real-receipt-guard-probe-manifest.json"
+$releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-Manifest "release-progress-notification-post-dispatch-snapshot-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -2421,14 +2422,21 @@ if ($null -ne $releaseProgressNotificationDispatchReceiptIntakeProbeManifest) {
             $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.contractNotificationDispatchStatus -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
             -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.contractRealEmailSentAccepted -and
             -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.contractEmailSent -and
+            [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.queuedReceiptAccepted -and
+            [string]::IsNullOrWhiteSpace([string]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.queuedReceiptMessageId) -and
+            [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.queuedReceiptQueued -and
+            [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.queuedReceiptDispatchEvidencePresent -and
+            $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.queuedNotificationDispatchStatus -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
+            -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.queuedRealEmailSentAccepted -and
+            -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.queuedEmailSent -and
             -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.releasePipelineSendsEmail -and
             $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.canonicalOutboxDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.canonicalOutboxEmailSent -and
             -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.fixtureEvidencePromoted -and
             $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.productionOutputBoundary -eq "progress_notification_dispatch_receipt_intake_probe_only" -and
-            [int]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.checkCount -eq 5 -and
+            [int]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.checkCount -eq 6 -and
             [int]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.failedCheckCount -eq 0) `
-        "Release progress notification dispatch receipt intake probe must reject fake receipt ids and accept contract-shaped receipts without claiming real email."
+        "Release progress notification dispatch receipt intake probe must reject fake receipt ids and accept contract-shaped or queued receipts without claiming real email."
 
     Test-ListedFiles $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "release_progress_notification_dispatch_receipt_intake_probe"
 }
@@ -2498,6 +2506,30 @@ if ($null -ne $releaseProgressNotificationRealReceiptGuardProbeManifest) {
         "Release progress notification real receipt guard must require explicit operator confirmation before emailSent and keep contract fixtures not-sent."
 
     Test-ListedFiles $releaseProgressNotificationRealReceiptGuardProbeManifest "release_progress_notification_real_receipt_guard_probe"
+}
+
+if ($null -ne $releaseProgressNotificationPostDispatchSnapshotProbeManifest) {
+    Add-ReleaseCheck "release_progress_notification_post_dispatch_snapshot_probe" `
+        ($releaseProgressNotificationPostDispatchSnapshotProbeManifest.status -eq "PASS" -and
+            $releaseProgressNotificationPostDispatchSnapshotProbeManifest.schemaVersion -eq "aitestpilot.release_progress_notification_post_dispatch_snapshot_probe.v1" -and
+            [bool]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.contractFixtureRejected -and
+            -not [bool]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.contractFixtureEmailSent -and
+            -not [bool]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.contractFixtureRealEmailSentAccepted -and
+            [int]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.contractFixtureLocalMailRemainingActionCount -eq 1 -and
+            [int]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.contractFixtureTrackedRemainingWorkItemCount -eq 4 -and
+            [int]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.contractFixtureExternalRemainingWorkItemCount -eq 3 -and
+            [int]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.contractFixtureExternalRemainingBlockingReasonCount -eq 11 -and
+            [int]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.contractFixtureExternalRemainingMissingFileCount -eq 9 -and
+            -not [bool]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.releasePipelineSendsEmail -and
+            $releaseProgressNotificationPostDispatchSnapshotProbeManifest.canonicalOutboxDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+            -not [bool]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.canonicalOutboxEmailSent -and
+            -not [bool]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.fixtureEvidencePromoted -and
+            $releaseProgressNotificationPostDispatchSnapshotProbeManifest.productionOutputBoundary -eq "progress_notification_post_dispatch_snapshot_probe_only" -and
+            [int]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.checkCount -eq 4 -and
+            [int]$releaseProgressNotificationPostDispatchSnapshotProbeManifest.failedCheckCount -eq 0) `
+        "Release progress notification post-dispatch snapshot probe must reject contract fixtures and keep local mail remaining until real operator dispatch evidence is accepted."
+
+    Test-ListedFiles $releaseProgressNotificationPostDispatchSnapshotProbeManifest "release_progress_notification_post_dispatch_snapshot_probe"
 }
 
 if ($null -ne $productionExternalEvidenceInboxManifest) {

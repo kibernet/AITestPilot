@@ -210,6 +210,7 @@ $releaseProgressNotificationReceiptProbeManifest = Read-PolicyJson "release-prog
 $releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-PolicyJson "release-progress-notification-dispatch-receipt-intake-probe-manifest.json" "Release progress notification dispatch receipt intake probe manifest"
 $releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-PolicyJson "release-progress-notification-local-send-workflow-probe-manifest.json" "Release progress notification local send workflow probe manifest"
 $releaseProgressNotificationRealReceiptGuardProbeManifest = Read-PolicyJson "release-progress-notification-real-receipt-guard-probe-manifest.json" "Release progress notification real receipt guard probe manifest"
+$releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-PolicyJson "release-progress-notification-post-dispatch-snapshot-probe-manifest.json" "Release progress notification post-dispatch snapshot probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -1475,17 +1476,24 @@ $releaseProgressNotificationDispatchReceiptIntakeProbeAccepted = (
     (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractNotificationDispatchStatus" "") -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractRealEmailSentAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractEmailSent" $true)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedReceiptAccepted" $false)) -and
+    [string]::IsNullOrWhiteSpace([string](Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedReceiptMessageId" "not-empty")) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedReceiptQueued" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedReceiptDispatchEvidencePresent" $false)) -and
+    (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedNotificationDispatchStatus" "") -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedRealEmailSentAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedEmailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "releasePipelineSendsEmail" $true)) -and
     (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "canonicalOutboxDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "canonicalOutboxEmailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "productionOutputBoundary" "") -eq "progress_notification_dispatch_receipt_intake_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "checkCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "checkCount" 0)) -eq 6 -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "release_progress_notification_dispatch_receipt_intake_probe_policy" $releaseProgressNotificationDispatchReceiptIntakeProbeAccepted `
-    "Release progress notification evidence must prove real-send receipt intake rejects fake probe receipts and accepts contract-shaped receipts without claiming a real email send." `
+    "Release progress notification evidence must prove real-send receipt intake rejects fake probe receipts and accepts contract-shaped or queued receipts without claiming a real email send." `
     "release_progress_notification_dispatch_receipt_intake_probe_not_accepted"
 
 $releaseProgressNotificationLocalSendWorkflowProbeAccepted = (
@@ -1556,6 +1564,31 @@ $releaseProgressNotificationRealReceiptGuardProbeAccepted = (
 Add-PolicyCheck "release_progress_notification_real_receipt_guard_probe_policy" $releaseProgressNotificationRealReceiptGuardProbeAccepted `
     "Release progress notification evidence must prove valid receipts do not set emailSent without explicit operator confirmation and contract mode cannot claim a real send." `
     "release_progress_notification_real_receipt_guard_probe_not_accepted"
+
+$releaseProgressNotificationPostDispatchSnapshotProbeAccepted = (
+    $null -ne $releaseProgressNotificationPostDispatchSnapshotProbeManifest -and
+    $releaseProgressNotificationPostDispatchSnapshotProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_post_dispatch_snapshot_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureRejected" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureRealEmailSentAccepted" $true)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureLocalMailRemainingActionCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureTrackedRemainingWorkItemCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureExternalRemainingWorkItemCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureExternalRemainingBlockingReasonCount" 0)) -eq 11 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureExternalRemainingMissingFileCount" 0)) -eq 9 -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "releasePipelineSendsEmail" $true)) -and
+    (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "canonicalOutboxDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "canonicalOutboxEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "productionOutputBoundary" "") -eq "progress_notification_post_dispatch_snapshot_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "checkCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "release_progress_notification_post_dispatch_snapshot_probe_policy" $releaseProgressNotificationPostDispatchSnapshotProbeAccepted `
+    "Release progress notification evidence must prove post-dispatch snapshots reject contract fixtures and do not clear local mail until real operator dispatch evidence is accepted." `
+    "release_progress_notification_post_dispatch_snapshot_probe_not_accepted"
 
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
@@ -1901,6 +1934,8 @@ $manifest = [ordered]@{
     releaseProgressNotificationDispatchReceiptFakeRejected = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "fakeReceiptRejected" $false)
     releaseProgressNotificationDispatchReceiptContractAccepted = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractReceiptAccepted" $false)
     releaseProgressNotificationDispatchReceiptContractRealEmailSentAccepted = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractRealEmailSentAccepted" $true)
+    releaseProgressNotificationDispatchReceiptQueuedAccepted = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedReceiptAccepted" $false)
+    releaseProgressNotificationDispatchReceiptQueuedEvidencePresent = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedReceiptDispatchEvidencePresent" $false)
     releaseProgressNotificationLocalSendWorkflowProbeAccepted = [bool]$releaseProgressNotificationLocalSendWorkflowProbeAccepted
     releaseProgressNotificationLocalWorkflowUnauthMessageSendCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "unauthenticatedMessageSendCallCount" 0))
     releaseProgressNotificationLocalWorkflowPrepareTokenReturned = (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "prepareConfirmationTokenReturned" $false)
@@ -1911,6 +1946,10 @@ $manifest = [ordered]@{
     releaseProgressNotificationRealReceiptGuardUnconfirmedEmailSent = (Get-JsonValue $releaseProgressNotificationRealReceiptGuardProbeManifest "unconfirmedEmailSent" $true)
     releaseProgressNotificationRealReceiptGuardContractConfirmedEmailSent = (Get-JsonValue $releaseProgressNotificationRealReceiptGuardProbeManifest "contractConfirmedEmailSent" $true)
     releaseProgressNotificationRealReceiptGuardConfirmSwitchAvailable = (Get-JsonValue $releaseProgressNotificationRealReceiptGuardProbeManifest "confirmLocalSendReceiptSwitchAvailable" $false)
+    releaseProgressNotificationPostDispatchSnapshotProbeAccepted = [bool]$releaseProgressNotificationPostDispatchSnapshotProbeAccepted
+    releaseProgressNotificationPostDispatchContractFixtureRejected = (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureRejected" $false)
+    releaseProgressNotificationPostDispatchContractFixtureEmailSent = (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureEmailSent" $true)
+    releaseProgressNotificationPostDispatchContractFixtureLocalMailRemainingActionCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationPostDispatchSnapshotProbeManifest "contractFixtureLocalMailRemainingActionCount" 0))
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
@@ -2023,6 +2062,10 @@ $reportLines = @(
     "- Release progress notification real receipt guard unconfirmed email sent: $($manifest.releaseProgressNotificationRealReceiptGuardUnconfirmedEmailSent)",
     "- Release progress notification real receipt guard contract-confirmed email sent: $($manifest.releaseProgressNotificationRealReceiptGuardContractConfirmedEmailSent)",
     "- Release progress notification real receipt guard confirm switch available: $($manifest.releaseProgressNotificationRealReceiptGuardConfirmSwitchAvailable)",
+    "- Release progress notification post-dispatch snapshot probe accepted: $($manifest.releaseProgressNotificationPostDispatchSnapshotProbeAccepted)",
+    "- Release progress notification post-dispatch contract fixture rejected: $($manifest.releaseProgressNotificationPostDispatchContractFixtureRejected)",
+    "- Release progress notification post-dispatch contract fixture email sent: $($manifest.releaseProgressNotificationPostDispatchContractFixtureEmailSent)",
+    "- Release progress notification post-dispatch contract fixture local mail remaining actions: $($manifest.releaseProgressNotificationPostDispatchContractFixtureLocalMailRemainingActionCount)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",

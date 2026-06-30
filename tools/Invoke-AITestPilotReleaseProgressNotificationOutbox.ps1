@@ -564,6 +564,10 @@ $sendHelperLines = @(
     "    if (`$null -ne `$response.data -and `$null -ne `$response.data.PSObject.Properties['message_id']) {",
     "        `$messageId = [string]`$response.data.message_id",
     "    }",
+    "    `$queued = `$false",
+    "    if (`$null -ne `$response.data -and `$null -ne `$response.data.PSObject.Properties['queued']) {",
+    "        `$queued = [bool]`$response.data.queued",
+    "    }",
     "    `$receipt = [ordered]@{",
     "        schemaVersion = 'aitestpilot.release_progress_notification_send_receipt.v1'",
     "        generatedAtUtc = (Get-Date).ToUniversalTime().ToString('O')",
@@ -574,6 +578,7 @@ $sendHelperLines = @(
     "        prepareConfirmation = [bool]`$PrepareConfirmation",
     "        agentlyCliExitCode = 0",
     "        messageId = `$messageId",
+    "        queued = [bool]`$queued",
     "        sendSucceeded = `$true",
     "        releasePipelineGenerated = `$false",
     "        realDeliveryVerified = `$false",
@@ -755,6 +760,7 @@ $sendHelperContentValidated = $sendHelperContent.Contains("agently-cli auth stat
     $sendHelperContent.Contains("-PrepareConfirmation") -and
     $sendHelperContent.Contains("ReceiptPath") -and
     $sendHelperContent.Contains("release_progress_notification_send_receipt.v1") -and
+    $sendHelperContent.Contains("queued") -and
     $sendHelperContent.Contains("realDeliveryVerified") -and
     $sendHelperContent.Contains("sendExitCode") -and
     $noObjectLeakage

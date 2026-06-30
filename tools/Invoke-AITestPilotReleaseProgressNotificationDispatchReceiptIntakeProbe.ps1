@@ -116,6 +116,30 @@ function New-Receipt {
     $receipt | ConvertTo-Json -Depth 8 | Set-Content -Path $Path -Encoding UTF8
 }
 
+function New-QueuedReceipt {
+    param([string]$Path)
+
+    $receipt = [ordered]@{
+        schemaVersion = "aitestpilot.release_progress_notification_send_receipt.v1"
+        generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+        recipient = [string](Get-JsonValue $outboxManifest "recipient" "")
+        subject = [string](Get-JsonValue $outboxManifest "subject" "")
+        bodyFile = ".\release-progress-notification-outbox\big-node-progress-email.md"
+        confirmationTokenSupplied = $true
+        prepareConfirmation = $false
+        agentlyCliExitCode = 0
+        messageId = ""
+        queued = $true
+        sendSucceeded = $true
+        releasePipelineGenerated = $false
+        realDeliveryVerified = $false
+        cliOutput = @("{ ""ok"": true, ""data"": { ""queued"": true } }")
+    }
+
+    New-Item -ItemType Directory -Force (Split-Path $Path -Parent) | Out-Null
+    $receipt | ConvertTo-Json -Depth 8 | Set-Content -Path $Path -Encoding UTF8
+}
+
 function Invoke-ReceiptIntake {
     param(
         [string]$Name,
@@ -183,8 +207,10 @@ $receiptProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "release-pr
 
 $fakeReceiptPath = Join-Path $probePath "fake-progress-notification-send-receipt.json"
 $contractReceiptPath = Join-Path $probePath "contract-progress-notification-send-receipt.json"
+$queuedReceiptPath = Join-Path $probePath "queued-progress-notification-send-receipt.json"
 New-Receipt -Path $fakeReceiptPath -MessageId "msg_fake_receipt_001"
 New-Receipt -Path $contractReceiptPath -MessageId "msg_contract_receipt_001"
+New-QueuedReceipt -Path $queuedReceiptPath
 
 $fakeResult = Invoke-ReceiptIntake `
     -Name "fake-receipt-intake" `
@@ -198,8 +224,15 @@ $contractResult = Invoke-ReceiptIntake `
     -ManifestPath (Join-Path $probePath "contract-receipt-intake-manifest.json") `
     -ReportPath (Join-Path $probePath "contract-receipt-intake.md")
 
+$queuedResult = Invoke-ReceiptIntake `
+    -Name "queued-receipt-intake" `
+    -ReceiptPath $queuedReceiptPath `
+    -ManifestPath (Join-Path $probePath "queued-receipt-intake-manifest.json") `
+    -ReportPath (Join-Path $probePath "queued-receipt-intake.md")
+
 $fakeManifest = $fakeResult.manifest
 $contractManifest = $contractResult.manifest
+$queuedManifest = $queuedResult.manifest
 
 $checks = @()
 Add-ProbeCheck "dispatch_receipt_sources_available" `
@@ -221,6 +254,16 @@ Add-ProbeCheck "contract_receipt_accepted" `
         (Get-JsonValue $contractManifest "messageId" "") -eq "msg_contract_receipt_001" -and
         (Get-JsonValue $contractManifest "notificationDispatchStatus" "") -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND") `
     "Contract receipt must be accepted as shape proof only."
+Add-ProbeCheck "queued_receipt_accepted" `
+    ($queuedResult.exitCode -eq 0 -and
+        $queuedManifest.status -eq "PASS" -and
+        (Get-JsonValue $queuedManifest "receiptAccepted" $false) -and
+        (Get-JsonValue $queuedManifest "dispatchEvidencePresent" $false) -and
+        (Get-JsonValue $queuedManifest "queued" $false) -and
+        [string]::IsNullOrWhiteSpace([string](Get-JsonValue $queuedManifest "messageId" "not-empty")) -and
+        (Get-JsonValue $queuedManifest "notificationDispatchStatus" "") -eq "CONTRACT_RECEIPT_ACCEPTED_NOT_REAL_SEND" -and
+        -not (Get-JsonValue $queuedManifest "emailSent" $true)) `
+    "Queued-only CLI receipts must be accepted as dispatch evidence without claiming real delivery in fixture mode."
 Add-ProbeCheck "contract_boundary_preserved" `
     (-not (Get-JsonValue $contractManifest "realEmailSentAccepted" $true) -and
         -not (Get-JsonValue $contractManifest "emailSent" $true) -and
@@ -236,6 +279,8 @@ $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
 $contractMessageIdForReport = Get-JsonValue $contractManifest "messageId" ""
 $contractRealEmailSentAcceptedForReport = Get-JsonValue $contractManifest "realEmailSentAccepted" $false
+$queuedAcceptedForReport = Get-JsonValue $queuedManifest "receiptAccepted" $false
+$queuedDispatchEvidenceForReport = Get-JsonValue $queuedManifest "dispatchEvidencePresent" $false
 
 $reportLines = @(
     "# AI TestPilot Release Progress Notification Dispatch Receipt Intake Probe",
@@ -243,12 +288,16 @@ $reportLines = @(
     "- Status: $status",
     "- Fake receipt exit code: $($fakeResult.exitCode)",
     "- Contract receipt exit code: $($contractResult.exitCode)",
+    "- Queued receipt exit code: $($queuedResult.exitCode)",
     "- Contract receipt message id: $contractMessageIdForReport",
     "- Contract real email sent accepted: $contractRealEmailSentAcceptedForReport",
+    "- Queued receipt accepted: $queuedAcceptedForReport",
+    "- Queued dispatch evidence present: $queuedDispatchEvidenceForReport",
     "",
     "## Boundary",
     "",
     "- Fake CLI receipt ids are rejected.",
+    "- Queued-only CLI receipts are accepted as dispatch evidence.",
     "- Contract receipt shape proof does not mark emailSent=true.",
     "- Real dispatch evidence still requires a real local agently-cli send receipt.",
     "",
@@ -267,12 +316,16 @@ $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $reportFullPath),
     (Convert-ToEvidenceRelativePath $fakeReceiptPath),
     (Convert-ToEvidenceRelativePath $contractReceiptPath),
+    (Convert-ToEvidenceRelativePath $queuedReceiptPath),
     (Convert-ToEvidenceRelativePath $fakeResult.outputPath),
     (Convert-ToEvidenceRelativePath $fakeResult.manifestPath),
     (Convert-ToEvidenceRelativePath $fakeResult.reportPath),
     (Convert-ToEvidenceRelativePath $contractResult.outputPath),
     (Convert-ToEvidenceRelativePath $contractResult.manifestPath),
-    (Convert-ToEvidenceRelativePath $contractResult.reportPath)
+    (Convert-ToEvidenceRelativePath $contractResult.reportPath),
+    (Convert-ToEvidenceRelativePath $queuedResult.outputPath),
+    (Convert-ToEvidenceRelativePath $queuedResult.manifestPath),
+    (Convert-ToEvidenceRelativePath $queuedResult.reportPath)
 )
 
 $sourceFiles = @(
@@ -293,6 +346,13 @@ $manifest = [ordered]@{
     contractNotificationDispatchStatus = (Get-JsonValue $contractManifest "notificationDispatchStatus" "")
     contractRealEmailSentAccepted = (Get-JsonValue $contractManifest "realEmailSentAccepted" $true)
     contractEmailSent = (Get-JsonValue $contractManifest "emailSent" $true)
+    queuedReceiptAccepted = (Get-JsonValue $queuedManifest "receiptAccepted" $false)
+    queuedReceiptMessageId = (Get-JsonValue $queuedManifest "messageId" "")
+    queuedReceiptQueued = (Get-JsonValue $queuedManifest "queued" $false)
+    queuedReceiptDispatchEvidencePresent = (Get-JsonValue $queuedManifest "dispatchEvidencePresent" $false)
+    queuedNotificationDispatchStatus = (Get-JsonValue $queuedManifest "notificationDispatchStatus" "")
+    queuedRealEmailSentAccepted = (Get-JsonValue $queuedManifest "realEmailSentAccepted" $true)
+    queuedEmailSent = (Get-JsonValue $queuedManifest "emailSent" $true)
     releasePipelineSendsEmail = $false
     canonicalOutboxDispatchStatus = (Get-JsonValue $outboxManifest "notificationDispatchStatus" "")
     canonicalOutboxEmailSent = (Get-JsonValue $outboxManifest "emailSent" $false)

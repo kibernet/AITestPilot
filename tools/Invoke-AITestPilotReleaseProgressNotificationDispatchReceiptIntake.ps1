@@ -92,6 +92,46 @@ function Format-MarkdownCell {
     return $text.Replace("`r", " ").Replace("`n", " ").Replace("|", "\|")
 }
 
+function Get-ReceiptCliOutputText {
+    param([object]$Receipt)
+
+    $cliOutput = @(Get-JsonValue $Receipt "cliOutput" @())
+    if ($cliOutput.Count -eq 0) {
+        return ""
+    }
+
+    return [string]::Join([Environment]::NewLine, @($cliOutput | ForEach-Object { [string]$_ }))
+}
+
+function Get-ReceiptQueued {
+    param(
+        [object]$Receipt,
+        [string]$CliOutputText
+    )
+
+    if ([bool](Get-JsonValue $Receipt "queued" $false)) {
+        return $true
+    }
+
+    if ([string]::IsNullOrWhiteSpace($CliOutputText)) {
+        return $false
+    }
+
+    try {
+        $start = $CliOutputText.IndexOf("{")
+        $end = $CliOutputText.LastIndexOf("}")
+        if ($start -lt 0 -or $end -lt $start) {
+            return $false
+        }
+
+        $cliResponse = $CliOutputText.Substring($start, $end - $start + 1) | ConvertFrom-Json
+        return [bool](Get-JsonValue (Get-JsonValue $cliResponse "data" $null) "queued" $false)
+    }
+    catch {
+        return $false
+    }
+}
+
 $evidenceBundlePath = Resolve-FullPath $EvidenceBundleDir
 $manifestFullPath = Resolve-FullPath $ManifestPath
 $reportFullPath = Resolve-FullPath $ReportPath
@@ -122,11 +162,14 @@ if ($receiptExists) {
 $recipient = [string](Get-JsonValue $receipt "recipient" "")
 $subject = [string](Get-JsonValue $receipt "subject" "")
 $messageId = [string](Get-JsonValue $receipt "messageId" "")
+$receiptCliOutputText = Get-ReceiptCliOutputText $receipt
+$receiptQueued = Get-ReceiptQueued $receipt $receiptCliOutputText
 $receiptSchemaAccepted = (Get-JsonValue $receipt "schemaVersion" "") -eq "aitestpilot.release_progress_notification_send_receipt.v1"
 $recipientMatches = $recipient -eq [string](Get-JsonValue $outboxManifest "recipient" "")
 $subjectMatches = $subject -eq [string](Get-JsonValue $outboxManifest "subject" "")
 $messageIdPresent = -not [string]::IsNullOrWhiteSpace($messageId)
-$fakeReceiptRejected = $messageId -notlike "msg_fake*"
+$dispatchEvidencePresent = $messageIdPresent -or $receiptQueued
+$fakeReceiptRejected = ((-not $messageIdPresent) -or ($messageId -notlike "msg_fake*")) -and ($receiptCliOutputText -notmatch "msg_fake")
 $receiptAccepted = (
     $receiptExists -and
     $null -ne $receipt -and
@@ -134,7 +177,7 @@ $receiptAccepted = (
     $receiptSchemaAccepted -and
     $recipientMatches -and
     $subjectMatches -and
-    $messageIdPresent -and
+    $dispatchEvidencePresent -and
     $fakeReceiptRejected -and
     (Get-JsonValue $receipt "confirmationTokenSupplied" $false) -and
     (Get-JsonValue $receipt "sendSucceeded" $false) -and
@@ -164,8 +207,8 @@ Add-ReceiptCheck "receipt_file_parseable" `
     ($receiptExists -and $null -ne $receipt -and [string]::IsNullOrWhiteSpace($receiptParseError)) `
     "Receipt file must exist and parse as JSON."
 Add-ReceiptCheck "receipt_content_matches_outbox" `
-    ($receiptSchemaAccepted -and $recipientMatches -and $subjectMatches -and $messageIdPresent) `
-    "Receipt must match the outbox recipient and subject and include a message id."
+    ($receiptSchemaAccepted -and $recipientMatches -and $subjectMatches -and $dispatchEvidencePresent) `
+    "Receipt must match the outbox recipient and subject and include a message id or queued=true dispatch evidence."
 Add-ReceiptCheck "receipt_success_boundary" `
     ((Get-JsonValue $receipt "confirmationTokenSupplied" $false) -and
         (Get-JsonValue $receipt "sendSucceeded" $false) -and
@@ -198,6 +241,8 @@ $reportLines = @(
     "| Recipient | $(Format-MarkdownCell $recipient) |",
     "| Subject | $(Format-MarkdownCell $subject) |",
     "| Message id | $(Format-MarkdownCell $messageId) |",
+    "| Queued | $receiptQueued |",
+    "| Dispatch evidence present | $dispatchEvidencePresent |",
     "| Contract fixture mode | $([bool]$ContractFixtureMode) |",
     "| Confirm local send receipt | $([bool]$ConfirmLocalSendReceipt) |",
     "| Receipt accepted | $receiptAccepted |",
@@ -245,6 +290,8 @@ $manifest = [ordered]@{
     recipient = $recipient
     subject = $subject
     messageId = $messageId
+    queued = [bool]$receiptQueued
+    dispatchEvidencePresent = [bool]$dispatchEvidencePresent
     confirmationTokenSupplied = (Get-JsonValue $receipt "confirmationTokenSupplied" $false)
     agentlyCliExitCode = (Get-JsonValue $receipt "agentlyCliExitCode" $null)
     sendSucceeded = (Get-JsonValue $receipt "sendSucceeded" $false)

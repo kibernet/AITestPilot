@@ -123,6 +123,8 @@ try {
         "tools\Invoke-AITestPilotReleaseProgressNotificationConfirmationProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationReceiptProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationDispatchReceiptIntake.ps1",
+        "tools\Invoke-AITestPilotReleaseProgressNotificationPostDispatchSnapshot.ps1",
+        "tools\Invoke-AITestPilotReleaseProgressNotificationPostDispatchSnapshotProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationDispatchReceiptIntakeProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationLocalSendWorkflowProbe.ps1",
         "tools\Invoke-AITestPilotReleaseProgressNotificationRealReceiptGuardProbe.ps1",
