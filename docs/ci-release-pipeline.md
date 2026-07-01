@@ -97,19 +97,21 @@ Use the release pipeline wrapper when CI needs one command with stable artifacts
 | 83 | `production_external_evidence_gap_analysis` |
 | 84 | `production_handoff_owner_route_map` |
 | 85 | `production_handoff_owner_route_map_probe` |
-| 86 | `production_external_evidence_partial_matrix_probe` |
-| 87 | `production_external_evidence_semantic_preflight_probe` |
-| 88 | `production_handoff_export_final_refresh` |
-| 89 | `production_handoff_export_zip_index` |
-| 90 | `release_docs_freshness` |
-| 91 | `production_hard_mode_failure_probe` |
-| 92 | `production_hard_mode_success_contract_probe` |
-| 93 | `release_risk_policy` |
-| 94 | `release_evidence_index` |
-| 95 | `release_evidence_index_field_coverage_probe` |
-| 96 | `repair_agent_cursor_agent_external_output_binding_probe` |
-| 97 | `release_gate` |
-| 98 | `release_gate_failure_probe` |
+| 86 | `release_progress_notification_outbox_final_refresh` |
+| 87 | `release_progress_notification_remaining_work_snapshot_final_probe` |
+| 88 | `production_external_evidence_partial_matrix_probe` |
+| 89 | `production_external_evidence_semantic_preflight_probe` |
+| 90 | `production_handoff_export_final_refresh` |
+| 91 | `production_handoff_export_zip_index` |
+| 92 | `release_docs_freshness` |
+| 93 | `production_hard_mode_failure_probe` |
+| 94 | `production_hard_mode_success_contract_probe` |
+| 95 | `release_risk_policy` |
+| 96 | `release_evidence_index` |
+| 97 | `release_evidence_index_field_coverage_probe` |
+| 98 | `repair_agent_cursor_agent_external_output_binding_probe` |
+| 99 | `release_gate` |
+| 100 | `release_gate_failure_probe` |
 
 The pipeline runs:
 
@@ -201,7 +203,7 @@ The pipeline runs:
 - production hard-mode failure probe, proving combined driver, Lua, and live-model hard switches block the current sample or missing-evidence state.
 - production hard-mode success contract probe, proving combined driver, Lua, and live-model hard switches can pass with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
 - release risk policy, aggregating AI exploration, high-risk graph, production driver, production Lua, live endpoint, and CI provider release blockers.
-- release evidence index, exporting a machine-readable source-manifest summary for CI, portal handoff, and audit consumers, including field-level coverage for 66 semantic fields across the primary release evidence manifests.
+- release evidence index, exporting a machine-readable source-manifest summary for CI, portal handoff, and audit consumers, including field-level coverage for 70 semantic fields across the primary release evidence manifests.
 - release evidence index field coverage probe, proving five isolated scenarios for the index field checks and latest-bundle pollution guard before the release gate runs. The probe does not send email, accept real host-project evidence, or promote fixture evidence into production evidence.
 - Cursor Agent external output binding probe, proving stale optional headless Cursor Agent producer files cannot be treated as the current accepted external-output directory unless task context and run/patch/summary hashes match.
 - repo-side release gate.
@@ -221,7 +223,9 @@ That directory includes `pipeline-manifest.json`, `release-gate-manifest.json`, 
 
 `production-external-evidence-action-queue-manifest.json` is the canonical operator queue generated from the current remaining-work state. `production-external-evidence-action-queue-probe-manifest.json` remains the contract proof for pending versus post-dispatch queue behavior; both are required release evidence before gap analysis and the final owner-facing export refresh.
 
-`production-handoff-owner-route-map-manifest.json`, `production-handoff-owner-route-map.md`, `production-handoff-owner-route-map-probe-manifest.json`, `production-handoff-owner-route-map-probe.md`, and `production-handoff-owner-route-map-probe\` are generated after `production_external_evidence_gap_analysis` and before `production_external_evidence_partial_matrix_probe`. They prove each of the three external owner areas maps cleanly from owner packet and contact/send state through returned bundle required files, semantic preflight, auto acceptance, and hard validation; the probe blocks owner-route mismatches, missing route endpoints, and auto acceptance without semantic preflight.
+`production-handoff-owner-route-map-manifest.json`, `production-handoff-owner-route-map.md`, `production-handoff-owner-route-map-probe-manifest.json`, `production-handoff-owner-route-map-probe.md`, and `production-handoff-owner-route-map-probe\` are generated after `production_external_evidence_gap_analysis` and before the progress-notification final refresh. They prove each of the three external owner areas maps cleanly from owner packet and contact/send state through returned bundle required files, semantic preflight, auto acceptance, and hard validation; the probe blocks owner-route mismatches, missing route endpoints, and auto acceptance without semantic preflight.
+
+`release_progress_notification_outbox_final_refresh` and `release_progress_notification_remaining_work_snapshot_final_probe` rerun the progress outbox and remaining-work snapshot probe after the owner route map is available. The final outbox latest big node is `production_handoff_owner_route_map`, while the earlier outbox snapshot remains available to feed action queue and gap analysis without sending email.
 
 `production-handoff-package-manifest.json` is generated before the release risk policy. It points host-project owners at the exact driver, Lua, and live-model evidence files and hard-mode release-pipeline commands needed to replace the package fixtures with real production evidence. The package also validates that generated Markdown and command files contain concrete owner names, kit paths, required evidence files, blocker-resolution rows, per-owner packet commands, release commands, preflight commands, and acceptance-wrapper commands rather than serialized PowerShell object names. The generated `blocker-resolution-map.json` and `blocker-resolution-map.md` map every remaining production blocker to its owner, evidence files, acceptance criteria, and validation command. The generated `owner-packets\*.md` files split those rows into one executable packet per host-project owner, with required evidence, blocker reasons, preflight, acceptance-wrapper, and hard-validation commands. The generated `verify-external-evidence.ps1` preflights driver, Lua, and live-model evidence paths and writes `external-evidence-preflight-self-check.json`; the generated `accept-external-evidence.ps1` runs the stable external evidence acceptance command and writes the Markdown acceptance report before optional hard validation. The default self-check must remain pending for the three real host-project evidence areas. `production-handoff-external-evidence-preflight-probe-manifest.json` then runs the generated preflight and acceptance wrapper against complete accepted fixture evidence from outside the repository with contract boundaries preserved, recording `production-handoff-external-evidence-preflight-accepted-manifest.json` and `production-handoff-external-evidence-acceptance-wrapper-manifest.json` as contract proof only.
 

@@ -2,7 +2,8 @@
 param(
     [string]$EvidenceBundleDir,
     [string]$ManifestPath,
-    [string]$ReportPath
+    [string]$ReportPath,
+    [switch]$RequireOwnerRouteMapLatestBigNode
 )
 
 Set-StrictMode -Version Latest
@@ -194,6 +195,13 @@ $externalMissingFileCount = Convert-ToInt (Get-JsonValue $snapshot "externalRema
 $localProgressMailRemainingActionCount = Convert-ToInt (Get-JsonValue $snapshot "localProgressMailRemainingActionCount" 0)
 $trackedRemainingWorkItemCount = Convert-ToInt (Get-JsonValue $snapshot "trackedRemainingWorkItemCount" 0)
 $notificationDispatchStatus = [string](Get-JsonValue $snapshot "notificationDispatchStatus" "")
+$latestBigNodeName = [string](Get-JsonValue $snapshot "latestBigNodeName" "")
+$latestBigNodeStatus = [string](Get-JsonValue $snapshot "latestBigNodeStatus" "")
+$latestBigNodeRequirementSatisfied = if ([bool]$RequireOwnerRouteMapLatestBigNode) {
+    $latestBigNodeName -eq "production_handoff_owner_route_map"
+} else {
+    $latestBigNodeName -in @("production_handoff_owner_response_bundle_kit", "production_handoff_owner_route_map")
+}
 
 $driverBlockingReasonCount = Convert-ToInt (Get-JsonValue $productionDriverReadinessManifest "blockingReasonCount" 0)
 $luaBlockingReasonCount = Convert-ToInt (Get-JsonValue $productionLuaPatchReadinessManifest "blockingReasonCount" 0)
@@ -212,8 +220,8 @@ Add-SnapshotCheck "remaining_work_snapshot_sources_available" `
 Add-SnapshotCheck "remaining_work_snapshot_schema_and_boundary" `
     ((Get-JsonValue $snapshot "schemaVersion" "") -eq "aitestpilot.release_progress_notification_remaining_work_snapshot.v1" -and
         $snapshot.status -eq "PASS" -and
-        (Get-JsonValue $snapshot "latestBigNodeName" "") -eq "production_handoff_owner_response_bundle_kit" -and
-        (Get-JsonValue $snapshot "latestBigNodeStatus" "") -eq "PASS" -and
+        $latestBigNodeRequirementSatisfied -and
+        $latestBigNodeStatus -eq "PASS" -and
         $notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
         -not (Convert-ToBool (Get-JsonValue $snapshot "releasePipelineSendsEmail" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $snapshot "emailSent" $true)) -and
@@ -290,6 +298,8 @@ $reportLines = @(
     "| Field | Value |",
     "| --- | --- |",
     "| Status | $(Format-MarkdownCell $manifestStatus) |",
+    "| Latest big node | $(Format-MarkdownCell $latestBigNodeName) |",
+    "| Latest big node status | $(Format-MarkdownCell $latestBigNodeStatus) |",
     "| Notification dispatch status | $(Format-MarkdownCell $notificationDispatchStatus) |",
     "| External work item count | $externalWorkItemCount |",
     "| External blocker count | $externalBlockingReasonCount |",
@@ -349,6 +359,9 @@ $manifest = [ordered]@{
     snapshotPath = $snapshotPath
     snapshotMarkdownPath = $snapshotMarkdownPath
     outboxStatus = [string](Get-JsonValue $outboxManifest "status" "")
+    latestBigNodeName = $latestBigNodeName
+    latestBigNodeStatus = $latestBigNodeStatus
+    requireOwnerRouteMapLatestBigNode = [bool]$RequireOwnerRouteMapLatestBigNode
     snapshotSchemaVersionAccepted = (Get-JsonValue $snapshot "schemaVersion" "") -eq "aitestpilot.release_progress_notification_remaining_work_snapshot.v1"
     snapshotContentValidated = [bool]$contentValidated
     notificationDispatchStatus = $notificationDispatchStatus

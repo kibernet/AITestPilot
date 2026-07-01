@@ -1731,8 +1731,9 @@ $releaseProgressNotificationOutboxAccepted = (
     $releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_outbox.v1" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "") -eq "kibernet@sina.com" -and
-    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "") -eq "production_handoff_owner_response_bundle_kit" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "") -eq "production_handoff_owner_route_map" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeStatus" "") -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "requireOwnerRouteMapLatestBigNode" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalContactIntakeAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalSendReadyForConfirmation" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "sendDryRunAuthorizationFree" $false)) -and
@@ -1745,6 +1746,14 @@ $releaseProgressNotificationOutboxAccepted = (
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseBundleKitGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseBundleKitZipGenerated" $false)) -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerResponseBundleKitRequiredFileCount" 0)) -gt 0 -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeAccepted" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapRouteCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapMissingFileCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapBlockingReasonCount" 0)) -eq 11 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapRepoSideClosableGapCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeScenarioCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeFailedScenarioCount" 1)) -eq 0 -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationCadencePolicy" "") -eq "BIG_NODE_ONLY" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationTriggerKind" "") -eq "BIG_NODE" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "bigNodeNotificationEligible" $false)) -and
@@ -1813,6 +1822,9 @@ $releaseProgressNotificationRemainingWorkSnapshotProbeAccepted = (
     (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_remaining_work_snapshot_probe.v1" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "snapshotSchemaVersionAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "snapshotContentValidated" $false)) -and
+    (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "latestBigNodeName" "") -eq "production_handoff_owner_route_map" -and
+    (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "latestBigNodeStatus" "") -eq "PASS" -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "requireOwnerRouteMapLatestBigNode" $false)) -and
     (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "notificationDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingBlockingReasonCount" 0)) -eq
@@ -2646,6 +2658,7 @@ $sourceFiles = @(
     "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
     "release-progress-notification-remaining-work-snapshot-probe-manifest.json",
+    "release-progress-notification-post-dispatch-snapshot-probe-manifest.json",
     "production-handoff-mail-helper-auth-status-probe-manifest.json",
     "release-progress-notification-confirmation-probe-manifest.json",
     "release-progress-notification-receipt-probe-manifest.json",
@@ -2850,6 +2863,8 @@ $manifest = [ordered]@{
     productionHandoffOwnerResponseBundleKitWorkflowLuaEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionLuaEvidenceExportHelperDocumented" $false)
     productionHandoffOwnerResponseBundleKitWorkflowLiveModelSmokeEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)
     releaseProgressNotificationOutboxAccepted = [bool]$releaseProgressNotificationOutboxAccepted
+    releaseProgressNotificationLatestBigNodeName = (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "")
+    releaseProgressNotificationLatestBigNodeStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeStatus" "")
     releaseProgressNotificationDispatchStatus = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationDispatchStatus" "")
     releaseProgressNotificationRecipient = (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "")
     releaseProgressNotificationCadencePolicy = (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationCadencePolicy" "")
@@ -2858,12 +2873,22 @@ $manifest = [ordered]@{
     releaseProgressNotificationSuppressedSmallNodeCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "suppressedSmallNodeCount" 0))
     releaseProgressNotificationRemainingWorkSnapshotGenerated = (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingWorkSnapshotGenerated" $false)
     releaseProgressNotificationRemainingWorkSnapshotContentValidated = (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingWorkSnapshotContentValidated" $false)
+    releaseProgressNotificationOwnerRouteMapAccepted = (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapAccepted" $false)
+    releaseProgressNotificationOwnerRouteMapProbeAccepted = (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeAccepted" $false)
+    releaseProgressNotificationOwnerRouteMapRouteCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapRouteCount" 0))
+    releaseProgressNotificationOwnerRouteMapMissingFileCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapMissingFileCount" 0))
+    releaseProgressNotificationOwnerRouteMapBlockingReasonCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapBlockingReasonCount" 0))
+    releaseProgressNotificationOwnerRouteMapRepoSideClosableGapCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapRepoSideClosableGapCount" 0))
+    releaseProgressNotificationOwnerRouteMapProbeScenarioCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeScenarioCount" 0))
+    releaseProgressNotificationOwnerRouteMapProbeFailedScenarioCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeFailedScenarioCount" 0))
     releaseProgressNotificationExternalRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingWorkItemCount" 0))
     releaseProgressNotificationExternalRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingBlockingReasonCount" 0))
     releaseProgressNotificationExternalRemainingMissingFileCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingMissingFileCount" 0))
     releaseProgressNotificationLocalProgressMailRemainingActionCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "localProgressMailRemainingActionCount" 0))
     releaseProgressNotificationTrackedRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "trackedRemainingWorkItemCount" 0))
     releaseProgressNotificationRemainingWorkSnapshotProbeAccepted = [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeAccepted
+    releaseProgressNotificationRemainingWorkSnapshotProbeLatestBigNodeName = (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "latestBigNodeName" "")
+    releaseProgressNotificationRemainingWorkSnapshotProbeLatestBigNodeStatus = (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "latestBigNodeStatus" "")
     releaseProgressNotificationRemainingWorkSnapshotProbeExternalWorkItemCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingWorkItemCount" 0))
     releaseProgressNotificationRemainingWorkSnapshotProbeExternalBlockingReasonCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingBlockingReasonCount" 0))
     releaseProgressNotificationRemainingWorkSnapshotProbeExternalMissingFileCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingMissingFileCount" 0))
@@ -3111,6 +3136,8 @@ $reportLines = @(
     "- Production handoff owner response bundle kit workflow imported files: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowImportedEvidenceFileCount)",
     "- Production handoff owner response bundle kit workflow auto acceptance documented: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceCommandsDocumented)",
     "- Release progress notification outbox accepted: $($manifest.releaseProgressNotificationOutboxAccepted)",
+    "- Release progress notification latest big node: $($manifest.releaseProgressNotificationLatestBigNodeName)",
+    "- Release progress notification latest big node status: $($manifest.releaseProgressNotificationLatestBigNodeStatus)",
     "- Release progress notification dispatch status: $($manifest.releaseProgressNotificationDispatchStatus)",
     "- Release progress notification recipient: $($manifest.releaseProgressNotificationRecipient)",
     "- Release progress notification cadence policy: $($manifest.releaseProgressNotificationCadencePolicy)",
@@ -3119,12 +3146,22 @@ $reportLines = @(
     "- Release progress notification suppressed small-node count: $($manifest.releaseProgressNotificationSuppressedSmallNodeCount)",
     "- Release progress notification remaining-work snapshot generated: $($manifest.releaseProgressNotificationRemainingWorkSnapshotGenerated)",
     "- Release progress notification remaining-work snapshot validated: $($manifest.releaseProgressNotificationRemainingWorkSnapshotContentValidated)",
+    "- Release progress notification owner route map accepted: $($manifest.releaseProgressNotificationOwnerRouteMapAccepted)",
+    "- Release progress notification owner route map probe accepted: $($manifest.releaseProgressNotificationOwnerRouteMapProbeAccepted)",
+    "- Release progress notification owner route map routes: $($manifest.releaseProgressNotificationOwnerRouteMapRouteCount)",
+    "- Release progress notification owner route map missing files: $($manifest.releaseProgressNotificationOwnerRouteMapMissingFileCount)",
+    "- Release progress notification owner route map blockers: $($manifest.releaseProgressNotificationOwnerRouteMapBlockingReasonCount)",
+    "- Release progress notification owner route map repo-side closable gaps: $($manifest.releaseProgressNotificationOwnerRouteMapRepoSideClosableGapCount)",
+    "- Release progress notification owner route map probe scenarios: $($manifest.releaseProgressNotificationOwnerRouteMapProbeScenarioCount)",
+    "- Release progress notification owner route map probe failed scenarios: $($manifest.releaseProgressNotificationOwnerRouteMapProbeFailedScenarioCount)",
     "- Release progress notification external remaining work items: $($manifest.releaseProgressNotificationExternalRemainingWorkItemCount)",
     "- Release progress notification external remaining blockers: $($manifest.releaseProgressNotificationExternalRemainingBlockingReasonCount)",
     "- Release progress notification external missing files: $($manifest.releaseProgressNotificationExternalRemainingMissingFileCount)",
     "- Release progress notification local mail remaining actions: $($manifest.releaseProgressNotificationLocalProgressMailRemainingActionCount)",
     "- Release progress notification tracked remaining work items: $($manifest.releaseProgressNotificationTrackedRemainingWorkItemCount)",
     "- Release progress notification remaining-work snapshot probe accepted: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeAccepted)",
+    "- Release progress notification snapshot probe latest big node: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeLatestBigNodeName)",
+    "- Release progress notification snapshot probe latest big node status: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeLatestBigNodeStatus)",
     "- Release progress notification snapshot probe external work items: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalWorkItemCount)",
     "- Release progress notification snapshot probe external blockers: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalBlockingReasonCount)",
     "- Release progress notification snapshot probe external missing files: $($manifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalMissingFileCount)",

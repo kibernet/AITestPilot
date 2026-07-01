@@ -672,6 +672,18 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "release_progress_notification_outbox_final_refresh" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir `
+            -RequireOwnerRouteMapLatestBigNode
+    }
+
+    Invoke-PipelineStep "release_progress_notification_remaining_work_snapshot_final_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseProgressNotificationRemainingWorkSnapshotProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir `
+            -RequireOwnerRouteMapLatestBigNode
+    }
+
     Invoke-PipelineStep "production_external_evidence_partial_matrix_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidencePartialMatrixProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

@@ -301,6 +301,11 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "releasePipelineSendsEmail" "bool-eq" $false "owner route map keeps no-mail boundary"
     $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "realHostProjectEvidenceAccepted" "bool-eq" $false "owner route map does not accept host evidence"
 
+    $checks += New-FieldCoverageCheck "release-progress-notification-outbox-manifest.json" "latestBigNodeName" "string-eq" "production_handoff_owner_route_map" "progress notification final outbox targets owner route map"
+    $checks += New-FieldCoverageCheck "release-progress-notification-outbox-manifest.json" "ownerRouteMapProbeAccepted" "bool-eq" $true "progress notification final outbox requires owner route map probe"
+    $checks += New-FieldCoverageCheck "release-progress-notification-remaining-work-snapshot-probe-manifest.json" "latestBigNodeName" "string-eq" "production_handoff_owner_route_map" "remaining-work snapshot probe verifies route map final refresh"
+    $checks += New-FieldCoverageCheck "release-progress-notification-post-dispatch-snapshot-probe-manifest.json" "contractFixtureRejected" "bool-eq" $true "post-dispatch snapshot probe rejects contract fixture receipts"
+
     $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "readOnly" "bool-eq" $true "semantic preflight remains read-only"
     $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "acceptanceRun" "bool-eq" $false "semantic preflight does not run acceptance"
     $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "caseCount" "int-eq" 9 "semantic preflight covers all expected cases"
@@ -544,6 +549,8 @@ function Get-DefaultSourceManifestNames {
         "production-handoff-owner-response-bundle-kit-manifest.json",
         "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
         "release-progress-notification-outbox-manifest.json",
+        "release-progress-notification-remaining-work-snapshot-probe-manifest.json",
+        "release-progress-notification-post-dispatch-snapshot-probe-manifest.json",
         "production-handoff-mail-helper-auth-status-probe-manifest.json",
         "release-progress-notification-confirmation-probe-manifest.json",
         "release-progress-notification-receipt-probe-manifest.json",

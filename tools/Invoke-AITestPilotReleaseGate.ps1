@@ -2721,8 +2721,9 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
         ($releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
             $releaseProgressNotificationOutboxManifest.schemaVersion -eq "aitestpilot.release_progress_notification_outbox.v1" -and
             $releaseProgressNotificationOutboxManifest.recipient -eq "kibernet@sina.com" -and
-            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_response_bundle_kit" -and
+            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_route_map" -and
             $releaseProgressNotificationOutboxManifest.latestBigNodeStatus -eq "PASS" -and
+            [bool]$releaseProgressNotificationOutboxManifest.requireOwnerRouteMapLatestBigNode -and
             [bool]$releaseProgressNotificationOutboxManifest.externalContactIntakeAccepted -and
             [bool]$releaseProgressNotificationOutboxManifest.externalSendReadyForConfirmation -and
             [bool]$releaseProgressNotificationOutboxManifest.sendDryRunAuthorizationFree -and
@@ -2735,6 +2736,14 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
             [bool]$releaseProgressNotificationOutboxManifest.ownerResponseBundleKitGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.ownerResponseBundleKitZipGenerated -and
             [int]$releaseProgressNotificationOutboxManifest.ownerResponseBundleKitRequiredFileCount -gt 0 -and
+            [bool]$releaseProgressNotificationOutboxManifest.ownerRouteMapAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.ownerRouteMapProbeAccepted -and
+            [int]$releaseProgressNotificationOutboxManifest.ownerRouteMapRouteCount -eq 3 -and
+            [int]$releaseProgressNotificationOutboxManifest.ownerRouteMapMissingFileCount -eq 9 -and
+            [int]$releaseProgressNotificationOutboxManifest.ownerRouteMapBlockingReasonCount -eq 11 -and
+            [int]$releaseProgressNotificationOutboxManifest.ownerRouteMapRepoSideClosableGapCount -eq 0 -and
+            [int]$releaseProgressNotificationOutboxManifest.ownerRouteMapProbeScenarioCount -eq 4 -and
+            [int]$releaseProgressNotificationOutboxManifest.ownerRouteMapProbeFailedScenarioCount -eq 0 -and
             $releaseProgressNotificationOutboxManifest.notificationCadencePolicy -eq "BIG_NODE_ONLY" -and
             $releaseProgressNotificationOutboxManifest.notificationTriggerKind -eq "BIG_NODE" -and
             [bool]$releaseProgressNotificationOutboxManifest.bigNodeNotificationEligible -and
@@ -2793,6 +2802,9 @@ if ($null -ne $releaseProgressNotificationRemainingWorkSnapshotProbeManifest) {
             $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.schemaVersion -eq "aitestpilot.release_progress_notification_remaining_work_snapshot_probe.v1" -and
             [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.snapshotSchemaVersionAccepted -and
             [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.snapshotContentValidated -and
+            $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.latestBigNodeName -eq "production_handoff_owner_route_map" -and
+            $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.latestBigNodeStatus -eq "PASS" -and
+            [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.requireOwnerRouteMapLatestBigNode -and
             $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.externalRemainingWorkItemCount -eq 3 -and
             [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.externalRemainingBlockingReasonCount -eq [int]$releaseProgressNotificationOutboxManifest.externalRemainingBlockingReasonCount -and
@@ -3705,12 +3717,24 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowLuaEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowLiveModelSmokeEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationLatestBigNodeName -eq "production_handoff_owner_route_map" -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationLatestBigNodeStatus -eq "PASS" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationCadencePolicy -eq "BIG_NODE_ONLY" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationTriggerKind -eq "BIG_NODE" -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationSmallNodeEmailSuppression -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationSuppressedSmallNodeCount -eq 7 -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapAccepted -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapProbeAccepted -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapRouteCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapMissingFileCount -eq 9 -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapBlockingReasonCount -eq 11 -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapRepoSideClosableGapCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapProbeScenarioCount -eq 4 -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapProbeFailedScenarioCount -eq 0 -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeAccepted -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeLatestBigNodeName -eq "production_handoff_owner_route_map" -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeLatestBigNodeStatus -eq "PASS" -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalWorkItemCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalBlockingReasonCount -eq [int]$releaseRiskPolicyManifest.productionHandoffRemainingBlockingReasonCount -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalMissingFileCount -eq [int]$releaseRiskPolicyManifest.productionExternalEvidenceInboxMissingFileCount -and
@@ -3859,7 +3883,10 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json",
         "production-handoff-owner-response-bundle-probe-manifest.json",
         "production-handoff-owner-response-bundle-kit-manifest.json",
+        "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
         "release-progress-notification-outbox-manifest.json",
+        "release-progress-notification-remaining-work-snapshot-probe-manifest.json",
+        "release-progress-notification-post-dispatch-snapshot-probe-manifest.json",
         "production-handoff-mail-helper-auth-status-probe-manifest.json",
         "release-progress-notification-confirmation-probe-manifest.json",
         "release-progress-notification-receipt-probe-manifest.json",
@@ -4022,7 +4049,12 @@ $sourceManifests = @(
     "production-handoff-send-local-workflow-probe-manifest.json",
     "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json",
     "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json",
+    "production-handoff-owner-response-bundle-probe-manifest.json",
+    "production-handoff-owner-response-bundle-kit-manifest.json",
+    "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
+    "release-progress-notification-remaining-work-snapshot-probe-manifest.json",
+    "release-progress-notification-post-dispatch-snapshot-probe-manifest.json",
     "production-handoff-mail-helper-auth-status-probe-manifest.json",
     "release-progress-notification-confirmation-probe-manifest.json",
     "release-progress-notification-receipt-probe-manifest.json",

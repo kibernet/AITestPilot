@@ -4,7 +4,8 @@ param(
     [string]$OutboxDir,
     [string]$ManifestPath,
     [string]$ReportPath,
-    [string]$ProgressRecipient = "kibernet@sina.com"
+    [string]$ProgressRecipient = "kibernet@sina.com",
+    [switch]$RequireOwnerRouteMapLatestBigNode
 )
 
 Set-StrictMode -Version Latest
@@ -67,6 +68,18 @@ function Read-JsonFile {
 
     if (-not (Test-Path $Path)) {
         throw "$Label is missing: $Path"
+    }
+
+    return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
+}
+
+function Read-OptionalJsonFile {
+    param(
+        [string]$Path
+    )
+
+    if (-not (Test-Path $Path)) {
+        return $null
     }
 
     return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
@@ -190,9 +203,38 @@ $sendReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "productio
 $productionDriverReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-replay-driver-readiness-manifest.json") "Production replay driver readiness manifest"
 $productionLuaPatchReadinessManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-lua-patch-readiness-manifest.json") "Production Lua patch readiness manifest"
 $productionExternalEvidenceInboxManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-inbox-manifest.json") "Production external evidence inbox manifest"
+$ownerRouteMapManifest = Read-OptionalJsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-route-map-manifest.json")
+$ownerRouteMapProbeManifest = Read-OptionalJsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-route-map-probe-manifest.json")
 
-$latestBigNodeName = "production_handoff_owner_response_bundle_kit"
-$latestBigNodeStatus = [string](Get-JsonValue $ownerResponseBundleKitManifest "status" "")
+$ownerRouteMapRouteCount = Convert-ToInt (Get-JsonValue $ownerRouteMapManifest "ownerRouteCount" 0)
+$ownerRouteMapMissingFileCount = Convert-ToInt (Get-JsonValue $ownerRouteMapManifest "externalRemainingMissingFileCount" 0)
+$ownerRouteMapBlockingReasonCount = Convert-ToInt (Get-JsonValue $ownerRouteMapManifest "externalRemainingBlockingReasonCount" 0)
+$ownerRouteMapRepoSideClosableGapCount = Convert-ToInt (Get-JsonValue $ownerRouteMapManifest "repoSideClosableGapCount" 1)
+$ownerRouteMapProbeScenarioCount = Convert-ToInt (Get-JsonValue $ownerRouteMapProbeManifest "scenarioCount" 0)
+$ownerRouteMapProbeFailedScenarioCount = Convert-ToInt (Get-JsonValue $ownerRouteMapProbeManifest "failedScenarioCount" 1)
+$ownerRouteMapAccepted = (
+    $null -ne $ownerRouteMapManifest -and
+    (Get-JsonValue $ownerRouteMapManifest "status" "") -eq "PASS" -and
+    $ownerRouteMapRouteCount -eq 3 -and
+    $ownerRouteMapMissingFileCount -eq 9 -and
+    $ownerRouteMapBlockingReasonCount -eq 11 -and
+    $ownerRouteMapRepoSideClosableGapCount -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $ownerRouteMapManifest "routeMismatchCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $ownerRouteMapManifest "requiredFileMismatchCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $ownerRouteMapManifest "missingCommandCount" 1)) -eq 0 -and
+    -not (Convert-ToBool (Get-JsonValue $ownerRouteMapManifest "releasePipelineSendsEmail" $true))
+)
+$ownerRouteMapProbeAccepted = (
+    $null -ne $ownerRouteMapProbeManifest -and
+    (Get-JsonValue $ownerRouteMapProbeManifest "status" "") -eq "PASS" -and
+    $ownerRouteMapProbeScenarioCount -eq 4 -and
+    $ownerRouteMapProbeFailedScenarioCount -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $ownerRouteMapProbeManifest "baselineCurrentRouteMapPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerRouteMapProbeManifest "ownerRouteMismatchBlocked" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerRouteMapProbeManifest "missingRouteEndpointBlocked" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerRouteMapProbeManifest "autoAcceptanceWithoutSemanticPreflightBlocked" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $ownerRouteMapProbeManifest "releasePipelineSendsEmail" $true))
+)
 $ownerInputRequestStatus = [string](Get-JsonValue $ownerInputRequestManifest "ownerInputRequestStatus" "")
 $ownerUnblockStatus = [string](Get-JsonValue $ownerInputRequestManifest "ownerUnblockStatus" "")
 $missingOwnerContactCount = Convert-ToInt (Get-JsonValue $ownerInputRequestManifest "missingOwnerContactCount" 0)
@@ -216,7 +258,37 @@ $ownerResponseBundleOutsideRepo = Convert-ToBool (Get-JsonValue $ownerResponseBu
 $ownerResponseBundleKitGenerated = Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "responseBundleTemplateGenerated" $false)
 $ownerResponseBundleKitZipGenerated = Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "zipGenerated" $false)
 $ownerResponseBundleKitRequiredFileCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleKitManifest "requiredEvidenceFileCount" 0)
-$notificationSubject = "AI TestPilot progress - owner response bundle kit ready"
+$ownerResponseBundleKitAccepted = (
+    (Get-JsonValue $ownerResponseBundleKitManifest "status" "") -eq "PASS" -and
+    $ownerResponseBundleKitGenerated -and
+    $ownerResponseBundleKitZipGenerated -and
+    $ownerResponseBundleKitRequiredFileCount -gt 0 -and
+    -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "emailSent" $true))
+)
+$latestBigNodeRouteRequirementSatisfied = $false
+if ($ownerRouteMapAccepted -and $ownerRouteMapProbeAccepted) {
+    $latestBigNodeName = "production_handoff_owner_route_map"
+    $latestBigNodeStatus = [string](Get-JsonValue $ownerRouteMapManifest "status" "")
+    $notificationSubject = "AI TestPilot progress - owner route map ready"
+    $latestBigNodeAccepted = $true
+} else {
+    $latestBigNodeName = "production_handoff_owner_response_bundle_kit"
+    $latestBigNodeStatus = [string](Get-JsonValue $ownerResponseBundleKitManifest "status" "")
+    $notificationSubject = "AI TestPilot progress - owner response bundle kit ready"
+    $latestBigNodeAccepted = $ownerResponseBundleKitAccepted
+}
+if ([bool]$RequireOwnerRouteMapLatestBigNode) {
+    $latestBigNodeRouteRequirementSatisfied = (
+        $latestBigNodeName -eq "production_handoff_owner_route_map" -and
+        $ownerRouteMapAccepted -and
+        $ownerRouteMapProbeAccepted
+    )
+} else {
+    $latestBigNodeRouteRequirementSatisfied = (
+        $latestBigNodeName -in @("production_handoff_owner_response_bundle_kit", "production_handoff_owner_route_map") -and
+        ($latestBigNodeName -ne "production_handoff_owner_route_map" -or ($ownerRouteMapAccepted -and $ownerRouteMapProbeAccepted))
+    )
+}
 $notificationDispatchStatus = "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION"
 $notificationCadencePolicy = "BIG_NODE_ONLY"
 $notificationTriggerKind = "BIG_NODE"
@@ -306,6 +378,7 @@ $status = [ordered]@{
     subject = $notificationSubject
     latestBigNodeName = $latestBigNodeName
     latestBigNodeStatus = $latestBigNodeStatus
+    requireOwnerRouteMapLatestBigNode = [bool]$RequireOwnerRouteMapLatestBigNode
     ownerInputRequestStatus = $ownerInputRequestStatus
     ownerUnblockStatus = $ownerUnblockStatus
     externalContactIntakeAccepted = [bool]$externalContactIntakeAccepted
@@ -320,6 +393,12 @@ $status = [ordered]@{
     ownerResponseBundleKitGenerated = [bool]$ownerResponseBundleKitGenerated
     ownerResponseBundleKitZipGenerated = [bool]$ownerResponseBundleKitZipGenerated
     ownerResponseBundleKitRequiredFileCount = [int]$ownerResponseBundleKitRequiredFileCount
+    ownerRouteMapAccepted = [bool]$ownerRouteMapAccepted
+    ownerRouteMapProbeAccepted = [bool]$ownerRouteMapProbeAccepted
+    ownerRouteMapRouteCount = [int]$ownerRouteMapRouteCount
+    ownerRouteMapMissingFileCount = [int]$ownerRouteMapMissingFileCount
+    ownerRouteMapBlockingReasonCount = [int]$ownerRouteMapBlockingReasonCount
+    ownerRouteMapRepoSideClosableGapCount = [int]$ownerRouteMapRepoSideClosableGapCount
     notificationCadencePolicy = $notificationCadencePolicy
     notificationTriggerKind = $notificationTriggerKind
     bigNodeNotificationEligible = [bool]$bigNodeNotificationEligible
@@ -480,6 +559,12 @@ $emailDraftLines = @(
     "- Owner response bundle kit generated: $ownerResponseBundleKitGenerated",
     "- Owner response bundle kit zip generated: $ownerResponseBundleKitZipGenerated",
     "- Owner response bundle kit required evidence files: $ownerResponseBundleKitRequiredFileCount",
+    "- Owner route map accepted: $ownerRouteMapAccepted",
+    "- Owner route map probe accepted: $ownerRouteMapProbeAccepted",
+    "- Owner route map routes: $ownerRouteMapRouteCount",
+    "- Owner route map missing files: $ownerRouteMapMissingFileCount",
+    "- Owner route map blockers: $ownerRouteMapBlockingReasonCount",
+    "- Owner route map repo-side closable gaps: $ownerRouteMapRepoSideClosableGapCount",
     "- Notification cadence policy: $notificationCadencePolicy",
     "- Notification trigger kind: $notificationTriggerKind",
     "- Small-node email suppression active: $smallNodeEmailSuppression",
@@ -516,6 +601,10 @@ $emailDraftLines = @(
     "- production-handoff-owner-response-bundle-kit-manifest.json",
     "- production-handoff-owner-response-bundle-kit.md",
     "- production-handoff-owner-response-bundle-kit.zip",
+    "- production-handoff-owner-route-map-manifest.json",
+    "- production-handoff-owner-route-map.md",
+    "- production-handoff-owner-route-map-probe-manifest.json",
+    "- production-handoff-owner-route-map-probe.md",
     "- release-progress-notification-outbox-manifest.json",
     "- release-progress-notification-outbox/remaining-work-snapshot.json",
     "- release-progress-notification-outbox/remaining-work-snapshot.md",
@@ -669,6 +758,12 @@ $reportLines = @(
     "| Owner response bundle kit generated | $ownerResponseBundleKitGenerated |",
     "| Owner response bundle kit zip generated | $ownerResponseBundleKitZipGenerated |",
     "| Owner response bundle kit required files | $ownerResponseBundleKitRequiredFileCount |",
+    "| Owner route map accepted | $ownerRouteMapAccepted |",
+    "| Owner route map probe accepted | $ownerRouteMapProbeAccepted |",
+    "| Owner route map routes | $ownerRouteMapRouteCount |",
+    "| Owner route map missing files | $ownerRouteMapMissingFileCount |",
+    "| Owner route map blockers | $ownerRouteMapBlockingReasonCount |",
+    "| Owner route map repo-side closable gaps | $ownerRouteMapRepoSideClosableGapCount |",
     "| Notification cadence policy | $(Format-MarkdownCell $notificationCadencePolicy) |",
     "| Notification trigger kind | $(Format-MarkdownCell $notificationTriggerKind) |",
     "| Big-node notification eligible | $bigNodeNotificationEligible |",
@@ -781,7 +876,8 @@ Add-OutboxCheck "progress_notification_sources_available" `
     ($ownerInputRequestManifest.status -eq "PASS" -and $ownerContactExternalIntakeProbeManifest.status -eq "PASS" -and $sendDryRunProbeManifest.status -eq "PASS" -and $ownerResponseBundleProbeManifest.status -eq "PASS" -and $ownerResponseBundleKitManifest.status -eq "PASS" -and $ownerUnblockManifest.status -eq "PASS" -and $mailAuthReadinessManifest.status -eq "PASS" -and $sendReadinessManifest.status -eq "PASS" -and $productionDriverReadinessManifest.status -eq "PASS" -and $productionLuaPatchReadinessManifest.status -eq "PASS" -and $productionExternalEvidenceInboxManifest.status -eq "PASS") `
     "Progress notification outbox must be based on passing owner input request, owner contact external intake, send dry-run, owner response bundle, owner response bundle kit, owner unblock, mail-auth readiness, send readiness, production driver readiness, production Lua readiness, and external evidence inbox evidence."
 Add-OutboxCheck "progress_notification_latest_big_node_accepted" `
-    ($latestBigNodeName -eq "production_handoff_owner_response_bundle_kit" -and
+    ($latestBigNodeAccepted -and
+        $latestBigNodeRouteRequirementSatisfied -and
         $latestBigNodeStatus -eq "PASS" -and
         $externalContactIntakeAccepted -and
         $externalSendReadyForConfirmation -and
@@ -796,7 +892,7 @@ Add-OutboxCheck "progress_notification_latest_big_node_accepted" `
         $ownerResponseBundleKitZipGenerated -and
         $ownerResponseBundleKitRequiredFileCount -gt 0 -and
         -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "emailSent" $true))) `
-    "Progress notification outbox must report the latest owner response bundle kit node without claiming email was sent."
+    "Progress notification outbox must report the latest eligible big node without claiming email was sent."
 Add-OutboxCheck "progress_notification_counts_match_owner_input" `
     ($missingOwnerContactCount -eq (Convert-ToInt (Get-JsonValue $ownerUnblockManifest "missingOwnerContactCount" -1)) -and
         $pendingDispatchCount -eq (Convert-ToInt (Get-JsonValue $ownerUnblockManifest "pendingDispatchCount" -1)) -and
@@ -835,7 +931,7 @@ Add-OutboxCheck "progress_notification_big_node_only_cadence" `
         $suppressedSmallNodeNames -contains "release_progress_notification_real_receipt_guard_probe" -and
         $suppressedSmallNodeNames -contains "release_progress_notification_remaining_work_snapshot_probe" -and
         @($eligibleBigNodeNames).Count -eq 1 -and
-        $eligibleBigNodeNames[0] -eq "production_handoff_owner_response_bundle_kit") `
+        $eligibleBigNodeNames[0] -eq $latestBigNodeName) `
     "Progress notification cadence must be big-node-only and suppress separate emails for small proof/probe nodes."
 Add-OutboxCheck "progress_notification_mail_boundary_preserved" `
     ($notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
@@ -877,6 +973,12 @@ $sourceFiles = @(
     "production-lua-patch-readiness-manifest.json",
     "production-external-evidence-inbox-manifest.json"
 )
+if ($null -ne $ownerRouteMapManifest) {
+    $sourceFiles += "production-handoff-owner-route-map-manifest.json"
+}
+if ($null -ne $ownerRouteMapProbeManifest) {
+    $sourceFiles += "production-handoff-owner-route-map-probe-manifest.json"
+}
 
 $manifest = [ordered]@{
     schemaVersion = "aitestpilot.release_progress_notification_outbox.v1"
@@ -889,6 +991,7 @@ $manifest = [ordered]@{
     subject = $notificationSubject
     latestBigNodeName = $latestBigNodeName
     latestBigNodeStatus = $latestBigNodeStatus
+    requireOwnerRouteMapLatestBigNode = [bool]$RequireOwnerRouteMapLatestBigNode
     ownerInputRequestStatus = $ownerInputRequestStatus
     ownerUnblockStatus = $ownerUnblockStatus
     externalContactIntakeAccepted = [bool]$externalContactIntakeAccepted
@@ -903,6 +1006,14 @@ $manifest = [ordered]@{
     ownerResponseBundleKitGenerated = [bool]$ownerResponseBundleKitGenerated
     ownerResponseBundleKitZipGenerated = [bool]$ownerResponseBundleKitZipGenerated
     ownerResponseBundleKitRequiredFileCount = [int]$ownerResponseBundleKitRequiredFileCount
+    ownerRouteMapAccepted = [bool]$ownerRouteMapAccepted
+    ownerRouteMapProbeAccepted = [bool]$ownerRouteMapProbeAccepted
+    ownerRouteMapRouteCount = [int]$ownerRouteMapRouteCount
+    ownerRouteMapMissingFileCount = [int]$ownerRouteMapMissingFileCount
+    ownerRouteMapBlockingReasonCount = [int]$ownerRouteMapBlockingReasonCount
+    ownerRouteMapRepoSideClosableGapCount = [int]$ownerRouteMapRepoSideClosableGapCount
+    ownerRouteMapProbeScenarioCount = [int]$ownerRouteMapProbeScenarioCount
+    ownerRouteMapProbeFailedScenarioCount = [int]$ownerRouteMapProbeFailedScenarioCount
     notificationCadencePolicy = $notificationCadencePolicy
     notificationTriggerKind = $notificationTriggerKind
     bigNodeNotificationEligible = [bool]$bigNodeNotificationEligible
