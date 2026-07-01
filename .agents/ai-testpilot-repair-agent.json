@@ -10,6 +10,7 @@
     "windowsCommand": "cursor-agent.cmd",
     "portableCommand": "cursor-agent",
     "sandboxMode": "disabled",
+    "timeoutSeconds": 300,
     "wrapper": "tools/Invoke-AITestPilotCursorAgentExternalTaskOutput.ps1",
     "pipelineSwitch": "-UseCursorAgentExternalTaskOutput"
   },

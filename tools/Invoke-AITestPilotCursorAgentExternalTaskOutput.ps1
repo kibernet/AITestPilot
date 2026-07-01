@@ -6,6 +6,7 @@ param(
     [string]$CursorAgentCommand = "",
     [string]$CursorAgentModel = "",
     [string]$CursorAgentSandboxMode = "disabled",
+    [int]$CursorAgentTimeoutSeconds = 300,
     [int]$CursorAgentMaxAttempts = 3,
     [int]$CursorAgentRetryDelaySeconds = 2
 )
@@ -21,6 +22,10 @@ if ($CursorAgentMaxAttempts -lt 1) {
 
 if ($CursorAgentRetryDelaySeconds -lt 0) {
     $CursorAgentRetryDelaySeconds = 0
+}
+
+if ($CursorAgentTimeoutSeconds -lt 0) {
+    $CursorAgentTimeoutSeconds = 0
 }
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
@@ -73,6 +78,15 @@ function Resolve-CursorAgentCommand {
     param([string]$RequestedCommand)
 
     if (-not [string]::IsNullOrWhiteSpace($RequestedCommand)) {
+        $explicitCommand = Get-Command -Name $RequestedCommand -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -ne $explicitCommand -and -not [string]::IsNullOrWhiteSpace($explicitCommand.Source)) {
+            return $explicitCommand.Source
+        }
+
+        if (Test-Path -LiteralPath $RequestedCommand) {
+            return (Resolve-Path -LiteralPath $RequestedCommand).Path
+        }
+
         return $RequestedCommand
     }
 
@@ -203,8 +217,40 @@ function Invoke-CursorAgentPrint {
 
     try {
         $script:ErrorActionPreference = "Continue"
-        $script:cursorAgentOutput = @(& $resolvedCursorAgentCommand @arguments 2>&1)
-        $script:cursorAgentExitCode = $LASTEXITCODE
+        if ($CursorAgentTimeoutSeconds -eq 0) {
+            $script:cursorAgentOutput = @(& $resolvedCursorAgentCommand @arguments 2>&1)
+            $script:cursorAgentExitCode = $LASTEXITCODE
+            return
+        }
+
+        $job = Start-Job -ScriptBlock {
+            param(
+                [string]$Command,
+                [string[]]$Arguments
+            )
+
+            $ErrorActionPreference = "Continue"
+            $output = @(& $Command @Arguments 2>&1)
+            $exitCode = if ($null -eq $LASTEXITCODE) { 1 } else { $LASTEXITCODE }
+            [pscustomobject]@{
+                ExitCode = $exitCode
+                Output = @($output | ForEach-Object { [string]$_ })
+            }
+        } -ArgumentList $resolvedCursorAgentCommand, $arguments
+
+        $completedJob = Wait-Job -Job $job -Timeout $CursorAgentTimeoutSeconds
+        if ($null -eq $completedJob) {
+            Stop-Job -Job $job
+            Remove-Job -Job $job -Force
+            $script:cursorAgentOutput = @("Cursor Agent timed out after $CursorAgentTimeoutSeconds seconds.")
+            $script:cursorAgentExitCode = 124
+            return
+        }
+
+        $result = Receive-Job -Job $job
+        Remove-Job -Job $job -Force
+        $script:cursorAgentOutput = @($result.Output)
+        $script:cursorAgentExitCode = [int]$result.ExitCode
     }
     finally {
         $script:ErrorActionPreference = $previousErrorActionPreference
@@ -227,7 +273,8 @@ function Test-TransientCursorAgentFailure {
         "EAI_AGAIN",
         "ENOTFOUND",
         "socket hang up",
-        "TLS connection"
+        "TLS connection",
+        "timed out"
     )) {
         if ($text -match [regex]::Escape($pattern)) {
             return $true
@@ -493,6 +540,7 @@ $manifest = [ordered]@{
     cursorAgentTransientRetryCount = [int]$cursorAgentTransientRetryCount
     cursorAgentOutputContractRetryCount = [int]$cursorAgentOutputContractRetryCount
     cursorAgentMaxAttempts = [int]$CursorAgentMaxAttempts
+    cursorAgentTimeoutSeconds = [int]$CursorAgentTimeoutSeconds
     cursorAgentExitCode = [int]$cursorAgentExitCode
     cursorAgentPatchApplyContractPassed = [bool]$cursorAgentPatchApplyContractPassed
     outputDirectory = $outputPath
