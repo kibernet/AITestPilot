@@ -561,6 +561,11 @@ function Get-DefaultSourceManifestNames {
         $names += "repair-agent-cursor-agent-external-output-manifest.json"
     }
 
+    $cursorAgentBindingProbeManifest = Join-Path $evidenceBundlePath "repair-agent-cursor-agent-external-output-binding-probe-manifest.json"
+    if (Test-Path $cursorAgentBindingProbeManifest) {
+        $names += "repair-agent-cursor-agent-external-output-binding-probe-manifest.json"
+    }
+
     if (-not [bool]$RequireProductionReplayDriverBound) {
         $names += "production-replay-driver-bound-failure-probe-manifest.json"
     }

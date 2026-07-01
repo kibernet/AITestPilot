@@ -59,6 +59,33 @@ function Assert-PathUnderRepo {
     return $fullPath
 }
 
+function Remove-CursorAgentOptionalEvidence {
+    param([string]$BundleDir)
+
+    $bundlePath = Assert-PathUnderRepo $BundleDir "EvidenceBundleDir"
+
+    if (-not (Test-Path $bundlePath)) {
+        return
+    }
+
+    $cursorAgentOptionalFiles = @(
+        "repair-agent-cursor-agent-external-output-manifest.json",
+        "repair-agent-cursor-agent-output-run.json",
+        "repair-agent-cursor-agent-output.patch",
+        "repair-agent-cursor-agent-output-summary.md",
+        "repair-agent-cursor-agent-output.log",
+        "repair-agent-cursor-agent-output-patch-output-manifest.json",
+        "repair-agent-cursor-agent-output-preflight-manifest.json"
+    )
+
+    foreach ($fileName in $cursorAgentOptionalFiles) {
+        $path = Join-Path $bundlePath $fileName
+        if (Test-Path $path) {
+            Remove-Item -LiteralPath $path -Force
+        }
+    }
+}
+
 function Invoke-PipelineStep {
     param(
         [string]$Name,
@@ -168,6 +195,10 @@ $pipelinePassed = $false
 
 try {
     Push-Location $repoRoot
+    if (-not $UseCursorAgentExternalTaskOutput) {
+        Remove-CursorAgentOptionalEvidence $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "repo_validation" {
         & (Join-Path $repoRoot "tools\Validate-AITestPilot.ps1")
     }
@@ -684,6 +715,11 @@ try {
 
     Invoke-PipelineStep "release_evidence_index_field_coverage_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndexFieldCoverageProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
+    Invoke-PipelineStep "repair_agent_cursor_agent_external_output_binding_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotCursorAgentExternalOutputBindingProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
     }
 

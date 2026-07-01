@@ -116,6 +116,14 @@ To produce that external output directory with the installed headless Cursor Age
 
 The Cursor Agent wrapper requires `cursor-agent` to be authenticated. It writes only to `Temp\release-evidence\cursor-agent-external-output`, captures `repair-agent-cursor-agent-external-output-manifest.json`, and validates the produced package through patch import and safety preflight before any main worktree apply occurs.
 
+To prove optional Cursor Agent evidence is bound to the accepted external-output directory instead of stale `repair-agent-cursor-agent-*` files from an older run:
+
+```powershell
+.\tools\Invoke-AITestPilotCursorAgentExternalOutputBindingProbe.ps1
+```
+
+That binding probe writes `repair-agent-cursor-agent-external-output-binding-probe-manifest.json` and verifies four isolated cases: a baseline release with no Cursor Agent manifest, stale Cursor Agent evidence paired with fixture acceptance, mismatched producer/acceptance hashes, and a matched producer/acceptance binding. The default release pipeline runs the Cursor Agent external output binding guard after release evidence index field coverage and before the release gate.
+
 To preflight an imported repair-agent patch before any repository application:
 
 ```powershell
@@ -246,6 +254,8 @@ To prove the release evidence index field coverage contract:
 ```
 
 That probe writes `release-evidence-index-field-coverage-probe-manifest.json`, `release-evidence-index-field-coverage-probe.md`, and `release-evidence-index-field-coverage-probe\`. It runs five isolated scenarios for baseline coverage, auto-email promotion rejection, fake-receipt promotion rejection, semantic-preflight read-only enforcement, and live-smoke fixture rejection outside contract mode. The probe snapshots the latest bundle to prove its case copies do not pollute `Temp\release-evidence\latest`; it does not send email, accept real host-project evidence, or promote fixture evidence as production evidence.
+
+The release pipeline follows that with the Cursor Agent external output binding guard, which writes `repair-agent-cursor-agent-external-output-binding-probe-manifest.json` and proves old optional Cursor Agent producer files cannot make the release gate treat fixture acceptance as current headless Cursor Agent output.
 
 To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint configuration, external live-smoke evidence intake, live-smoke accepted-contract proof, returned-evidence inbox contract proof, owner contact readiness contract proof, owner send readiness proof, owner packet dispatch receipt intake proof, owner packet real receipt guard proof, live endpoint policy, and CI provider controls:
 
@@ -534,7 +544,7 @@ To run the full repo-side release gate over the evidence bundle:
 .\tools\Invoke-AITestPilotReleaseGate.ps1
 ```
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external repair-agent patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, production Lua external bundle intake proof, live model endpoint configuration kit proof, external live-smoke evidence intake proof, live-smoke accepted-contract proof, production handoff package proof with a complete blocker-resolution map, returned external evidence inbox proof, production handoff export proof, production handoff status proof, owner dispatch plan proof, owner contact readiness proof, owner packet dispatch receipt intake proof, owner packet real receipt guard proof, production external evidence acceptance contract and failure proof, production hard-mode failure proof, production hard-mode success contract proof, release risk policy acceptance, release evidence index coverage including the 58-field semantic coverage summary and the five-scenario field coverage probe, and all listed evidence files. To prove the gate blocks incomplete evidence:
+The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external repair-agent patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, production Lua external bundle intake proof, live model endpoint configuration kit proof, external live-smoke evidence intake proof, live-smoke accepted-contract proof, production handoff package proof with a complete blocker-resolution map, returned external evidence inbox proof, production handoff export proof, production handoff status proof, owner dispatch plan proof, owner contact readiness proof, owner packet dispatch receipt intake proof, owner packet real receipt guard proof, production external evidence acceptance contract and failure proof, production hard-mode failure proof, production hard-mode success contract proof, release risk policy acceptance, release evidence index coverage including the 58-field semantic coverage summary, the five-scenario field coverage probe, Cursor Agent external output binding guard evidence, and all listed evidence files. To prove the gate blocks incomplete evidence:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
@@ -712,6 +722,7 @@ Implemented now:
 - Repair-agent patch result analysis connecting prior fix hints, accepted external output, post-apply retest, rollback, and knowledge graph outcome.
 - Repair-agent patch result history aggregating multi-bug outcomes with module, failure-type, retest, rollback, and production-output boundary evidence.
 - Optional headless Cursor Agent external output generation, with import/preflight evidence and no repository mutation before acceptance.
+- Cursor Agent external output binding guard proving stale optional producer evidence cannot be treated as the accepted output unless task context and file hashes match.
 - External repair-agent patch preflight manifest with target-path safety checks and a negative path-traversal failure probe.
 - Repository patch apply guard manifest with explicit apply switch, clean-worktree, external-agent source, and rollback-plan evidence.
 - Clean temporary repository apply/rollback probe proving the external-agent apply path and rollback patch mechanics without mutating the main repository.
@@ -741,6 +752,7 @@ Implemented now:
 - Production hard-mode failure probe proving combined driver, Lua, and live-model hard switches block the current sample or missing-evidence state.
 - Production hard-mode success contract probe proving the combined hard-mode path passes with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers, with 58 semantic field checks and a five-scenario field coverage probe that protects the latest bundle from pollution while preserving no-mail, no-real-host-evidence, and no-fixture-promotion boundaries.
+- Release-gated Cursor Agent external output binding probe that keeps optional headless Cursor Agent evidence tied to the current accepted external-output directory before the release gate runs.
 - Release-gated risk policy manifest that blocks failed AI exploration, unresolved high-risk graph nodes, missing driver evidence, missing production Lua evidence, missing live-smoke policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure/success contract evidence while preserving explicit package-release boundaries.
 - Generic HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.
 - Model endpoint trace probe included in release evidence and enforced by the repo-side release gate.

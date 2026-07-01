@@ -59,6 +59,35 @@ function Write-Utf8NoBomFile {
     [System.IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
+function Get-JsonValue {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [object]$DefaultValue = $null
+    )
+
+    if ($null -eq $Object) {
+        return $DefaultValue
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+
+    return $property.Value
+}
+
+function Get-FileSha256OrEmpty {
+    param([string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        return ""
+    }
+
+    return (Get-FileHash -Algorithm SHA256 -Path $Path).Hash
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $externalOutputPath = Assert-PathUnderRepo $ExternalOutputDir "ExternalOutputDir"
 $manifestPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
@@ -94,6 +123,7 @@ $retestCommand = [string]$repairTask.retestCommand
 $externalRunPath = Join-Path $externalOutputPath "repair-agent-run.json"
 $externalPatchPath = Join-Path $externalOutputPath "repair-agent.patch"
 $externalSummaryPath = Join-Path $externalOutputPath "repair-agent-summary.md"
+$externalOutputProducerManifestPath = Join-Path $evidenceBundlePath "repair-agent-cursor-agent-external-output-manifest.json"
 
 if ($fixtureGenerated) {
     if (Test-Path $externalOutputPath) {
@@ -162,6 +192,32 @@ foreach ($requiredExternalPath in @($externalRunPath, $externalPatchPath, $exter
     }
 }
 
+$externalRunSha256 = Get-FileSha256OrEmpty $externalRunPath
+$externalPatchSha256 = Get-FileSha256OrEmpty $externalPatchPath
+$externalSummarySha256 = Get-FileSha256OrEmpty $externalSummaryPath
+$externalOutputProducerManifestPresent = Test-Path $externalOutputProducerManifestPath
+$externalOutputProducerManifest = $null
+if ($externalOutputProducerManifestPresent) {
+    $externalOutputProducerManifest = Get-Content -Path $externalOutputProducerManifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+}
+
+$externalOutputProducerOutputDirectory = [string](Get-JsonValue $externalOutputProducerManifest "outputDirectory" "")
+$externalOutputProducerBindingPassed = (
+    $externalOutputProducerManifestPresent -and
+    $externalOutputDirectoryInputProvided -and
+    -not $fixtureGenerated -and
+    (Get-JsonValue $externalOutputProducerManifest "schemaVersion" "") -eq "aitestpilot.repair_agent_cursor_agent_external_output.v1" -and
+    (Get-JsonValue $externalOutputProducerManifest "source" "") -eq "headless_cursor_agent" -and
+    (Get-JsonValue $externalOutputProducerManifest "taskId" "") -eq $taskId -and
+    (Get-JsonValue $externalOutputProducerManifest "bugId" "") -eq $bugId -and
+    (Get-JsonValue $externalOutputProducerManifest "suggestedFix" "") -eq $suggestedFix -and
+    (Get-JsonValue $externalOutputProducerManifest "retestCommand" "") -eq $retestCommand -and
+    $externalOutputProducerOutputDirectory -eq $externalOutputPath -and
+    (Get-JsonValue $externalOutputProducerManifest "outputRunSha256" "") -eq $externalRunSha256 -and
+    (Get-JsonValue $externalOutputProducerManifest "outputPatchSha256" "") -eq $externalPatchSha256 -and
+    (Get-JsonValue $externalOutputProducerManifest "outputSummarySha256" "") -eq $externalSummarySha256
+)
+
 & (Join-Path $repoRoot "tools\Invoke-AITestPilotRepairAgentMainWorktreeApplyRetestRollback.ps1") `
     -UnityPath $UnityPath `
     -GameReplayDriverType $GameReplayDriverType `
@@ -203,6 +259,20 @@ $manifest = [ordered]@{
     externalOutputDirectoryInputProvided = [bool]$externalOutputDirectoryInputProvided
     externalOutputDirectoryProvided = $true
     externalOutputDirectory = $externalOutputPath
+    externalOutputRunSha256 = $externalRunSha256
+    externalOutputPatchSha256 = $externalPatchSha256
+    externalOutputSummarySha256 = $externalSummarySha256
+    externalOutputProducerManifestPresent = [bool]$externalOutputProducerManifestPresent
+    externalOutputProducerSource = Get-JsonValue $externalOutputProducerManifest "source" ""
+    externalOutputProducerTaskId = Get-JsonValue $externalOutputProducerManifest "taskId" ""
+    externalOutputProducerBugId = Get-JsonValue $externalOutputProducerManifest "bugId" ""
+    externalOutputProducerSuggestedFix = Get-JsonValue $externalOutputProducerManifest "suggestedFix" ""
+    externalOutputProducerRetestCommand = Get-JsonValue $externalOutputProducerManifest "retestCommand" ""
+    externalOutputProducerOutputDirectory = $externalOutputProducerOutputDirectory
+    externalOutputProducerRunSha256 = Get-JsonValue $externalOutputProducerManifest "outputRunSha256" ""
+    externalOutputProducerPatchSha256 = Get-JsonValue $externalOutputProducerManifest "outputPatchSha256" ""
+    externalOutputProducerSummarySha256 = Get-JsonValue $externalOutputProducerManifest "outputSummarySha256" ""
+    externalOutputProducerBindingPassed = [bool]$externalOutputProducerBindingPassed
     inputPackageSource = $mainWorktreeManifest.inputPackageSource
     patchGeneratedByProbe = [bool]$mainWorktreeManifest.patchGeneratedByProbe
     taskId = $mainWorktreeManifest.taskId

@@ -219,6 +219,7 @@ $repairAgentSourceSnapshotApplyValidateManifest = Read-Manifest "repair-agent-so
 $repairAgentMainWorktreeApplyReadinessManifest = Read-Manifest "repair-agent-main-worktree-apply-readiness-manifest.json"
 $repairAgentMainWorktreeApplyRetestRollbackManifest = Read-Manifest "repair-agent-main-worktree-apply-retest-rollback-manifest.json"
 $repairAgentCursorAgentExternalOutputManifest = Read-OptionalManifest "repair-agent-cursor-agent-external-output-manifest.json"
+$repairAgentCursorAgentExternalOutputBindingProbeManifest = Read-OptionalManifest "repair-agent-cursor-agent-external-output-binding-probe-manifest.json"
 $repairAgentExternalTaskOutputAcceptanceManifest = Read-Manifest "repair-agent-external-task-output-acceptance-manifest.json"
 $repairAgentPatchResultAnalysisManifest = Read-Manifest "repair-agent-patch-result-analysis-manifest.json"
 $repairAgentPatchResultHistoryManifest = Read-Manifest "repair-agent-patch-result-history-manifest.json"
@@ -610,6 +611,31 @@ if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
         [bool]$repairAgentCursorAgentExternalOutputManifest.summaryContainsBugId -and
         [bool]$repairAgentCursorAgentExternalOutputManifest.summaryContainsSuggestedFix
 
+    $cursorAgentOutputAcceptanceBindingPassed = (
+        $null -ne $repairAgentExternalTaskOutputAcceptanceManifest -and
+        -not [bool](Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "fixtureGenerated" $true) -and
+        [bool](Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputDirectoryInputProvided" $false) -and
+        [bool](Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputProducerManifestPresent" $false) -and
+        [bool](Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputProducerBindingPassed" $false) -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "taskId" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "taskId" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "bugId" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "bugId" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "suggestedFix" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "suggestedFix" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "retestCommand" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "retestCommand" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputDirectory" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "outputDirectory" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputProducerSource" "") -eq "headless_cursor_agent" -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputProducerTaskId" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "taskId" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputProducerBugId" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "bugId" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputProducerSuggestedFix" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "suggestedFix" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputProducerRetestCommand" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "retestCommand" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputProducerOutputDirectory" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "outputDirectory" "") -and
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "outputRunSha256" "")) -and
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "outputPatchSha256" "")) -and
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "outputSummarySha256" "")) -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputRunSha256" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "outputRunSha256" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputPatchSha256" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "outputPatchSha256" "") -and
+        (Get-JsonValue $repairAgentExternalTaskOutputAcceptanceManifest "externalOutputSummarySha256" "") -eq (Get-JsonValue $repairAgentCursorAgentExternalOutputManifest "outputSummarySha256" "")
+    )
+
     Add-ReleaseCheck "repair_agent_cursor_agent_external_task_output" `
         ($repairAgentCursorAgentExternalOutputManifest.status -eq "PASS" -and
             $repairAgentCursorAgentExternalOutputManifest.schemaVersion -eq "aitestpilot.repair_agent_cursor_agent_external_output.v1" -and
@@ -629,10 +655,30 @@ if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
             [bool]$repairAgentCursorAgentExternalOutputManifest.preflightRepositoryApplyAllowed -and
             [int]$repairAgentCursorAgentExternalOutputManifest.preflightUnsafePathCount -eq 0 -and
             $cursorAgentOutputTaskBindingPassed -and
+            $cursorAgentOutputAcceptanceBindingPassed -and
             -not [bool]$repairAgentCursorAgentExternalOutputManifest.mainRepositoryPatchApplied) `
-        "Cursor Agent external task output must prove a headless non-fixture external package with import/preflight evidence and no repository mutation."
+        "Cursor Agent external task output must prove a headless non-fixture external package with import/preflight evidence, no repository mutation, and strict binding to the accepted external-output directory consumed by this release run."
 
     Test-ListedFiles $repairAgentCursorAgentExternalOutputManifest "repair_agent_cursor_agent_external_task_output"
+}
+
+if ($null -ne $repairAgentCursorAgentExternalOutputBindingProbeManifest) {
+    Add-ReleaseCheck "repair_agent_cursor_agent_external_output_binding_probe" `
+        ($repairAgentCursorAgentExternalOutputBindingProbeManifest.status -eq "PASS" -and
+            $repairAgentCursorAgentExternalOutputBindingProbeManifest.schemaVersion -eq "aitestpilot.repair_agent_cursor_agent_external_output_binding_probe.v1" -and
+            [int]$repairAgentCursorAgentExternalOutputBindingProbeManifest.scenarioCount -eq 4 -and
+            [int]$repairAgentCursorAgentExternalOutputBindingProbeManifest.failedScenarioCount -eq 0 -and
+            [bool]$repairAgentCursorAgentExternalOutputBindingProbeManifest.baselineNoCursorManifestPassed -and
+            [bool]$repairAgentCursorAgentExternalOutputBindingProbeManifest.staleCursorWithFixtureAcceptanceBlocked -and
+            [bool]$repairAgentCursorAgentExternalOutputBindingProbeManifest.mismatchedCursorHashBlocked -and
+            [bool]$repairAgentCursorAgentExternalOutputBindingProbeManifest.matchedCursorBindingPassed -and
+            -not [bool]$repairAgentCursorAgentExternalOutputBindingProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$repairAgentCursorAgentExternalOutputBindingProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$repairAgentCursorAgentExternalOutputBindingProbeManifest.fixtureEvidencePromoted -and
+            $repairAgentCursorAgentExternalOutputBindingProbeManifest.productionOutputBoundary -eq "cursor_agent_external_output_binding_probe_only") `
+        "Cursor Agent external output binding probe must prove baseline no-Cursor release stays valid, stale Cursor evidence with fixture acceptance blocks, hash mismatches block, and matched producer/acceptance binding passes without sending mail or accepting real host evidence."
+
+    Test-ListedFiles $repairAgentCursorAgentExternalOutputBindingProbeManifest "repair_agent_cursor_agent_external_output_binding_probe"
 }
 
 if ($null -ne $repairAgentExternalTaskOutputAcceptanceManifest) {
@@ -3932,6 +3978,10 @@ $sourceManifests = @(
 
 if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
     $sourceManifests += "repair-agent-cursor-agent-external-output-manifest.json"
+}
+
+if ($null -ne $repairAgentCursorAgentExternalOutputBindingProbeManifest) {
+    $sourceManifests += "repair-agent-cursor-agent-external-output-binding-probe-manifest.json"
 }
 
 if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {

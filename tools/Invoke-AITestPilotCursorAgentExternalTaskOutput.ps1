@@ -58,6 +58,16 @@ function Write-Utf8NoBomFile {
     [System.IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
+function Get-FileSha256OrEmpty {
+    param([string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        return ""
+    }
+
+    return (Get-FileHash -Algorithm SHA256 -Path $Path).Hash
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $outputPath = Assert-PathUnderRepo $OutputDir "OutputDir"
 $manifestPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
@@ -461,6 +471,14 @@ $manifest = [ordered]@{
     bugId = $bugId
     suggestedFix = $suggestedFix
     retestCommand = $retestCommand
+    handoffMarkdownSha256 = Get-FileSha256OrEmpty $handoffMarkdownPath
+    repairAgentRunInputSha256 = Get-FileSha256OrEmpty $repairAgentRunSource
+    repairTaskSha256 = Get-FileSha256OrEmpty $repairTaskSource
+    bugPackageSha256 = Get-FileSha256OrEmpty $bugPackagePath
+    bugKnowledgeGraphSha256 = Get-FileSha256OrEmpty $bugKnowledgeGraphPath
+    outputRunSha256 = Get-FileSha256OrEmpty $externalRunPath
+    outputPatchSha256 = Get-FileSha256OrEmpty $externalPatchPath
+    outputSummarySha256 = Get-FileSha256OrEmpty $externalSummaryPath
     repairAgentRunStatus = $externalRun.status
     repairAgentRunAgentLaunched = [bool]$externalRun.agentLaunched
     repairAgentPatchOutputStatus = $externalRun.patchOutputStatus

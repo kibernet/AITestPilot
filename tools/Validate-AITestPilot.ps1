@@ -157,6 +157,7 @@ try {
         "tools\Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1",
         "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1",
         "tools\Invoke-AITestPilotReleaseEvidenceIndexFieldCoverageProbe.ps1",
+        "tools\Invoke-AITestPilotCursorAgentExternalOutputBindingProbe.ps1",
         "tools\Invoke-AITestPilotReleaseGate.ps1",
         "tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1",
         "tools\Invoke-AITestPilotReleasePipeline.ps1",

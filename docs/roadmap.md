@@ -25,6 +25,7 @@
 - Repair-agent patch result analysis that feeds prior fix hints into post-agent retest and knowledge graph outcome.
 - Release-gated multi-bug patch-result history with module, failure-type, outcome, retest, rollback, and production-output boundary aggregates.
 - Optional headless Cursor Agent external output generation for replacing the acceptance fixture on authenticated developer machines.
+- Cursor Agent external output binding guard proving stale optional producer evidence cannot replace the current accepted external-output directory unless task context and file hashes match.
 - External repair-agent patch safety preflight with target-path policy and negative path-traversal probe.
 - Repository patch apply guard with explicit apply switch, clean-worktree requirement, and rollback/no-mutation evidence.
 - Clean temporary repository apply/rollback probe for external-agent patch output.
@@ -78,6 +79,7 @@
 - Production hard-mode success contract probe proving combined production driver, Lua, and live-model hard switches pass with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
 - release docs freshness guard proving README, CI release docs, architecture, roadmap, pipeline step IDs, core artifact names, and release source-manifest lists stay aligned before hard-mode and release gate checks.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers, with release evidence index field coverage for 58 semantic fields plus a five-scenario field coverage probe that protects the latest bundle from isolated-case pollution and proves no email is sent, no real host-project evidence is accepted, and no fixture evidence is promoted to production evidence.
+- Release-gated Cursor Agent external output binding probe before the release gate, with `repair-agent-cursor-agent-external-output-binding-probe-manifest.json` covering no-Cursor baseline, stale optional evidence rejection, hash-mismatch rejection, and matched binding pass cases.
 - Release-gated risk policy blocking failing AI exploration, unresolved high-risk graph nodes, missing production driver evidence, missing production Lua evidence, missing live endpoint policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure/success-contract evidence.
 
 ## V0.2 Unity Import Gate
