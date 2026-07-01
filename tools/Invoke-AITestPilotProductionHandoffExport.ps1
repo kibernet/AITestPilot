@@ -289,6 +289,96 @@ if ($operatorActionQueueAvailable) {
     }
 }
 
+$semanticPreflightHelperRelativePath = "run-semantic-preflight.ps1"
+$semanticPreflightCoreRelativePath = "semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
+$semanticPreflightSourcePath = Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
+$semanticPreflightHelperPath = Join-Path $exportPath $semanticPreflightHelperRelativePath
+$semanticPreflightCorePath = Join-Path $exportPath $semanticPreflightCoreRelativePath
+$semanticPreflightSelfContainedFolderCommand = '.\run-semantic-preflight.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
+$semanticPreflightSelfContainedZipCommand = '.\run-semantic-preflight.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
+
+if (-not (Test-Path $semanticPreflightSourcePath)) {
+    throw "Semantic preflight source script is missing: $semanticPreflightSourcePath"
+}
+New-Item -ItemType Directory -Force (Split-Path $semanticPreflightCorePath -Parent) | Out-Null
+Copy-Item -LiteralPath $semanticPreflightSourcePath -Destination $semanticPreflightCorePath -Force
+
+$semanticPreflightHelperScript = @'
+[CmdletBinding()]
+param(
+    [string]$OwnerResponseBundleDir,
+    [string]$OwnerResponseBundleZipPath,
+    [string]$OutputDir = (Join-Path $PSScriptRoot "semantic-preflight-output"),
+    [switch]$ContractFixtureMode,
+    [switch]$AllowNonCandidate
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    -not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    throw "Provide only one of -OwnerResponseBundleDir or -OwnerResponseBundleZipPath."
+}
+
+if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath) -and
+    -not [string]::IsNullOrWhiteSpace($env:AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH)) {
+    $OwnerResponseBundleZipPath = $env:AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH
+}
+
+if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    throw "Provide -OwnerResponseBundleDir, -OwnerResponseBundleZipPath, or AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH."
+}
+
+$preflightScript = Join-Path $PSScriptRoot "semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
+if (-not (Test-Path $preflightScript)) {
+    throw "Bundled semantic preflight script is missing: $preflightScript"
+}
+
+$outputPath = [System.IO.Path]::GetFullPath($OutputDir)
+New-Item -ItemType Directory -Force $outputPath | Out-Null
+
+$manifestPath = Join-Path $outputPath "production-external-evidence-semantic-preflight-manifest.json"
+$reportPath = Join-Path $outputPath "production-external-evidence-semantic-preflight.md"
+$preflightParams = @{
+    EvidenceBundleDir = $outputPath
+    ManifestPath = $manifestPath
+    ReportPath = $reportPath
+}
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
+    $preflightParams["OwnerResponseBundleDir"] = $OwnerResponseBundleDir
+}
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    $preflightParams["OwnerResponseBundleZipPath"] = $OwnerResponseBundleZipPath
+}
+if ([bool]$ContractFixtureMode) {
+    $preflightParams["ContractFixtureMode"] = $true
+}
+
+& $preflightScript @preflightParams | Out-Null
+
+if (-not (Test-Path $manifestPath)) {
+    throw "Semantic preflight manifest was not produced: $manifestPath"
+}
+
+$manifest = Get-Content -Path $manifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+Write-Output "Semantic preflight manifest: $manifestPath"
+Write-Output "Semantic preflight report: $reportPath"
+Write-Output "Semantic preflight status: $($manifest.semanticPreflightStatus)"
+Write-Output "Ready for acceptance candidate: $($manifest.readyForAcceptanceCandidate)"
+Write-Output "Semantic FAIL count: $($manifest.semanticFailCount)"
+
+if (-not [bool]$AllowNonCandidate -and
+    (-not [bool]$manifest.readyForAcceptanceCandidate -or [int]$manifest.semanticFailCount -ne 0)) {
+    throw "Semantic preflight did not produce an auto-acceptance candidate. Review $reportPath before running acceptance."
+}
+
+Write-Output "PASS AI TestPilot self-contained semantic preflight helper"
+'@
+$semanticPreflightHelperScript | Set-Content -Path $semanticPreflightHelperPath -Encoding UTF8
+
 $ownerPacketCount = [int]$handoffManifest.ownerPacketCount
 $ownerPacketBlockingReasonCount = [int]$handoffManifest.ownerPacketBlockingReasonCount
 $hostProjectActionItemCount = [int]$handoffManifest.hostProjectActionItemCount
@@ -307,7 +397,7 @@ $exportReadmeLines = @(
     "4. Production Lua owners can run `production-lua-patch-evidence-kit\\Export-ProductionLuaPatchEvidenceBundle.ps1` after real Lua patch readiness passes; it creates `production-lua-evidence-export\\production-lua-evidence` and `production-lua-evidence-export\\production-lua-evidence.zip`.",
     "5. Live model owners can run `live-model-endpoint-config-kit\\Export-LiveModelEndpointSmokeEvidenceBundle.ps1` after direct live provider smoke passes; it creates `live-model-endpoint-smoke-evidence-export\\live-smoke-evidence` and `live-model-endpoint-smoke-evidence-export\\live-smoke-evidence.zip`.",
     "6. Owners copy returned evidence into `production-external-evidence-inbox\\production-driver-evidence`, `production-external-evidence-inbox\\production-lua-evidence`, and `production-external-evidence-inbox\\live-smoke-evidence`.",
-    "7. Run Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 with -OwnerResponseBundleDir or -OwnerResponseBundleZipPath before auto acceptance; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0.",
+    "7. Run the bundled self-contained semantic preflight helper: $semanticPreflightSelfContainedFolderCommand or $semanticPreflightSelfContainedZipCommand before auto acceptance. It invokes `semantic-preflight\\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1`; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0.",
     "8. Run `production-external-evidence-inbox\\accept-returned-evidence.ps1` to generate the Markdown acceptance report.",
     "9. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`."
 )
@@ -322,6 +412,7 @@ $exportReadmeLines += @(
     "- `production-handoff-package/verify-external-evidence.ps1`: optional preflight for explicit evidence directories.",
     "- `production-handoff-package/accept-external-evidence.ps1`: optional wrapper for explicit evidence directories.",
     "- `production-external-evidence-inbox/`: returned-evidence directory layout and wrapper for accepting owner evidence.",
+    "- `run-semantic-preflight.ps1`: self-contained returned folder/zip semantic preflight wrapper bundled with `semantic-preflight/Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1`.",
     "- `production-driver-binding-kit/`: host-project production replay driver binding kit, including `Export-ProductionDriverEvidenceBundle.ps1` for production-bound driver evidence folder/zip export.",
     "- `production-lua-patch-evidence-kit/`: host-project production Lua evidence template kit, including `Export-ProductionLuaPatchEvidenceBundle.ps1` for real Lua evidence folder/zip export.",
     "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit, including `Export-LiveModelEndpointSmokeEvidenceBundle.ps1` for direct live provider smoke evidence folder/zip export."
@@ -376,6 +467,8 @@ $requiredExportSnippets = @(
     "live-model-endpoint-config-kit",
     "Export-LiveModelEndpointSmokeEvidenceBundle.ps1",
     "live-smoke-evidence.zip",
+    "run-semantic-preflight.ps1",
+    "semantic-preflight",
     "production-external-evidence-inbox",
     "accept-returned-evidence.ps1",
     "Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
@@ -415,6 +508,8 @@ $missingExportSnippetCount = @($requiredExportSnippets | Where-Object { -not $ex
 
 $requiredExportPaths = @(
     "production-handoff-export\README.md",
+    "production-handoff-export\run-semantic-preflight.ps1",
+    "production-handoff-export\semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
     "production-handoff-export\production-handoff-package\owner-packets\owner-packet-index.json",
     "production-handoff-export\production-handoff-package\verify-external-evidence.ps1",
     "production-handoff-export\production-handoff-package\accept-external-evidence.ps1",
@@ -440,6 +535,8 @@ if ($ownerResponseBundleKitAvailable) {
         "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-bundle-request-draft.md",
         "production-handoff-export\production-handoff-owner-response-bundle-kit\verify-owner-response-bundle.ps1",
         "production-handoff-export\production-handoff-owner-response-bundle-kit\import-owner-response-bundle.ps1",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\run-semantic-preflight.ps1",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
         "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-bundle-template\README.md",
         "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit-manifest.json",
         "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit.md",
@@ -457,6 +554,14 @@ $productionLuaEvidenceExportHelperRelativePath = "production-handoff-export\prod
 $productionLuaEvidenceExportHelperIncluded = $exportFiles -contains $productionLuaEvidenceExportHelperRelativePath
 $liveModelSmokeEvidenceExportHelperRelativePath = "production-handoff-export\live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1"
 $liveModelSmokeEvidenceExportHelperIncluded = $exportFiles -contains $liveModelSmokeEvidenceExportHelperRelativePath
+$semanticPreflightSelfContainedHelperRelativePath = "production-handoff-export\$semanticPreflightHelperRelativePath"
+$semanticPreflightSelfContainedCoreRelativePath = "production-handoff-export\$semanticPreflightCoreRelativePath"
+$semanticPreflightSelfContainedHelperIncluded = (
+    $exportFiles -contains $semanticPreflightSelfContainedHelperRelativePath -and
+    $exportFiles -contains $semanticPreflightSelfContainedCoreRelativePath
+)
+$semanticPreflightSelfContainedHelperText = if (Test-Path $semanticPreflightHelperPath) { Get-Content -Path $semanticPreflightHelperPath -Encoding UTF8 -Raw } else { "" }
+$semanticPreflightSelfContainedCoreText = if (Test-Path $semanticPreflightCorePath) { Get-Content -Path $semanticPreflightCorePath -Encoding UTF8 -Raw } else { "" }
 
 $ownerResponseBundleKitExportContentText = ""
 if ($ownerResponseBundleKitAvailable) {
@@ -478,9 +583,12 @@ $ownerResponseBundleKitAutoAcceptanceCommandsDocumented = (
 $ownerResponseBundleKitSemanticPreflightCommandsDocumented = (
     $ownerResponseBundleKitAvailable -and
     [bool](Get-ObjectProperty $ownerResponseBundleKitManifest "semanticPreflightCommandsContentValidated" $false) -and
+    [bool](Get-ObjectProperty $ownerResponseBundleKitManifest "selfContainedSemanticPreflightHelperGenerated" $false) -and
     [bool](Get-ObjectProperty $ownerResponseBundleKitWorkflowProbeManifest "semanticPreflightCommandsDocumented" $false) -and
     [bool](Get-ObjectProperty $ownerResponseBundleKitWorkflowProbeManifest "verifyHelperSemanticNextStepDocumented" $false) -and
+    [bool](Get-ObjectProperty $ownerResponseBundleKitWorkflowProbeManifest "selfContainedSemanticPreflightHelperExecuted" $false) -and
     $ownerResponseBundleKitExportContentText.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    $ownerResponseBundleKitExportContentText.Contains("run-semantic-preflight.ps1") -and
     $ownerResponseBundleKitExportContentText.Contains("-OwnerResponseBundleDir") -and
     $ownerResponseBundleKitExportContentText.Contains("-OwnerResponseBundleZipPath") -and
     $ownerResponseBundleKitExportContentText.Contains("readyForAcceptanceCandidate") -and
@@ -531,6 +639,23 @@ $liveModelSmokeEvidenceExportHelperDocumented = (
     $exportReadmeText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
     $exportReadmeText.Contains("live-smoke-evidence.zip")
 )
+$semanticPreflightSelfContainedHelperDocumented = (
+    $semanticPreflightSelfContainedHelperIncluded -and
+    $exportReadmeText.Contains("run-semantic-preflight.ps1") -and
+    $exportReadmeText.Contains("semantic-preflight") -and
+    $exportReadmeText.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    $exportReadmeText.Contains($semanticPreflightSelfContainedFolderCommand) -and
+    $exportReadmeText.Contains($semanticPreflightSelfContainedZipCommand)
+)
+$semanticPreflightSelfContainedHelperContentValidated = (
+    $semanticPreflightSelfContainedHelperIncluded -and
+    $semanticPreflightSelfContainedHelperText.Contains("semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    $semanticPreflightSelfContainedHelperText.Contains("OwnerResponseBundleDir") -and
+    $semanticPreflightSelfContainedHelperText.Contains("OwnerResponseBundleZipPath") -and
+    $semanticPreflightSelfContainedHelperText.Contains("readyForAcceptanceCandidate") -and
+    $semanticPreflightSelfContainedHelperText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH") -and
+    $semanticPreflightSelfContainedCoreText.Contains("aitestpilot.production_external_evidence_semantic_preflight.v1")
+)
 $operatorActionQueueExportContentValidated = (
     $operatorActionQueueAvailable -and
     $operatorActionQueueManifest.status -eq "PASS" -and
@@ -563,7 +688,7 @@ $operatorActionQueueExportContentValidated = (
     $operatorActionQueueReportText.Contains("Bundle Semantic Preflight") -and
     $operatorActionQueueReportText.Contains("Bundle Acceptance")
 )
-$exportReadmeSemanticPreflightIndex = $exportReadmeText.IndexOf("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1", [System.StringComparison]::OrdinalIgnoreCase)
+$exportReadmeSemanticPreflightIndex = $exportReadmeText.IndexOf("run-semantic-preflight.ps1", [System.StringComparison]::OrdinalIgnoreCase)
 $exportReadmeAutoAcceptanceIndex = $exportReadmeText.IndexOf("before auto acceptance", [System.StringComparison]::OrdinalIgnoreCase)
 $semanticPreflightProbeIncluded = ($semanticPreflightProbeAvailable -and
     $exportFiles -contains "production-handoff-export\contract-evidence\production-external-evidence-semantic-preflight-probe-manifest.json" -and
@@ -594,6 +719,8 @@ $operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented = (
 )
 $semanticPreflightBeforeAutoAcceptanceCheckPassed = (
     $semanticPreflightDocumentedBeforeAutoAcceptance -and
+    $semanticPreflightSelfContainedHelperDocumented -and
+    $semanticPreflightSelfContainedHelperContentValidated -and
     ((-not $semanticPreflightProbeAvailable) -or ($semanticPreflightProbeIncluded -and
             $semanticPreflightProbeReadOnly -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleReady" $false) -and
@@ -638,6 +765,11 @@ $checks = @(
         name = "live_model_smoke_evidence_export_helper"
         passed = ($liveModelSmokeEvidenceExportHelperIncluded -and $liveModelSmokeEvidenceExportHelperDocumented)
         message = "Final export must include and document the live model smoke evidence export helper."
+    },
+    [ordered]@{
+        name = "semantic_preflight_self_contained_helper"
+        passed = ($semanticPreflightSelfContainedHelperIncluded -and $semanticPreflightSelfContainedHelperDocumented -and $semanticPreflightSelfContainedHelperContentValidated)
+        message = "Final export must include a self-contained returned folder/zip semantic preflight helper and bundled core script."
     },
     [ordered]@{
         name = "failure_contract_reports"
@@ -702,6 +834,13 @@ $manifest = [ordered]@{
     semanticPreflightProbeOwnerResponseBundleReady = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleReady" $false)
     semanticPreflightProbePartialBundleRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleRejected" $false)
     semanticPreflightProbeSemanticBadBundleRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleRejected" $false)
+    semanticPreflightSelfContainedHelperIncluded = [bool]$semanticPreflightSelfContainedHelperIncluded
+    semanticPreflightSelfContainedHelperDocumented = [bool]$semanticPreflightSelfContainedHelperDocumented
+    semanticPreflightSelfContainedHelperContentValidated = [bool]$semanticPreflightSelfContainedHelperContentValidated
+    semanticPreflightSelfContainedHelperPath = $semanticPreflightSelfContainedHelperRelativePath
+    semanticPreflightSelfContainedCorePath = $semanticPreflightSelfContainedCoreRelativePath
+    semanticPreflightSelfContainedFolderCommand = $semanticPreflightSelfContainedFolderCommand
+    semanticPreflightSelfContainedZipCommand = $semanticPreflightSelfContainedZipCommand
     operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented = [bool]$operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented
     semanticPreflightDocumentedBeforeAutoAcceptance = [bool]$semanticPreflightDocumentedBeforeAutoAcceptance
     autoAcceptanceRequiresSemanticPreflightCandidate = [bool]$ownerResponseBundleKitSemanticPreflightCommandsDocumented

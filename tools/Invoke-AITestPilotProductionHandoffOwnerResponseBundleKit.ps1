@@ -417,6 +417,8 @@ $result = [ordered]@{
     missingEvidenceFileCount = [int]($requiredFileCount - $presentFileCount)
     areaStatuses = @($areaStatuses)
     semanticPreflightRecommendedBeforeAutoAcceptance = $true
+    selfContainedSemanticPreflightCommand = '.\run-semantic-preflight.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
+    selfContainedSemanticPreflightZipCommand = '.\run-semantic-preflight.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
     semanticPreflightCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
     semanticPreflightZipCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
     autoAcceptanceRequiresSemanticPreflightCandidate = $true
@@ -488,6 +490,95 @@ Write-Output "Imported owner response bundle into $evidencePath"
 '@
 $importScript | Set-Content -Path $importScriptPath -Encoding UTF8
 
+$selfContainedSemanticPreflightHelperPath = "run-semantic-preflight.ps1"
+$selfContainedSemanticPreflightCorePath = "semantic-preflight/Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
+$selfContainedOwnerResponseBundleSemanticPreflightCommand = '.\run-semantic-preflight.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
+$selfContainedOwnerResponseBundleZipSemanticPreflightCommand = '.\run-semantic-preflight.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
+$selfContainedSemanticPreflightHelperFullPath = Join-Path $kitPath $selfContainedSemanticPreflightHelperPath
+$selfContainedSemanticPreflightCoreFullPath = Join-Path $kitPath ($selfContainedSemanticPreflightCorePath.Replace("/", "\"))
+$semanticPreflightSourcePath = Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
+if (-not (Test-Path $semanticPreflightSourcePath)) {
+    throw "Semantic preflight source script is missing: $semanticPreflightSourcePath"
+}
+New-Item -ItemType Directory -Force (Split-Path $selfContainedSemanticPreflightCoreFullPath -Parent) | Out-Null
+Copy-Item -LiteralPath $semanticPreflightSourcePath -Destination $selfContainedSemanticPreflightCoreFullPath -Force
+
+$selfContainedSemanticPreflightHelperScript = @'
+[CmdletBinding()]
+param(
+    [string]$OwnerResponseBundleDir,
+    [string]$OwnerResponseBundleZipPath,
+    [string]$OutputDir = (Join-Path $PSScriptRoot "semantic-preflight-output"),
+    [switch]$ContractFixtureMode,
+    [switch]$AllowNonCandidate
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    -not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    throw "Provide only one of -OwnerResponseBundleDir or -OwnerResponseBundleZipPath."
+}
+
+if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath) -and
+    -not [string]::IsNullOrWhiteSpace($env:AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH)) {
+    $OwnerResponseBundleZipPath = $env:AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH
+}
+
+if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    throw "Provide -OwnerResponseBundleDir, -OwnerResponseBundleZipPath, or AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH."
+}
+
+$preflightScript = Join-Path $PSScriptRoot "semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
+if (-not (Test-Path $preflightScript)) {
+    throw "Bundled semantic preflight script is missing: $preflightScript"
+}
+
+$outputPath = [System.IO.Path]::GetFullPath($OutputDir)
+New-Item -ItemType Directory -Force $outputPath | Out-Null
+
+$manifestPath = Join-Path $outputPath "production-external-evidence-semantic-preflight-manifest.json"
+$reportPath = Join-Path $outputPath "production-external-evidence-semantic-preflight.md"
+$preflightParams = @{
+    EvidenceBundleDir = $outputPath
+    ManifestPath = $manifestPath
+    ReportPath = $reportPath
+}
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
+    $preflightParams["OwnerResponseBundleDir"] = $OwnerResponseBundleDir
+}
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    $preflightParams["OwnerResponseBundleZipPath"] = $OwnerResponseBundleZipPath
+}
+if ([bool]$ContractFixtureMode) {
+    $preflightParams["ContractFixtureMode"] = $true
+}
+
+& $preflightScript @preflightParams | Out-Null
+
+if (-not (Test-Path $manifestPath)) {
+    throw "Semantic preflight manifest was not produced: $manifestPath"
+}
+
+$manifest = Get-Content -Path $manifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+Write-Output "Semantic preflight manifest: $manifestPath"
+Write-Output "Semantic preflight report: $reportPath"
+Write-Output "Semantic preflight status: $($manifest.semanticPreflightStatus)"
+Write-Output "Ready for acceptance candidate: $($manifest.readyForAcceptanceCandidate)"
+Write-Output "Semantic FAIL count: $($manifest.semanticFailCount)"
+
+if (-not [bool]$AllowNonCandidate -and
+    (-not [bool]$manifest.readyForAcceptanceCandidate -or [int]$manifest.semanticFailCount -ne 0)) {
+    throw "Semantic preflight did not produce an auto-acceptance candidate. Review $reportPath before running acceptance."
+}
+
+Write-Output "PASS AI TestPilot self-contained semantic preflight helper"
+'@
+$selfContainedSemanticPreflightHelperScript | Set-Content -Path $selfContainedSemanticPreflightHelperFullPath -Encoding UTF8
+
 $ownerResponseBundleAutoAcceptanceCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle" -RequireAllEvidence'
 $ownerResponseBundleZipAutoAcceptanceCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip" -RequireAllEvidence'
 $ownerResponseBundleSemanticPreflightCommand = '.\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
@@ -518,13 +609,14 @@ $kitReadmeLines = @(
     "5. Live model owners can run $liveModelSmokeEvidenceExportHelperPath after direct live provider smoke passes: $liveModelSmokeEvidenceExportHelperCommand",
     "6. Copy required evidence files into production-driver-evidence, production-lua-evidence, and live-smoke-evidence.",
     "7. Run verify-owner-response-bundle.ps1 against the filled bundle.",
-    "8. Operator-side semantic preflight from a returned folder: $ownerResponseBundleSemanticPreflightCommand",
-    "9. Operator-side semantic preflight from a returned zip: $ownerResponseBundleZipSemanticPreflightCommand",
+    "8. Operator-side semantic preflight from a returned folder with the bundled helper: $selfContainedOwnerResponseBundleSemanticPreflightCommand",
+    "9. Operator-side semantic preflight from a returned zip with the bundled helper: $selfContainedOwnerResponseBundleZipSemanticPreflightCommand",
     "10. Confirm the semantic preflight manifest reports readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0 before auto acceptance.",
-    "11. Run import-owner-response-bundle.ps1 -ResponseBundleDir path\\to\\filled-bundle -RunReadiness if operator inbox import is required.",
-    "12. Operator-side auto acceptance from a returned folder: $ownerResponseBundleAutoAcceptanceCommand",
-    "13. Operator-side auto acceptance from a returned zip: $ownerResponseBundleZipAutoAcceptanceCommand",
-    "14. Zip path can also be provided with $ownerResponseBundleZipEnvironmentVariable.",
+    "11. Repo-root semantic preflight remains available when running from the repository: $ownerResponseBundleSemanticPreflightCommand or $ownerResponseBundleZipSemanticPreflightCommand",
+    "12. Run import-owner-response-bundle.ps1 -ResponseBundleDir path\\to\\filled-bundle -RunReadiness if operator inbox import is required.",
+    "13. Operator-side auto acceptance from a returned folder: $ownerResponseBundleAutoAcceptanceCommand",
+    "14. Operator-side auto acceptance from a returned zip: $ownerResponseBundleZipAutoAcceptanceCommand",
+    "15. Zip path can also be provided with $ownerResponseBundleZipEnvironmentVariable.",
     "",
     "Boundary:",
     "",
@@ -549,7 +641,7 @@ $templateReadmeLines = @(
     "4. For live-smoke-evidence, use $liveModelSmokeEvidenceExportHelperPath after direct live provider smoke passes to create $liveModelSmokeEvidenceExportZipPath, then copy the two required live smoke files into this folder.",
     "5. Add the required files listed under each evidence directory.",
     "6. Run ../verify-owner-response-bundle.ps1 -BundleDir .",
-    "7. Return this folder, or a zip of this folder, to the operator for semantic preflight before auto acceptance.",
+    "7. Return this folder, or a zip of this folder, to the operator for semantic preflight with ../run-semantic-preflight.ps1 before auto acceptance.",
     "",
     "The template is incomplete until every required file is present and every contact is configured."
 )
@@ -575,6 +667,8 @@ $requestDraftLines = @(
     "",
     "Operator-side semantic preflight and acceptance after return:",
     "",
+    "- $selfContainedOwnerResponseBundleSemanticPreflightCommand",
+    "- $selfContainedOwnerResponseBundleZipSemanticPreflightCommand",
     "- $ownerResponseBundleSemanticPreflightCommand",
     "- $ownerResponseBundleZipSemanticPreflightCommand",
     "- Auto acceptance requires readyForAcceptanceCandidate=true, semanticFailCount=0, and a semanticPreflightStatus ready or warn-ready state.",
@@ -602,6 +696,8 @@ $reportLines = @(
     "| Missing evidence files in default bundle | $missingRequiredFileCount |",
     "| Response bundle probe ready | $(Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "ownerResponseReadyForConfirmation" $false)) |",
     "| Kit zip | $(Split-Path $zipFullPath -Leaf) |",
+    "| Self-contained semantic preflight helper | $(Format-MarkdownCell $selfContainedOwnerResponseBundleSemanticPreflightCommand) |",
+    "| Self-contained semantic preflight zip helper | $(Format-MarkdownCell $selfContainedOwnerResponseBundleZipSemanticPreflightCommand) |",
     "| Owner response bundle semantic preflight | $(Format-MarkdownCell $ownerResponseBundleSemanticPreflightCommand) |",
     "| Owner response bundle zip semantic preflight | $(Format-MarkdownCell $ownerResponseBundleZipSemanticPreflightCommand) |",
     "| Owner response bundle auto acceptance | $(Format-MarkdownCell $ownerResponseBundleAutoAcceptanceCommand) |",
@@ -642,6 +738,8 @@ $contentFiles = @(
     $reportFullPath
 )
 $contentText = [string]::Join([Environment]::NewLine, @($contentFiles | ForEach-Object { Get-Content -Path $_ -Encoding UTF8 -Raw }))
+$selfContainedSemanticPreflightHelperText = if (Test-Path $selfContainedSemanticPreflightHelperFullPath) { Get-Content -Path $selfContainedSemanticPreflightHelperFullPath -Encoding UTF8 -Raw } else { "" }
+$selfContainedSemanticPreflightCoreText = if (Test-Path $selfContainedSemanticPreflightCoreFullPath) { Get-Content -Path $selfContainedSemanticPreflightCoreFullPath -Encoding UTF8 -Raw } else { "" }
 $noObjectLeakage = -not $contentText.Contains("System.Collections") -and -not $contentText.Contains("@{")
 $autoAcceptanceCommandsContentValidated = (
     $contentText.Contains($ownerResponseBundleAutoAcceptanceCommand) -and
@@ -660,12 +758,25 @@ $autoAcceptanceCommandsContentValidated = (
 $semanticPreflightCommandsContentValidated = (
     $contentText.Contains($ownerResponseBundleSemanticPreflightCommand) -and
     $contentText.Contains($ownerResponseBundleZipSemanticPreflightCommand) -and
+    $contentText.Contains($selfContainedOwnerResponseBundleSemanticPreflightCommand) -and
+    $contentText.Contains($selfContainedOwnerResponseBundleZipSemanticPreflightCommand) -and
+    $contentText.Contains($selfContainedSemanticPreflightHelperPath) -and
     $contentText.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
     $contentText.Contains("-OwnerResponseBundleDir") -and
     $contentText.Contains("-OwnerResponseBundleZipPath") -and
     $contentText.Contains("readyForAcceptanceCandidate") -and
     $contentText.Contains("semanticPreflightStatus") -and
     $contentText.Contains("semanticFailCount")
+)
+$selfContainedSemanticPreflightHelperContentValidated = (
+    (Test-Path $selfContainedSemanticPreflightHelperFullPath) -and
+    (Test-Path $selfContainedSemanticPreflightCoreFullPath) -and
+    $selfContainedSemanticPreflightHelperText.Contains("semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    $selfContainedSemanticPreflightHelperText.Contains("OwnerResponseBundleDir") -and
+    $selfContainedSemanticPreflightHelperText.Contains("OwnerResponseBundleZipPath") -and
+    $selfContainedSemanticPreflightHelperText.Contains("readyForAcceptanceCandidate") -and
+    $selfContainedSemanticPreflightHelperText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH") -and
+    $selfContainedSemanticPreflightCoreText.Contains("aitestpilot.production_external_evidence_semantic_preflight.v1")
 )
 
 $kitFiles = @(
@@ -686,8 +797,8 @@ Add-KitCheck "owner_response_bundle_template_generated" `
     ((Test-Path $templatePath) -and (Test-Path $contactRosterPath) -and (Test-Path $responseManifestPath) -and $templateDirectoryCount -eq 3 -and $requiredFilesJsonCount -eq 3 -and $areaReadmeCount -eq 3) `
     "Owner response bundle kit must generate one fillable roster and three evidence directories with required-file manifests."
 Add-KitCheck "owner_response_bundle_scripts_generated" `
-    ((Test-Path $verifyScriptPath) -and (Test-Path $importScriptPath) -and (Get-Content -Raw $verifyScriptPath).Contains("READY_FOR_IMPORT") -and (Get-Content -Raw $importScriptPath).Contains("Invoke-AITestPilotProductionHandoffOwnerUnblockPack.ps1")) `
-    "Owner response bundle kit must include verify and import helpers."
+    ((Test-Path $verifyScriptPath) -and (Test-Path $importScriptPath) -and (Test-Path $selfContainedSemanticPreflightHelperFullPath) -and (Test-Path $selfContainedSemanticPreflightCoreFullPath) -and (Get-Content -Raw $verifyScriptPath).Contains("READY_FOR_IMPORT") -and (Get-Content -Raw $importScriptPath).Contains("Invoke-AITestPilotProductionHandoffOwnerUnblockPack.ps1")) `
+    "Owner response bundle kit must include verify, import, and self-contained semantic preflight helpers."
 Add-KitCheck "owner_response_bundle_counts_match" `
     ($ownerContactCount -eq (Convert-ToInt (Get-JsonValue $ownerResponseBundleProbe "ownerContactCount" -1)) -and $requiredEvidenceFileCount -eq (Convert-ToInt (Get-JsonValue $ownerResponseBundleProbe "responseBundleRequiredEvidenceFileCount" -1))) `
     "Owner response bundle kit counts must match the accepted response bundle probe."
@@ -700,6 +811,9 @@ Add-KitCheck "owner_response_bundle_auto_acceptance_commands_documented" `
 Add-KitCheck "owner_response_bundle_semantic_preflight_commands_documented" `
     $semanticPreflightCommandsContentValidated `
     "Owner response bundle kit must document operator-side semantic preflight commands and manifest fields before auto acceptance."
+Add-KitCheck "owner_response_bundle_self_contained_semantic_preflight_helper" `
+    $selfContainedSemanticPreflightHelperContentValidated `
+    "Owner response bundle kit must include a self-contained semantic preflight helper and bundled core script."
 Add-KitCheck "owner_response_bundle_boundary_preserved" `
     (-not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "emailSent" $true)) -and -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "realHostProjectEvidenceAccepted" $true)) -and -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "fixtureEvidencePromoted" $true))) `
     "Owner response bundle kit must preserve not-sent, no-real-evidence, and no-fixture-promotion boundaries."
@@ -732,6 +846,13 @@ $manifest = [ordered]@{
     responseBundleManifestGenerated = (Test-Path $responseManifestPath)
     verifyScriptGenerated = (Test-Path $verifyScriptPath)
     importScriptGenerated = (Test-Path $importScriptPath)
+    selfContainedSemanticPreflightHelperGenerated = (Test-Path $selfContainedSemanticPreflightHelperFullPath)
+    selfContainedSemanticPreflightCoreGenerated = (Test-Path $selfContainedSemanticPreflightCoreFullPath)
+    selfContainedSemanticPreflightHelperPath = $selfContainedSemanticPreflightHelperPath
+    selfContainedSemanticPreflightCorePath = $selfContainedSemanticPreflightCorePath
+    selfContainedSemanticPreflightHelperContentValidated = [bool]$selfContainedSemanticPreflightHelperContentValidated
+    selfContainedOwnerResponseBundleSemanticPreflightCommand = $selfContainedOwnerResponseBundleSemanticPreflightCommand
+    selfContainedOwnerResponseBundleZipSemanticPreflightCommand = $selfContainedOwnerResponseBundleZipSemanticPreflightCommand
     requestDraftGenerated = (Test-Path $requestDraftPath)
     reportGenerated = (Test-Path $reportFullPath)
     autoAcceptanceCommandsGenerated = $true

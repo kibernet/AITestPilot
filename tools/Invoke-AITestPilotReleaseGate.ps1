@@ -1840,6 +1840,11 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.semanticPreflightProbeOwnerResponseBundleReady -and
             [bool]$productionHandoffExportManifest.semanticPreflightProbePartialBundleRejected -and
             [bool]$productionHandoffExportManifest.semanticPreflightProbeSemanticBadBundleRejected -and
+            [bool]$productionHandoffExportManifest.semanticPreflightSelfContainedHelperIncluded -and
+            [bool]$productionHandoffExportManifest.semanticPreflightSelfContainedHelperDocumented -and
+            [bool]$productionHandoffExportManifest.semanticPreflightSelfContainedHelperContentValidated -and
+            ([string]$productionHandoffExportManifest.semanticPreflightSelfContainedHelperPath).Contains("run-semantic-preflight.ps1") -and
+            ([string]$productionHandoffExportManifest.semanticPreflightSelfContainedCorePath).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
             [bool]$productionHandoffExportManifest.operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented -and
             [bool]$productionHandoffExportManifest.semanticPreflightDocumentedBeforeAutoAcceptance -and
             [bool]$productionHandoffExportManifest.autoAcceptanceRequiresSemanticPreflightCandidate -and
@@ -1876,7 +1881,7 @@ if ($null -ne $productionHandoffExportManifest) {
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 12 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 13 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 
@@ -2364,6 +2369,9 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             [bool]$productionHandoffOwnerResponseBundleKitManifest.responseBundleManifestGenerated -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.verifyScriptGenerated -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.importScriptGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.selfContainedSemanticPreflightHelperGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.selfContainedSemanticPreflightCoreGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.selfContainedSemanticPreflightHelperContentValidated -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.requestDraftGenerated -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.reportGenerated -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.zipGenerated -and
@@ -2378,6 +2386,10 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleSemanticPreflightCommand).Contains("-OwnerResponseBundleDir") -and
             ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipSemanticPreflightCommand).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
             ([string]$productionHandoffOwnerResponseBundleKitManifest.ownerResponseBundleZipSemanticPreflightCommand).Contains("-OwnerResponseBundleZipPath") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.selfContainedOwnerResponseBundleSemanticPreflightCommand).Contains("run-semantic-preflight.ps1") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.selfContainedOwnerResponseBundleSemanticPreflightCommand).Contains("-OwnerResponseBundleDir") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.selfContainedOwnerResponseBundleZipSemanticPreflightCommand).Contains("run-semantic-preflight.ps1") -and
+            ([string]$productionHandoffOwnerResponseBundleKitManifest.selfContainedOwnerResponseBundleZipSemanticPreflightCommand).Contains("-OwnerResponseBundleZipPath") -and
             $productionHandoffOwnerResponseBundleKitManifest.semanticPreflightCandidateField -eq "readyForAcceptanceCandidate" -and
             $productionHandoffOwnerResponseBundleKitManifest.semanticPreflightStatusField -eq "semanticPreflightStatus" -and
             $productionHandoffOwnerResponseBundleKitManifest.semanticPreflightFailCountField -eq "semanticFailCount" -and
@@ -2403,7 +2415,7 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             -not [bool]$productionHandoffOwnerResponseBundleKitManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffOwnerResponseBundleKitManifest.fixtureEvidencePromoted -and
             $productionHandoffOwnerResponseBundleKitManifest.productionOutputBoundary -eq "owner_response_bundle_template_kit_only" -and
-            [int]$productionHandoffOwnerResponseBundleKitManifest.checkCount -eq 8 -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.checkCount -eq 9 -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.failedCheckCount -eq 0) `
         "Production handoff owner response bundle kit must package fillable owner evidence directories, roster, scripts, request draft, and zip without sending email or accepting real evidence."
 
@@ -2428,6 +2440,11 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightCommandsContentValidated -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightCommandsDocumented -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightZipCommandDocumented -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.selfContainedSemanticPreflightCommandsDocumented -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.selfContainedSemanticPreflightHelperExecuted -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.selfContainedSemanticPreflightReadOnly -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.selfContainedSemanticPreflightAcceptanceRun -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.selfContainedSemanticPreflightRealHostProjectEvidenceAccepted -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.verifyHelperSemanticNextStepDocumented -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.autoAcceptanceCommandsDocumented -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.autoAcceptanceZipCommandDocumented -and
@@ -2435,6 +2452,10 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleSemanticPreflightCommand).Contains("-OwnerResponseBundleDir") -and
             ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipSemanticPreflightCommand).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
             ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipSemanticPreflightCommand).Contains("-OwnerResponseBundleZipPath") -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.selfContainedOwnerResponseBundleSemanticPreflightCommand).Contains("run-semantic-preflight.ps1") -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.selfContainedOwnerResponseBundleSemanticPreflightCommand).Contains("-OwnerResponseBundleDir") -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.selfContainedOwnerResponseBundleZipSemanticPreflightCommand).Contains("run-semantic-preflight.ps1") -and
+            ([string]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.selfContainedOwnerResponseBundleZipSemanticPreflightCommand).Contains("-OwnerResponseBundleZipPath") -and
             $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightCandidateField -eq "readyForAcceptanceCandidate" -and
             $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightStatusField -eq "semanticPreflightStatus" -and
             $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.semanticPreflightFailCountField -eq "semanticFailCount" -and
@@ -2456,7 +2477,7 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionLuaEvidenceExportHelperDocumented -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.liveModelSmokeEvidenceExportHelperDocumented -and
             $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionOutputBoundary -eq "owner_response_bundle_kit_workflow_probe_only" -and
-            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 9 -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 10 -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.failedCheckCount -eq 0) `
         "Production handoff owner response bundle kit workflow probe must execute generated verify/import helpers against incomplete and complete isolated bundles without sending email or accepting production evidence."
 
@@ -2930,6 +2951,7 @@ if ($null -ne $productionExternalEvidenceInboxManifest) {
             [bool]$productionExternalEvidenceInboxManifest.inboxTemplateGenerated -and
             [bool]$productionExternalEvidenceInboxManifest.acceptanceWrapperGenerated -and
             [bool]$productionExternalEvidenceInboxManifest.acceptanceWrapperSupportsOwnerResponseBundle -and
+            [bool]$productionExternalEvidenceInboxManifest.acceptanceWrapperRequiresSemanticPreflightCandidate -and
             [bool]$productionExternalEvidenceInboxManifest.reportGenerated -and
             [bool]$productionExternalEvidenceInboxManifest.reportContentValidated -and
             [int]$productionExternalEvidenceInboxManifest.ownerPacketCount -eq 3 -and
@@ -2941,7 +2963,7 @@ if ($null -ne $productionExternalEvidenceInboxManifest) {
             -not [bool]$productionExternalEvidenceInboxManifest.releasePipelineUsesFixture -and
             -not [bool]$productionExternalEvidenceInboxManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceInboxManifest.productionOutputBoundary -eq "host_project_external_evidence_inbox_inspection_only" -and
-            [int]$productionExternalEvidenceInboxManifest.checkCount -eq 7 -and
+            [int]$productionExternalEvidenceInboxManifest.checkCount -eq 8 -and
             [int]$productionExternalEvidenceInboxManifest.failedCheckCount -eq 0) `
         "Production external evidence inbox must provide a returned-evidence directory layout and acceptance wrapper that accepts direct inbox files or owner response bundle directories/zips without claiming production evidence."
 
@@ -2955,6 +2977,7 @@ if ($null -ne $productionExternalEvidenceInboxContractProbeManifest) {
             -not [bool]$productionExternalEvidenceInboxContractProbeManifest.externalBundleUnderRepo -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.inboxTemplateGenerated -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.inboxAcceptanceWrapperSupportsOwnerResponseBundle -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.inboxAcceptanceWrapperRequiresSemanticPreflightCandidate -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.filledInboxComplete -and
             [int]$productionExternalEvidenceInboxContractProbeManifest.filledInboxEvidenceAreaCount -eq 3 -and
             [int]$productionExternalEvidenceInboxContractProbeManifest.filledInboxCompleteAreaCount -eq 3 -and
@@ -2976,10 +2999,13 @@ if ($null -ne $productionExternalEvidenceInboxContractProbeManifest) {
             [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleZipWrapperPassed -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleZipAcceptancePassed -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.ownerResponseBundleZipAllExternalEvidenceAccepted -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.semanticPreflightCandidateGatePassed -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.semanticPreflightRejectedNonCandidateBeforeAcceptance -and
+            -not [bool]$productionExternalEvidenceInboxContractProbeManifest.rejectedAcceptanceManifestGenerated -and
             -not [bool]$productionExternalEvidenceInboxContractProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceInboxContractProbeManifest.releasePipelineUsesFixture -and
             $productionExternalEvidenceInboxContractProbeManifest.productionOutputBoundary -eq "accepted_fixture_external_evidence_inbox_contract_only" -and
-            [int]$productionExternalEvidenceInboxContractProbeManifest.checkCount -eq 8 -and
+            [int]$productionExternalEvidenceInboxContractProbeManifest.checkCount -eq 10 -and
             [int]$productionExternalEvidenceInboxContractProbeManifest.failedCheckCount -eq 0) `
         "Production external evidence inbox contract probe must prove returned complete evidence can pass the wrapper from direct inbox files, owner response bundle directories, and owner response bundle zips while preserving the fixture boundary."
 

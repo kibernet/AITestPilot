@@ -197,6 +197,22 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathUnderRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = (Resolve-FullPath $Path).TrimEnd([char[]]@("\", "/"))
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    if ($fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    return $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Find-RepoRoot {
     param([string]$StartDir)
 
@@ -218,6 +234,157 @@ function Find-RepoRoot {
 
         $current = $parentPath
     }
+}
+
+function Read-JsonFile {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    if (-not (Test-Path $Path)) {
+        throw "$Label is missing: $Path"
+    }
+
+    return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
+}
+
+function Get-JsonValue {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [object]$DefaultValue = $null
+    )
+
+    if ($null -eq $Object) {
+        return $DefaultValue
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+
+    return $property.Value
+}
+
+function Convert-ToBool {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return $false
+    }
+
+    return [bool]$Value
+}
+
+function Get-OwnerResponseBundleZipSafetyReport {
+    param([string]$Path)
+
+    $result = [ordered]@{
+        inspected = $true
+        safe = $false
+        zipOpenSucceeded = $false
+        entryCount = 0
+        directoryEntryCount = 0
+        unsafeEntryCount = 0
+        duplicateEntryCount = 0
+        unsafeEntries = @()
+        duplicateEntries = @()
+        safetyErrors = @()
+    }
+
+    try {
+        Add-Type -AssemblyName System.IO.Compression | Out-Null
+        Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
+    }
+    catch {
+        $result.safetyErrors = @("zip_open_failed")
+        $result.unsafeEntries = @([ordered]@{
+                name = [System.IO.Path]::GetFileName($Path)
+                reasons = @($_.Exception.Message)
+            })
+        $result.unsafeEntryCount = 1
+        return $result
+    }
+
+    $seen = @{}
+    try {
+        $result.zipOpenSucceeded = $true
+        foreach ($entry in $archive.Entries) {
+            $entryName = [string]$entry.FullName
+            $result.entryCount += 1
+            if ($entryName.EndsWith("/", [System.StringComparison]::Ordinal) -or
+                $entryName.EndsWith("\", [System.StringComparison]::Ordinal)) {
+                $result.directoryEntryCount += 1
+            }
+
+            $normalized = $entryName.Replace("\", "/")
+            $reasons = @()
+            if ([string]::IsNullOrWhiteSpace($normalized)) {
+                $reasons += "empty_entry_name"
+            }
+            if ($normalized.StartsWith("/", [System.StringComparison]::Ordinal) -or
+                $normalized.StartsWith("//", [System.StringComparison]::Ordinal)) {
+                $reasons += "absolute_entry_path"
+            }
+            if ($normalized -match "^[A-Za-z]:") {
+                $reasons += "drive_qualified_entry_path"
+            }
+
+            $segments = @($normalized -split "/" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if (@($segments | Where-Object { $_ -eq ".." }).Count -gt 0) {
+                $reasons += "path_traversal_segment"
+            }
+            if (@($segments | Where-Object { $_ -eq "." }).Count -gt 0) {
+                $reasons += "current_directory_segment"
+            }
+            if (@($segments | Where-Object { $_.Contains(":") }).Count -gt 0) {
+                $reasons += "colon_in_entry_segment"
+            }
+
+            $canonical = $normalized.TrimStart("/")
+            $canonicalKey = $canonical.ToLowerInvariant()
+            if ($seen.ContainsKey($canonicalKey)) {
+                $result.duplicateEntries += [ordered]@{
+                    name = $entryName
+                    firstEntry = [string]$seen[$canonicalKey]
+                }
+            }
+            else {
+                $seen[$canonicalKey] = $entryName
+            }
+
+            if ($reasons.Count -gt 0) {
+                $result.unsafeEntries += [ordered]@{
+                    name = $entryName
+                    reasons = @($reasons)
+                }
+            }
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+
+    $result.unsafeEntryCount = [int]@($result.unsafeEntries).Count
+    $result.duplicateEntryCount = [int]@($result.duplicateEntries).Count
+    $result.safe = $result.zipOpenSucceeded -and
+        $result.entryCount -gt 0 -and
+        $result.unsafeEntryCount -eq 0 -and
+        $result.duplicateEntryCount -eq 0
+    if ($result.entryCount -eq 0) {
+        $result.safetyErrors += "empty_zip"
+    }
+    if ($result.duplicateEntryCount -gt 0) {
+        $result.safetyErrors += "duplicate_entries"
+    }
+    if ($result.unsafeEntryCount -gt 0) {
+        $result.safetyErrors += "unsafe_entries"
+    }
+
+    return $result
 }
 
 function Test-OwnerResponseBundleRoot {
@@ -256,6 +423,71 @@ function Resolve-OwnerResponseBundleRoot {
     throw "Could not locate owner response bundle evidence directories under $bundlePath."
 }
 
+function Invoke-SemanticPreflightGate {
+    param(
+        [string]$RepoRootPath,
+        [string]$EvidenceBundlePath,
+        [string]$OutputPath,
+        [string]$OwnerResponseBundleRoot,
+        [switch]$ContractFixtureModeValue
+    )
+
+    $semanticPreflightScript = Join-Path $RepoRootPath "tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
+    if (-not (Test-Path $semanticPreflightScript)) {
+        throw "Semantic preflight script is missing and acceptance is refused: $semanticPreflightScript"
+    }
+    if (-not (Test-PathUnderRoot $EvidenceBundlePath $RepoRootPath)) {
+        throw "Semantic preflight requires -EvidenceBundleDir under the repo root before acceptance can run: $EvidenceBundlePath"
+    }
+
+    $semanticOutputRoot = $OutputPath
+    if (-not (Test-PathUnderRoot $semanticOutputRoot $RepoRootPath)) {
+        $semanticOutputRoot = Join-Path $EvidenceBundlePath "production-external-evidence-inbox-semantic-preflight"
+    }
+    if (-not (Test-PathUnderRoot $semanticOutputRoot $RepoRootPath)) {
+        throw "Semantic preflight output must stay under the repo root. Pass -OutputDir under the repo or use an evidence bundle under the repo."
+    }
+
+    New-Item -ItemType Directory -Force $semanticOutputRoot | Out-Null
+    $semanticManifestPath = Join-Path $semanticOutputRoot "semantic-preflight-manifest.json"
+    $semanticReportPath = Join-Path $semanticOutputRoot "semantic-preflight.md"
+
+    $preflightParams = @{
+        EvidenceBundleDir = $EvidenceBundlePath
+        ManifestPath = $semanticManifestPath
+        ReportPath = $semanticReportPath
+    }
+    if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleRoot)) {
+        $preflightParams["OwnerResponseBundleDir"] = $OwnerResponseBundleRoot
+    }
+    else {
+        $preflightParams["EvidenceRoot"] = $PSScriptRoot
+    }
+    if ([bool]$ContractFixtureModeValue) {
+        $preflightParams["ContractFixtureMode"] = $true
+    }
+
+    & $semanticPreflightScript @preflightParams | Out-Null
+    $semanticManifest = Read-JsonFile $semanticManifestPath "Semantic preflight manifest"
+    $semanticStatus = [string](Get-JsonValue $semanticManifest "semanticPreflightStatus" "")
+    $readyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $semanticManifest "readyForAcceptanceCandidate" $false)
+    $semanticFailCount = [int](Get-JsonValue $semanticManifest "semanticFailCount" 0)
+    $missingRequiredFileCount = [int](Get-JsonValue $semanticManifest "missingRequiredFileCount" 0)
+    $acceptanceRun = Convert-ToBool (Get-JsonValue $semanticManifest "acceptanceRun" $true)
+    $allowedStatus = $semanticStatus -eq "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE" -or
+        $semanticStatus -eq "WARN_READY_FOR_OPERATOR_ACCEPTANCE"
+
+    if (-not $readyForAcceptanceCandidate -or
+        -not $allowedStatus -or
+        $semanticFailCount -ne 0 -or
+        $missingRequiredFileCount -ne 0 -or
+        $acceptanceRun) {
+        throw "Semantic preflight gate refused acceptance. Inspect $semanticReportPath. Required before acceptance: readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, semanticFailCount=0, missingRequiredFileCount=0. Actual: semanticPreflightStatus=$semanticStatus, readyForAcceptanceCandidate=$readyForAcceptanceCandidate, semanticFailCount=$semanticFailCount, missingRequiredFileCount=$missingRequiredFileCount, acceptanceRun=$acceptanceRun."
+    }
+
+    Write-Output "Semantic preflight gate passed: $semanticManifestPath"
+}
+
 if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
     $RepoRoot = Find-RepoRoot $PSScriptRoot
 }
@@ -279,11 +511,17 @@ if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and -not [string
 $driverEvidenceDir = Join-Path $PSScriptRoot "production-driver-evidence"
 $luaEvidenceDir = Join-Path $PSScriptRoot "production-lua-evidence"
 $liveSmokeEvidenceDir = Join-Path $PSScriptRoot "live-smoke-evidence"
+$ownerResponseBundleRoot = ""
 
 if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
     $zipPath = Resolve-FullPath $OwnerResponseBundleZipPath
     if (-not (Test-Path $zipPath)) {
         throw "Owner response bundle zip does not exist: $zipPath"
+    }
+
+    $zipSafetyReport = Get-OwnerResponseBundleZipSafetyReport $zipPath
+    if (-not [bool]$zipSafetyReport.safe) {
+        throw "Owner response bundle zip failed safety inspection before semantic preflight or acceptance. Unsafe entries: $($zipSafetyReport.unsafeEntryCount); duplicate entries: $($zipSafetyReport.duplicateEntryCount); errors: $($zipSafetyReport.safetyErrors -join ', ')"
     }
 
     $expandedBundlePath = Join-Path $outputPath "expanded-owner-response-bundle"
@@ -301,6 +539,13 @@ if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
     $luaEvidenceDir = Join-Path $ownerResponseBundleRoot "production-lua-evidence"
     $liveSmokeEvidenceDir = Join-Path $ownerResponseBundleRoot "live-smoke-evidence"
 }
+
+Invoke-SemanticPreflightGate `
+    -RepoRootPath $repoPath `
+    -EvidenceBundlePath $evidencePath `
+    -OutputPath $outputPath `
+    -OwnerResponseBundleRoot $ownerResponseBundleRoot `
+    -ContractFixtureModeValue:$ContractFixtureMode
 
 $handoffWrapper = Join-Path (Split-Path $PSScriptRoot -Parent) "production-handoff-package\accept-external-evidence.ps1"
 if (-not (Test-Path $handoffWrapper)) {
@@ -326,6 +571,11 @@ $acceptScript | Set-Content -Path $acceptScriptPath -Encoding UTF8
 $acceptanceWrapperSupportsOwnerResponseBundle = $acceptScript.Contains("OwnerResponseBundleDir") -and
     $acceptScript.Contains("OwnerResponseBundleZipPath") -and
     $acceptScript.Contains("Expand-Archive")
+$acceptanceWrapperRequiresSemanticPreflightCandidate = $acceptScript.Contains("Invoke-SemanticPreflightGate") -and
+    $acceptScript.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    $acceptScript.Contains("readyForAcceptanceCandidate") -and
+    $acceptScript.Contains("semanticFailCount") -and
+    $acceptScript.Contains("Semantic preflight gate refused acceptance")
 
 $areaStatuses = @()
 foreach ($packet in @(Convert-ToArray $ownerPacketIndex.packets)) {
@@ -362,15 +612,25 @@ foreach ($packet in @(Convert-ToArray $ownerPacketIndex.packets)) {
         "",
         "## Validation",
         "",
-        "After all owner evidence directories are filled, run from the inbox root:",
+        "After all owner evidence directories are filled, run read-only semantic preflight from the repo root first:",
+        "",
+        '```powershell',
+        ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -EvidenceRoot `"path\to\production-external-evidence-inbox`"",
+        '```',
+        "",
+        "Continue only when the semantic preflight manifest reports ``readyForAcceptanceCandidate=true``, ``semanticFailCount=0``, ``missingRequiredFileCount=0``, and a candidate-ready ``semanticPreflightStatus``.",
+        "",
+        "Then run from the inbox root:",
         "",
         '```powershell',
         ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`"",
         '```',
         "",
-        'If the owners return a filled owner response bundle, pass `-OwnerResponseBundleDir` or `-OwnerResponseBundleZipPath` instead of copying files into this inbox first.',
+        'If the owners return a filled owner response bundle, run semantic preflight with `-OwnerResponseBundleDir` or `-OwnerResponseBundleZipPath` first, then pass the same bundle argument to `accept-returned-evidence.ps1` instead of copying files into this inbox first.',
         "",
-        "This directory is incomplete until every required file exists and the acceptance wrapper passes."
+        "The wrapper re-runs the semantic preflight gate and refuses acceptance when the returned evidence is missing, semantically bad, or not candidate-ready.",
+        "",
+        "This directory is incomplete until every required file exists, semantic preflight is candidate-ready, and the acceptance wrapper passes."
     )
     $areaReadmePath = Join-Path $areaPath "README.md"
     $areaReadmeLines | Set-Content -Path $areaReadmePath -Encoding UTF8
@@ -404,10 +664,13 @@ $missingEvidenceFileCount = if ($null -eq $missingEvidenceFileCountMeasure.Sum) 
 $externalEvidenceCollectionComplete = $areaStatuses.Count -gt 0 -and $completeAreaCount -eq $areaStatuses.Count
 
 $acceptanceCommand = ".\production-external-evidence-inbox\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`""
+$semanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -EvidenceRoot `"path\to\production-external-evidence-inbox`""
+$ownerResponseBundleSemanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`""
+$ownerResponseBundleZipSemanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`""
 $rootReadmeLines = @(
     "# AI TestPilot Returned Production Evidence Inbox",
     "",
-    "Copy host-project evidence into these directories, then run the acceptance wrapper. This inbox does not promote fixture evidence as real production evidence.",
+    "Copy host-project evidence into these directories, then run semantic preflight before the acceptance wrapper. This inbox does not promote fixture evidence as real production evidence.",
     "",
     "## Directories",
     "",
@@ -423,7 +686,26 @@ foreach ($areaStatus in $areaStatuses) {
 }
 $rootReadmeLines += @(
     "",
-    "## Acceptance",
+    "## Semantic Preflight First",
+    "",
+    "From the repo root, run read-only semantic preflight before any acceptance command:",
+    "",
+    '```powershell',
+        $semanticPreflightCommand,
+        '```',
+        "",
+        "For a returned owner response bundle directory or zip, run the matching semantic preflight first:",
+        "",
+        '```powershell',
+        $ownerResponseBundleSemanticPreflightCommand,
+        $ownerResponseBundleZipSemanticPreflightCommand,
+        '```',
+        "",
+        "Continue to acceptance only when the semantic preflight manifest reports ``readyForAcceptanceCandidate=true``, ``semanticFailCount=0``, ``missingRequiredFileCount=0``, and ``semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE`` or ``WARN_READY_FOR_OPERATOR_ACCEPTANCE``.",
+        "",
+        "The generated ``accept-returned-evidence.ps1`` wrapper re-runs this semantic preflight gate and refuses before invoking acceptance if the returned evidence is missing, semantically bad, unsafe, or not candidate-ready.",
+    "",
+    "## Acceptance After Candidate-Ready Preflight",
     "",
     '```powershell',
         ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`"",
@@ -442,6 +724,7 @@ $rootReadmeLines += @(
     "## Boundary",
     "",
     "- This inbox is a return structure and inspection report.",
+    "- Semantic preflight is read-only and must run before acceptance.",
     '- Real host-project evidence is accepted only after `accept-returned-evidence.ps1` produces a PASS acceptance report with `realHostProjectEvidenceAccepted=true`.',
     "- Fixture contract evidence must not be copied into this inbox as production evidence."
 )
@@ -477,7 +760,7 @@ foreach ($areaStatus in $areaStatuses) {
     $directory = Format-MarkdownCell (Get-JsonValue $areaStatus "inboxDirectory" "")
     $presentFiles = Format-MarkdownCell (Join-MarkdownList @(Get-JsonValue $areaStatus "presentFiles" @()))
     $missingFiles = Format-MarkdownCell (Join-MarkdownList @(Get-JsonValue $areaStatus "missingFiles" @()))
-    $nextCommand = Format-MarkdownCell $acceptanceCommand
+    $nextCommand = Format-MarkdownCell $semanticPreflightCommand
     $reportLines += "| $owner | $area | $directory | $presentFiles | $missingFiles | $nextCommand |"
 }
 $reportLines += @(
@@ -486,7 +769,8 @@ $reportLines += @(
     "",
     "- This inbox only standardizes returned evidence layout.",
     "- It is not an acceptance result and does not claim real production evidence.",
-    '- Use the generated acceptance wrapper to produce `production-external-evidence-acceptance-manifest.json` before hard validation.'
+    '- Use semantic preflight first; the generated `accept-returned-evidence.ps1` wrapper also re-runs the preflight gate and refuses non-candidate returned evidence.',
+    '- Use `accept-returned-evidence.ps1` to produce `production-external-evidence-acceptance-manifest.json` only after candidate-ready semantic preflight and before hard validation.'
 )
 $reportText = [string]::Join([Environment]::NewLine, $reportLines) + [Environment]::NewLine
 $reportText | Set-Content -Path $reportFullPath -Encoding UTF8
@@ -497,6 +781,7 @@ $reportContentValidated = $reportText.Contains("AI TestPilot Production External
     $reportText.Contains("production_lua_patch_evidence") -and
     $reportText.Contains("live_model_endpoint_smoke") -and
     $reportText.Contains("Real host-project evidence accepted") -and
+    $reportText.Contains("semantic preflight") -and
     $reportText.Contains("accept-returned-evidence.ps1") -and
     -not $reportText.Contains("System.Collections") -and
     -not $reportText.Contains("@{")
@@ -523,9 +808,12 @@ Add-InboxCheck "inbox_files_generated" `
 Add-InboxCheck "owner_response_bundle_entrypoint_generated" `
     ([bool]$acceptanceWrapperSupportsOwnerResponseBundle) `
     "Returned-evidence acceptance wrapper must support filled owner response bundle directories and zip files."
+Add-InboxCheck "semantic_preflight_gate_required" `
+    ([bool]$acceptanceWrapperRequiresSemanticPreflightCandidate) `
+    "Returned-evidence acceptance wrapper must run semantic preflight and require candidate-ready returned evidence before acceptance."
 Add-InboxCheck "report_content" `
     ([bool]$reportContentValidated) `
-    "Inbox report must summarize area status, missing files, next command, and evidence boundary."
+    "Inbox report must summarize area status, missing files, semantic-preflight next command, and evidence boundary."
 Add-InboxCheck "fixture_boundary_preserved" `
     ($true) `
     "Inbox inspection must not accept fixture evidence or claim real host-project evidence."
@@ -555,7 +843,11 @@ $manifest = [ordered]@{
     inboxTemplateGenerated = $true
     acceptanceWrapperGenerated = (Test-Path $acceptScriptPath)
     acceptanceWrapperSupportsOwnerResponseBundle = [bool]$acceptanceWrapperSupportsOwnerResponseBundle
+    acceptanceWrapperRequiresSemanticPreflightCandidate = [bool]$acceptanceWrapperRequiresSemanticPreflightCandidate
     acceptanceCommand = $acceptanceCommand
+    semanticPreflightCommand = $semanticPreflightCommand
+    ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
+    ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
     gameReplayDriverType = $GameReplayDriverType
     ownerPacketCount = [int]$ownerPacketIndex.ownerPacketCount
     evidenceAreaCount = [int]$areaStatuses.Count

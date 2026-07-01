@@ -858,6 +858,11 @@ $productionHandoffExportAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleReady" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbePartialBundleRejected" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeSemanticBadBundleRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightSelfContainedHelperIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightSelfContainedHelperDocumented" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightSelfContainedHelperContentValidated" $false)) -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "semanticPreflightSelfContainedHelperPath" "")).Contains("run-semantic-preflight.ps1") -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "semanticPreflightSelfContainedCorePath" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightDocumentedBeforeAutoAcceptance" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "autoAcceptanceRequiresSemanticPreflightCandidate" $false)) -and
@@ -894,7 +899,7 @@ $productionHandoffExportAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffExportManifest "productionOutputBoundary" "") -eq "host_project_external_handoff_export_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 12 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 13 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -1450,6 +1455,9 @@ $productionHandoffOwnerResponseBundleKitAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "responseBundleManifestGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "verifyScriptGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "importScriptGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "selfContainedSemanticPreflightHelperGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "selfContainedSemanticPreflightCoreGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "selfContainedSemanticPreflightHelperContentValidated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "requestDraftGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "reportGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "zipGenerated" $false)) -and
@@ -1464,6 +1472,10 @@ $productionHandoffOwnerResponseBundleKitAccepted = (
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -and
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "selfContainedOwnerResponseBundleSemanticPreflightCommand" "")).Contains("run-semantic-preflight.ps1") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "selfContainedOwnerResponseBundleSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "selfContainedOwnerResponseBundleZipSemanticPreflightCommand" "")).Contains("run-semantic-preflight.ps1") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "selfContainedOwnerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "semanticPreflightCandidateField" "") -eq "readyForAcceptanceCandidate" -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "semanticPreflightStatusField" "") -eq "semanticPreflightStatus" -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "semanticPreflightFailCountField" "") -eq "semanticFailCount" -and
@@ -1491,7 +1503,7 @@ $productionHandoffOwnerResponseBundleKitAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionOutputBoundary" "") -eq "owner_response_bundle_template_kit_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "checkCount" 0)) -eq 8 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "checkCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -1520,6 +1532,11 @@ $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "semanticPreflightCommandsContentValidated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "semanticPreflightCommandsDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "semanticPreflightZipCommandDocumented" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "selfContainedSemanticPreflightCommandsDocumented" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "selfContainedSemanticPreflightHelperExecuted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "selfContainedSemanticPreflightReadOnly" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "selfContainedSemanticPreflightAcceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "selfContainedSemanticPreflightRealHostProjectEvidenceAccepted" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "verifyHelperSemanticNextStepDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceCommandsDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceZipCommandDocumented" $false)) -and
@@ -1527,6 +1544,10 @@ $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -and
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "selfContainedOwnerResponseBundleSemanticPreflightCommand" "")).Contains("run-semantic-preflight.ps1") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "selfContainedOwnerResponseBundleSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "selfContainedOwnerResponseBundleZipSemanticPreflightCommand" "")).Contains("run-semantic-preflight.ps1") -and
+    ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "selfContainedOwnerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "semanticPreflightCandidateField" "") -eq "readyForAcceptanceCandidate" -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "semanticPreflightStatusField" "") -eq "semanticPreflightStatus" -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "semanticPreflightFailCountField" "") -eq "semanticFailCount" -and
@@ -1550,7 +1571,7 @@ $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionOutputBoundary" "") -eq "owner_response_bundle_kit_workflow_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "checkCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "checkCount" 0)) -eq 10 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2049,6 +2070,7 @@ $productionExternalEvidenceInboxAccepted = (
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "inboxTemplateGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "acceptanceWrapperGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "acceptanceWrapperSupportsOwnerResponseBundle" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "acceptanceWrapperRequiresSemanticPreflightCandidate" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "reportGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "reportContentValidated" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "ownerPacketCount" 0)) -eq 3 -and
@@ -2061,7 +2083,7 @@ $productionExternalEvidenceInboxAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionExternalEvidenceInboxManifest "productionOutputBoundary" "") -eq "host_project_external_evidence_inbox_inspection_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "checkCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "checkCount" 0)) -eq 8 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2076,6 +2098,7 @@ $productionExternalEvidenceInboxContractAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "externalBundleUnderRepo" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "inboxTemplateGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "inboxAcceptanceWrapperSupportsOwnerResponseBundle" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "inboxAcceptanceWrapperRequiresSemanticPreflightCandidate" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxComplete" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxEvidenceAreaCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "filledInboxCompleteAreaCount" 0)) -eq 3 -and
@@ -2097,10 +2120,13 @@ $productionExternalEvidenceInboxContractAccepted = (
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleZipWrapperPassed" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleZipAcceptancePassed" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleZipAllExternalEvidenceAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "semanticPreflightCandidateGatePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "semanticPreflightRejectedNonCandidateBeforeAcceptance" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "rejectedAcceptanceManifestGenerated" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "releasePipelineUsesFixture" $true)) -and
     (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_external_evidence_inbox_contract_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "checkCount" 0)) -eq 8 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "checkCount" 0)) -eq 10 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "failedCheckCount" 1)) -eq 0
 )
 

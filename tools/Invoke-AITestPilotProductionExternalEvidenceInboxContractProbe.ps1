@@ -74,6 +74,52 @@ function Read-JsonFile {
     return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
 }
 
+function Get-JsonValue {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [object]$DefaultValue = $null
+    )
+
+    if ($null -eq $Object) {
+        return $DefaultValue
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+
+    return $property.Value
+}
+
+function Convert-ToBool {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return $false
+    }
+
+    return [bool]$Value
+}
+
+function Test-SemanticPreflightCandidate {
+    param([object]$Manifest)
+
+    $semanticStatus = [string](Get-JsonValue $Manifest "semanticPreflightStatus" "")
+    $allowedStatus = $semanticStatus -eq "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE" -or
+        $semanticStatus -eq "WARN_READY_FOR_OPERATOR_ACCEPTANCE"
+
+    return $null -ne $Manifest -and
+        (Get-JsonValue $Manifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_semantic_preflight.v1" -and
+        (Get-JsonValue $Manifest "status" "") -eq "PASS" -and
+        $allowedStatus -and
+        (Convert-ToBool (Get-JsonValue $Manifest "readyForAcceptanceCandidate" $false)) -and
+        -not (Convert-ToBool (Get-JsonValue $Manifest "acceptanceRun" $true)) -and
+        (Get-JsonValue $Manifest "semanticFailCount" 1) -eq 0 -and
+        (Get-JsonValue $Manifest "missingRequiredFileCount" 1) -eq 0
+}
+
 function Copy-RequiredFiles {
     param(
         [string]$SourceDir,
@@ -183,6 +229,8 @@ Copy-RequiredFiles $liveAcceptedSourceDir (Join-Path $ownerResponseBundlePath "l
 $filledInboxManifest = Read-JsonFile $filledInboxManifestPath "Filled production external evidence inbox manifest"
 
 $acceptedOutputPath = Join-Path $probeBundlePath "acceptance-wrapper-output"
+$acceptedSemanticPreflightManifestPath = Join-Path $acceptedOutputPath "semantic-preflight-manifest.json"
+$acceptedSemanticPreflightReportPath = Join-Path $acceptedOutputPath "semantic-preflight.md"
 $acceptedWrapperManifestPath = Join-Path $acceptedOutputPath "external-evidence-acceptance-wrapper-manifest.json"
 $acceptedAcceptanceManifestPath = Join-Path $acceptedOutputPath "production-external-evidence-acceptance-manifest.json"
 $acceptedAcceptanceReportPath = Join-Path $acceptedOutputPath "production-external-evidence-acceptance.md"
@@ -194,10 +242,13 @@ $acceptedAcceptanceReportPath = Join-Path $acceptedOutputPath "production-extern
     -GameReplayDriverType "Your.Game.Tests.AcceptedProductionReplayDriver" `
     -ContractFixtureMode | Out-Null
 
+$acceptedSemanticPreflight = Read-JsonFile $acceptedSemanticPreflightManifestPath "Accepted inbox semantic preflight manifest"
 $acceptedWrapper = Read-JsonFile $acceptedWrapperManifestPath "Accepted inbox wrapper manifest"
 $acceptedAcceptance = Read-JsonFile $acceptedAcceptanceManifestPath "Accepted inbox acceptance manifest"
 
 $ownerResponseBundleDirOutputPath = Join-Path $probeBundlePath "owner-response-bundle-acceptance-output"
+$ownerResponseBundleDirSemanticPreflightManifestPath = Join-Path $ownerResponseBundleDirOutputPath "semantic-preflight-manifest.json"
+$ownerResponseBundleDirSemanticPreflightReportPath = Join-Path $ownerResponseBundleDirOutputPath "semantic-preflight.md"
 $ownerResponseBundleDirWrapperManifestPath = Join-Path $ownerResponseBundleDirOutputPath "external-evidence-acceptance-wrapper-manifest.json"
 $ownerResponseBundleDirAcceptanceManifestPath = Join-Path $ownerResponseBundleDirOutputPath "production-external-evidence-acceptance-manifest.json"
 $ownerResponseBundleDirAcceptanceReportPath = Join-Path $ownerResponseBundleDirOutputPath "production-external-evidence-acceptance.md"
@@ -210,6 +261,7 @@ $ownerResponseBundleDirAcceptanceReportPath = Join-Path $ownerResponseBundleDirO
     -GameReplayDriverType "Your.Game.Tests.AcceptedProductionReplayDriver" `
     -ContractFixtureMode | Out-Null
 
+$ownerResponseBundleDirSemanticPreflight = Read-JsonFile $ownerResponseBundleDirSemanticPreflightManifestPath "Owner response bundle directory semantic preflight manifest"
 $ownerResponseBundleDirWrapper = Read-JsonFile $ownerResponseBundleDirWrapperManifestPath "Owner response bundle directory wrapper manifest"
 $ownerResponseBundleDirAcceptance = Read-JsonFile $ownerResponseBundleDirAcceptanceManifestPath "Owner response bundle directory acceptance manifest"
 
@@ -220,6 +272,8 @@ if (Test-Path $ownerResponseBundleZipPath) {
 Compress-Archive -Path (Join-Path $ownerResponseBundlePath "*") -DestinationPath $ownerResponseBundleZipPath -Force
 
 $ownerResponseBundleZipOutputPath = Join-Path $probeBundlePath "owner-response-bundle-zip-acceptance-output"
+$ownerResponseBundleZipSemanticPreflightManifestPath = Join-Path $ownerResponseBundleZipOutputPath "semantic-preflight-manifest.json"
+$ownerResponseBundleZipSemanticPreflightReportPath = Join-Path $ownerResponseBundleZipOutputPath "semantic-preflight.md"
 $ownerResponseBundleZipWrapperManifestPath = Join-Path $ownerResponseBundleZipOutputPath "external-evidence-acceptance-wrapper-manifest.json"
 $ownerResponseBundleZipAcceptanceManifestPath = Join-Path $ownerResponseBundleZipOutputPath "production-external-evidence-acceptance-manifest.json"
 $ownerResponseBundleZipAcceptanceReportPath = Join-Path $ownerResponseBundleZipOutputPath "production-external-evidence-acceptance.md"
@@ -232,8 +286,37 @@ $ownerResponseBundleZipAcceptanceReportPath = Join-Path $ownerResponseBundleZipO
     -GameReplayDriverType "Your.Game.Tests.AcceptedProductionReplayDriver" `
     -ContractFixtureMode | Out-Null
 
+$ownerResponseBundleZipSemanticPreflight = Read-JsonFile $ownerResponseBundleZipSemanticPreflightManifestPath "Owner response bundle zip semantic preflight manifest"
 $ownerResponseBundleZipWrapper = Read-JsonFile $ownerResponseBundleZipWrapperManifestPath "Owner response bundle zip wrapper manifest"
 $ownerResponseBundleZipAcceptance = Read-JsonFile $ownerResponseBundleZipAcceptanceManifestPath "Owner response bundle zip acceptance manifest"
+
+$ownerResponseBundleRejectedOutputPath = Join-Path $probeBundlePath "owner-response-bundle-semantic-rejected-output"
+$ownerResponseBundleRejectedOutputCapturePath = Join-Path $probeBundlePath "owner-response-bundle-semantic-rejected-output.txt"
+$ownerResponseBundleRejectedSemanticPreflightManifestPath = Join-Path $ownerResponseBundleRejectedOutputPath "semantic-preflight-manifest.json"
+$ownerResponseBundleRejectedAcceptanceManifestPath = Join-Path $ownerResponseBundleRejectedOutputPath "production-external-evidence-acceptance-manifest.json"
+$ownerResponseBundleRejectedWrapperManifestPath = Join-Path $ownerResponseBundleRejectedOutputPath "external-evidence-acceptance-wrapper-manifest.json"
+$ownerResponseBundleRejectedFailed = $false
+$ownerResponseBundleRejectedErrorMessage = ""
+try {
+    $ownerResponseBundleRejectedOutput = & (Join-Path $externalInboxPath "accept-returned-evidence.ps1") `
+        -RepoRoot $repoRoot `
+        -EvidenceBundleDir $evidenceBundlePath `
+        -OutputDir $ownerResponseBundleRejectedOutputPath `
+        -OwnerResponseBundleDir $ownerResponseBundlePath `
+        -GameReplayDriverType "Your.Game.Tests.AcceptedProductionReplayDriver" 2>&1
+}
+catch {
+    $ownerResponseBundleRejectedFailed = $true
+    $ownerResponseBundleRejectedOutput = @($_)
+    $ownerResponseBundleRejectedErrorMessage = $_.Exception.Message
+}
+@($ownerResponseBundleRejectedOutput | ForEach-Object { [string]$_ }) | Set-Content -Path $ownerResponseBundleRejectedOutputCapturePath -Encoding UTF8
+$ownerResponseBundleRejectedSemanticPreflight = if (Test-Path $ownerResponseBundleRejectedSemanticPreflightManifestPath) {
+    Read-JsonFile $ownerResponseBundleRejectedSemanticPreflightManifestPath "Owner response bundle rejected semantic preflight manifest"
+}
+else {
+    $null
+}
 
 $wrapperManifestName = "production-external-evidence-inbox-acceptance-wrapper-manifest.json"
 $acceptanceManifestName = "production-external-evidence-inbox-acceptance-manifest.json"
@@ -320,6 +403,19 @@ $ownerResponseBundleZipAcceptancePassed = $ownerResponseBundleZipAcceptance.sche
     -not [bool]$ownerResponseBundleZipAcceptance.realHostProjectEvidenceAccepted -and
     -not [bool]$ownerResponseBundleZipAcceptance.releasePipelineUsesFixture -and
     $ownerResponseBundleZipAcceptance.productionOutputBoundary -eq "accepted_fixture_external_evidence_acceptance_contract_only"
+$acceptedSemanticPreflightCandidate = Test-SemanticPreflightCandidate $acceptedSemanticPreflight
+$ownerResponseBundleDirSemanticPreflightCandidate = Test-SemanticPreflightCandidate $ownerResponseBundleDirSemanticPreflight
+$ownerResponseBundleZipSemanticPreflightCandidate = Test-SemanticPreflightCandidate $ownerResponseBundleZipSemanticPreflight
+$semanticPreflightCandidateGatePassed = $acceptedSemanticPreflightCandidate -and
+    $ownerResponseBundleDirSemanticPreflightCandidate -and
+    $ownerResponseBundleZipSemanticPreflightCandidate
+$ownerResponseBundleRejectedBeforeAcceptance = [bool]$ownerResponseBundleRejectedFailed -and
+    $null -ne $ownerResponseBundleRejectedSemanticPreflight -and
+    -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleRejectedSemanticPreflight "readyForAcceptanceCandidate" $true)) -and
+    (Get-JsonValue $ownerResponseBundleRejectedSemanticPreflight "semanticFailCount" 0) -gt 0 -and
+    -not (Test-Path $ownerResponseBundleRejectedAcceptanceManifestPath) -and
+    -not (Test-Path $ownerResponseBundleRejectedWrapperManifestPath) -and
+    $ownerResponseBundleRejectedErrorMessage.Contains("Semantic preflight gate refused acceptance")
 
 $checks = @()
 Add-ProbeCheck "external_inbox_generated" `
@@ -337,6 +433,12 @@ Add-ProbeCheck "owner_response_bundle_directory_acceptance_passed" `
 Add-ProbeCheck "owner_response_bundle_zip_acceptance_passed" `
     ($ownerResponseBundleZipWrapperPassed -and $ownerResponseBundleZipAcceptancePassed -and (Test-Path $ownerResponseBundleZipPath)) `
     "Returned-evidence inbox wrapper must accept a filled owner response bundle zip in contract mode."
+Add-ProbeCheck "semantic_preflight_gate_passed_before_acceptance" `
+    $semanticPreflightCandidateGatePassed `
+    "Returned-evidence inbox wrapper must run semantic preflight and require candidate-ready manifests before accepted contract paths continue."
+Add-ProbeCheck "semantic_preflight_gate_rejects_non_candidate_before_acceptance" `
+    $ownerResponseBundleRejectedBeforeAcceptance `
+    "Returned-evidence inbox wrapper must reject non-candidate owner response bundles before acceptance manifests are generated."
 Add-ProbeCheck "driver_lua_live_accepted" `
     ([bool]$acceptedAcceptance.productionDriverEvidenceAccepted -and [bool]$acceptedAcceptance.productionLuaEvidenceAccepted -and [bool]$acceptedAcceptance.liveModelSmokeEvidenceAccepted) `
     "Driver, Lua, and live model evidence acceptance must all pass through the inbox wrapper."
@@ -377,6 +479,7 @@ $manifest = [ordered]@{
     ownerResponseBundleUnderRepo = [bool]$ownerResponseBundleUnderRepo
     inboxTemplateGenerated = [bool]$filledInboxManifest.inboxTemplateGenerated
     inboxAcceptanceWrapperSupportsOwnerResponseBundle = [bool]$filledInboxManifest.acceptanceWrapperSupportsOwnerResponseBundle
+    inboxAcceptanceWrapperRequiresSemanticPreflightCandidate = [bool]$filledInboxManifest.acceptanceWrapperRequiresSemanticPreflightCandidate
     filledInboxComplete = [bool]$filledInboxComplete
     filledInboxEvidenceAreaCount = [int]$filledInboxManifest.evidenceAreaCount
     filledInboxCompleteAreaCount = [int]$filledInboxManifest.completeAreaCount
@@ -397,6 +500,16 @@ $manifest = [ordered]@{
     ownerResponseBundleZipWrapperPassed = [bool]$ownerResponseBundleZipWrapperPassed
     ownerResponseBundleZipAcceptancePassed = [bool]$ownerResponseBundleZipAcceptancePassed
     ownerResponseBundleZipAllExternalEvidenceAccepted = [bool]$ownerResponseBundleZipAcceptance.allExternalEvidenceAccepted
+    acceptedSemanticPreflightCandidate = [bool]$acceptedSemanticPreflightCandidate
+    ownerResponseBundleDirectorySemanticPreflightCandidate = [bool]$ownerResponseBundleDirSemanticPreflightCandidate
+    ownerResponseBundleZipSemanticPreflightCandidate = [bool]$ownerResponseBundleZipSemanticPreflightCandidate
+    semanticPreflightCandidateGatePassed = [bool]$semanticPreflightCandidateGatePassed
+    semanticPreflightRejectedNonCandidateBeforeAcceptance = [bool]$ownerResponseBundleRejectedBeforeAcceptance
+    semanticPreflightRejectedErrorMessage = $ownerResponseBundleRejectedErrorMessage
+    rejectedSemanticPreflightStatus = [string](Get-JsonValue $ownerResponseBundleRejectedSemanticPreflight "semanticPreflightStatus" "")
+    rejectedSemanticPreflightFailCount = [int](Get-JsonValue $ownerResponseBundleRejectedSemanticPreflight "semanticFailCount" 0)
+    rejectedSemanticPreflightReadyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $ownerResponseBundleRejectedSemanticPreflight "readyForAcceptanceCandidate" $true)
+    rejectedAcceptanceManifestGenerated = (Test-Path $ownerResponseBundleRejectedAcceptanceManifestPath)
     realHostProjectEvidenceAccepted = $false
     releasePipelineUsesFixture = $false
     productionOutputBoundary = "accepted_fixture_external_evidence_inbox_contract_only"

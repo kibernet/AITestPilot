@@ -266,11 +266,15 @@ $hashMismatchEntries = @($zipFileEntries | Where-Object { [bool]$_["sourceExists
 
 $requiredZipEntries = @(
     "README.md",
+    "run-semantic-preflight.ps1",
+    "semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
     "production-handoff-package\owner-packets\owner-packet-index.json",
     "production-handoff-package\verify-external-evidence.ps1",
     "production-handoff-package\accept-external-evidence.ps1",
     "production-external-evidence-inbox\accept-returned-evidence.ps1",
     "production-handoff-owner-response-bundle-kit\README.md",
+    "production-handoff-owner-response-bundle-kit\run-semantic-preflight.ps1",
+    "production-handoff-owner-response-bundle-kit\semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
     "operator-actions\production-external-evidence-action-queue.md",
     "contract-evidence\production-external-evidence-acceptance-contract.md",
     "contract-evidence\production-external-evidence-inbox-acceptance.md",
@@ -309,7 +313,7 @@ Add-ZipIndexCheck "zip_index_export_entries_match_manifest" `
     "Zip file entries must exactly match the exportFiles listed by the production handoff export manifest."
 Add-ZipIndexCheck "zip_index_required_entries_present" `
     ($missingRequiredZipEntries.Count -eq 0) `
-    "Zip file must contain the owner packet index, preflight/acceptance scripts, inbox wrapper, owner response kit, operator actions, contract reports, and owner export helpers."
+    "Zip file must contain the owner packet index, preflight/acceptance scripts, inbox wrapper, self-contained semantic preflight helpers, owner response kit, operator actions, contract reports, and owner export helpers."
 Add-ZipIndexCheck "zip_index_paths_safe" `
     ($emptyEntryNameCount -eq 0 -and $pathTraversalEntries.Count -eq 0 -and $rootedPathEntries.Count -eq 0) `
     "Zip entries must not contain empty names, rooted paths, drive-qualified paths, or parent traversal."
@@ -378,6 +382,8 @@ foreach ($check in $checks) {
 $reportText = $reportLines -join [Environment]::NewLine
 $reportContentValidated = $reportText.Contains("Zip SHA256") -and
     $reportText.Contains("Hash mismatches") -and
+    $reportText.Contains("run-semantic-preflight.ps1") -and
+    $reportText.Contains("semantic-preflight") -and
     $reportText.Contains("operator-actions") -and
     $reportText.Contains("production-external-evidence-inbox") -and
     -not $reportText.Contains("System.Collections") -and
