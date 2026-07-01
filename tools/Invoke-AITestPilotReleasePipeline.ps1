@@ -662,6 +662,16 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_handoff_owner_route_map" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffOwnerRouteMap.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
+    Invoke-PipelineStep "production_handoff_owner_route_map_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffOwnerRouteMapProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_external_evidence_partial_matrix_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidencePartialMatrixProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

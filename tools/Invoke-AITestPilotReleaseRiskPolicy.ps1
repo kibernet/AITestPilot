@@ -222,6 +222,8 @@ $releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-PolicyJson 
 $productionExternalEvidenceActionQueueManifest = Read-PolicyJson "production-external-evidence-action-queue-manifest.json" "Production external evidence action queue manifest"
 $productionExternalEvidenceActionQueueProbeManifest = Read-PolicyJson "production-external-evidence-action-queue-probe-manifest.json" "Production external evidence action queue probe manifest"
 $productionExternalEvidenceGapAnalysisManifest = Read-PolicyJson "production-external-evidence-gap-analysis-manifest.json" "Production external evidence gap analysis manifest"
+$productionHandoffOwnerRouteMapManifest = Read-PolicyJson "production-handoff-owner-route-map-manifest.json" "Production handoff owner route map manifest"
+$productionHandoffOwnerRouteMapProbeManifest = Read-PolicyJson "production-handoff-owner-route-map-probe-manifest.json" "Production handoff owner route map probe manifest"
 $productionExternalEvidencePartialMatrixProbeManifest = Read-PolicyJson "production-external-evidence-partial-matrix-probe-manifest.json" "Production external evidence partial matrix probe manifest"
 $productionExternalEvidenceSemanticPreflightProbeManifest = Read-PolicyJson "production-external-evidence-semantic-preflight-probe-manifest.json" "Production external evidence semantic preflight probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
@@ -2187,6 +2189,50 @@ Add-PolicyCheck "production_external_evidence_gap_analysis_policy" $productionEx
     "Production evidence handoff must include a machine-readable gap analysis proving the remaining work cannot be closed repo-side and has owner/operator commands for every external area." `
     "production_external_evidence_gap_analysis_not_accepted"
 
+$productionHandoffOwnerRouteMapAccepted = (
+    $null -ne $productionHandoffOwnerRouteMapManifest -and
+    $productionHandoffOwnerRouteMapManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffOwnerRouteMapManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_owner_route_map.v1" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "ownerRouteCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingMissingFileCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingBlockingReasonCount" 0)) -eq 11 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "repoSideClosableGapCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "routeMismatchCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "semanticPreflightCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "autoAcceptanceCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "hardValidationCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "exportHelperCommandCoverageCount" 0)) -eq 3 -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapManifest "automaticEmailSendReady" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffOwnerRouteMapManifest "productionOutputBoundary" "") -eq "production_handoff_owner_route_map_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "failedCheckCount" 1)) -eq 0
+)
+
+$productionHandoffOwnerRouteMapProbeAccepted = (
+    $null -ne $productionHandoffOwnerRouteMapProbeManifest -and
+    $productionHandoffOwnerRouteMapProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_owner_route_map_probe.v1" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "scenarioCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "failedScenarioCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "baselineCurrentRouteMapPassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "ownerRouteMismatchBlocked" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "missingRouteEndpointBlocked" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "autoAcceptanceWithoutSemanticPreflightBlocked" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "productionOutputBoundary" "") -eq "production_handoff_owner_route_map_probe_only"
+)
+
+Add-PolicyCheck "production_handoff_owner_route_map_policy" ($productionHandoffOwnerRouteMapAccepted -and $productionHandoffOwnerRouteMapProbeAccepted) `
+    "Production evidence handoff must prove each remaining external owner area has a coherent owner packet, contact/send state, response bundle path, required files, semantic preflight, auto acceptance, and hard validation route." `
+    "production_handoff_owner_route_map_not_accepted"
+
 $productionExternalEvidencePartialMatrixProbeAccepted = (
     $null -ne $productionExternalEvidencePartialMatrixProbeManifest -and
     $productionExternalEvidencePartialMatrixProbeManifest.status -eq "PASS" -and
@@ -2614,6 +2660,8 @@ $sourceFiles = @(
     "production-external-evidence-action-queue-manifest.json",
     "production-external-evidence-action-queue-probe-manifest.json",
     "production-external-evidence-gap-analysis-manifest.json",
+    "production-handoff-owner-route-map-manifest.json",
+    "production-handoff-owner-route-map-probe-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
@@ -2878,6 +2926,16 @@ $manifest = [ordered]@{
     productionExternalEvidenceGapAnalysisMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingMissingFileCount" 0))
     productionExternalEvidenceGapAnalysisBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingBlockingReasonCount" 0))
     productionExternalEvidenceGapAnalysisSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemSemanticPreflightCommandCount" 0))
+    productionHandoffOwnerRouteMapAccepted = [bool]$productionHandoffOwnerRouteMapAccepted
+    productionHandoffOwnerRouteMapProbeAccepted = [bool]$productionHandoffOwnerRouteMapProbeAccepted
+    productionHandoffOwnerRouteMapRouteCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "ownerRouteCount" 0))
+    productionHandoffOwnerRouteMapRepoSideClosableGapCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "repoSideClosableGapCount" 0))
+    productionHandoffOwnerRouteMapMissingFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingMissingFileCount" 0))
+    productionHandoffOwnerRouteMapBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingBlockingReasonCount" 0))
+    productionHandoffOwnerRouteMapSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "semanticPreflightCommandCount" 0))
+    productionHandoffOwnerRouteMapAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "autoAcceptanceCommandCount" 0))
+    productionHandoffOwnerRouteMapProbeScenarioCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "scenarioCount" 0))
+    productionHandoffOwnerRouteMapProbeFailedScenarioCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "failedScenarioCount" 0))
     productionExternalEvidencePartialMatrixProbeAccepted = [bool]$productionExternalEvidencePartialMatrixProbeAccepted
     productionExternalEvidencePartialMatrixCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "caseCount" 0))
     productionExternalEvidencePartialMatrixRejectedCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidencePartialMatrixProbeManifest "rejectedCaseCount" 0))
@@ -3122,6 +3180,12 @@ $reportLines = @(
     "- Production external evidence gap analysis missing files: $($manifest.productionExternalEvidenceGapAnalysisMissingFileCount)",
     "- Production external evidence gap analysis blockers: $($manifest.productionExternalEvidenceGapAnalysisBlockingReasonCount)",
     "- Production external evidence gap analysis semantic preflight command coverage: $($manifest.productionExternalEvidenceGapAnalysisSemanticPreflightCommandCount)",
+    "- Production handoff owner route map accepted: $($manifest.productionHandoffOwnerRouteMapAccepted)",
+    "- Production handoff owner route map routes: $($manifest.productionHandoffOwnerRouteMapRouteCount)",
+    "- Production handoff owner route map repo-side closable gaps: $($manifest.productionHandoffOwnerRouteMapRepoSideClosableGapCount)",
+    "- Production handoff owner route map missing files: $($manifest.productionHandoffOwnerRouteMapMissingFileCount)",
+    "- Production handoff owner route map blockers: $($manifest.productionHandoffOwnerRouteMapBlockingReasonCount)",
+    "- Production handoff owner route map probe accepted: $($manifest.productionHandoffOwnerRouteMapProbeAccepted)",
     "- Production external evidence partial matrix accepted: $($manifest.productionExternalEvidencePartialMatrixProbeAccepted)",
     "- Production external evidence partial matrix rejected cases: $($manifest.productionExternalEvidencePartialMatrixRejectedCaseCount) / $($manifest.productionExternalEvidencePartialMatrixCaseCount)",
     "- Production external evidence partial matrix single-area rejected: $($manifest.productionExternalEvidencePartialMatrixSingleAreaRejected)",

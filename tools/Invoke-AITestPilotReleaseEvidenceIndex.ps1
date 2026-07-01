@@ -292,6 +292,15 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "releasePipelineSendsEmail" "bool-eq" $false "gap analysis keeps no-mail boundary"
     $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "realHostProjectEvidenceAccepted" "bool-eq" $false "gap analysis does not accept host evidence"
 
+    $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "ownerRouteCount" "int-eq" 3 "owner route map preserves three owner routes"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "externalRemainingMissingFileCount" "int-eq" 9 "owner route map preserves nine missing evidence files"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "externalRemainingBlockingReasonCount" "int-eq" 11 "owner route map preserves eleven blockers"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "repoSideClosableGapCount" "int-eq" 0 "owner route map does not claim repo-side closure"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "semanticPreflightCommandCount" "int-eq" 3 "owner route map has semantic preflight per route"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "autoAcceptanceCommandCount" "int-eq" 3 "owner route map has auto acceptance per route"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "releasePipelineSendsEmail" "bool-eq" $false "owner route map keeps no-mail boundary"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "realHostProjectEvidenceAccepted" "bool-eq" $false "owner route map does not accept host evidence"
+
     $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "readOnly" "bool-eq" $true "semantic preflight remains read-only"
     $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "acceptanceRun" "bool-eq" $false "semantic preflight does not run acceptance"
     $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "caseCount" "int-eq" 9 "semantic preflight covers all expected cases"
@@ -549,6 +558,8 @@ function Get-DefaultSourceManifestNames {
         "production-external-evidence-action-queue-manifest.json",
         "production-external-evidence-action-queue-probe-manifest.json",
         "production-external-evidence-gap-analysis-manifest.json",
+        "production-handoff-owner-route-map-manifest.json",
+        "production-handoff-owner-route-map-probe-manifest.json",
         "production-external-evidence-partial-matrix-probe-manifest.json",
         "production-external-evidence-semantic-preflight-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",

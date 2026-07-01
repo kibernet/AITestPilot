@@ -128,6 +128,8 @@ try {
         "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueue.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidenceGapAnalysis.ps1",
+        "tools\Invoke-AITestPilotProductionHandoffOwnerRouteMap.ps1",
+        "tools\Invoke-AITestPilotProductionHandoffOwnerRouteMapProbe.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidencePartialMatrixProbe.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
         "tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflightProbe.ps1",

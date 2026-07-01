@@ -300,6 +300,8 @@ $releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-Manifest "r
 $productionExternalEvidenceActionQueueManifest = Read-Manifest "production-external-evidence-action-queue-manifest.json"
 $productionExternalEvidenceActionQueueProbeManifest = Read-Manifest "production-external-evidence-action-queue-probe-manifest.json"
 $productionExternalEvidenceGapAnalysisManifest = Read-Manifest "production-external-evidence-gap-analysis-manifest.json"
+$productionHandoffOwnerRouteMapManifest = Read-Manifest "production-handoff-owner-route-map-manifest.json"
+$productionHandoffOwnerRouteMapProbeManifest = Read-Manifest "production-handoff-owner-route-map-probe-manifest.json"
 $productionExternalEvidencePartialMatrixProbeManifest = Read-Manifest "production-external-evidence-partial-matrix-probe-manifest.json"
 $productionExternalEvidenceSemanticPreflightProbeManifest = Read-Manifest "production-external-evidence-semantic-preflight-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
@@ -3155,6 +3157,62 @@ if ($null -ne $productionExternalEvidenceGapAnalysisManifest) {
     Test-ListedFiles $productionExternalEvidenceGapAnalysisManifest "production_external_evidence_gap_analysis"
 }
 
+if ($null -ne $productionHandoffOwnerRouteMapManifest) {
+    Add-ReleaseCheck "production_handoff_owner_route_map" `
+        ($productionHandoffOwnerRouteMapManifest.status -eq "PASS" -and
+            $productionHandoffOwnerRouteMapManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_route_map.v1" -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "ownerRouteCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingWorkItemCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingMissingFileCount" 0) -eq 9 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingBlockingReasonCount" 0) -eq 11 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "repoSideClosableGapCount" 1) -eq 0 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "matchedOwnerPacketCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "matchedDispatchDraftCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "matchedContactRosterCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "matchedSendReadinessCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "matchedOwnerResponseBundleAreaCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "matchedRequiredFilesJsonCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "semanticPreflightCommandCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "autoAcceptanceCommandCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "hardValidationCommandCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "exportHelperCommandCoverageCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "routeMismatchCount" 1) -eq 0 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "requiredFileMismatchCount" 1) -eq 0 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "missingCommandCount" 1) -eq 0 -and
+            [bool](Get-JsonValue $productionHandoffOwnerRouteMapManifest "reportGenerated" $false) -and
+            [bool](Get-JsonValue $productionHandoffOwnerRouteMapManifest "reportContentValidated" $false) -and
+            -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapManifest "releasePipelineSendsEmail" $true) -and
+            -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapManifest "automaticEmailSendReady" $true) -and
+            -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapManifest "realHostProjectEvidenceAccepted" $true) -and
+            -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalEvidenceAccepted" $true) -and
+            -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapManifest "fixtureEvidencePromoted" $true) -and
+            $productionHandoffOwnerRouteMapManifest.productionOutputBoundary -eq "production_handoff_owner_route_map_only" -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "failedCheckCount" 1) -eq 0) `
+        "Production handoff owner route map must tie all three external gaps to owner packets, contact/send state, response bundle areas, required-files.json, semantic preflight, auto acceptance, and hard validation without claiming repo-side closure."
+
+    Test-ListedFiles $productionHandoffOwnerRouteMapManifest "production_handoff_owner_route_map"
+}
+
+if ($null -ne $productionHandoffOwnerRouteMapProbeManifest) {
+    Add-ReleaseCheck "production_handoff_owner_route_map_probe" `
+        ($productionHandoffOwnerRouteMapProbeManifest.status -eq "PASS" -and
+            $productionHandoffOwnerRouteMapProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_route_map_probe.v1" -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "scenarioCount" 0) -eq 4 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "failedScenarioCount" 1) -eq 0 -and
+            [bool](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "baselineCurrentRouteMapPassed" $false) -and
+            [bool](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "ownerRouteMismatchBlocked" $false) -and
+            [bool](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "missingRouteEndpointBlocked" $false) -and
+            [bool](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "autoAcceptanceWithoutSemanticPreflightBlocked" $false) -and
+            -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "releasePipelineSendsEmail" $true) -and
+            -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "realHostProjectEvidenceAccepted" $true) -and
+            -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "externalEvidenceAccepted" $true) -and
+            -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "fixtureEvidencePromoted" $true) -and
+            $productionHandoffOwnerRouteMapProbeManifest.productionOutputBoundary -eq "production_handoff_owner_route_map_probe_only") `
+        "Production handoff owner route map probe must prove baseline route mapping passes while owner mismatch, missing endpoints, and auto acceptance without semantic preflight are blocked."
+
+    Test-ListedFiles $productionHandoffOwnerRouteMapProbeManifest "production_handoff_owner_route_map_probe"
+}
+
 if ($null -ne $productionExternalEvidencePartialMatrixProbeManifest) {
     Add-ReleaseCheck "production_external_evidence_partial_matrix_probe" `
         ($productionExternalEvidencePartialMatrixProbeManifest.status -eq "PASS" -and
@@ -3693,6 +3751,16 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisExternalEvidenceRequiredGapCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisMissingFileCount -eq 9 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisBlockingReasonCount -eq 11 -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapProbeAccepted -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapRouteCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapRepoSideClosableGapCount -eq 0 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapMissingFileCount -eq 9 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapBlockingReasonCount -eq 11 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapSemanticPreflightCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapAutoAcceptanceCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapProbeScenarioCount -eq 4 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerRouteMapProbeFailedScenarioCount -eq 0 -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixProbeAccepted -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixRejectedCaseCount -eq 5 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixCaseCount -eq 5 -and
@@ -3806,6 +3874,8 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-external-evidence-action-queue-manifest.json",
         "production-external-evidence-action-queue-probe-manifest.json",
         "production-external-evidence-gap-analysis-manifest.json",
+        "production-handoff-owner-route-map-manifest.json",
+        "production-handoff-owner-route-map-probe-manifest.json",
         "production-external-evidence-partial-matrix-probe-manifest.json",
         "production-external-evidence-semantic-preflight-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
@@ -3967,6 +4037,8 @@ $sourceManifests = @(
     "production-external-evidence-action-queue-manifest.json",
     "production-external-evidence-action-queue-probe-manifest.json",
     "production-external-evidence-gap-analysis-manifest.json",
+    "production-handoff-owner-route-map-manifest.json",
+    "production-handoff-owner-route-map-probe-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",

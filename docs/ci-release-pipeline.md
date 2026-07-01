@@ -95,19 +95,21 @@ Use the release pipeline wrapper when CI needs one command with stable artifacts
 | 81 | `production_external_evidence_action_queue` |
 | 82 | `production_external_evidence_action_queue_probe` |
 | 83 | `production_external_evidence_gap_analysis` |
-| 84 | `production_external_evidence_partial_matrix_probe` |
-| 85 | `production_external_evidence_semantic_preflight_probe` |
-| 86 | `production_handoff_export_final_refresh` |
-| 87 | `production_handoff_export_zip_index` |
-| 88 | `release_docs_freshness` |
-| 89 | `production_hard_mode_failure_probe` |
-| 90 | `production_hard_mode_success_contract_probe` |
-| 91 | `release_risk_policy` |
-| 92 | `release_evidence_index` |
-| 93 | `release_evidence_index_field_coverage_probe` |
-| 94 | `repair_agent_cursor_agent_external_output_binding_probe` |
-| 95 | `release_gate` |
-| 96 | `release_gate_failure_probe` |
+| 84 | `production_handoff_owner_route_map` |
+| 85 | `production_handoff_owner_route_map_probe` |
+| 86 | `production_external_evidence_partial_matrix_probe` |
+| 87 | `production_external_evidence_semantic_preflight_probe` |
+| 88 | `production_handoff_export_final_refresh` |
+| 89 | `production_handoff_export_zip_index` |
+| 90 | `release_docs_freshness` |
+| 91 | `production_hard_mode_failure_probe` |
+| 92 | `production_hard_mode_success_contract_probe` |
+| 93 | `release_risk_policy` |
+| 94 | `release_evidence_index` |
+| 95 | `release_evidence_index_field_coverage_probe` |
+| 96 | `repair_agent_cursor_agent_external_output_binding_probe` |
+| 97 | `release_gate` |
+| 98 | `release_gate_failure_probe` |
 
 The pipeline runs:
 
@@ -177,6 +179,8 @@ The pipeline runs:
 - production external evidence action queue, writing the canonical operator action queue from the current remaining-work snapshot before the probe runs, while preserving the no-mail, no-real-evidence, and no-fixture-promotion boundaries.
 - production external evidence action queue probe, proving isolated pending and post-dispatch probe queues preserve the local-mail boundary, reduce tracked work to the three external evidence areas only after post-dispatch evidence, and expose owner response bundle directory/zip semantic-preflight and auto-acceptance commands at queue and item level without sending mail or accepting evidence.
 - production external evidence gap analysis, converting the canonical action queue and current remaining-work snapshot into a machine-readable operator/audit summary with three external gaps, nine missing files, eleven blockers, zero repo-side-closable gaps, and the next owner/operator commands, with semantic preflight first.
+- production handoff owner route map, tying each external gap to its owner packet, contact/send state, owner response bundle area, `required-files.json`, semantic preflight command, auto-acceptance command, and hard-validation command without claiming repo-side closure.
+- production handoff owner route map probe, proving the current route map passes while owner-route mismatches, missing route endpoints, and auto acceptance without semantic preflight are blocked in isolated bundle copies.
 - production external evidence partial matrix probe, proving driver-only, Lua-only, live-smoke-only, one-file-missing, and malformed owner response bundle returns are rejected before acceptance can claim all production evidence is ready.
 - production external evidence semantic preflight probe, proving returned owner bundles are read-only checked for missing files, candidate-ready contract shape, and fixture/template semantic failures before auto acceptance runs; operators inspect `readyForAcceptanceCandidate`, `semanticPreflightStatus`, and `semanticFailCount`, and the preflight does not copy returned evidence or promote fixtures. `OwnerResponseBundleZipPath` covers complete owner response bundle zip, partial zip, semantic-bad zip, and arbitrary single top-level wrapper zip cases; unsafe, duplicate, absolute, or traversal zip entries are rejected before extraction, while safe zips resolve to the bundle root. The auto-acceptance probe also re-runs that semantic gate on evidence roots plus owner response bundle directories/zips, and rejects complete semantic-bad bundles before acceptance.
 - production handoff export final refresh, re-running the export after the canonical action queue and action queue probe so `operator-actions\` carries the canonical action queue, remaining-work source snapshot, and separate action-queue probe proof in the final owner-facing zip.
@@ -197,7 +201,7 @@ The pipeline runs:
 - production hard-mode failure probe, proving combined driver, Lua, and live-model hard switches block the current sample or missing-evidence state.
 - production hard-mode success contract probe, proving combined driver, Lua, and live-model hard switches can pass with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
 - release risk policy, aggregating AI exploration, high-risk graph, production driver, production Lua, live endpoint, and CI provider release blockers.
-- release evidence index, exporting a machine-readable source-manifest summary for CI, portal handoff, and audit consumers, including field-level coverage for 58 semantic fields across the primary release evidence manifests.
+- release evidence index, exporting a machine-readable source-manifest summary for CI, portal handoff, and audit consumers, including field-level coverage for 66 semantic fields across the primary release evidence manifests.
 - release evidence index field coverage probe, proving five isolated scenarios for the index field checks and latest-bundle pollution guard before the release gate runs. The probe does not send email, accept real host-project evidence, or promote fixture evidence into production evidence.
 - Cursor Agent external output binding probe, proving stale optional headless Cursor Agent producer files cannot be treated as the current accepted external-output directory unless task context and run/patch/summary hashes match.
 - repo-side release gate.
@@ -216,6 +220,8 @@ That directory includes `pipeline-manifest.json`, `release-gate-manifest.json`, 
 `repair-agent-cursor-agent-external-output-binding-probe-manifest.json`, `repair-agent-cursor-agent-external-output-binding-probe.md`, and `cursor-agent-external-output-binding-probe\` are generated after `release_evidence_index_field_coverage_probe` and before `release_gate`. The guard keeps the default deterministic pipeline valid with no Cursor Agent manifest, then proves stale optional Cursor Agent evidence paired with fixture acceptance is blocked, producer/acceptance hash mismatches are blocked, and a matched headless Cursor Agent producer manifest can pass without sending mail or accepting real host-project evidence.
 
 `production-external-evidence-action-queue-manifest.json` is the canonical operator queue generated from the current remaining-work state. `production-external-evidence-action-queue-probe-manifest.json` remains the contract proof for pending versus post-dispatch queue behavior; both are required release evidence before gap analysis and the final owner-facing export refresh.
+
+`production-handoff-owner-route-map-manifest.json`, `production-handoff-owner-route-map.md`, `production-handoff-owner-route-map-probe-manifest.json`, `production-handoff-owner-route-map-probe.md`, and `production-handoff-owner-route-map-probe\` are generated after `production_external_evidence_gap_analysis` and before `production_external_evidence_partial_matrix_probe`. They prove each of the three external owner areas maps cleanly from owner packet and contact/send state through returned bundle required files, semantic preflight, auto acceptance, and hard validation; the probe blocks owner-route mismatches, missing route endpoints, and auto acceptance without semantic preflight.
 
 `production-handoff-package-manifest.json` is generated before the release risk policy. It points host-project owners at the exact driver, Lua, and live-model evidence files and hard-mode release-pipeline commands needed to replace the package fixtures with real production evidence. The package also validates that generated Markdown and command files contain concrete owner names, kit paths, required evidence files, blocker-resolution rows, per-owner packet commands, release commands, preflight commands, and acceptance-wrapper commands rather than serialized PowerShell object names. The generated `blocker-resolution-map.json` and `blocker-resolution-map.md` map every remaining production blocker to its owner, evidence files, acceptance criteria, and validation command. The generated `owner-packets\*.md` files split those rows into one executable packet per host-project owner, with required evidence, blocker reasons, preflight, acceptance-wrapper, and hard-validation commands. The generated `verify-external-evidence.ps1` preflights driver, Lua, and live-model evidence paths and writes `external-evidence-preflight-self-check.json`; the generated `accept-external-evidence.ps1` runs the stable external evidence acceptance command and writes the Markdown acceptance report before optional hard validation. The default self-check must remain pending for the three real host-project evidence areas. `production-handoff-external-evidence-preflight-probe-manifest.json` then runs the generated preflight and acceptance wrapper against complete accepted fixture evidence from outside the repository with contract boundaries preserved, recording `production-handoff-external-evidence-preflight-accepted-manifest.json` and `production-handoff-external-evidence-acceptance-wrapper-manifest.json` as contract proof only.
 
