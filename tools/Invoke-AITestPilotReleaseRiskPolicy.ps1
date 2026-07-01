@@ -872,9 +872,16 @@ $productionHandoffExportAccepted = (
     (Get-JsonValue $productionHandoffExportManifest "semanticPreflightFailCountField" "") -eq "semanticFailCount" -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueAvailable" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueIncluded" $false)) -and
-    (@("canonical_post_dispatch_action_queue", "probe_post_dispatch_action_queue") -contains (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSourceKind" "")) -and
+    (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSourceKind" "") -eq "canonical_action_queue" -and
+    (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueManifestSourceKind" "") -eq "remaining_work_snapshot" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueManifestIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueReportIncluded" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueProbeIncluded" $false)) -and
-    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueuePostDispatchSnapshotIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueProbeManifestIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSourceSnapshotIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueRemainingWorkSnapshotIncluded" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueuePostDispatchSnapshotIncluded" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueManifestHashMatchesCanonical" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueContentValidated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperIncluded" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperDocumented" $false)) -and
@@ -888,7 +895,7 @@ $productionHandoffExportAccepted = (
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionFileCount" 0)) -ge 6 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemAutoAcceptanceCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemSemanticPreflightCommandCount" 0)) -eq 3 -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueTrackedRemainingWorkItemCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueTrackedRemainingWorkItemCount" 0)) -eq 4 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingWorkItemCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingMissingFileCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingBlockingReasonCount" 0)) -eq 11 -and
@@ -927,6 +934,7 @@ $productionHandoffExportZipIndexAccepted = (
     (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "duplicateEntryCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "requiredZipEntryCount" 0)) -ge 12 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "missingRequiredZipEntryCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "canonicalActionQueueManifestZipMatchesRoot" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "indexGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "reportGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "reportContentValidated" $false)) -and
@@ -935,7 +943,7 @@ $productionHandoffExportZipIndexAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportZipIndexManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffExportZipIndexManifest "productionOutputBoundary" "") -eq "production_handoff_export_zip_index_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "checkCount" 0)) -eq 11 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "checkCount" 0)) -eq 12 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2016,6 +2024,7 @@ $productionExternalEvidenceGapAnalysisAccepted = (
     $null -ne $productionExternalEvidenceGapAnalysisManifest -and
     $productionExternalEvidenceGapAnalysisManifest.status -eq "PASS" -and
     (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_gap_analysis.v1" -and
+    (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "actionQueueSourceKind" "") -eq "canonical_action_queue" -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingMissingFileCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingBlockingReasonCount" 0)) -eq 11 -and
@@ -2511,10 +2520,23 @@ $manifest = [ordered]@{
     productionHandoffExportAutoAcceptanceRequiresSemanticPreflightCandidate = (Get-JsonValue $productionHandoffExportManifest "autoAcceptanceRequiresSemanticPreflightCandidate" $false)
     productionHandoffExportOperatorActionQueueIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueIncluded" $false)
     productionHandoffExportOperatorActionQueueSourceKind = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSourceKind" "")
+    productionHandoffExportOperatorActionQueueManifestSourceKind = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueManifestSourceKind" "")
+    productionHandoffExportOperatorActionQueueManifestIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueManifestIncluded" $false)
+    productionHandoffExportOperatorActionQueueReportIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueReportIncluded" $false)
+    productionHandoffExportOperatorActionQueueProbeIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueProbeIncluded" $false)
+    productionHandoffExportOperatorActionQueueProbeManifestIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueProbeManifestIncluded" $false)
+    productionHandoffExportOperatorActionQueueSourceSnapshotIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSourceSnapshotIncluded" $false)
+    productionHandoffExportOperatorActionQueueRemainingWorkSnapshotIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueRemainingWorkSnapshotIncluded" $false)
+    productionHandoffExportOperatorActionQueuePostDispatchSnapshotIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueuePostDispatchSnapshotIncluded" $false)
+    productionHandoffExportOperatorActionQueueManifestHashMatchesCanonical = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueManifestHashMatchesCanonical" $false)
     productionHandoffExportOperatorActionQueueContentValidated = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueContentValidated" $false)
     productionHandoffExportOperatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented" $false)
     productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemAutoAcceptanceCommandCount" 0))
     productionHandoffExportOperatorActionQueueItemSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemSemanticPreflightCommandCount" 0))
+    productionHandoffExportOperatorActionQueueTrackedRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueTrackedRemainingWorkItemCount" 0))
+    productionHandoffExportOperatorActionQueueExternalRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingWorkItemCount" 0))
+    productionHandoffExportOperatorActionQueueExternalRemainingMissingFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingMissingFileCount" 0))
+    productionHandoffExportOperatorActionQueueExternalRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingBlockingReasonCount" 0))
     productionHandoffExportDriverEvidenceExportHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperIncluded" $false)
     productionHandoffExportDriverEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperDocumented" $false)
     productionHandoffExportLuaEvidenceExportHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperIncluded" $false)
@@ -2529,6 +2551,7 @@ $manifest = [ordered]@{
     productionHandoffExportZipIndexHashMismatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "hashMismatchCount" 0))
     productionHandoffExportZipIndexUnsafeEntryNameCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "unsafeEntryNameCount" 0))
     productionHandoffExportZipIndexDuplicateEntryCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportZipIndexManifest "duplicateEntryCount" 0))
+    productionHandoffExportZipIndexCanonicalActionQueueManifestHashMatchesRoot = (Get-JsonValue $productionHandoffExportZipIndexManifest "canonicalActionQueueManifestZipMatchesRoot" $false)
     productionHandoffExportZipIndexSha256 = (Get-JsonValue $productionHandoffExportZipIndexManifest "zipSha256" "")
     releaseDocsFreshnessAccepted = [bool]$releaseDocsFreshnessAccepted
     releaseDocsFreshnessPipelineStepCount = (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "pipelineStepCount" 0))
@@ -2652,6 +2675,7 @@ $manifest = [ordered]@{
     productionExternalEvidenceActionQueuePostDispatchLiveModelSmokeExportHelperCommand = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueLiveModelSmokeEvidenceExportHelperCommand" "")
     productionExternalEvidenceActionQueueMissingPostDispatchRejected = (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "missingPostDispatchRejected" $false)
     productionExternalEvidenceGapAnalysisAccepted = [bool]$productionExternalEvidenceGapAnalysisAccepted
+    productionExternalEvidenceGapAnalysisActionQueueSourceKind = (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "actionQueueSourceKind" "")
     productionExternalEvidenceGapAnalysisGapItemCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "gapItemCount" 0))
     productionExternalEvidenceGapAnalysisRepoSideClosableGapCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "repoSideClosableGapCount" 0))
     productionExternalEvidenceGapAnalysisExternalEvidenceRequiredGapCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalEvidenceRequiredGapCount" 0))

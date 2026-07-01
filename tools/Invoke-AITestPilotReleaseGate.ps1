@@ -1854,9 +1854,16 @@ if ($null -ne $productionHandoffExportManifest) {
             $productionHandoffExportManifest.semanticPreflightFailCountField -eq "semanticFailCount" -and
             [bool]$productionHandoffExportManifest.operatorActionQueueAvailable -and
             [bool]$productionHandoffExportManifest.operatorActionQueueIncluded -and
-            @("canonical_post_dispatch_action_queue", "probe_post_dispatch_action_queue").Contains([string]$productionHandoffExportManifest.operatorActionQueueSourceKind) -and
+            [string]$productionHandoffExportManifest.operatorActionQueueSourceKind -eq "canonical_action_queue" -and
+            [string]$productionHandoffExportManifest.operatorActionQueueManifestSourceKind -eq "remaining_work_snapshot" -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueManifestIncluded -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueReportIncluded -and
             [bool]$productionHandoffExportManifest.operatorActionQueueProbeIncluded -and
-            [bool]$productionHandoffExportManifest.operatorActionQueuePostDispatchSnapshotIncluded -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueProbeManifestIncluded -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueSourceSnapshotIncluded -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueRemainingWorkSnapshotIncluded -and
+            -not [bool]$productionHandoffExportManifest.operatorActionQueuePostDispatchSnapshotIncluded -and
+            [bool]$productionHandoffExportManifest.operatorActionQueueManifestHashMatchesCanonical -and
             [bool]$productionHandoffExportManifest.operatorActionQueueContentValidated -and
             [bool]$productionHandoffExportManifest.productionDriverEvidenceExportHelperIncluded -and
             [bool]$productionHandoffExportManifest.productionDriverEvidenceExportHelperDocumented -and
@@ -1870,7 +1877,7 @@ if ($null -ne $productionHandoffExportManifest) {
             [int]$productionHandoffExportManifest.operatorActionFileCount -ge 6 -and
             [int]$productionHandoffExportManifest.operatorActionQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueItemSemanticPreflightCommandCount -eq 3 -and
-            [int]$productionHandoffExportManifest.operatorActionQueueTrackedRemainingWorkItemCount -eq 3 -and
+            [int]$productionHandoffExportManifest.operatorActionQueueTrackedRemainingWorkItemCount -eq 4 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingWorkItemCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingMissingFileCount -eq 9 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingBlockingReasonCount -eq 11 -and
@@ -1906,6 +1913,7 @@ if ($null -ne $productionHandoffExportZipIndexManifest) {
             [int]$productionHandoffExportZipIndexManifest.duplicateEntryCount -eq 0 -and
             [int]$productionHandoffExportZipIndexManifest.requiredZipEntryCount -ge 12 -and
             [int]$productionHandoffExportZipIndexManifest.missingRequiredZipEntryCount -eq 0 -and
+            [bool]$productionHandoffExportZipIndexManifest.canonicalActionQueueManifestZipMatchesRoot -and
             [bool]$productionHandoffExportZipIndexManifest.indexGenerated -and
             [bool]$productionHandoffExportZipIndexManifest.reportGenerated -and
             [bool]$productionHandoffExportZipIndexManifest.reportContentValidated -and
@@ -1914,7 +1922,7 @@ if ($null -ne $productionHandoffExportZipIndexManifest) {
             -not [bool]$productionHandoffExportZipIndexManifest.externalEvidenceAccepted -and
             -not [bool]$productionHandoffExportZipIndexManifest.fixtureEvidencePromoted -and
             $productionHandoffExportZipIndexManifest.productionOutputBoundary -eq "production_handoff_export_zip_index_only" -and
-            [int]$productionHandoffExportZipIndexManifest.checkCount -eq 11 -and
+            [int]$productionHandoffExportZipIndexManifest.checkCount -eq 12 -and
             [int]$productionHandoffExportZipIndexManifest.failedCheckCount -eq 0) `
         "Production handoff export zip index must prove the zip entry list and every entry content hash match the export manifest and source files."
 
@@ -2900,6 +2908,7 @@ if ($null -ne $productionExternalEvidenceGapAnalysisManifest) {
     Add-ReleaseCheck "production_external_evidence_gap_analysis" `
         ($productionExternalEvidenceGapAnalysisManifest.status -eq "PASS" -and
             $productionExternalEvidenceGapAnalysisManifest.schemaVersion -eq "aitestpilot.production_external_evidence_gap_analysis.v1" -and
+            $productionExternalEvidenceGapAnalysisManifest.actionQueueSourceKind -eq "canonical_action_queue" -and
             [int]$productionExternalEvidenceGapAnalysisManifest.externalRemainingWorkItemCount -eq 3 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.externalRemainingMissingFileCount -eq 9 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.externalRemainingBlockingReasonCount -eq 11 -and
@@ -3287,9 +3296,23 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitAutoAcceptanceDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueIncluded -and
-            @("canonical_post_dispatch_action_queue", "probe_post_dispatch_action_queue").Contains([string]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueSourceKind) -and
+            [string]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueSourceKind -eq "canonical_action_queue" -and
+            [string]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueManifestSourceKind -eq "remaining_work_snapshot" -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueManifestIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueReportIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueProbeIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueProbeManifestIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueSourceSnapshotIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueRemainingWorkSnapshotIncluded -and
+            -not [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueuePostDispatchSnapshotIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueManifestHashMatchesCanonical -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueContentValidated -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueItemSemanticPreflightCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueTrackedRemainingWorkItemCount -eq 4 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueExternalRemainingWorkItemCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueExternalRemainingMissingFileCount -eq 9 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueExternalRemainingBlockingReasonCount -eq 11 -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportDriverEvidenceExportHelperIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportDriverEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportLuaEvidenceExportHelperIncluded -and
@@ -3303,6 +3326,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexHashMismatchCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexUnsafeEntryNameCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportZipIndexDuplicateEntryCount -eq 0 -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportZipIndexCanonicalActionQueueManifestHashMatchesRoot -and
             -not [string]::IsNullOrWhiteSpace([string]$releaseRiskPolicyManifest.productionHandoffExportZipIndexSha256) -and
             [bool]$releaseRiskPolicyManifest.releaseDocsFreshnessAccepted -and
             [int]$releaseRiskPolicyManifest.releaseDocsFreshnessDocumentedPipelineStepCount -eq [int]$releaseRiskPolicyManifest.releaseDocsFreshnessPipelineStepCount -and
@@ -3386,6 +3410,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueueAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueueProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisAccepted -and
+            [string]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisActionQueueSourceKind -eq "canonical_action_queue" -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisGapItemCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisRepoSideClosableGapCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisExternalEvidenceRequiredGapCount -eq 3 -and

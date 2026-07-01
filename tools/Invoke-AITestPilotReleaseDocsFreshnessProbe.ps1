@@ -257,6 +257,8 @@ $sourceManifestScripts = @(
 )
 $requiredSourceManifestNames = @(
     "production-handoff-export-zip-index-manifest.json",
+    "production-external-evidence-action-queue-manifest.json",
+    "production-external-evidence-action-queue-probe-manifest.json",
     "production-external-evidence-gap-analysis-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",

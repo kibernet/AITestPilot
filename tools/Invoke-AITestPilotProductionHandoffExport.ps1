@@ -78,6 +78,16 @@ function Get-ObjectProperty {
     return $property.Value
 }
 
+function Get-Sha256OrEmpty {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path $Path)) {
+        return ""
+    }
+
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
 function Copy-ExportFile {
     param(
         [string]$RelativePath,
@@ -188,37 +198,37 @@ $canonicalOperatorActionQueueFileMap = @(
     [ordered]@{ source = "production-external-evidence-action-queue.md"; destination = "operator-actions\production-external-evidence-action-queue.md" },
     [ordered]@{ source = "production-external-evidence-action-queue-probe-manifest.json"; destination = "operator-actions\production-external-evidence-action-queue-probe-manifest.json" },
     [ordered]@{ source = "production-external-evidence-action-queue-probe.md"; destination = "operator-actions\production-external-evidence-action-queue-probe.md" },
-    [ordered]@{ source = "release-progress-notification-post-dispatch-snapshot-manifest.json"; destination = "operator-actions\release-progress-notification-post-dispatch-snapshot-manifest.json" },
-    [ordered]@{ source = "release-progress-notification-post-dispatch-snapshot.md"; destination = "operator-actions\release-progress-notification-post-dispatch-snapshot.md" }
-)
-$probeOperatorActionQueueFileMap = @(
-    [ordered]@{ source = "production-external-evidence-action-queue-probe\post-dispatch-action-queue-manifest.json"; destination = "operator-actions\production-external-evidence-action-queue-manifest.json" },
-    [ordered]@{ source = "production-external-evidence-action-queue-probe\post-dispatch-action-queue.md"; destination = "operator-actions\production-external-evidence-action-queue.md" },
-    [ordered]@{ source = "production-external-evidence-action-queue-probe-manifest.json"; destination = "operator-actions\production-external-evidence-action-queue-probe-manifest.json" },
-    [ordered]@{ source = "production-external-evidence-action-queue-probe.md"; destination = "operator-actions\production-external-evidence-action-queue-probe.md" },
-    [ordered]@{ source = "production-external-evidence-action-queue-probe\contract-post-dispatch-snapshot-manifest.json"; destination = "operator-actions\release-progress-notification-post-dispatch-snapshot-manifest.json" },
-    [ordered]@{ source = "production-external-evidence-action-queue-probe\post-dispatch-action-queue-output.txt"; destination = "operator-actions\production-external-evidence-action-queue-output.txt" }
+    [ordered]@{ source = "release-progress-notification-outbox\remaining-work-snapshot.json"; destination = "operator-actions\release-progress-notification-remaining-work-snapshot.json" },
+    [ordered]@{ source = "release-progress-notification-outbox\remaining-work-snapshot.md"; destination = "operator-actions\release-progress-notification-remaining-work-snapshot.md" }
 )
 $canonicalOperatorActionQueueAvailable = (@($canonicalOperatorActionQueueFileMap | Where-Object { -not (Test-Path (Join-Path $evidenceBundlePath $_["source"])) }).Count -eq 0)
-$probeOperatorActionQueueAvailable = (@($probeOperatorActionQueueFileMap | Where-Object { -not (Test-Path (Join-Path $evidenceBundlePath $_["source"])) }).Count -eq 0)
 $operatorActionQueueFiles = @()
 $operatorActionQueueSourceKind = ""
 if ($canonicalOperatorActionQueueAvailable) {
     $operatorActionQueueFiles = @($canonicalOperatorActionQueueFileMap)
-    $operatorActionQueueSourceKind = "canonical_post_dispatch_action_queue"
-}
-elseif ($probeOperatorActionQueueAvailable) {
-    $operatorActionQueueFiles = @($probeOperatorActionQueueFileMap)
-    $operatorActionQueueSourceKind = "probe_post_dispatch_action_queue"
+    $operatorActionQueueSourceKind = "canonical_action_queue"
 }
 $operatorActionQueueAvailable = @($operatorActionQueueFiles).Count -gt 0
 $operatorActionQueueManifest = $null
 $operatorActionQueueProbeManifest = $null
 if ($operatorActionQueueAvailable) {
-    $operatorActionQueueManifest = Read-JsonFile (Join-Path $evidenceBundlePath $operatorActionQueueFiles[0]["source"]) "Production external evidence action queue manifest"
-    $operatorActionQueueProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath $operatorActionQueueFiles[2]["source"]) "Production external evidence action queue probe manifest"
-    if ((Get-ObjectProperty $operatorActionQueueManifest "status" "") -ne "PASS" -or
-        (Get-ObjectProperty $operatorActionQueueProbeManifest "status" "") -ne "PASS") {
+    $operatorActionQueueManifestSpec = @($operatorActionQueueFiles | Where-Object {
+            [string]$_["destination"] -eq "operator-actions\production-external-evidence-action-queue-manifest.json"
+        } | Select-Object -First 1)
+    $operatorActionQueueProbeManifestSpec = @($operatorActionQueueFiles | Where-Object {
+            [string]$_["destination"] -eq "operator-actions\production-external-evidence-action-queue-probe-manifest.json"
+        } | Select-Object -First 1)
+    if ($operatorActionQueueManifestSpec.Count -eq 0 -or $operatorActionQueueProbeManifestSpec.Count -eq 0) {
+        $operatorActionQueueAvailable = $false
+        $operatorActionQueueFiles = @()
+        $operatorActionQueueSourceKind = ""
+    }
+    else {
+        $operatorActionQueueManifest = Read-JsonFile (Join-Path $evidenceBundlePath $operatorActionQueueManifestSpec[0]["source"]) "Production external evidence action queue manifest"
+        $operatorActionQueueProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath $operatorActionQueueProbeManifestSpec[0]["source"]) "Production external evidence action queue probe manifest"
+    }
+    if ($operatorActionQueueAvailable -and ((Get-ObjectProperty $operatorActionQueueManifest "status" "") -ne "PASS" -or
+            (Get-ObjectProperty $operatorActionQueueProbeManifest "status" "") -ne "PASS")) {
         $operatorActionQueueAvailable = $false
         $operatorActionQueueFiles = @()
         $operatorActionQueueSourceKind = ""
@@ -402,7 +412,7 @@ $exportReadmeLines = @(
     "9. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`."
 )
 if ($operatorActionQueueAvailable) {
-    $exportReadmeLines += "10. Use `operator-actions\\production-external-evidence-action-queue.md` as the post-dispatch operator checklist for returned folder/zip semantic preflight and auto acceptance."
+    $exportReadmeLines += "10. Use `operator-actions\\production-external-evidence-action-queue.md` as the canonical operator checklist for returned folder/zip semantic preflight and auto acceptance. In CI it still includes the pending local progress-mail action; only a real accepted dispatch receipt may clear that local action."
 }
 $exportReadmeLines += @(
     "",
@@ -421,7 +431,7 @@ if ($ownerResponseBundleKitAvailable) {
     $exportReadmeLines += "- `production-handoff-owner-response-bundle-kit/`: fillable owner response bundle template with verifier, import helper, semantic preflight, and returned folder/zip auto-acceptance commands."
 }
 if ($operatorActionQueueAvailable) {
-    $exportReadmeLines += "- `operator-actions/`: post-dispatch action queue, action-queue probe, and progress-mail snapshot for the remaining external evidence work."
+    $exportReadmeLines += "- `operator-actions/`: canonical action queue, remaining-work source snapshot, and action-queue probe proof for the remaining external evidence work."
 }
 if ($semanticPreflightProbeAvailable) {
     $exportReadmeLines += "- `contract-evidence/production-external-evidence-semantic-preflight-probe.md`: read-only semantic preflight probe for returned owner bundles before auto acceptance."
@@ -496,7 +506,8 @@ if ($operatorActionQueueAvailable) {
     $requiredExportSnippets += @(
         "operator-actions",
         "production-external-evidence-action-queue.md",
-        "post-dispatch operator checklist",
+        "canonical operator checklist",
+        "remaining-work source snapshot",
         "semantic preflight"
     )
 }
@@ -562,6 +573,27 @@ $semanticPreflightSelfContainedHelperIncluded = (
 )
 $semanticPreflightSelfContainedHelperText = if (Test-Path $semanticPreflightHelperPath) { Get-Content -Path $semanticPreflightHelperPath -Encoding UTF8 -Raw } else { "" }
 $semanticPreflightSelfContainedCoreText = if (Test-Path $semanticPreflightCorePath) { Get-Content -Path $semanticPreflightCorePath -Encoding UTF8 -Raw } else { "" }
+
+$operatorActionQueueManifestRelativePath = "production-handoff-export\operator-actions\production-external-evidence-action-queue-manifest.json"
+$operatorActionQueueReportRelativePath = "production-handoff-export\operator-actions\production-external-evidence-action-queue.md"
+$operatorActionQueueProbeManifestRelativePath = "production-handoff-export\operator-actions\production-external-evidence-action-queue-probe-manifest.json"
+$operatorActionQueueRemainingWorkSnapshotRelativePath = "production-handoff-export\operator-actions\release-progress-notification-remaining-work-snapshot.json"
+$operatorActionQueuePostDispatchSnapshotRelativePath = "production-handoff-export\operator-actions\release-progress-notification-post-dispatch-snapshot-manifest.json"
+$operatorActionQueueManifestIncluded = $exportFiles -contains $operatorActionQueueManifestRelativePath
+$operatorActionQueueReportIncluded = $exportFiles -contains $operatorActionQueueReportRelativePath
+$operatorActionQueueProbeManifestIncluded = $exportFiles -contains $operatorActionQueueProbeManifestRelativePath
+$operatorActionQueueRemainingWorkSnapshotIncluded = $exportFiles -contains $operatorActionQueueRemainingWorkSnapshotRelativePath
+$operatorActionQueuePostDispatchSnapshotIncluded = $exportFiles -contains $operatorActionQueuePostDispatchSnapshotRelativePath
+$operatorActionQueueSourceSnapshotIncluded = $operatorActionQueueSourceKind -eq "canonical_action_queue" -and $operatorActionQueueRemainingWorkSnapshotIncluded
+$operatorActionQueueCanonicalSourcePath = Join-Path $evidenceBundlePath "production-external-evidence-action-queue-manifest.json"
+$operatorActionQueueExportedPath = Join-Path $evidenceBundlePath $operatorActionQueueManifestRelativePath
+$operatorActionQueueCanonicalSourceSha256 = Get-Sha256OrEmpty $operatorActionQueueCanonicalSourcePath
+$operatorActionQueueExportedSha256 = Get-Sha256OrEmpty $operatorActionQueueExportedPath
+$operatorActionQueueManifestHashMatchesCanonical = (
+    $operatorActionQueueSourceKind -eq "canonical_action_queue" -and
+    -not [string]::IsNullOrWhiteSpace($operatorActionQueueCanonicalSourceSha256) -and
+    $operatorActionQueueCanonicalSourceSha256 -eq $operatorActionQueueExportedSha256
+)
 
 $ownerResponseBundleKitExportContentText = ""
 if ($ownerResponseBundleKitAvailable) {
@@ -663,9 +695,16 @@ $operatorActionQueueExportContentValidated = (
     [int](Get-ObjectProperty $operatorActionQueueManifest "checkCount" 0) -eq 9 -and
     $operatorActionQueueItemBundleCommandCount -eq 3 -and
     $operatorActionQueueItemSemanticPreflightCommandCount -eq 3 -and
-    $operatorActionQueueManifest.sourceKind -eq "post_dispatch_snapshot" -and
-    [bool]$operatorActionQueueManifest.progressNotificationEmailSent -and
-    [int]$operatorActionQueueManifest.localProgressMailRemainingActionCount -eq 0 -and
+    $operatorActionQueueManifestIncluded -and
+    $operatorActionQueueReportIncluded -and
+    $operatorActionQueueProbeManifestIncluded -and
+    $operatorActionQueueSourceSnapshotIncluded -and
+    $operatorActionQueueManifestHashMatchesCanonical -and
+    $operatorActionQueueSourceKind -eq "canonical_action_queue" -and
+    $operatorActionQueueManifest.sourceKind -eq "remaining_work_snapshot" -and
+    -not [bool]$operatorActionQueueManifest.progressNotificationEmailSent -and
+    [int]$operatorActionQueueManifest.localProgressMailRemainingActionCount -eq 1 -and
+    [int]$operatorActionQueueManifest.trackedRemainingWorkItemCount -eq 4 -and
     [int]$operatorActionQueueManifest.externalRemainingWorkItemCount -eq 3 -and
     [int]$operatorActionQueueManifest.externalRemainingMissingFileCount -eq 9 -and
     [int]$operatorActionQueueManifest.externalRemainingBlockingReasonCount -eq 11 -and
@@ -788,8 +827,8 @@ $checks = @(
     },
     [ordered]@{
         name = "operator_action_queue_export"
-        passed = ((-not $operatorActionQueueAvailable) -or ($exportFiles -contains "production-handoff-export\operator-actions\production-external-evidence-action-queue.md" -and $exportFiles -contains "production-handoff-export\operator-actions\production-external-evidence-action-queue-probe-manifest.json" -and $operatorActionQueueExportContentValidated))
-        message = "Final export must include the post-dispatch operator action queue, source snapshot, probe proof, and returned folder/zip semantic preflight plus auto-acceptance commands once the action queue is available."
+        passed = ((-not $operatorActionQueueAvailable) -or ($operatorActionQueueManifestIncluded -and $operatorActionQueueReportIncluded -and $operatorActionQueueProbeManifestIncluded -and $operatorActionQueueSourceSnapshotIncluded -and $operatorActionQueueManifestHashMatchesCanonical -and $operatorActionQueueExportContentValidated))
+        message = "Final export must include the canonical operator action queue, matching root manifest hash, source snapshot, probe proof, and returned folder/zip semantic preflight plus auto-acceptance commands once the action queue is available."
     },
     [ordered]@{
         name = "semantic_preflight_before_auto_acceptance_documented"
@@ -850,8 +889,19 @@ $manifest = [ordered]@{
     operatorActionQueueAvailable = [bool]$operatorActionQueueAvailable
     operatorActionQueueIncluded = [bool]$operatorActionQueueAvailable
     operatorActionQueueSourceKind = $operatorActionQueueSourceKind
+    operatorActionQueueManifestSourceKind = $(if ($operatorActionQueueAvailable) { [string](Get-ObjectProperty $operatorActionQueueManifest "sourceKind" "") } else { "" })
+    operatorActionQueueManifestIncluded = [bool]$operatorActionQueueManifestIncluded
+    operatorActionQueueReportIncluded = [bool]$operatorActionQueueReportIncluded
     operatorActionQueueProbeIncluded = [bool]$operatorActionQueueAvailable
-    operatorActionQueuePostDispatchSnapshotIncluded = [bool]$operatorActionQueueAvailable
+    operatorActionQueueProbeManifestIncluded = [bool]$operatorActionQueueProbeManifestIncluded
+    operatorActionQueueSourceSnapshotIncluded = [bool]$operatorActionQueueSourceSnapshotIncluded
+    operatorActionQueueRemainingWorkSnapshotIncluded = [bool]$operatorActionQueueRemainingWorkSnapshotIncluded
+    operatorActionQueuePostDispatchSnapshotIncluded = [bool]$operatorActionQueuePostDispatchSnapshotIncluded
+    operatorActionQueueCanonicalSourcePath = "production-external-evidence-action-queue-manifest.json"
+    operatorActionQueueExportedPath = $operatorActionQueueManifestRelativePath
+    operatorActionQueueCanonicalSourceSha256 = $operatorActionQueueCanonicalSourceSha256
+    operatorActionQueueExportedSha256 = $operatorActionQueueExportedSha256
+    operatorActionQueueManifestHashMatchesCanonical = [bool]$operatorActionQueueManifestHashMatchesCanonical
     operatorActionQueueContentValidated = [bool]$operatorActionQueueExportContentValidated
     operatorActionFileCount = $(if ($operatorActionQueueAvailable) { [int]@($operatorActionQueueFiles).Count } else { 0 })
     operatorActionQueueItemAutoAcceptanceCommandCount = [int]$operatorActionQueueItemBundleCommandCount

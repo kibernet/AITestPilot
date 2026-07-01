@@ -171,8 +171,8 @@ $canonicalActionQueuePath = Join-Path $evidenceBundlePath "production-external-e
 $probePostDispatchActionQueuePath = Join-Path $evidenceBundlePath "production-external-evidence-action-queue-probe\post-dispatch-action-queue-manifest.json"
 
 $actionQueueCandidates = @(
-    [ordered]@{ path = $probePostDispatchActionQueuePath; sourceKind = "probe_post_dispatch_action_queue" },
-    [ordered]@{ path = $canonicalActionQueuePath; sourceKind = "canonical_action_queue" }
+    [ordered]@{ path = $canonicalActionQueuePath; sourceKind = "canonical_action_queue" },
+    [ordered]@{ path = $probePostDispatchActionQueuePath; sourceKind = "probe_post_dispatch_action_queue" }
 )
 $selectedActionQueue = $null
 $fallbackActionQueue = $null
@@ -290,7 +290,24 @@ foreach ($item in $queueItems) {
         nextOwnerCommand = if (-not [string]::IsNullOrWhiteSpace($exportHelperCommand)) { $exportHelperCommand } else { $hardValidationCommand }
         nextOperatorSemanticPreflightCommand = $ownerBundleZipSemanticPreflightCommand
         nextOperatorAutoAcceptanceCommand = $ownerBundleZipCommand
-        nextOperatorCommand = $ownerBundleZipCommand
+        nextOperatorCommand = $ownerBundleZipSemanticPreflightCommand
+        nextOperatorSteps = @(
+            [ordered]@{
+                order = 1
+                name = "semantic_preflight"
+                command = $ownerBundleZipSemanticPreflightCommand
+            },
+            [ordered]@{
+                order = 2
+                name = "auto_acceptance_after_preflight_passes"
+                command = $ownerBundleZipCommand
+            },
+            [ordered]@{
+                order = 3
+                name = "hard_validation_after_acceptance"
+                command = $hardValidationCommand
+            }
+        )
         requiredEvidenceFiles = @($requiredFiles)
     }
 }
@@ -343,6 +360,7 @@ $reportLines = @(
     "| --- | --- |",
     "| Status | $(Format-MarkdownCell $status) |",
     "| Action queue source | $(Format-MarkdownCell $actionQueueSourceKind) |",
+    "| Next operator command order | semantic preflight, auto acceptance after preflight passes, hard validation |",
     "| External work items | $externalRemainingWorkItemCount |",
     "| External missing files | $externalRemainingMissingFileCount |",
     "| External blockers | $externalRemainingBlockingReasonCount |",

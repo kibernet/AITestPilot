@@ -275,7 +275,12 @@ $requiredZipEntries = @(
     "production-handoff-owner-response-bundle-kit\README.md",
     "production-handoff-owner-response-bundle-kit\run-semantic-preflight.ps1",
     "production-handoff-owner-response-bundle-kit\semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
+    "operator-actions\production-external-evidence-action-queue-manifest.json",
     "operator-actions\production-external-evidence-action-queue.md",
+    "operator-actions\production-external-evidence-action-queue-probe-manifest.json",
+    "operator-actions\production-external-evidence-action-queue-probe.md",
+    "operator-actions\release-progress-notification-remaining-work-snapshot.json",
+    "operator-actions\release-progress-notification-remaining-work-snapshot.md",
     "contract-evidence\production-external-evidence-acceptance-contract.md",
     "contract-evidence\production-external-evidence-inbox-acceptance.md",
     "contract-evidence\production-external-evidence-semantic-preflight-probe-manifest.json",
@@ -285,6 +290,18 @@ $requiredZipEntries = @(
     "live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1"
 )
 $missingRequiredZipEntries = @($requiredZipEntries | Where-Object { -not $zipEntrySet.ContainsKey($_.ToLowerInvariant()) })
+$canonicalActionQueueManifestEntryName = "operator-actions\production-external-evidence-action-queue-manifest.json"
+$canonicalActionQueueManifestEntries = @($zipFileEntries | Where-Object {
+        [string]$_["path"] -eq $canonicalActionQueueManifestEntryName
+    } | Select-Object -First 1)
+$canonicalActionQueueManifestEntry = if ($canonicalActionQueueManifestEntries.Count -gt 0) { $canonicalActionQueueManifestEntries[0] } else { $null }
+$canonicalActionQueueManifestRootSha256 = [string](Get-JsonValue $exportManifest "operatorActionQueueCanonicalSourceSha256" "")
+$canonicalActionQueueManifestZipSha256 = if ($null -ne $canonicalActionQueueManifestEntry) { [string]$canonicalActionQueueManifestEntry["zipSha256"] } else { "" }
+$canonicalActionQueueManifestZipMatchesRoot = (
+    -not [string]::IsNullOrWhiteSpace($canonicalActionQueueManifestRootSha256) -and
+    $canonicalActionQueueManifestZipSha256 -eq $canonicalActionQueueManifestRootSha256 -and
+    (Convert-ToBool (Get-JsonValue $exportManifest "operatorActionQueueManifestHashMatchesCanonical" $false))
+)
 
 $pathTraversalEntries = @($zipEntryPaths | Where-Object {
         $_ -eq ".." -or
@@ -314,6 +331,9 @@ Add-ZipIndexCheck "zip_index_export_entries_match_manifest" `
 Add-ZipIndexCheck "zip_index_required_entries_present" `
     ($missingRequiredZipEntries.Count -eq 0) `
     "Zip file must contain the owner packet index, preflight/acceptance scripts, inbox wrapper, self-contained semantic preflight helpers, owner response kit, operator actions, contract reports, and owner export helpers."
+Add-ZipIndexCheck "zip_index_canonical_action_queue_manifest_hash" `
+    $canonicalActionQueueManifestZipMatchesRoot `
+    "Zip file must contain the canonical action queue manifest, and its entry hash must match the root canonical manifest hash recorded by the export manifest."
 Add-ZipIndexCheck "zip_index_paths_safe" `
     ($emptyEntryNameCount -eq 0 -and $pathTraversalEntries.Count -eq 0 -and $rootedPathEntries.Count -eq 0) `
     "Zip entries must not contain empty names, rooted paths, drive-qualified paths, or parent traversal."
@@ -385,6 +405,8 @@ $reportContentValidated = $reportText.Contains("Zip SHA256") -and
     $reportText.Contains("run-semantic-preflight.ps1") -and
     $reportText.Contains("semantic-preflight") -and
     $reportText.Contains("operator-actions") -and
+    $reportText.Contains("production-external-evidence-action-queue-manifest.json") -and
+    $reportText.Contains("remaining-work-snapshot") -and
     $reportText.Contains("production-external-evidence-inbox") -and
     -not $reportText.Contains("System.Collections") -and
     -not $reportText.Contains("@{")
@@ -452,6 +474,10 @@ $manifest = [ordered]@{
     duplicateEntryCount = [int]$duplicateZipEntries.Count
     requiredZipEntryCount = [int]$requiredZipEntries.Count
     missingRequiredZipEntryCount = [int]$missingRequiredZipEntries.Count
+    canonicalActionQueueManifestEntryName = $canonicalActionQueueManifestEntryName
+    canonicalActionQueueManifestRootSha256 = $canonicalActionQueueManifestRootSha256
+    canonicalActionQueueManifestZipSha256 = $canonicalActionQueueManifestZipSha256
+    canonicalActionQueueManifestZipMatchesRoot = [bool]$canonicalActionQueueManifestZipMatchesRoot
     emptyEntryNameCount = [int]$emptyEntryNameCount
     pathTraversalEntryCount = [int]$pathTraversalEntries.Count
     rootedPathEntryCount = [int]$rootedPathEntries.Count
