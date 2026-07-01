@@ -204,6 +204,7 @@ $productionHandoffOwnerUnblockPackContractProbeManifest = Read-PolicyJson "produ
 $productionHandoffOwnerInputRequestPackManifest = Read-PolicyJson "production-handoff-owner-input-request-pack-manifest.json" "Production handoff owner input request pack manifest"
 $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-PolicyJson "production-handoff-owner-contact-external-intake-probe-manifest.json" "Production handoff owner contact external intake probe manifest"
 $productionHandoffSendDryRunProbeManifest = Read-PolicyJson "production-handoff-send-dry-run-probe-manifest.json" "Production handoff send dry-run probe manifest"
+$productionHandoffSendLocalWorkflowProbeManifest = Read-PolicyJson "production-handoff-send-local-workflow-probe-manifest.json" "Production handoff send local workflow probe manifest"
 $productionHandoffOwnerResponseBundleProbeManifest = Read-PolicyJson "production-handoff-owner-response-bundle-probe-manifest.json" "Production handoff owner response bundle probe manifest"
 $productionHandoffOwnerResponseBundleKitManifest = Read-PolicyJson "production-handoff-owner-response-bundle-kit-manifest.json" "Production handoff owner response bundle kit manifest"
 $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest = Read-PolicyJson "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "Production handoff owner response bundle kit workflow probe manifest"
@@ -1415,6 +1416,62 @@ Add-PolicyCheck "production_handoff_send_dry_run_probe_policy" $productionHandof
     "Production handoff evidence must prove owner-packet send dry run works without local mail authorization and does not create confirmation tokens or send email." `
     "production_handoff_send_dry_run_probe_not_accepted"
 
+$productionHandoffSendLocalWorkflowProbeAccepted = (
+    $null -ne $productionHandoffSendLocalWorkflowProbeManifest -and
+    $productionHandoffSendLocalWorkflowProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_send_local_workflow_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "fakeAgentlyCliGenerated" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "ownerContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "acceptedOwnerContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "unauthenticatedExitCode" 0)) -ne 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "unauthenticatedAuthStatusCallCount" -1)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "unauthenticatedMeCallCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "unauthenticatedMessageSendCallCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "defaultMissingContactPrepareExitCode" 0)) -ne 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "defaultMissingContactPrepareMessageSendCallCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "prepareExitCode" -1)) -eq 8 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "prepareConfirmationTokenReturnedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "prepareMessageSendCallCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "prepareMessageSendWithTokenCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "confirmationExitCode" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "confirmationFakeSendSucceededCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "confirmationMessageSendCallCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "confirmationMessageSendWithTokenCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "ownerPacketReceiptGeneratedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "ownerPacketReceiptSchemaAcceptedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "ownerPacketReceiptMessageIdCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "ownerPacketReceiptConfirmedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "ownerPacketReceiptRealDeliveryVerifiedCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "ownerPacketReceiptReleasePipelineGeneratedCount" -1)) -eq 0 -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "realOwnerPacketEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "mailAuthorizationCheckedByPipeline" $true)) -and
+    (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "canonicalSendReadinessStatus" "") -eq "BLOCKED_MISSING_OWNER_EMAILS" -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "canonicalAutomaticEmailSendReady" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "productionOutputBoundary" "") -eq "owner_packet_local_send_workflow_probe_fake_cli_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "checkCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_send_local_workflow_probe_policy" $productionHandoffSendLocalWorkflowProbeAccepted `
+    "Production handoff evidence must prove the local owner-packet two-stage send workflow can collect tokens and write receipts while preserving the real-send boundary." `
+    "production_handoff_send_local_workflow_probe_not_accepted"
+
 $productionHandoffOwnerResponseBundleProbeAccepted = (
     $null -ne $productionHandoffOwnerResponseBundleProbeManifest -and
     $productionHandoffOwnerResponseBundleProbeManifest.status -eq "PASS" -and
@@ -2463,6 +2520,7 @@ $sourceFiles = @(
     "production-handoff-owner-input-request-pack-manifest.json",
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "production-handoff-send-dry-run-probe-manifest.json",
+    "production-handoff-send-local-workflow-probe-manifest.json",
     "production-handoff-owner-response-bundle-probe-manifest.json",
     "production-handoff-owner-response-bundle-kit-manifest.json",
     "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
@@ -2625,6 +2683,11 @@ $manifest = [ordered]@{
     productionHandoffOwnerContactExternalSendReady = (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "externalSendReadyForConfirmation" $false)
     productionHandoffSendDryRunProbeAccepted = [bool]$productionHandoffSendDryRunProbeAccepted
     productionHandoffSendDryRunAuthorizationFree = (Get-JsonValue $productionHandoffSendDryRunProbeManifest "authorizationNotRequiredForDryRun" $false)
+    productionHandoffSendLocalWorkflowProbeAccepted = [bool]$productionHandoffSendLocalWorkflowProbeAccepted
+    productionHandoffSendLocalWorkflowPrepareTokenCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "prepareConfirmationTokenReturnedCount" 0))
+    productionHandoffSendLocalWorkflowReceiptCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "ownerPacketReceiptGeneratedCount" 0))
+    productionHandoffSendLocalWorkflowRealOwnerPacketEmailSent = (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "realOwnerPacketEmailSent" $true)
+    productionHandoffSendLocalWorkflowReleasePipelineSendsEmail = (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "releasePipelineSendsEmail" $true)
     productionHandoffOwnerResponseBundleProbeAccepted = [bool]$productionHandoffOwnerResponseBundleProbeAccepted
     productionHandoffOwnerResponseBundleReady = (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseReadyForConfirmation" $false)
     productionHandoffOwnerResponseBundleEvidenceComplete = (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseEvidenceComplete" $false)
@@ -2877,6 +2940,10 @@ $reportLines = @(
     "- Production handoff owner contact external send ready: $($manifest.productionHandoffOwnerContactExternalSendReady)",
     "- Production handoff send dry-run probe accepted: $($manifest.productionHandoffSendDryRunProbeAccepted)",
     "- Production handoff send dry run auth-free: $($manifest.productionHandoffSendDryRunAuthorizationFree)",
+    "- Production handoff send local workflow probe accepted: $($manifest.productionHandoffSendLocalWorkflowProbeAccepted)",
+    "- Production handoff send local workflow prepare tokens: $($manifest.productionHandoffSendLocalWorkflowPrepareTokenCount)",
+    "- Production handoff send local workflow receipts: $($manifest.productionHandoffSendLocalWorkflowReceiptCount)",
+    "- Production handoff send local workflow real owner email sent: $($manifest.productionHandoffSendLocalWorkflowRealOwnerPacketEmailSent)",
     "- Production handoff owner response bundle probe accepted: $($manifest.productionHandoffOwnerResponseBundleProbeAccepted)",
     "- Production handoff owner response bundle ready: $($manifest.productionHandoffOwnerResponseBundleReady)",
     "- Production handoff owner response bundle evidence complete: $($manifest.productionHandoffOwnerResponseBundleEvidenceComplete)",

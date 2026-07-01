@@ -221,6 +221,7 @@ $productionHandoffOwnerUnblockPackContractProbeManifest = Read-Manifest "product
 $productionHandoffOwnerInputRequestPackManifest = Read-Manifest "production-handoff-owner-input-request-pack-manifest.json"
 $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-Manifest "production-handoff-owner-contact-external-intake-probe-manifest.json"
 $productionHandoffSendDryRunProbeManifest = Read-Manifest "production-handoff-send-dry-run-probe-manifest.json"
+$productionHandoffSendLocalWorkflowProbeManifest = Read-Manifest "production-handoff-send-local-workflow-probe-manifest.json"
 $productionHandoffOwnerResponseBundleProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-probe-manifest.json"
 $productionHandoffOwnerResponseBundleKitManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-manifest.json"
 $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json"
@@ -2335,6 +2336,50 @@ if ($null -ne $productionHandoffSendDryRunProbeManifest) {
     Test-ListedFiles $productionHandoffSendDryRunProbeManifest "production_handoff_send_dry_run_probe"
 }
 
+if ($null -ne $productionHandoffSendLocalWorkflowProbeManifest) {
+    Add-ReleaseCheck "production_handoff_send_local_workflow_probe" `
+        ($productionHandoffSendLocalWorkflowProbeManifest.status -eq "PASS" -and
+            $productionHandoffSendLocalWorkflowProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_send_local_workflow_probe.v1" -and
+            [bool]$productionHandoffSendLocalWorkflowProbeManifest.fakeAgentlyCliGenerated -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.ownerContactCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.acceptedOwnerContactCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.unauthenticatedExitCode -ne 0 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.unauthenticatedAuthStatusCallCount -eq 1 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.unauthenticatedMeCallCount -eq 0 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.unauthenticatedMessageSendCallCount -eq 0 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.defaultMissingContactPrepareExitCode -ne 0 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.defaultMissingContactPrepareMessageSendCallCount -eq 0 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.prepareExitCode -eq 8 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.prepareConfirmationTokenReturnedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.prepareMessageSendCallCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.prepareMessageSendWithTokenCount -eq 0 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.confirmationExitCode -eq 0 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.confirmationFakeSendSucceededCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.confirmationMessageSendCallCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.confirmationMessageSendWithTokenCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.ownerPacketReceiptGeneratedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.ownerPacketReceiptSchemaAcceptedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.ownerPacketReceiptMessageIdCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.ownerPacketReceiptConfirmedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.ownerPacketReceiptRealDeliveryVerifiedCount -eq 0 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.ownerPacketReceiptReleasePipelineGeneratedCount -eq 0 -and
+            -not [bool]$productionHandoffSendLocalWorkflowProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffSendLocalWorkflowProbeManifest.realOwnerPacketEmailSent -and
+            -not [bool]$productionHandoffSendLocalWorkflowProbeManifest.emailSent -and
+            -not [bool]$productionHandoffSendLocalWorkflowProbeManifest.mailAuthorizationCheckedByPipeline -and
+            $productionHandoffSendLocalWorkflowProbeManifest.canonicalSendReadinessStatus -eq "BLOCKED_MISSING_OWNER_EMAILS" -and
+            -not [bool]$productionHandoffSendLocalWorkflowProbeManifest.canonicalAutomaticEmailSendReady -and
+            -not [bool]$productionHandoffSendLocalWorkflowProbeManifest.releasePipelineUsesFixture -and
+            -not [bool]$productionHandoffSendLocalWorkflowProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffSendLocalWorkflowProbeManifest.fixtureEvidencePromoted -and
+            $productionHandoffSendLocalWorkflowProbeManifest.productionOutputBoundary -eq "owner_packet_local_send_workflow_probe_fake_cli_only" -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.checkCount -eq 7 -and
+            [int]$productionHandoffSendLocalWorkflowProbeManifest.failedCheckCount -eq 0) `
+        "Production handoff send local workflow probe must prove token preparation, token-confirmed fake sends, and owner receipts without claiming real delivery."
+
+    Test-ListedFiles $productionHandoffSendLocalWorkflowProbeManifest "production_handoff_send_local_workflow_probe"
+}
+
 if ($null -ne $productionHandoffOwnerResponseBundleProbeManifest) {
     Add-ReleaseCheck "production_handoff_owner_response_bundle_probe" `
         ($productionHandoffOwnerResponseBundleProbeManifest.status -eq "PASS" -and
@@ -3392,6 +3437,11 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerContactExternalSendReady -and
             [bool]$releaseRiskPolicyManifest.productionHandoffSendDryRunProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffSendDryRunAuthorizationFree -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffSendLocalWorkflowProbeAccepted -and
+            [int]$releaseRiskPolicyManifest.productionHandoffSendLocalWorkflowPrepareTokenCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$releaseRiskPolicyManifest.productionHandoffSendLocalWorkflowReceiptCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            -not [bool]$releaseRiskPolicyManifest.productionHandoffSendLocalWorkflowRealOwnerPacketEmailSent -and
+            -not [bool]$releaseRiskPolicyManifest.productionHandoffSendLocalWorkflowReleasePipelineSendsEmail -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleReady -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleEvidenceComplete -and
@@ -3554,6 +3604,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-input-request-pack-manifest.json",
         "production-handoff-owner-contact-external-intake-probe-manifest.json",
         "production-handoff-send-dry-run-probe-manifest.json",
+        "production-handoff-send-local-workflow-probe-manifest.json",
         "production-handoff-owner-response-bundle-probe-manifest.json",
         "production-handoff-owner-response-bundle-kit-manifest.json",
         "release-progress-notification-outbox-manifest.json",
@@ -3681,6 +3732,7 @@ $sourceManifests = @(
     "production-handoff-owner-input-request-pack-manifest.json",
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "production-handoff-send-dry-run-probe-manifest.json",
+    "production-handoff-send-local-workflow-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
     "production-handoff-mail-helper-auth-status-probe-manifest.json",
     "release-progress-notification-confirmation-probe-manifest.json",

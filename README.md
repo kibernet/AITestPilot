@@ -346,6 +346,12 @@ That probe writes `production-handoff-owner-contact-external-intake-probe-manife
 That probe writes `production-handoff-send-dry-run-probe-manifest.json` and a Markdown report. It proves the generated `send-owner-packets.ps1` dry run works without local `agently-cli` authorization: the default bundle previews three blocked sends, and the external-contact intake bundle previews three prepared sends, without creating confirmation tokens or sending email.
 
 ```powershell
+.\tools\Invoke-AITestPilotProductionHandoffSendLocalWorkflowProbe.ps1
+```
+
+That probe writes `production-handoff-send-local-workflow-probe-manifest.json` and a Markdown report. It proves the local owner-packet send workflow stops before send when unauthenticated, requests one confirmation token per owner when contacts are accepted, writes one machine-readable fake receipt per owner only after token confirmation, and keeps `realOwnerPacketEmailSent=false`, `emailSent=false`, `ownerPacketReceiptRealDeliveryVerifiedCount=0`, and `ownerPacketReceiptReleasePipelineGeneratedCount=0`.
+
+```powershell
 .\tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleProbe.ps1
 ```
 

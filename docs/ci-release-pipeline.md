@@ -76,33 +76,34 @@ Use the release pipeline wrapper when CI needs one command with stable artifacts
 | 62 | `production_handoff_owner_input_request_pack` |
 | 63 | `production_handoff_owner_contact_external_intake_probe` |
 | 64 | `production_handoff_send_dry_run_probe` |
-| 65 | `production_handoff_owner_response_bundle_probe` |
-| 66 | `production_handoff_owner_response_bundle_kit` |
-| 67 | `production_handoff_owner_response_bundle_kit_workflow_probe` |
-| 68 | `production_handoff_export_refresh` |
-| 69 | `release_progress_notification_outbox` |
-| 70 | `release_progress_notification_remaining_work_snapshot_probe` |
-| 71 | `production_handoff_mail_helper_auth_status_probe` |
-| 72 | `release_progress_notification_confirmation_probe` |
-| 73 | `release_progress_notification_receipt_probe` |
-| 74 | `release_progress_notification_dispatch_receipt_intake_probe` |
-| 75 | `release_progress_notification_local_send_workflow_probe` |
-| 76 | `release_progress_notification_real_receipt_guard_probe` |
-| 77 | `release_progress_notification_post_dispatch_snapshot_probe` |
-| 78 | `production_external_evidence_action_queue` |
-| 79 | `production_external_evidence_action_queue_probe` |
-| 80 | `production_external_evidence_gap_analysis` |
-| 81 | `production_external_evidence_partial_matrix_probe` |
-| 82 | `production_external_evidence_semantic_preflight_probe` |
-| 83 | `production_handoff_export_final_refresh` |
-| 84 | `production_handoff_export_zip_index` |
-| 85 | `release_docs_freshness` |
-| 86 | `production_hard_mode_failure_probe` |
-| 87 | `production_hard_mode_success_contract_probe` |
-| 88 | `release_risk_policy` |
-| 89 | `release_evidence_index` |
-| 90 | `release_gate` |
-| 91 | `release_gate_failure_probe` |
+| 65 | `production_handoff_send_local_workflow_probe` |
+| 66 | `production_handoff_owner_response_bundle_probe` |
+| 67 | `production_handoff_owner_response_bundle_kit` |
+| 68 | `production_handoff_owner_response_bundle_kit_workflow_probe` |
+| 69 | `production_handoff_export_refresh` |
+| 70 | `release_progress_notification_outbox` |
+| 71 | `release_progress_notification_remaining_work_snapshot_probe` |
+| 72 | `production_handoff_mail_helper_auth_status_probe` |
+| 73 | `release_progress_notification_confirmation_probe` |
+| 74 | `release_progress_notification_receipt_probe` |
+| 75 | `release_progress_notification_dispatch_receipt_intake_probe` |
+| 76 | `release_progress_notification_local_send_workflow_probe` |
+| 77 | `release_progress_notification_real_receipt_guard_probe` |
+| 78 | `release_progress_notification_post_dispatch_snapshot_probe` |
+| 79 | `production_external_evidence_action_queue` |
+| 80 | `production_external_evidence_action_queue_probe` |
+| 81 | `production_external_evidence_gap_analysis` |
+| 82 | `production_external_evidence_partial_matrix_probe` |
+| 83 | `production_external_evidence_semantic_preflight_probe` |
+| 84 | `production_handoff_export_final_refresh` |
+| 85 | `production_handoff_export_zip_index` |
+| 86 | `release_docs_freshness` |
+| 87 | `production_hard_mode_failure_probe` |
+| 88 | `production_hard_mode_success_contract_probe` |
+| 89 | `release_risk_policy` |
+| 90 | `release_evidence_index` |
+| 91 | `release_gate` |
+| 92 | `release_gate_failure_probe` |
 
 The pipeline runs:
 
@@ -163,6 +164,7 @@ The pipeline runs:
 - production handoff owner input request pack, turning the remaining owner contacts, pending dispatches, pending packets, returned-evidence files, and blocker reasons into an owner-facing request package and progress-recipient email draft without sending mail or accepting evidence.
 - production handoff owner contact external intake probe, proving a repo-external owner contact roster can be imported into an isolated bundle and move owner sends to ready-for-confirmation while preserving default missing-contact and not-sent boundaries.
 - production handoff send dry-run probe, proving owner-packet send previews work without local agently-cli authorization for both default blocked contacts and accepted external-contact intake bundles.
+- production handoff send local workflow probe, proving the local owner-packet send workflow stops before unauthenticated send, requests confirmation tokens before sending, writes token-confirmed fake receipts, and preserves the no-real-send and no-CI-send boundaries.
 - production handoff owner response bundle probe, proving a repo-external owner response bundle can carry contacts plus returned driver, Lua, and live-smoke evidence into an isolated bundle and move owner unblock state to ready-for-confirmation without sending email or promoting fixtures.
 - production handoff owner response bundle kit, producing a fillable owner-return template zip with contact roster, driver/Lua/live-smoke evidence directories, required-file manifests, verification/import helpers, and a request draft that keeps semantic preflight before auto acceptance without sending email or accepting evidence.
 - production handoff export refresh, re-running the export after the owner response bundle kit workflow probe so the final owner-facing zip includes the fillable owner response bundle kit and its returned folder/zip semantic-preflight-then-auto-acceptance instructions.
@@ -199,7 +201,7 @@ By default, the pipeline copies the latest evidence bundle to:
 
 `artifacts/ai-testpilot-release/latest`
 
-That directory includes `pipeline-manifest.json`, `release-gate-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, `release-docs-freshness-manifest.json`, provider CI quality probe evidence, production handoff package evidence, production handoff blocker-resolution evidence, production handoff external evidence preflight contract evidence, returned external evidence inbox evidence and contract proof, production handoff export evidence and zip with final `operator-actions\` content plus zip entry/hash index evidence, production handoff status evidence, owner dispatch queue and email drafts, owner contact roster readiness and contract evidence, guarded owner send readiness evidence, local mail authorization readiness evidence, owner unblock pack and contract evidence, owner input request pack evidence, owner contact external intake probe evidence, owner send dry-run probe evidence, owner response bundle probe evidence, owner response bundle kit evidence and zip, owner response bundle kit workflow proof, external evidence action queue proof with item-level returned-bundle paths and semantic-preflight-before-auto-acceptance commands, external evidence gap analysis, partial/malformed returned-bundle rejection matrix evidence, returned-evidence semantic preflight evidence with candidate-ready/status/fail-count fields plus complete owner response bundle zip, partial zip, semantic-bad zip, and arbitrary single top-level wrapper zip coverage, external evidence auto-acceptance proof for evidence roots plus owner response bundle directories/zips, release progress notification outbox evidence including the remaining-work snapshot and snapshot probe, mail-helper auth-status parsing proof, progress-notification confirmation proof, progress-notification receipt proof, progress-notification dispatch receipt intake proof, progress-notification local send workflow proof, progress-notification real receipt guard proof, post-dispatch snapshot fixture rejection proof, production external evidence acceptance contract and failure evidence, production hard-mode failure and success-contract probe evidence, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, production driver evidence contract evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, live model endpoint config kit and intake evidence, external live-smoke intake evidence, live-smoke accepted-contract evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, production Lua evidence kit evidence, production Lua external bundle intake evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
+That directory includes `pipeline-manifest.json`, `release-gate-manifest.json`, release gate manifests, release evidence index JSON/Markdown, release risk policy JSON/Markdown, `release-docs-freshness-manifest.json`, provider CI quality probe evidence, production handoff package evidence, production handoff blocker-resolution evidence, production handoff external evidence preflight contract evidence, returned external evidence inbox evidence and contract proof, production handoff export evidence and zip with final `operator-actions\` content plus zip entry/hash index evidence, production handoff status evidence, owner dispatch queue and email drafts, owner contact roster readiness and contract evidence, guarded owner send readiness evidence, local mail authorization readiness evidence, owner unblock pack and contract evidence, owner input request pack evidence, owner contact external intake probe evidence, owner send dry-run probe evidence, owner send local workflow probe evidence, owner response bundle probe evidence, owner response bundle kit evidence and zip, owner response bundle kit workflow proof, external evidence action queue proof with item-level returned-bundle paths and semantic-preflight-before-auto-acceptance commands, external evidence gap analysis, partial/malformed returned-bundle rejection matrix evidence, returned-evidence semantic preflight evidence with candidate-ready/status/fail-count fields plus complete owner response bundle zip, partial zip, semantic-bad zip, and arbitrary single top-level wrapper zip coverage, external evidence auto-acceptance proof for evidence roots plus owner response bundle directories/zips, release progress notification outbox evidence including the remaining-work snapshot and snapshot probe, mail-helper auth-status parsing proof, progress-notification confirmation proof, progress-notification receipt proof, progress-notification dispatch receipt intake proof, progress-notification local send workflow proof, progress-notification real receipt guard proof, post-dispatch snapshot fixture rejection proof, production external evidence acceptance contract and failure evidence, production hard-mode failure and success-contract probe evidence, repair-agent patch output import evidence, external completion failure-probe evidence, generic external patch import evidence, source snapshot apply/validate evidence, main worktree apply-readiness evidence, external task output acceptance evidence, repair-agent patch result analysis evidence, repair-agent patch result history evidence, main worktree apply/retest/rollback evidence, external patch preflight evidence, unsafe patch failure-probe evidence, repository patch apply guard evidence, clean temporary repository apply/rollback evidence, clean temporary repository apply/retest/rollback evidence, repair-agent patch apply/retest evidence, retest evidence, failure-probe evidence, replay profile artifacts, production replay integration contract evidence, production driver binding kit evidence, production replay driver readiness evidence, production driver evidence intake evidence, production driver evidence contract evidence, repo-external production bundle intake evidence, production-bound failure-probe evidence, model endpoint request/response/trace evidence, provider diagnostics, provider retry policy evidence, live model endpoint config kit and intake evidence, external live-smoke intake evidence, live-smoke accepted-contract evidence, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness evidence, production Lua evidence kit evidence, production Lua external bundle intake evidence, live endpoint failure-classification evidence, optional live model smoke evidence, GitHub Actions workflow probe evidence, Azure Pipelines workflow probe evidence, and Unity logs.
 
 `production-external-evidence-action-queue-manifest.json` is the canonical operator queue generated from the current remaining-work state. `production-external-evidence-action-queue-probe-manifest.json` remains the contract proof for pending versus post-dispatch queue behavior; both are required release evidence before gap analysis and the final owner-facing export refresh.
 
@@ -228,6 +230,8 @@ That directory includes `pipeline-manifest.json`, `release-gate-manifest.json`, 
 `production-handoff-contact-readiness-contract-probe-manifest.json` is generated before the release risk policy. It supplies a complete fixture contact roster with reserved `example.invalid` addresses, validates that contact readiness accepts configured contacts, and keeps `automaticEmailSendReady=false`, `realHostProjectEvidenceAccepted=false`, and the default missing-contact boundary intact.
 
 `production-handoff-send-readiness-manifest.json` is generated before the release risk policy. It validates `production-handoff-send\production-handoff-send-queue.json`, `production-handoff-send\send-owner-packets.ps1`, and `production-handoff-send\README.md`, proving the owner-packet send helper requires configured contacts, local agently-cli authorization, and explicit two-stage confirmation tokens while the default package-release path remains blocked on missing owner emails.
+
+`production-handoff-send-local-workflow-probe-manifest.json` is generated before the release risk policy. It validates the local owner-packet two-stage workflow with a fake `agently-cli`: unauthenticated runs stop before `message +send`, accepted contacts request one confirmation token per owner, token-confirmed sends write one fake receipt per owner, and the manifest keeps `realOwnerPacketEmailSent=false`, `emailSent=false`, `ownerPacketReceiptRealDeliveryVerifiedCount=0`, and `ownerPacketReceiptReleasePipelineGeneratedCount=0`.
 
 `production-handoff-mail-auth-readiness-manifest.json` is generated before the release risk policy. It validates `production-handoff-mail-auth\check-agently-mail-auth.ps1`, `production-handoff-mail-auth\start-agently-mail-login.ps1`, and the mail-auth runbook, proving local authorization can be checked by an operator while CI still records `mailAuthReadinessStatus=BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE`.
 

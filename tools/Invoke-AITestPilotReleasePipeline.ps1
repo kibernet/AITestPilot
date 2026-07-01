@@ -536,6 +536,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_handoff_send_local_workflow_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffSendLocalWorkflowProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_handoff_owner_response_bundle_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
