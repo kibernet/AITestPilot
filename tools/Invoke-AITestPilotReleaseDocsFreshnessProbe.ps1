@@ -204,6 +204,7 @@ $requiredArtifactNames = @(
     "release-gate-manifest.json",
     "production-handoff-export-zip-index-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",
+    "production-external-evidence-auto-acceptance-probe-manifest.json",
     "release-docs-freshness-manifest.json"
 )
 $combinedDocsText = [string]::Join([Environment]::NewLine, @(
@@ -222,13 +223,29 @@ $requiredDocStrings = @(
     [ordered]@{ file = "README.md"; pattern = "Invoke-AITestPilotReleasePipeline.ps1"; label = "release pipeline command" },
     [ordered]@{ file = "README.md"; pattern = "artifacts\ai-testpilot-release\latest"; label = "stable latest artifact path" },
     [ordered]@{ file = "README.md"; pattern = "production-handoff-export-zip-index-manifest.json"; label = "handoff zip index artifact" },
+    [ordered]@{ file = "README.md"; pattern = "production-external-evidence-auto-acceptance-probe-manifest.json"; label = "auto acceptance probe artifact" },
+    [ordered]@{ file = "README.md"; pattern = "complete owner response bundle zip, partial zip, semantic-bad zip, and arbitrary single top-level wrapper zip"; label = "owner response bundle zip case set" },
+    [ordered]@{ file = "README.md"; pattern = "caseCount=9"; label = "semantic preflight case count target" },
+    [ordered]@{ file = "README.md"; pattern = "completeCandidateCaseCount=4"; label = "semantic preflight candidate case count target" },
+    [ordered]@{ file = "README.md"; pattern = "rejectedCaseCount=5"; label = "semantic preflight rejected case count target" },
+    [ordered]@{ file = "README.md"; pattern = "checkCount=11"; label = "semantic preflight check count target" },
+    [ordered]@{ file = "README.md"; pattern = "ownerResponseBundleZipCaseCount=4"; label = "owner response bundle zip case count target" },
+    [ordered]@{ file = "README.md"; pattern = "ownerResponseBundleZipSafeCaseCount=4"; label = "owner response bundle zip safe case count target" },
+    [ordered]@{ file = "README.md"; pattern = "ownerResponseBundleZipUnsafeCaseCount=0"; label = "owner response bundle zip unsafe case count target" },
+    [ordered]@{ file = "README.md"; pattern = "ownerResponseBundleZipArbitraryWrapperReady=true"; label = "owner response bundle zip arbitrary wrapper readiness" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "Release Pipeline Step Index"; label = "machine checked step index section" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release-docs-freshness-manifest.json"; label = "docs freshness artifact" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "OwnerResponseBundleZipPath"; label = "owner response bundle zip parameter" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "unsafe, duplicate, absolute, or traversal zip entries are rejected"; label = "owner response bundle zip safety rejection" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "ownerResponseBundleZipSafeCaseCount=4"; label = "owner response bundle zip safe case count" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "Invoke-AITestPilotReleasePipeline.ps1"; label = "pipeline architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "release risk policy"; label = "risk policy architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "release evidence index"; label = "evidence index architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "release gate"; label = "gate architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "production handoff"; label = "production handoff architecture reference" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "OwnerResponseBundleZipPath"; label = "owner response bundle zip architecture reference" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "unsafe/duplicate/absolute/traversal zip rejection"; label = "owner response bundle zip safety architecture reference" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "ownerResponseBundleZipUnsafeCaseCount=0"; label = "owner response bundle zip unsafe case count" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "release docs freshness"; label = "roadmap freshness guard reference" }
 )
 $missingRequiredDocStrings = @()

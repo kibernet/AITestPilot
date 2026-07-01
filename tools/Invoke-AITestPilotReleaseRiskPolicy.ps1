@@ -857,8 +857,15 @@ $productionHandoffExportAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeReadOnly" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeAcceptanceRun" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipArbitraryWrapperReady" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbePartialBundleRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbePartialBundleZipRejected" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeSemanticBadBundleRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeSemanticBadBundleZipRejected" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipCaseCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipSafeCaseCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipUnsafeCaseCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightSelfContainedHelperIncluded" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightSelfContainedHelperDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightSelfContainedHelperContentValidated" $false)) -and
@@ -2099,25 +2106,32 @@ $productionExternalEvidenceSemanticPreflightProbeAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "fixtureEvidencePromoted" $true)) -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "caseCount" 0)) -eq 5 -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "completeCandidateCaseCount" 0)) -eq 2 -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "rejectedCaseCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "caseCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "completeCandidateCaseCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "rejectedCaseCount" 0)) -eq 5 -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "defaultPendingAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "completeExternalRootReady" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipArbitraryWrapperReady" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "partialBundleRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "partialBundleZipRejected" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "semanticBadBundleRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "semanticBadBundleZipRejected" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipSafeCaseCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "fixtureSignalRejectedWithoutContractMode" $false)) -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "semanticFailCaseCount" 0)) -ge 1 -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerRepairRouteCaseCount" 0)) -ge 1 -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "missingEvidenceCaseCount" 0)) -ge 1 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "semanticFailCaseCount" 0)) -ge 2 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerRepairRouteCaseCount" 0)) -ge 2 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "missingEvidenceCaseCount" 0)) -ge 3 -and
     (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_semantic_preflight_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "checkCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "checkCount" 0)) -eq 11 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_external_evidence_semantic_preflight_probe_policy" $productionExternalEvidenceSemanticPreflightProbeAccepted `
-    "Production evidence handoff must prove returned owner bundles are semantically preflighted before acceptance, with missing, partial, and fixture/template-shaped content rejected without accepting evidence, sending mail, or promoting fixtures." `
+    "Production evidence handoff must prove returned owner bundle directories and safe zips, including arbitrary single-directory wrapper zips, are semantically preflighted before acceptance, with missing, partial, and fixture/template-shaped content rejected without accepting evidence, sending mail, or promoting fixtures." `
     "production_external_evidence_semantic_preflight_probe_not_accepted"
 
 $productionExternalEvidenceInboxAccepted = (
@@ -2539,8 +2553,15 @@ $manifest = [ordered]@{
     productionHandoffExportSemanticPreflightProbeReadOnly = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeReadOnly" $false)
     productionHandoffExportSemanticPreflightProbeAcceptanceRun = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeAcceptanceRun" $true)
     productionHandoffExportSemanticPreflightProbeOwnerResponseBundleReady = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleReady" $false)
+    productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipReady = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipReady" $false)
+    productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipArbitraryWrapperReady = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipArbitraryWrapperReady" $false)
+    productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipCaseCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipCaseCount" 0))
+    productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipSafeCaseCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipSafeCaseCount" 0))
+    productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipUnsafeCaseCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeOwnerResponseBundleZipUnsafeCaseCount" 0))
     productionHandoffExportSemanticPreflightProbePartialBundleRejected = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbePartialBundleRejected" $false)
+    productionHandoffExportSemanticPreflightProbePartialBundleZipRejected = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbePartialBundleZipRejected" $false)
     productionHandoffExportSemanticPreflightProbeSemanticBadBundleRejected = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeSemanticBadBundleRejected" $false)
+    productionHandoffExportSemanticPreflightProbeSemanticBadBundleZipRejected = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeSemanticBadBundleZipRejected" $false)
     productionHandoffExportSemanticPreflightBeforeAutoAcceptanceDocumented = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightDocumentedBeforeAutoAcceptance" $false)
     productionHandoffExportAutoAcceptanceRequiresSemanticPreflightCandidate = (Get-JsonValue $productionHandoffExportManifest "autoAcceptanceRequiresSemanticPreflightCandidate" $false)
     productionHandoffExportOperatorActionQueueIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueIncluded" $false)
@@ -2719,8 +2740,16 @@ $manifest = [ordered]@{
     productionExternalEvidenceSemanticPreflightRejectedCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "rejectedCaseCount" 0))
     productionExternalEvidenceSemanticPreflightDefaultPendingAccepted = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "defaultPendingAccepted" $false)
     productionExternalEvidenceSemanticPreflightOwnerResponseBundleReady = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleReady" $false)
+    productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipReady = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipReady" $false)
+    productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipArbitraryWrapperReady = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipArbitraryWrapperReady" $false)
+    productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0))
+    productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipSafeCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipSafeCaseCount" 0))
+    productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipUnsafeCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 0))
+    productionExternalEvidenceSemanticPreflightCheckCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "checkCount" 0))
     productionExternalEvidenceSemanticPreflightPartialBundleRejected = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "partialBundleRejected" $false)
+    productionExternalEvidenceSemanticPreflightPartialBundleZipRejected = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "partialBundleZipRejected" $false)
     productionExternalEvidenceSemanticPreflightSemanticBadBundleRejected = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "semanticBadBundleRejected" $false)
+    productionExternalEvidenceSemanticPreflightSemanticBadBundleZipRejected = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "semanticBadBundleZipRejected" $false)
     productionExternalEvidenceSemanticPreflightFixtureSignalRejected = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "fixtureSignalRejectedWithoutContractMode" $false)
     productionExternalEvidenceSemanticPreflightAcceptanceRun = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "acceptanceRun" $true)
     productionExternalEvidenceSemanticPreflightEmailSent = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "emailSent" $true)
@@ -2804,8 +2833,14 @@ $reportLines = @(
     "- Production handoff export semantic preflight probe read-only: $($manifest.productionHandoffExportSemanticPreflightProbeReadOnly)",
     "- Production handoff export semantic preflight probe acceptance run: $($manifest.productionHandoffExportSemanticPreflightProbeAcceptanceRun)",
     "- Production handoff export semantic preflight probe owner response bundle ready: $($manifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleReady)",
+    "- Production handoff export semantic preflight probe owner response bundle zip ready: $($manifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipReady)",
+    "- Production handoff export semantic preflight probe owner response bundle arbitrary wrapper zip ready: $($manifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipArbitraryWrapperReady)",
+    "- Production handoff export semantic preflight probe owner response bundle zip cases: $($manifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipSafeCaseCount) safe / $($manifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipCaseCount) total",
+    "- Production handoff export semantic preflight probe owner response bundle unsafe zip cases: $($manifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipUnsafeCaseCount)",
     "- Production handoff export semantic preflight partial bundle rejected: $($manifest.productionHandoffExportSemanticPreflightProbePartialBundleRejected)",
+    "- Production handoff export semantic preflight partial bundle zip rejected: $($manifest.productionHandoffExportSemanticPreflightProbePartialBundleZipRejected)",
     "- Production handoff export semantic-bad bundle rejected: $($manifest.productionHandoffExportSemanticPreflightProbeSemanticBadBundleRejected)",
+    "- Production handoff export semantic-bad bundle zip rejected: $($manifest.productionHandoffExportSemanticPreflightProbeSemanticBadBundleZipRejected)",
     "- Production handoff export semantic preflight documented before auto acceptance: $($manifest.productionHandoffExportSemanticPreflightBeforeAutoAcceptanceDocumented)",
     "- Production handoff export auto acceptance requires semantic preflight candidate: $($manifest.productionHandoffExportAutoAcceptanceRequiresSemanticPreflightCandidate)",
     "- Production handoff export operator action queue included: $($manifest.productionHandoffExportOperatorActionQueueIncluded)",
@@ -2933,8 +2968,15 @@ $reportLines = @(
     "- Production external evidence semantic preflight accepted: $($manifest.productionExternalEvidenceSemanticPreflightProbeAccepted)",
     "- Production external evidence semantic preflight cases: $($manifest.productionExternalEvidenceSemanticPreflightRejectedCaseCount) rejected / $($manifest.productionExternalEvidenceSemanticPreflightCaseCount) total",
     "- Production external evidence semantic preflight candidate cases: $($manifest.productionExternalEvidenceSemanticPreflightCandidateCaseCount)",
+    "- Production external evidence semantic preflight check count: $($manifest.productionExternalEvidenceSemanticPreflightCheckCount)",
+    "- Production external evidence semantic preflight owner response bundle zip ready: $($manifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipReady)",
+    "- Production external evidence semantic preflight owner response bundle arbitrary wrapper zip ready: $($manifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipArbitraryWrapperReady)",
+    "- Production external evidence semantic preflight owner response bundle zip cases: $($manifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipSafeCaseCount) safe / $($manifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipCaseCount) total",
+    "- Production external evidence semantic preflight owner response bundle unsafe zip cases: $($manifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipUnsafeCaseCount)",
     "- Production external evidence semantic preflight partial bundle rejected: $($manifest.productionExternalEvidenceSemanticPreflightPartialBundleRejected)",
+    "- Production external evidence semantic preflight partial bundle zip rejected: $($manifest.productionExternalEvidenceSemanticPreflightPartialBundleZipRejected)",
     "- Production external evidence semantic preflight semantic-bad bundle rejected: $($manifest.productionExternalEvidenceSemanticPreflightSemanticBadBundleRejected)",
+    "- Production external evidence semantic preflight semantic-bad bundle zip rejected: $($manifest.productionExternalEvidenceSemanticPreflightSemanticBadBundleZipRejected)",
     "- Production external evidence semantic preflight fixture signal rejected: $($manifest.productionExternalEvidenceSemanticPreflightFixtureSignalRejected)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",

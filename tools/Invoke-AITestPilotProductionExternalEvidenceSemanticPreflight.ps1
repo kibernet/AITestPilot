@@ -32,6 +32,19 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -39,7 +52,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -53,7 +66,7 @@ function Assert-PathUnderTemp {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $tempRoot)) {
         throw "$Label must stay under system temp for semantic preflight: $fullPath"
     }
 
@@ -64,7 +77,7 @@ function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "Generated file must stay under evidence bundle: $fullPath"
     }
 
@@ -267,6 +280,108 @@ function Get-OwnerResponseBundleZipSafetyReport {
 
     $result.safe = ($result.safetyErrors.Count -eq 0)
     return $result
+}
+
+function Test-OwnerResponseBundleRoot {
+    param([string]$Path)
+
+    return (-not [string]::IsNullOrWhiteSpace($Path)) -and
+        (Test-Path (Join-Path $Path "production-driver-evidence")) -and
+        (Test-Path (Join-Path $Path "production-lua-evidence")) -and
+        (Test-Path (Join-Path $Path "live-smoke-evidence"))
+}
+
+function New-OwnerResponseBundleRootResolution {
+    param(
+        [string]$InputRoot,
+        [string]$ResolvedRoot,
+        [bool]$RootResolved,
+        [string]$ResolutionKind,
+        [bool]$TopLevelWrapperDetected = $false,
+        [string]$TopLevelWrapperName = ""
+    )
+
+    $relativePath = ""
+    if (-not [string]::IsNullOrWhiteSpace($InputRoot) -and -not [string]::IsNullOrWhiteSpace($ResolvedRoot)) {
+        $inputFullPath = Resolve-FullPath $InputRoot
+        $resolvedFullPath = Resolve-FullPath $ResolvedRoot
+        if ($resolvedFullPath.Equals($inputFullPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $relativePath = "."
+        }
+        elseif (Test-PathWithinRoot $resolvedFullPath $inputFullPath) {
+            $relativePath = $resolvedFullPath.Substring($inputFullPath.Length).TrimStart([char[]]@("\", "/")).Replace("\", "/")
+        }
+    }
+
+    return [ordered]@{
+        resolvedRoot = $ResolvedRoot
+        rootResolved = [bool]$RootResolved
+        rootResolutionKind = $ResolutionKind
+        resolvedRelativePathFromInputRoot = $relativePath
+        topLevelWrapperDetected = [bool]$TopLevelWrapperDetected
+        topLevelWrapperName = $TopLevelWrapperName
+    }
+}
+
+function Resolve-OwnerResponseBundleRoot {
+    param([string]$Path)
+
+    $bundlePath = Resolve-FullPath $Path
+    if (Test-OwnerResponseBundleRoot $bundlePath) {
+        return New-OwnerResponseBundleRootResolution `
+            -InputRoot $bundlePath `
+            -ResolvedRoot $bundlePath `
+            -RootResolved $true `
+            -ResolutionKind "direct"
+    }
+
+    $topLevelEntries = @(Get-ChildItem -LiteralPath $bundlePath -Force -ErrorAction SilentlyContinue)
+    $topLevelDirectories = @($topLevelEntries | Where-Object { $_.PSIsContainer })
+    $topLevelFiles = @($topLevelEntries | Where-Object { -not $_.PSIsContainer })
+    if ($topLevelDirectories.Count -eq 1 -and $topLevelFiles.Count -eq 0 -and (Test-OwnerResponseBundleRoot $topLevelDirectories[0].FullName)) {
+        $resolutionKind = if ($topLevelDirectories[0].Name -eq "owner-response-bundle-template") { "owner_response_bundle_template" } else { "single_top_level_directory" }
+        return New-OwnerResponseBundleRootResolution `
+            -InputRoot $bundlePath `
+            -ResolvedRoot (Resolve-FullPath $topLevelDirectories[0].FullName) `
+            -RootResolved $true `
+            -ResolutionKind $resolutionKind `
+            -TopLevelWrapperDetected $true `
+            -TopLevelWrapperName $topLevelDirectories[0].Name
+    }
+
+    $manifestCandidates = @(
+        Get-ChildItem -LiteralPath $bundlePath -Recurse -Filter "owner-response-bundle-manifest.json" -File -ErrorAction SilentlyContinue |
+            ForEach-Object { Split-Path $_.FullName -Parent } |
+            Sort-Object -Unique
+    )
+    $manifestRootCandidates = @($manifestCandidates | Where-Object { Test-OwnerResponseBundleRoot $_ })
+    if ($manifestRootCandidates.Count -eq 1) {
+        $manifestRoot = Resolve-FullPath $manifestRootCandidates[0]
+        $manifestResolution = New-OwnerResponseBundleRootResolution `
+            -InputRoot $bundlePath `
+            -ResolvedRoot $manifestRoot `
+            -RootResolved $true `
+            -ResolutionKind "owner_response_bundle_manifest_parent" `
+            -TopLevelWrapperDetected (-not $manifestRoot.Equals($bundlePath, [System.StringComparison]::OrdinalIgnoreCase))
+        $relativePath = [string]($manifestResolution["resolvedRelativePathFromInputRoot"])
+        if (-not [string]::IsNullOrWhiteSpace($relativePath) -and $relativePath -ne ".") {
+            $manifestResolution["topLevelWrapperName"] = ($relativePath -split "/")[0]
+        }
+        return $manifestResolution
+    }
+    elseif ($manifestRootCandidates.Count -gt 1) {
+        return New-OwnerResponseBundleRootResolution `
+            -InputRoot $bundlePath `
+            -ResolvedRoot $bundlePath `
+            -RootResolved $false `
+            -ResolutionKind "owner_response_bundle_manifest_ambiguous"
+    }
+
+    return New-OwnerResponseBundleRootResolution `
+        -InputRoot $bundlePath `
+        -ResolvedRoot $bundlePath `
+        -RootResolved $false `
+        -ResolutionKind "unresolved"
 }
 
 function Add-SemanticFinding {
@@ -541,10 +656,30 @@ $zipSafetyReport = [ordered]@{
     duplicateEntries = @()
     safetyErrors = @()
 }
+$ownerZipPath = ""
+$ownerZipSha256 = ""
+$expandedOwnerResponseBundleDir = ""
+$ownerResponseBundleInputKind = "none"
+$ownerResponseBundleRootResolution = [ordered]@{
+    resolvedRoot = ""
+    rootResolved = $false
+    rootResolutionKind = "not_applicable"
+    resolvedRelativePathFromInputRoot = ""
+    topLevelWrapperDetected = $false
+    topLevelWrapperName = ""
+}
+
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    -not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    throw "Pass either -OwnerResponseBundleDir or -OwnerResponseBundleZipPath, not both."
+}
 
 if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    $ownerResponseBundleInputKind = "owner_response_bundle_zip"
     $ownerZipPath = Resolve-FullPath $OwnerResponseBundleZipPath
     if (-not (Test-Path $ownerZipPath)) {
+        $zipSafetyReport.safe = $false
+        $zipSafetyReport.safetyErrors += "zip_missing"
         Add-SemanticFinding "external_evidence_bundle" "operator" ([System.IO.Path]::GetFileName($ownerZipPath)) "FAIL" "owner_response_bundle_zip_missing" "OwnerResponseBundleZipPath" "Provide an existing filled owner response bundle zip."
     }
     else {
@@ -553,16 +688,30 @@ if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
             Add-SemanticFinding "external_evidence_bundle" "operator" ([System.IO.Path]::GetFileName($ownerZipPath)) "FAIL" "owner_response_bundle_zip_unsafe" "OwnerResponseBundleZipPath" "Regenerate the owner response bundle zip without unsafe, duplicate, absolute, or traversal entries."
         }
         else {
-            $zipHash = (Get-FileHash -LiteralPath $ownerZipPath -Algorithm SHA256).Hash.ToLowerInvariant()
-            $expandedZipRoot = Assert-PathUnderTemp (Join-Path $tempRoot "AITestPilot\production-external-evidence-semantic-preflight\owner-response-bundle-$zipHash") "OwnerResponseBundleZip extraction"
+            $ownerZipSha256 = (Get-FileHash -LiteralPath $ownerZipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            $expandedZipRoot = Assert-PathUnderTemp (Join-Path $tempRoot "AITestPilot\production-external-evidence-semantic-preflight\owner-response-bundle-$ownerZipSha256") "OwnerResponseBundleZip extraction"
             if (Test-Path $expandedZipRoot) {
                 Remove-Item -LiteralPath $expandedZipRoot -Recurse -Force
             }
             New-Item -ItemType Directory -Force $expandedZipRoot | Out-Null
             Expand-Archive -LiteralPath $ownerZipPath -DestinationPath $expandedZipRoot -Force
-            $OwnerResponseBundleDir = $expandedZipRoot
+            $expandedOwnerResponseBundleDir = $expandedZipRoot
+            $ownerResponseBundleRootResolution = Resolve-OwnerResponseBundleRoot $expandedZipRoot
+            $OwnerResponseBundleDir = [string]($ownerResponseBundleRootResolution["resolvedRoot"])
         }
     }
+}
+elseif (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
+    $ownerResponseBundleInputKind = "owner_response_bundle_dir"
+    $ownerResponseBundleRootResolution = Resolve-OwnerResponseBundleRoot $OwnerResponseBundleDir
+    $OwnerResponseBundleDir = [string]($ownerResponseBundleRootResolution["resolvedRoot"])
+}
+
+if (($ownerResponseBundleInputKind -eq "owner_response_bundle_zip" -or $ownerResponseBundleInputKind -eq "owner_response_bundle_dir") -and
+    -not [bool]($ownerResponseBundleRootResolution["rootResolved"])) {
+    $rootUnresolvedPath = if (-not [string]::IsNullOrWhiteSpace($ownerZipPath)) { $ownerZipPath } else { $OwnerResponseBundleDir }
+    $rootUnresolvedField = if ($ownerResponseBundleInputKind -eq "owner_response_bundle_zip") { "OwnerResponseBundleZipPath" } else { "OwnerResponseBundleDir" }
+    Add-SemanticFinding "external_evidence_bundle" "operator" ([System.IO.Path]::GetFileName($rootUnresolvedPath)) "FAIL" "owner_response_bundle_root_unresolved" $rootUnresolvedField "Return a filled owner response bundle folder or zip containing production-driver-evidence, production-lua-evidence, and live-smoke-evidence directories."
 }
 
 $sourceKind = "default_inbox"
@@ -710,10 +859,11 @@ $skippedStateCount = @($semanticFindings | Where-Object { $_.reason -match "(?i)
 $missingExternalEvidenceAreaCount = @($areaStatuses | Where-Object { $_.missingFiles.Count -gt 0 }).Count
 $ownerRepairRouteCount = @($areaStatuses | Where-Object { $_.failFindingCount -gt 0 -or $_.warnFindingCount -gt 0 }).Count
 $allRequiredFilesPresent = ($missingRequiredFileCount -eq 0)
+$ownerResponseBundleRootUnresolved = (($ownerResponseBundleInputKind -eq "owner_response_bundle_zip" -or $ownerResponseBundleInputKind -eq "owner_response_bundle_dir") -and -not [bool]($ownerResponseBundleRootResolution["rootResolved"]))
 $readyForAcceptanceCandidate = ($allRequiredFilesPresent -and $semanticFailCount -eq 0 -and [bool]$zipSafetyReport.safe)
 
 $semanticPreflightStatus = "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE"
-if (-not [bool]$zipSafetyReport.safe -or ($allRequiredFilesPresent -and $semanticFailCount -gt 0)) {
+if ($ownerResponseBundleRootUnresolved -or -not [bool]$zipSafetyReport.safe -or ($allRequiredFilesPresent -and $semanticFailCount -gt 0)) {
     $semanticPreflightStatus = "NEEDS_OWNER_REPAIR"
 }
 elseif (-not $allRequiredFilesPresent) {
@@ -794,14 +944,28 @@ $manifest = [ordered]@{
     placeholderSignalCount = $placeholderSignalCount
     skippedStateCount = $skippedStateCount
     ownerRepairRouteCount = $ownerRepairRouteCount
+    ownerResponseBundleInputKind = $ownerResponseBundleInputKind
+    ownerResponseBundleZipProvided = -not [string]::IsNullOrWhiteSpace($ownerZipPath)
+    ownerResponseBundleZipExists = (-not [string]::IsNullOrWhiteSpace($ownerZipPath)) -and (Test-Path $ownerZipPath)
     ownerResponseBundleZipInspected = [bool]$zipSafetyReport.inspected
+    ownerResponseBundleZipPath = $ownerZipPath
+    ownerResponseBundleZipSha256 = $ownerZipSha256
+    expandedOwnerResponseBundleDir = $expandedOwnerResponseBundleDir
+    ownerResponseBundleResolvedRoot = [string]($ownerResponseBundleRootResolution["resolvedRoot"])
+    ownerResponseBundleRootResolved = [bool]($ownerResponseBundleRootResolution["rootResolved"])
+    ownerResponseBundleRootResolutionKind = [string]($ownerResponseBundleRootResolution["rootResolutionKind"])
+    ownerResponseBundleResolvedRelativePathFromInputRoot = [string]($ownerResponseBundleRootResolution["resolvedRelativePathFromInputRoot"])
+    ownerResponseBundleTopLevelWrapperDetected = [bool]($ownerResponseBundleRootResolution["topLevelWrapperDetected"])
+    ownerResponseBundleTopLevelWrapperName = [string]($ownerResponseBundleRootResolution["topLevelWrapperName"])
     zipSafe = [bool]$zipSafetyReport.safe
     zipOpenSucceeded = [bool]$zipSafetyReport.zipOpenSucceeded
     zipEntryCount = [int]$zipSafetyReport.entryCount
+    zipDirectoryEntryCount = [int]$zipSafetyReport.directoryEntryCount
     zipUnsafeEntryCount = [int]$zipSafetyReport.unsafeEntryCount
     zipDuplicateEntryCount = [int]$zipSafetyReport.duplicateEntryCount
     zipSafetyErrors = @($zipSafetyReport.safetyErrors)
     zipUnsafeEntries = @($zipSafetyReport.unsafeEntries)
+    zipDuplicateEntries = @($zipSafetyReport.duplicateEntries)
     areaStatuses = @($areaStatuses)
     presentFiles = @($presentFileRecords)
     actionItems = @($semanticFindings)

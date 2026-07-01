@@ -407,7 +407,7 @@ $exportReadmeLines = @(
     "4. Production Lua owners can run `production-lua-patch-evidence-kit\\Export-ProductionLuaPatchEvidenceBundle.ps1` after real Lua patch readiness passes; it creates `production-lua-evidence-export\\production-lua-evidence` and `production-lua-evidence-export\\production-lua-evidence.zip`.",
     "5. Live model owners can run `live-model-endpoint-config-kit\\Export-LiveModelEndpointSmokeEvidenceBundle.ps1` after direct live provider smoke passes; it creates `live-model-endpoint-smoke-evidence-export\\live-smoke-evidence` and `live-model-endpoint-smoke-evidence-export\\live-smoke-evidence.zip`.",
     "6. Owners copy returned evidence into `production-external-evidence-inbox\\production-driver-evidence`, `production-external-evidence-inbox\\production-lua-evidence`, and `production-external-evidence-inbox\\live-smoke-evidence`.",
-    "7. Run the bundled self-contained semantic preflight helper: $semanticPreflightSelfContainedFolderCommand or $semanticPreflightSelfContainedZipCommand before auto acceptance. It invokes `semantic-preflight\\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1`; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0.",
+    "7. Run the bundled self-contained semantic preflight helper: $semanticPreflightSelfContainedFolderCommand or $semanticPreflightSelfContainedZipCommand before auto acceptance. It invokes `semantic-preflight\\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1`; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0. Zip inputs are checked for unsafe, duplicate, absolute, or traversal entries before extraction.",
     "8. Run `production-external-evidence-inbox\\accept-returned-evidence.ps1` to generate the Markdown acceptance report.",
     "9. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`."
 )
@@ -434,7 +434,7 @@ if ($operatorActionQueueAvailable) {
     $exportReadmeLines += "- `operator-actions/`: canonical action queue, remaining-work source snapshot, and action-queue probe proof for the remaining external evidence work."
 }
 if ($semanticPreflightProbeAvailable) {
-    $exportReadmeLines += "- `contract-evidence/production-external-evidence-semantic-preflight-probe.md`: read-only semantic preflight probe for returned owner bundles before auto acceptance."
+    $exportReadmeLines += "- `contract-evidence/production-external-evidence-semantic-preflight-probe.md`: read-only semantic preflight probe for returned owner bundle directories and zips before auto acceptance."
 }
 $exportReadmeLines += @(
     "- `contract-evidence/`: accepted-fixture and rejection reports proving the intake path without claiming real production evidence.",
@@ -746,6 +746,7 @@ $semanticPreflightDocumentedBeforeAutoAcceptance = (
     $exportReadmeAutoAcceptanceIndex -gt $exportReadmeSemanticPreflightIndex -and
     $exportReadmeText.Contains("-OwnerResponseBundleDir") -and
     $exportReadmeText.Contains("-OwnerResponseBundleZipPath") -and
+    $exportReadmeText.Contains("unsafe, duplicate, absolute, or traversal entries") -and
     $exportReadmeText.Contains("readyForAcceptanceCandidate=true") -and
     $exportReadmeText.Contains("semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE") -and
     $exportReadmeText.Contains("WARN_READY_FOR_OPERATOR_ACCEPTANCE") -and
@@ -763,8 +764,15 @@ $semanticPreflightBeforeAutoAcceptanceCheckPassed = (
     ((-not $semanticPreflightProbeAvailable) -or ($semanticPreflightProbeIncluded -and
             $semanticPreflightProbeReadOnly -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleReady" $false) -and
+            [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipReady" $false) -and
+            [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipArbitraryWrapperReady" $false) -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleRejected" $false) -and
-            [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleRejected" $false))) -and
+            [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleZipRejected" $false) -and
+            [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleRejected" $false) -and
+            [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleZipRejected" $false) -and
+            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0) -eq 4 -and
+            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipSafeCaseCount" 0) -eq 4 -and
+            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 1) -eq 0)) -and
     ((-not $ownerResponseBundleKitAvailable) -or ($ownerResponseBundleKitSemanticPreflightCommandsDocumented -and $ownerResponseBundleKitAutoAcceptanceCommandsDocumented)) -and
     ((-not $operatorActionQueueAvailable) -or $operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented)
 )
@@ -871,8 +879,15 @@ $manifest = [ordered]@{
     semanticPreflightProbeReadOnly = [bool]$semanticPreflightProbeReadOnly
     semanticPreflightProbeAcceptanceRun = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "acceptanceRun" $true)
     semanticPreflightProbeOwnerResponseBundleReady = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleReady" $false)
+    semanticPreflightProbeOwnerResponseBundleZipReady = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipReady" $false)
+    semanticPreflightProbeOwnerResponseBundleZipArbitraryWrapperReady = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipArbitraryWrapperReady" $false)
     semanticPreflightProbePartialBundleRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleRejected" $false)
+    semanticPreflightProbePartialBundleZipRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleZipRejected" $false)
     semanticPreflightProbeSemanticBadBundleRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleRejected" $false)
+    semanticPreflightProbeSemanticBadBundleZipRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleZipRejected" $false)
+    semanticPreflightProbeOwnerResponseBundleZipCaseCount = [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0)
+    semanticPreflightProbeOwnerResponseBundleZipSafeCaseCount = [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipSafeCaseCount" 0)
+    semanticPreflightProbeOwnerResponseBundleZipUnsafeCaseCount = [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 1)
     semanticPreflightSelfContainedHelperIncluded = [bool]$semanticPreflightSelfContainedHelperIncluded
     semanticPreflightSelfContainedHelperDocumented = [bool]$semanticPreflightSelfContainedHelperDocumented
     semanticPreflightSelfContainedHelperContentValidated = [bool]$semanticPreflightSelfContainedHelperContentValidated

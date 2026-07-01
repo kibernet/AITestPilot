@@ -38,6 +38,19 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -45,7 +58,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -59,7 +72,7 @@ function Assert-PathUnderTemp {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $tempRoot)) {
         throw "$Label must stay under system temp for this probe: $fullPath"
     }
 
@@ -70,7 +83,7 @@ function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "Generated file must stay under evidence bundle: $fullPath"
     }
 
@@ -171,11 +184,40 @@ function Copy-CompleteBundle {
     Copy-RequiredFiles $liveSourceDir (Join-Path $DestinationRoot "live-smoke-evidence") $liveFiles "live smoke"
 }
 
+function New-OwnerResponseBundleZip {
+    param(
+        [string]$SourceRoot,
+        [string]$ZipPath,
+        [string]$StagingRoot,
+        [string]$WrapperName = "owner-response-bundle-template"
+    )
+
+    if (Test-Path $ZipPath) {
+        Remove-Item -LiteralPath $ZipPath -Force
+    }
+    if (Test-Path $StagingRoot) {
+        Remove-Item -LiteralPath $StagingRoot -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Force $StagingRoot | Out-Null
+    Copy-Item -LiteralPath $SourceRoot -Destination (Join-Path $StagingRoot $WrapperName) -Recurse -Force
+
+    Add-Type -AssemblyName System.IO.Compression | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+    [System.IO.Compression.ZipFile]::CreateFromDirectory(
+        $StagingRoot,
+        $ZipPath,
+        [System.IO.Compression.CompressionLevel]::Optimal,
+        $false
+    )
+}
+
 function Invoke-PreflightCase {
     param(
         [string]$Name,
         [string]$EvidenceRoot = "",
         [string]$OwnerResponseBundleDir = "",
+        [string]$OwnerResponseBundleZipPath = "",
         [switch]$ContractFixtureMode
     )
 
@@ -193,6 +235,9 @@ function Invoke-PreflightCase {
     }
     if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
         $preflightParams["OwnerResponseBundleDir"] = $OwnerResponseBundleDir
+    }
+    if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+        $preflightParams["OwnerResponseBundleZipPath"] = $OwnerResponseBundleZipPath
     }
     if ([bool]$ContractFixtureMode) {
         $preflightParams["ContractFixtureMode"] = $true
@@ -288,6 +333,10 @@ $completeExternalRoot = Join-Path $externalBundlePath "complete-external-root"
 $ownerBundleRoot = Join-Path $externalBundlePath "complete-owner-response-bundle"
 $partialBundleRoot = Join-Path $externalBundlePath "partial-owner-response-bundle"
 $semanticBadBundleRoot = Join-Path $externalBundlePath "semantic-bad-owner-response-bundle"
+$ownerBundleZipPath = Join-Path $probePath "complete-owner-response-bundle.zip"
+$ownerBundleArbitraryWrapperZipPath = Join-Path $probePath "complete-owner-response-bundle-arbitrary-wrapper.zip"
+$partialBundleZipPath = Join-Path $probePath "partial-owner-response-bundle.zip"
+$semanticBadBundleZipPath = Join-Path $probePath "semantic-bad-owner-response-bundle.zip"
 
 Copy-CompleteBundle $completeExternalRoot
 Copy-CompleteBundle $ownerBundleRoot
@@ -308,18 +357,31 @@ $badLuaEvidence.evidenceType = "host_project_template"
 $badLuaEvidence.analyzedLuaRoot = "fixture://semantic-bad-production-lua"
 $badLuaEvidence | ConvertTo-Json -Depth 100 | Set-Content -Path $badLuaEvidencePath -Encoding UTF8
 
+New-OwnerResponseBundleZip $ownerBundleRoot $ownerBundleZipPath (Join-Path $externalBundlePath "zip-staging-complete")
+New-OwnerResponseBundleZip $ownerBundleRoot $ownerBundleArbitraryWrapperZipPath (Join-Path $externalBundlePath "zip-staging-complete-arbitrary-wrapper") -WrapperName "returned-owner-upload"
+New-OwnerResponseBundleZip $partialBundleRoot $partialBundleZipPath (Join-Path $externalBundlePath "zip-staging-partial")
+New-OwnerResponseBundleZip $semanticBadBundleRoot $semanticBadBundleZipPath (Join-Path $externalBundlePath "zip-staging-semantic-bad")
+
 $cases = @()
 $cases += Invoke-PreflightCase "default-pending"
 $cases += Invoke-PreflightCase "complete-external-root-contract" -EvidenceRoot $completeExternalRoot -ContractFixtureMode
 $cases += Invoke-PreflightCase "complete-owner-response-bundle-contract" -OwnerResponseBundleDir $ownerBundleRoot -ContractFixtureMode
+$cases += Invoke-PreflightCase "complete-owner-response-bundle-zip-contract" -OwnerResponseBundleZipPath $ownerBundleZipPath -ContractFixtureMode
+$cases += Invoke-PreflightCase "complete-owner-response-bundle-zip-arbitrary-wrapper-contract" -OwnerResponseBundleZipPath $ownerBundleArbitraryWrapperZipPath -ContractFixtureMode
 $cases += Invoke-PreflightCase "partial-owner-response-bundle" -OwnerResponseBundleDir $partialBundleRoot
+$cases += Invoke-PreflightCase "partial-owner-response-bundle-zip" -OwnerResponseBundleZipPath $partialBundleZipPath
 $cases += Invoke-PreflightCase "semantic-bad-owner-response-bundle" -OwnerResponseBundleDir $semanticBadBundleRoot
+$cases += Invoke-PreflightCase "semantic-bad-owner-response-bundle-zip" -OwnerResponseBundleZipPath $semanticBadBundleZipPath
 
 $defaultCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "default-pending" } | Select-Object -First 1
 $completeRootCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete-external-root-contract" } | Select-Object -First 1
 $ownerBundleCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete-owner-response-bundle-contract" } | Select-Object -First 1
+$ownerBundleZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete-owner-response-bundle-zip-contract" } | Select-Object -First 1
+$ownerBundleArbitraryWrapperZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete-owner-response-bundle-zip-arbitrary-wrapper-contract" } | Select-Object -First 1
 $partialCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "partial-owner-response-bundle" } | Select-Object -First 1
+$partialZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "partial-owner-response-bundle-zip" } | Select-Object -First 1
 $semanticBadCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "semantic-bad-owner-response-bundle" } | Select-Object -First 1
+$semanticBadZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "semantic-bad-owner-response-bundle-zip" } | Select-Object -First 1
 
 $checks = @()
 Add-Check "default_missing_evidence_stays_pending" (
@@ -344,11 +406,46 @@ Add-Check "complete_owner_response_bundle_contract_ready" (
     (Get-JsonValue $ownerBundleCase.manifest "sourceKind" "") -eq "owner_response_bundle"
 ) "Complete owner response bundle must be candidate-ready only inside contract fixture mode."
 
+Add-Check "complete_owner_response_bundle_zip_contract_ready" (
+    -not [bool]$ownerBundleZipCase.failed -and
+    (Get-JsonValue $ownerBundleZipCase.manifest "semanticPreflightStatus" "") -eq "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE" -and
+    (Convert-ToBool (Get-JsonValue $ownerBundleZipCase.manifest "readyForAcceptanceCandidate" $false)) -and
+    (Get-JsonValue $ownerBundleZipCase.manifest "sourceKind" "") -eq "owner_response_bundle" -and
+    (Convert-ToBool (Get-JsonValue $ownerBundleZipCase.manifest "ownerResponseBundleZipInspected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerBundleZipCase.manifest "zipSafe" $false)) -and
+    (Get-JsonValue $ownerBundleZipCase.manifest "zipEntryCount" 0) -gt 0 -and
+    (Get-JsonValue $ownerBundleZipCase.manifest "missingRequiredFileCount" 1) -eq 0 -and
+    (Get-JsonValue $ownerBundleZipCase.manifest "semanticFailCount" 1) -eq 0
+) "Complete owner response bundle zip with a top-level owner-response-bundle-template directory must resolve and become candidate-ready only inside contract fixture mode."
+
+Add-Check "complete_owner_response_bundle_zip_arbitrary_wrapper_ready" (
+    -not [bool]$ownerBundleArbitraryWrapperZipCase.failed -and
+    (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "semanticPreflightStatus" "") -eq "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE" -and
+    (Convert-ToBool (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "readyForAcceptanceCandidate" $false)) -and
+    (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "sourceKind" "") -eq "owner_response_bundle" -and
+    (Convert-ToBool (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "ownerResponseBundleZipInspected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "zipSafe" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "ownerResponseBundleRootResolved" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "ownerResponseBundleTopLevelWrapperDetected" $false)) -and
+    (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "ownerResponseBundleRootResolutionKind" "") -eq "single_top_level_directory" -and
+    (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "ownerResponseBundleTopLevelWrapperName" "") -eq "returned-owner-upload" -and
+    (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "missingRequiredFileCount" 1) -eq 0 -and
+    (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "semanticFailCount" 1) -eq 0
+) "Complete owner response bundle zip with an arbitrary single top-level wrapper directory must resolve and become candidate-ready only inside contract fixture mode."
+
 Add-Check "partial_owner_response_bundle_rejected" (
     -not [bool]$partialCase.failed -and
     -not (Convert-ToBool (Get-JsonValue $partialCase.manifest "readyForAcceptanceCandidate" $true)) -and
     (Get-JsonValue $partialCase.manifest "missingRequiredFileCount" 0) -ge 1
 ) "Owner response bundle with one missing required file must not be candidate-ready."
+
+Add-Check "partial_owner_response_bundle_zip_rejected" (
+    -not [bool]$partialZipCase.failed -and
+    (Convert-ToBool (Get-JsonValue $partialZipCase.manifest "ownerResponseBundleZipInspected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $partialZipCase.manifest "zipSafe" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $partialZipCase.manifest "readyForAcceptanceCandidate" $true)) -and
+    (Get-JsonValue $partialZipCase.manifest "missingRequiredFileCount" 0) -ge 1
+) "Owner response bundle zip with one missing required file must not be candidate-ready."
 
 Add-Check "semantic_bad_owner_response_bundle_rejected" (
     -not [bool]$semanticBadCase.failed -and
@@ -356,6 +453,15 @@ Add-Check "semantic_bad_owner_response_bundle_rejected" (
     (Get-JsonValue $semanticBadCase.manifest "semanticFailCount" 0) -gt 0 -and
     (Get-JsonValue $semanticBadCase.manifest "fixtureSignalCount" 0) -gt 0
 ) "Owner response bundle with complete files but fixture/template semantic signals must not be candidate-ready."
+
+Add-Check "semantic_bad_owner_response_bundle_zip_rejected" (
+    -not [bool]$semanticBadZipCase.failed -and
+    (Convert-ToBool (Get-JsonValue $semanticBadZipCase.manifest "ownerResponseBundleZipInspected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $semanticBadZipCase.manifest "zipSafe" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticBadZipCase.manifest "readyForAcceptanceCandidate" $true)) -and
+    (Get-JsonValue $semanticBadZipCase.manifest "semanticFailCount" 0) -gt 0 -and
+    (Get-JsonValue $semanticBadZipCase.manifest "fixtureSignalCount" 0) -gt 0
+) "Owner response bundle zip with complete files but fixture/template semantic signals must not be candidate-ready."
 
 Add-Check "preflight_cases_are_read_only" (
     @($cases | Where-Object {
@@ -403,6 +509,15 @@ $caseSummaries = @($cases | ForEach-Object {
             semanticFailCount = Get-JsonValue $caseManifest "semanticFailCount" 0
             semanticWarnCount = Get-JsonValue $caseManifest "semanticWarnCount" 0
             fixtureSignalCount = Get-JsonValue $caseManifest "fixtureSignalCount" 0
+            ownerResponseBundleZipInspected = Convert-ToBool (Get-JsonValue $caseManifest "ownerResponseBundleZipInspected" $false)
+            zipSafe = Convert-ToBool (Get-JsonValue $caseManifest "zipSafe" $false)
+            zipEntryCount = Get-JsonValue $caseManifest "zipEntryCount" 0
+            zipUnsafeEntryCount = Get-JsonValue $caseManifest "zipUnsafeEntryCount" 0
+            zipDuplicateEntryCount = Get-JsonValue $caseManifest "zipDuplicateEntryCount" 0
+            ownerResponseBundleRootResolved = Convert-ToBool (Get-JsonValue $caseManifest "ownerResponseBundleRootResolved" $false)
+            ownerResponseBundleRootResolutionKind = Get-JsonValue $caseManifest "ownerResponseBundleRootResolutionKind" ""
+            ownerResponseBundleTopLevelWrapperDetected = Convert-ToBool (Get-JsonValue $caseManifest "ownerResponseBundleTopLevelWrapperDetected" $false)
+            ownerResponseBundleTopLevelWrapperName = Get-JsonValue $caseManifest "ownerResponseBundleTopLevelWrapperName" ""
             manifest = Get-JsonValue $_ "manifestRelativePath" ""
             report = Get-JsonValue $_ "reportRelativePath" ""
             output = Get-JsonValue $_ "outputRelativePath" ""
@@ -440,10 +555,17 @@ $manifest = [ordered]@{
     defaultPendingAccepted = Get-CheckPassed "default_missing_evidence_stays_pending"
     completeExternalRootReady = Get-CheckPassed "complete_external_root_contract_ready"
     ownerResponseBundleReady = Get-CheckPassed "complete_owner_response_bundle_contract_ready"
+    ownerResponseBundleZipReady = Get-CheckPassed "complete_owner_response_bundle_zip_contract_ready"
+    ownerResponseBundleZipArbitraryWrapperReady = Get-CheckPassed "complete_owner_response_bundle_zip_arbitrary_wrapper_ready"
     partialBundleRejected = Get-CheckPassed "partial_owner_response_bundle_rejected"
+    partialBundleZipRejected = Get-CheckPassed "partial_owner_response_bundle_zip_rejected"
     semanticBadBundleRejected = Get-CheckPassed "semantic_bad_owner_response_bundle_rejected"
+    semanticBadBundleZipRejected = Get-CheckPassed "semantic_bad_owner_response_bundle_zip_rejected"
+    ownerResponseBundleZipCaseCount = @($caseSummaries | Where-Object { $_.ownerResponseBundleZipInspected }).Count
+    ownerResponseBundleZipSafeCaseCount = @($caseSummaries | Where-Object { $_.ownerResponseBundleZipInspected -and $_.zipSafe }).Count
+    ownerResponseBundleZipUnsafeCaseCount = @($caseSummaries | Where-Object { $_.ownerResponseBundleZipInspected -and -not $_.zipSafe }).Count
     semanticFailCaseCount = @($caseSummaries | Where-Object { $_.semanticFailCount -gt 0 }).Count
-    fixtureSignalRejectedWithoutContractMode = [bool]($semanticBadCase.manifest.fixtureSignalCount -gt 0 -and -not (Convert-ToBool (Get-JsonValue $semanticBadCase.manifest "readyForAcceptanceCandidate" $true)))
+    fixtureSignalRejectedWithoutContractMode = [bool]([int](Get-JsonValue $semanticBadCase.manifest "fixtureSignalCount" 0) -gt 0 -and -not (Convert-ToBool (Get-JsonValue $semanticBadCase.manifest "readyForAcceptanceCandidate" $true)))
     ownerRepairRouteCaseCount = @($caseSummaries | Where-Object { $_.semanticPreflightStatus -eq "NEEDS_OWNER_REPAIR" }).Count
     missingEvidenceCaseCount = @($caseSummaries | Where-Object { $_.semanticPreflightStatus -eq "PENDING_EXTERNAL_EVIDENCE" }).Count
     semanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`""
@@ -468,6 +590,8 @@ $reportRejectedCaseCount = Get-JsonValue $manifest "rejectedCaseCount" 0
 $reportAcceptanceRun = Get-JsonValue $manifest "acceptanceRun" $false
 $reportRealHostProjectEvidenceAccepted = Get-JsonValue $manifest "realHostProjectEvidenceAccepted" $false
 $reportFixtureEvidencePromoted = Get-JsonValue $manifest "fixtureEvidencePromoted" $false
+$reportZipCaseCount = Get-JsonValue $manifest "ownerResponseBundleZipCaseCount" 0
+$reportZipSafeCaseCount = Get-JsonValue $manifest "ownerResponseBundleZipSafeCaseCount" 0
 
 $reportLines = @(
     "# Production External Evidence Semantic Preflight Probe",
@@ -476,14 +600,15 @@ $reportLines = @(
     "- Cases: $reportCaseCount",
     "- Candidate-ready cases: $reportCompleteCandidateCaseCount",
     "- Rejected/pending cases: $reportRejectedCaseCount",
+    "- Owner response bundle zip cases: $reportZipSafeCaseCount / $reportZipCaseCount safe",
     "- Acceptance run: $reportAcceptanceRun",
     "- Real host-project evidence accepted: $reportRealHostProjectEvidenceAccepted",
     "- Fixture evidence promoted: $reportFixtureEvidencePromoted",
     "",
     "## Cases",
     "",
-    "| Case | Status | Candidate | Missing | Semantic FAIL | Fixture signals |",
-    "| --- | --- | ---: | ---: | ---: | ---: |"
+    "| Case | Status | Candidate | Zip inspected | Zip safe | Missing | Semantic FAIL | Fixture signals |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |"
 )
 
 foreach ($caseSummary in $caseSummaries) {
@@ -493,7 +618,9 @@ foreach ($caseSummary in $caseSummaries) {
     $caseMissing = Get-JsonValue $caseSummary "missingRequiredFileCount" 0
     $caseSemanticFail = Get-JsonValue $caseSummary "semanticFailCount" 0
     $caseFixtureSignals = Get-JsonValue $caseSummary "fixtureSignalCount" 0
-    $reportLines += "| $(Format-MarkdownCell $caseName) | $(Format-MarkdownCell $caseStatus) | $caseCandidate | $caseMissing | $caseSemanticFail | $caseFixtureSignals |"
+    $caseZipInspected = Get-JsonValue $caseSummary "ownerResponseBundleZipInspected" $false
+    $caseZipSafe = Get-JsonValue $caseSummary "zipSafe" $false
+    $reportLines += "| $(Format-MarkdownCell $caseName) | $(Format-MarkdownCell $caseStatus) | $caseCandidate | $caseZipInspected | $caseZipSafe | $caseMissing | $caseSemanticFail | $caseFixtureSignals |"
 }
 
 $reportLines += @(
