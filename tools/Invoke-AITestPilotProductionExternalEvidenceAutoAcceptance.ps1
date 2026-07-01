@@ -503,6 +503,97 @@ $allEvidenceReady = $readyAreaCount -eq 3 -and $missingFileCount -eq 0
 if ($ownerResponseBundleZipRejected) {
     $allEvidenceReady = $false
 }
+$semanticPreflightGateRun = $false
+$semanticPreflightGatePassed = $false
+$semanticPreflightGateBlockedAcceptance = $false
+$semanticPreflightErrorMessage = ""
+$semanticPreflightManifest = $null
+$semanticPreflightArtifactPrefix = ([System.IO.Path]::GetFileNameWithoutExtension($manifestFullPath)) -replace "-manifest$", ""
+$semanticPreflightArtifactDir = Split-Path $manifestFullPath -Parent
+$semanticPreflightManifestPath = Join-Path $semanticPreflightArtifactDir "$semanticPreflightArtifactPrefix-semantic-preflight-manifest.json"
+$semanticPreflightReportPath = Join-Path $semanticPreflightArtifactDir "$semanticPreflightArtifactPrefix-semantic-preflight.md"
+$semanticPreflightSourceKind = ""
+$semanticPreflightStatus = ""
+$semanticPreflightReadyForAcceptanceCandidate = $false
+$semanticPreflightFailCount = 0
+$semanticPreflightWarnCount = 0
+$semanticPreflightMissingRequiredFileCount = 0
+$semanticPreflightFixtureSignalCount = 0
+$semanticPreflightPlaceholderSignalCount = 0
+$semanticPreflightGateAcceptableStatuses = @(
+    "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE",
+    "WARN_READY_FOR_OPERATOR_ACCEPTANCE"
+)
+
+if (-not $ownerResponseBundleZipRejected) {
+    New-Item -ItemType Directory -Force $semanticPreflightArtifactDir | Out-Null
+    $semanticPreflightParams = @{
+        EvidenceBundleDir = $evidenceBundlePath
+        ManifestPath = $semanticPreflightManifestPath
+        ReportPath = $semanticPreflightReportPath
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+        $semanticPreflightParams["OwnerResponseBundleZipPath"] = (Resolve-FullPath $OwnerResponseBundleZipPath)
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
+        $semanticPreflightParams["OwnerResponseBundleDir"] = (Resolve-FullPath $OwnerResponseBundleDir)
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($EvidenceRoot)) {
+        $semanticPreflightParams["EvidenceRoot"] = (Resolve-FullPath $EvidenceRoot)
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($ProductionDriverEvidenceDir) -or
+        -not [string]::IsNullOrWhiteSpace($ProductionLuaEvidenceDir) -or
+        -not [string]::IsNullOrWhiteSpace($LiveModelEndpointSmokeEvidenceDir)) {
+        $semanticPreflightRoot = Join-Path $semanticPreflightArtifactDir "$semanticPreflightArtifactPrefix-semantic-preflight-evidence-root"
+        if (Test-Path $semanticPreflightRoot) {
+            Remove-Item -LiteralPath $semanticPreflightRoot -Recurse -Force
+        }
+        New-Item -ItemType Directory -Force $semanticPreflightRoot | Out-Null
+        foreach ($copySpec in @(
+                [ordered]@{ path = [string]$driverCandidate.path; destination = "production-driver-evidence" },
+                [ordered]@{ path = [string]$luaCandidate.path; destination = "production-lua-evidence" },
+                [ordered]@{ path = [string]$liveCandidate.path; destination = "live-smoke-evidence" }
+            )) {
+            $sourcePath = [string]$copySpec.path
+            if (-not [string]::IsNullOrWhiteSpace($sourcePath) -and (Test-Path $sourcePath)) {
+                Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $semanticPreflightRoot ([string]$copySpec.destination)) -Recurse -Force
+            }
+        }
+        $semanticPreflightParams["EvidenceRoot"] = $semanticPreflightRoot
+    }
+
+    if ([bool]$ContractFixtureMode) {
+        $semanticPreflightParams["ContractFixtureMode"] = $true
+    }
+
+    $semanticPreflightGateRun = $true
+    try {
+        & (Join-Path $PSScriptRoot "Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") @semanticPreflightParams | Out-Null
+    }
+    catch {
+        $semanticPreflightErrorMessage = $_.Exception.Message
+    }
+
+    if (Test-Path $semanticPreflightManifestPath) {
+        $semanticPreflightManifest = Read-JsonFile $semanticPreflightManifestPath "Production external evidence semantic preflight manifest"
+        $semanticPreflightSourceKind = [string](Get-JsonValue $semanticPreflightManifest "sourceKind" "")
+        $semanticPreflightStatus = [string](Get-JsonValue $semanticPreflightManifest "semanticPreflightStatus" "")
+        $semanticPreflightReadyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $semanticPreflightManifest "readyForAcceptanceCandidate" $false)
+        $semanticPreflightFailCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "semanticFailCount" 0)
+        $semanticPreflightWarnCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "semanticWarnCount" 0)
+        $semanticPreflightMissingRequiredFileCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "missingRequiredFileCount" 0)
+        $semanticPreflightFixtureSignalCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "fixtureSignalCount" 0)
+        $semanticPreflightPlaceholderSignalCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "placeholderSignalCount" 0)
+        $semanticPreflightGatePassed = (
+            (Get-JsonValue $semanticPreflightManifest "status" "") -eq "PASS" -and
+            $semanticPreflightReadyForAcceptanceCandidate -and
+            $semanticPreflightFailCount -eq 0 -and
+            $semanticPreflightGateAcceptableStatuses -contains $semanticPreflightStatus
+        )
+    }
+}
+
 $acceptanceRun = $false
 $acceptanceSucceeded = $false
 $acceptanceFailed = $false
@@ -511,7 +602,7 @@ $acceptanceManifest = $null
 $acceptanceManifestPath = Join-Path $acceptanceBundlePath "production-external-evidence-acceptance-manifest.json"
 $acceptanceReportPath = Join-Path $acceptanceBundlePath "production-external-evidence-acceptance.md"
 
-if ($allEvidenceReady) {
+if ($allEvidenceReady -and $semanticPreflightGatePassed) {
     $acceptanceRun = $true
     try {
         & (Join-Path $PSScriptRoot "Invoke-AITestPilotProductionExternalEvidenceAcceptance.ps1") `
@@ -536,6 +627,7 @@ if ($allEvidenceReady) {
         $acceptanceManifest = Read-JsonFile $acceptanceManifestPath "Production external evidence acceptance manifest"
     }
 }
+$semanticPreflightGateBlockedAcceptance = $allEvidenceReady -and -not $semanticPreflightGatePassed -and -not $acceptanceRun
 
 $allExternalEvidenceAccepted = $acceptanceSucceeded -and
     $null -ne $acceptanceManifest -and
@@ -564,8 +656,14 @@ Add-AutoCheck "external_evidence_discovery_completed" `
     ($areaStatuses.Count -eq 3) `
     "Auto acceptance must inspect driver, Lua, and live-smoke evidence directories."
 Add-AutoCheck "pending_state_does_not_run_acceptance" `
-    (($allEvidenceReady -and $acceptanceRun) -or ((-not $allEvidenceReady) -and (-not $acceptanceRun))) `
-    "Acceptance should run only when all three evidence areas contain every required file."
+    (($allEvidenceReady -and $semanticPreflightGatePassed -and $acceptanceRun) -or ((-not $allEvidenceReady) -and (-not $acceptanceRun)) -or ($semanticPreflightGateBlockedAcceptance -and -not $acceptanceRun)) `
+    "Acceptance should run only when all three evidence areas contain every required file and semantic preflight has passed."
+Add-AutoCheck "semantic_preflight_gate_runs_before_acceptance" `
+    ($ownerResponseBundleZipRejected -or ($semanticPreflightGateRun -and (Test-Path $semanticPreflightManifestPath) -and (Test-Path $semanticPreflightReportPath))) `
+    "Auto acceptance must run semantic preflight before invoking the stable acceptance script."
+Add-AutoCheck "acceptance_requires_semantic_preflight_candidate" `
+    ((-not $acceptanceRun) -or $semanticPreflightGatePassed) `
+    "Acceptance may run only after semantic preflight reports a ready candidate with zero semantic failures."
 Add-AutoCheck "accepted_only_after_existing_acceptance_passes" `
     ((-not $allExternalEvidenceAccepted) -or ($acceptanceSucceeded -and $null -ne $acceptanceManifest -and (Get-JsonValue $acceptanceManifest "status" "") -eq "PASS")) `
     "Auto acceptance must delegate pass/fail decisions to the stable external evidence acceptance script."
@@ -611,6 +709,12 @@ if (Test-Path $acceptanceManifestPath) {
 if (Test-Path $acceptanceReportPath) {
     $generatedFiles += (Convert-ToEvidenceRelativePath $acceptanceReportPath)
 }
+if (Test-Path $semanticPreflightManifestPath) {
+    $generatedFiles += (Convert-ToEvidenceRelativePath $semanticPreflightManifestPath)
+}
+if (Test-Path $semanticPreflightReportPath) {
+    $generatedFiles += (Convert-ToEvidenceRelativePath $semanticPreflightReportPath)
+}
 $sourceFiles = @(
     "production-external-evidence-inbox-manifest.json",
     "production-handoff-owner-response-bundle-kit-manifest.json"
@@ -642,6 +746,20 @@ $manifest = [ordered]@{
     readyAreaCount = [int]$readyAreaCount
     missingFileCount = [int]$missingFileCount
     allEvidenceReady = [bool]$allEvidenceReady
+    semanticPreflightGateRun = [bool]$semanticPreflightGateRun
+    semanticPreflightGatePassed = [bool]$semanticPreflightGatePassed
+    semanticPreflightGateBlockedAcceptance = [bool]$semanticPreflightGateBlockedAcceptance
+    semanticPreflightErrorMessage = $semanticPreflightErrorMessage
+    semanticPreflightManifestPath = if (Test-Path $semanticPreflightManifestPath) { Convert-ToEvidenceRelativePath $semanticPreflightManifestPath } else { "" }
+    semanticPreflightReportPath = if (Test-Path $semanticPreflightReportPath) { Convert-ToEvidenceRelativePath $semanticPreflightReportPath } else { "" }
+    semanticPreflightSourceKind = $semanticPreflightSourceKind
+    semanticPreflightStatus = $semanticPreflightStatus
+    semanticPreflightReadyForAcceptanceCandidate = [bool]$semanticPreflightReadyForAcceptanceCandidate
+    semanticPreflightFailCount = [int]$semanticPreflightFailCount
+    semanticPreflightWarnCount = [int]$semanticPreflightWarnCount
+    semanticPreflightMissingRequiredFileCount = [int]$semanticPreflightMissingRequiredFileCount
+    semanticPreflightFixtureSignalCount = [int]$semanticPreflightFixtureSignalCount
+    semanticPreflightPlaceholderSignalCount = [int]$semanticPreflightPlaceholderSignalCount
     acceptanceRun = [bool]$acceptanceRun
     acceptanceSucceeded = [bool]$acceptanceSucceeded
     acceptanceFailed = [bool]$acceptanceFailed
@@ -677,6 +795,12 @@ $reportLines = @(
     "| Status | $(Format-MarkdownCell $status) |",
     "| Ready areas | $readyAreaCount / 3 |",
     "| Missing files | $missingFileCount |",
+    "| Semantic preflight gate run | $semanticPreflightGateRun |",
+    "| Semantic preflight gate passed | $semanticPreflightGatePassed |",
+    "| Semantic preflight status | $(Format-MarkdownCell $semanticPreflightStatus) |",
+    "| Semantic preflight fail count | $semanticPreflightFailCount |",
+    "| Semantic preflight missing required files | $semanticPreflightMissingRequiredFileCount |",
+    "| Semantic preflight blocked acceptance | $semanticPreflightGateBlockedAcceptance |",
     "| Acceptance run | $acceptanceRun |",
     "| All external evidence accepted | $allExternalEvidenceAccepted |",
     "| Real host-project evidence accepted | $realHostProjectEvidenceAccepted |",

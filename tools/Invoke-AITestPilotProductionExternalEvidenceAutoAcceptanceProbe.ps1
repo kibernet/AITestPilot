@@ -343,12 +343,14 @@ $pendingRun = Invoke-AutoAcceptance -Name "pending-default-auto-acceptance"
 $acceptedRun = Invoke-AutoAcceptance -Name "accepted-contract-auto-acceptance" -EvidenceRoot $externalEvidencePath -RequireAllEvidence -ContractFixtureMode
 $ownerResponseBundleRun = Invoke-AutoAcceptance -Name "owner-response-bundle-auto-acceptance" -OwnerResponseBundleDir $ownerResponseBundlePath -RequireAllEvidence -ContractFixtureMode
 $ownerResponseBundleZipRun = Invoke-AutoAcceptance -Name "owner-response-bundle-zip-auto-acceptance" -OwnerResponseBundleZipPath $ownerResponseBundleZipPath -RequireAllEvidence -ContractFixtureMode
+$semanticBadOwnerResponseBundleRun = Invoke-AutoAcceptance -Name "owner-response-bundle-semantic-bad-auto-acceptance" -OwnerResponseBundleDir $ownerResponseBundlePath -RequireAllEvidence
 $unsafeOwnerResponseBundleZipRun = Invoke-AutoAcceptance -Name "owner-response-bundle-unsafe-zip-auto-acceptance" -OwnerResponseBundleZipPath $unsafeOwnerResponseBundleZipPath -RequireAllEvidence -ContractFixtureMode
 
 $pendingManifest = $pendingRun.manifest
 $acceptedManifest = $acceptedRun.manifest
 $ownerResponseBundleManifest = $ownerResponseBundleRun.manifest
 $ownerResponseBundleZipManifest = $ownerResponseBundleZipRun.manifest
+$semanticBadOwnerResponseBundleManifest = $semanticBadOwnerResponseBundleRun.manifest
 $unsafeOwnerResponseBundleZipManifest = $unsafeOwnerResponseBundleZipRun.manifest
 $externalBundleUnderRepo = $externalEvidencePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
 $ownerResponseBundleUnderRepo = $ownerResponseBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
@@ -404,6 +406,10 @@ $contractAccepted = $null -ne $acceptedManifest -and
     -not (Convert-ToBool (Get-JsonValue $acceptedManifest "releasePipelineSendsEmail" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $acceptedManifest "emailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $acceptedManifest "fixtureEvidencePromoted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $acceptedManifest "semanticPreflightGateRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $acceptedManifest "semanticPreflightGatePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $acceptedManifest "semanticPreflightReadyForAcceptanceCandidate" $false)) -and
+    (Convert-ToInt (Get-JsonValue $acceptedManifest "semanticPreflightFailCount" 1)) -eq 0 -and
     (Get-JsonValue $acceptedManifest "productionOutputBoundary" "") -eq "external_evidence_auto_acceptance_contract_fixture_only"
 
 $ownerResponseBundleAreaStatuses = @()
@@ -425,6 +431,10 @@ $ownerResponseBundleAccepted = $null -ne $ownerResponseBundleManifest -and
     -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "releasePipelineSendsEmail" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "emailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "fixtureEvidencePromoted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "semanticPreflightGateRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "semanticPreflightGatePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "semanticPreflightReadyForAcceptanceCandidate" $false)) -and
+    (Convert-ToInt (Get-JsonValue $ownerResponseBundleManifest "semanticPreflightFailCount" 1)) -eq 0 -and
     (Get-JsonValue $ownerResponseBundleManifest "productionOutputBoundary" "") -eq "external_evidence_auto_acceptance_contract_fixture_only" -and
     $ownerResponseBundleSourceCount -eq 3
 
@@ -451,10 +461,29 @@ $ownerResponseBundleZipAccepted = $null -ne $ownerResponseBundleZipManifest -and
     -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "releasePipelineSendsEmail" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "emailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "fixtureEvidencePromoted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "semanticPreflightGateRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "semanticPreflightGatePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "semanticPreflightReadyForAcceptanceCandidate" $false)) -and
+    (Convert-ToInt (Get-JsonValue $ownerResponseBundleZipManifest "semanticPreflightFailCount" 1)) -eq 0 -and
     -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipPath" "")) -and
     -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $ownerResponseBundleZipManifest "expandedOwnerResponseBundleDir" "")) -and
     (Get-JsonValue $ownerResponseBundleZipManifest "productionOutputBoundary" "") -eq "external_evidence_auto_acceptance_contract_fixture_only" -and
     $ownerResponseBundleZipSourceCount -eq 3
+
+$semanticBadOwnerResponseBundleRejected = $null -ne $semanticBadOwnerResponseBundleManifest -and
+    [bool]$semanticBadOwnerResponseBundleRun.failed -and
+    (Get-JsonValue $semanticBadOwnerResponseBundleManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_auto_acceptance.v1" -and
+    (Get-JsonValue $semanticBadOwnerResponseBundleManifest "status" "") -eq "FAIL" -and
+    (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "allEvidenceReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightGateRun" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightGatePassed" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightReadyForAcceptanceCandidate" $true)) -and
+    (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightGateBlockedAcceptance" $false)) -and
+    (Convert-ToInt (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightFailCount" 0)) -gt 0 -and
+    -not (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "acceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "allExternalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "realHostProjectEvidenceAccepted" $true)) -and
+    (Get-JsonValue $semanticBadOwnerResponseBundleManifest "productionOutputBoundary" "") -eq "external_evidence_auto_acceptance_failed"
 
 $unsafeOwnerResponseBundleZipRejected = $null -ne $unsafeOwnerResponseBundleZipManifest -and
     [bool]$unsafeOwnerResponseBundleZipRun.failed -and
@@ -473,21 +502,28 @@ $pendingReportText = if (Test-Path $pendingRun.reportPath) { Get-Content -Raw -P
 $acceptedReportText = if (Test-Path $acceptedRun.reportPath) { Get-Content -Raw -Path $acceptedRun.reportPath -Encoding UTF8 } else { "" }
 $ownerResponseBundleReportText = if (Test-Path $ownerResponseBundleRun.reportPath) { Get-Content -Raw -Path $ownerResponseBundleRun.reportPath -Encoding UTF8 } else { "" }
 $ownerResponseBundleZipReportText = if (Test-Path $ownerResponseBundleZipRun.reportPath) { Get-Content -Raw -Path $ownerResponseBundleZipRun.reportPath -Encoding UTF8 } else { "" }
+$semanticBadOwnerResponseBundleReportText = if (Test-Path $semanticBadOwnerResponseBundleRun.reportPath) { Get-Content -Raw -Path $semanticBadOwnerResponseBundleRun.reportPath -Encoding UTF8 } else { "" }
 $unsafeOwnerResponseBundleZipReportText = if (Test-Path $unsafeOwnerResponseBundleZipRun.reportPath) { Get-Content -Raw -Path $unsafeOwnerResponseBundleZipRun.reportPath -Encoding UTF8 } else { "" }
 $reportsValidated = $pendingReportText.Contains("PENDING_EXTERNAL_EVIDENCE") -and
     $acceptedReportText.Contains("All external evidence accepted") -and
     $ownerResponseBundleReportText.Contains("All external evidence accepted") -and
     $ownerResponseBundleZipReportText.Contains("All external evidence accepted") -and
+    $semanticBadOwnerResponseBundleReportText.Contains("Semantic preflight gate passed | False") -and
+    $semanticBadOwnerResponseBundleReportText.Contains("Semantic preflight blocked acceptance | True") -and
+    $semanticBadOwnerResponseBundleReportText.Contains("Acceptance run | False") -and
+    $semanticBadOwnerResponseBundleReportText.Contains("external_evidence_auto_acceptance_failed") -and
     $unsafeOwnerResponseBundleZipReportText.Contains("owner_response_bundle_zip_rejected_before_acceptance") -and
     -not $pendingReportText.Contains("System.Collections") -and
     -not $acceptedReportText.Contains("System.Collections") -and
     -not $ownerResponseBundleReportText.Contains("System.Collections") -and
     -not $ownerResponseBundleZipReportText.Contains("System.Collections") -and
+    -not $semanticBadOwnerResponseBundleReportText.Contains("System.Collections") -and
     -not $unsafeOwnerResponseBundleZipReportText.Contains("System.Collections") -and
     -not $pendingReportText.Contains("@{") -and
     -not $acceptedReportText.Contains("@{") -and
     -not $ownerResponseBundleReportText.Contains("@{") -and
     -not $ownerResponseBundleZipReportText.Contains("@{") -and
+    -not $semanticBadOwnerResponseBundleReportText.Contains("@{") -and
     -not $unsafeOwnerResponseBundleZipReportText.Contains("@{")
 
 $checks = @()
@@ -506,6 +542,9 @@ Add-ProbeCheck "owner_response_bundle_accepts_contract_fixture" `
 Add-ProbeCheck "owner_response_bundle_zip_accepts_contract_fixture" `
     ($ownerResponseBundleZipAccepted -and (Test-Path $ownerResponseBundleZipPath)) `
     "A complete owner response bundle zip must expand, discover all three areas, and pass only as a contract fixture."
+Add-ProbeCheck "semantic_bad_complete_bundle_rejected_before_acceptance" `
+    $semanticBadOwnerResponseBundleRejected `
+    "A complete fixture/template owner response bundle without contract mode must be blocked by semantic preflight before acceptance can run."
 Add-ProbeCheck "owner_response_bundle_unsafe_zip_rejected_before_acceptance" `
     ($unsafeOwnerResponseBundleZipRejected -and (Test-Path $unsafeOwnerResponseBundleZipPath)) `
     "An owner response bundle zip with unsafe entry paths must be rejected before expansion and before acceptance can run."
@@ -525,6 +564,10 @@ Add-ProbeCheck "auto_acceptance_boundaries_preserved" `
         -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "realHostProjectEvidenceAccepted" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "emailSent" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "fixtureEvidencePromoted" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "acceptanceRun" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "realHostProjectEvidenceAccepted" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "emailSent" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "fixtureEvidencePromoted" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "acceptanceRun" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "realHostProjectEvidenceAccepted" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "emailSent" $true)) -and
@@ -551,6 +594,8 @@ $reportLines = @(
     "| Owner response bundle source count | $ownerResponseBundleSourceCount |",
     "| Owner response bundle zip run accepted | $ownerResponseBundleZipAccepted |",
     "| Owner response bundle zip source count | $ownerResponseBundleZipSourceCount |",
+    "| Semantic-bad owner response bundle rejected | $semanticBadOwnerResponseBundleRejected |",
+    "| Semantic-bad owner response bundle fail count | $(Convert-ToInt (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightFailCount" 0)) |",
     "| Unsafe owner response bundle zip rejected | $unsafeOwnerResponseBundleZipRejected |",
     "| Unsafe owner response bundle zip unsafe entries | $(Convert-ToInt (Get-JsonValue $unsafeOwnerResponseBundleZipManifest "ownerResponseBundleZipUnsafeEntryCount" 0)) |",
     "| External fixture files | $externalFileCount |",
@@ -620,6 +665,10 @@ $manifest = [ordered]@{
     acceptedContractAccepted = [bool]$contractAccepted
     acceptedContractStatus = [string](Get-JsonValue $acceptedManifest "status" "")
     acceptedContractAcceptanceRun = Convert-ToBool (Get-JsonValue $acceptedManifest "acceptanceRun" $false)
+    acceptedContractSemanticPreflightGateRun = Convert-ToBool (Get-JsonValue $acceptedManifest "semanticPreflightGateRun" $false)
+    acceptedContractSemanticPreflightGatePassed = Convert-ToBool (Get-JsonValue $acceptedManifest "semanticPreflightGatePassed" $false)
+    acceptedContractSemanticPreflightReadyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $acceptedManifest "semanticPreflightReadyForAcceptanceCandidate" $false)
+    acceptedContractSemanticPreflightFailCount = Convert-ToInt (Get-JsonValue $acceptedManifest "semanticPreflightFailCount" 0)
     acceptedContractAllExternalEvidenceAccepted = Convert-ToBool (Get-JsonValue $acceptedManifest "allExternalEvidenceAccepted" $false)
     acceptedContractRealHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $acceptedManifest "realHostProjectEvidenceAccepted" $true)
     acceptedContractEmailSent = Convert-ToBool (Get-JsonValue $acceptedManifest "emailSent" $true)
@@ -627,6 +676,10 @@ $manifest = [ordered]@{
     ownerResponseBundleAccepted = [bool]$ownerResponseBundleAccepted
     ownerResponseBundleStatus = [string](Get-JsonValue $ownerResponseBundleManifest "status" "")
     ownerResponseBundleAcceptanceRun = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "acceptanceRun" $false)
+    ownerResponseBundleSemanticPreflightGateRun = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "semanticPreflightGateRun" $false)
+    ownerResponseBundleSemanticPreflightGatePassed = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "semanticPreflightGatePassed" $false)
+    ownerResponseBundleSemanticPreflightReadyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "semanticPreflightReadyForAcceptanceCandidate" $false)
+    ownerResponseBundleSemanticPreflightFailCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleManifest "semanticPreflightFailCount" 0)
     ownerResponseBundleAllExternalEvidenceAccepted = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "allExternalEvidenceAccepted" $false)
     ownerResponseBundleRealHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "realHostProjectEvidenceAccepted" $true)
     ownerResponseBundleEmailSent = Convert-ToBool (Get-JsonValue $ownerResponseBundleManifest "emailSent" $true)
@@ -635,6 +688,10 @@ $manifest = [ordered]@{
     ownerResponseBundleZipAccepted = [bool]$ownerResponseBundleZipAccepted
     ownerResponseBundleZipStatus = [string](Get-JsonValue $ownerResponseBundleZipManifest "status" "")
     ownerResponseBundleZipAcceptanceRun = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "acceptanceRun" $false)
+    ownerResponseBundleZipSemanticPreflightGateRun = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "semanticPreflightGateRun" $false)
+    ownerResponseBundleZipSemanticPreflightGatePassed = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "semanticPreflightGatePassed" $false)
+    ownerResponseBundleZipSemanticPreflightReadyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "semanticPreflightReadyForAcceptanceCandidate" $false)
+    ownerResponseBundleZipSemanticPreflightFailCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleZipManifest "semanticPreflightFailCount" 0)
     ownerResponseBundleZipAllExternalEvidenceAccepted = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "allExternalEvidenceAccepted" $false)
     ownerResponseBundleZipRealHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "realHostProjectEvidenceAccepted" $true)
     ownerResponseBundleZipEmailSent = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "emailSent" $true)
@@ -644,6 +701,19 @@ $manifest = [ordered]@{
     ownerResponseBundleZipSafe = Convert-ToBool (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipSafe" $false)
     ownerResponseBundleZipUnsafeEntryCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipUnsafeEntryCount" 0)
     ownerResponseBundleZipDuplicateEntryCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleZipManifest "ownerResponseBundleZipDuplicateEntryCount" 0)
+    semanticBadOwnerResponseBundleRejected = [bool]$semanticBadOwnerResponseBundleRejected
+    semanticBadOwnerResponseBundleStatus = [string](Get-JsonValue $semanticBadOwnerResponseBundleManifest "status" "")
+    semanticBadOwnerResponseBundleAllEvidenceReady = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "allEvidenceReady" $false)
+    semanticBadOwnerResponseBundleSemanticPreflightGateRun = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightGateRun" $false)
+    semanticBadOwnerResponseBundleSemanticPreflightGatePassed = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightGatePassed" $true)
+    semanticBadOwnerResponseBundleSemanticPreflightReadyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightReadyForAcceptanceCandidate" $true)
+    semanticBadOwnerResponseBundleSemanticPreflightFailCount = Convert-ToInt (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightFailCount" 0)
+    semanticBadOwnerResponseBundleSemanticPreflightGateBlockedAcceptance = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "semanticPreflightGateBlockedAcceptance" $false)
+    semanticBadOwnerResponseBundleAcceptanceRun = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "acceptanceRun" $true)
+    semanticBadOwnerResponseBundleAllExternalEvidenceAccepted = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "allExternalEvidenceAccepted" $true)
+    semanticBadOwnerResponseBundleRealHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "realHostProjectEvidenceAccepted" $true)
+    semanticBadOwnerResponseBundleEmailSent = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "emailSent" $true)
+    semanticBadOwnerResponseBundleFixtureEvidencePromoted = Convert-ToBool (Get-JsonValue $semanticBadOwnerResponseBundleManifest "fixtureEvidencePromoted" $true)
     unsafeOwnerResponseBundleZipPath = $unsafeOwnerResponseBundleZipPath
     unsafeOwnerResponseBundleZipRejected = [bool]$unsafeOwnerResponseBundleZipRejected
     unsafeOwnerResponseBundleZipStatus = [string](Get-JsonValue $unsafeOwnerResponseBundleZipManifest "status" "")

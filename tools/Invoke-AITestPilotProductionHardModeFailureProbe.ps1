@@ -211,6 +211,7 @@ $hardModeSourceManifestNames = @(
     "production-external-evidence-gap-analysis-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",
+    "production-external-evidence-auto-acceptance-probe-manifest.json",
     "release-docs-freshness-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
     "production-external-evidence-acceptance-failure-probe-manifest.json",

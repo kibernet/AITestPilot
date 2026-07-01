@@ -3082,6 +3082,10 @@ if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractAccepted -and
             $productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractStatus -eq "PASS" -and
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractAcceptanceRun -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractSemanticPreflightGateRun -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractSemanticPreflightGatePassed -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractSemanticPreflightReadyForAcceptanceCandidate -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractSemanticPreflightFailCount -eq 0 -and
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractAllExternalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractRealHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.acceptedContractEmailSent -and
@@ -3091,6 +3095,10 @@ if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleAccepted -and
             $productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleStatus -eq "PASS" -and
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleAcceptanceRun -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleSemanticPreflightGateRun -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleSemanticPreflightGatePassed -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleSemanticPreflightReadyForAcceptanceCandidate -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleSemanticPreflightFailCount -eq 0 -and
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleAllExternalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleRealHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleEmailSent -and
@@ -3099,6 +3107,10 @@ if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipAccepted -and
             $productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipStatus -eq "PASS" -and
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipAcceptanceRun -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipSemanticPreflightGateRun -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipSemanticPreflightGatePassed -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipSemanticPreflightReadyForAcceptanceCandidate -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipSemanticPreflightFailCount -eq 0 -and
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipAllExternalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipRealHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipEmailSent -and
@@ -3108,6 +3120,19 @@ if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipSafe -and
             [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipUnsafeEntryCount -eq 0 -and
             [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.ownerResponseBundleZipDuplicateEntryCount -eq 0 -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleRejected -and
+            $productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleStatus -eq "FAIL" -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleAllEvidenceReady -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleSemanticPreflightGateRun -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleSemanticPreflightGatePassed -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleSemanticPreflightReadyForAcceptanceCandidate -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleSemanticPreflightFailCount -gt 0 -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleSemanticPreflightGateBlockedAcceptance -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleAcceptanceRun -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleAllExternalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleRealHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleEmailSent -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleFixtureEvidencePromoted -and
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipRejected -and
             $productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipStatus -eq "FAIL" -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipAcceptanceRun -and
@@ -3119,9 +3144,9 @@ if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceAutoAcceptanceProbeManifest.productionOutputBoundary -eq "production_external_evidence_auto_acceptance_probe_only" -and
-            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.checkCount -eq 9 -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.checkCount -eq 10 -and
             [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.failedCheckCount -eq 0) `
-        "Production external evidence auto acceptance probe must prove discovery stays pending when evidence is missing, complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance, and unsafe returned zips are rejected before expansion or acceptance without promoting fixtures."
+        "Production external evidence auto acceptance probe must prove discovery stays pending when evidence is missing, complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance after semantic preflight, semantic-bad complete bundles are rejected before acceptance, and unsafe returned zips are rejected before expansion or acceptance without promoting fixtures."
 
     Test-ListedFiles $productionExternalEvidenceAutoAcceptanceProbeManifest "production_external_evidence_auto_acceptance_probe"
 }

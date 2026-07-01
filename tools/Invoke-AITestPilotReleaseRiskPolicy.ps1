@@ -2204,6 +2204,10 @@ $productionExternalEvidenceAutoAcceptanceProbeAccepted = (
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractAccepted" $false)) -and
     (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractStatus" "") -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractAcceptanceRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractSemanticPreflightGateRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractSemanticPreflightGatePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractSemanticPreflightReadyForAcceptanceCandidate" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractSemanticPreflightFailCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractAllExternalEvidenceAccepted" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractRealHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractEmailSent" $true)) -and
@@ -2213,6 +2217,10 @@ $productionExternalEvidenceAutoAcceptanceProbeAccepted = (
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleAccepted" $false)) -and
     (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleStatus" "") -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleAcceptanceRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSemanticPreflightGateRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSemanticPreflightGatePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSemanticPreflightReadyForAcceptanceCandidate" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSemanticPreflightFailCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleAllExternalEvidenceAccepted" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleRealHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleEmailSent" $true)) -and
@@ -2221,6 +2229,10 @@ $productionExternalEvidenceAutoAcceptanceProbeAccepted = (
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipAccepted" $false)) -and
     (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipStatus" "") -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipAcceptanceRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSemanticPreflightGateRun" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSemanticPreflightGatePassed" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSemanticPreflightReadyForAcceptanceCandidate" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSemanticPreflightFailCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipAllExternalEvidenceAccepted" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipRealHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipEmailSent" $true)) -and
@@ -2230,6 +2242,19 @@ $productionExternalEvidenceAutoAcceptanceProbeAccepted = (
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSafe" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipUnsafeEntryCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipDuplicateEntryCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleRejected" $false)) -and
+    (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleStatus" "") -eq "FAIL" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleAllEvidenceReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleSemanticPreflightGateRun" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleSemanticPreflightGatePassed" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleSemanticPreflightReadyForAcceptanceCandidate" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleSemanticPreflightFailCount" 0)) -gt 0 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleSemanticPreflightGateBlockedAcceptance" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleAcceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleAllExternalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleRealHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleFixtureEvidencePromoted" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipRejected" $false)) -and
     (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipStatus" "") -eq "FAIL" -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipAcceptanceRun" $true)) -and
@@ -2241,12 +2266,12 @@ $productionExternalEvidenceAutoAcceptanceProbeAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "productionOutputBoundary" "") -eq "production_external_evidence_auto_acceptance_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "checkCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "checkCount" 0)) -eq 10 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_external_evidence_auto_acceptance_probe_policy" $productionExternalEvidenceAutoAcceptanceProbeAccepted `
-    "Production evidence handoff must prove auto-discovery stays pending when evidence is missing, complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance, and unsafe owner response bundle zips are rejected before expansion or acceptance without sending mail or promoting fixtures." `
+    "Production evidence handoff must prove auto-discovery stays pending when evidence is missing, complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance after semantic preflight, semantic-bad complete bundles are rejected before acceptance, and unsafe owner response bundle zips are rejected before expansion or acceptance without sending mail or promoting fixtures." `
     "production_external_evidence_auto_acceptance_probe_not_accepted"
 
 $productionExternalEvidenceAcceptanceContractAccepted = (
@@ -2713,12 +2738,21 @@ $manifest = [ordered]@{
     productionExternalEvidenceAutoAcceptancePendingStatus = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultStatus" "")
     productionExternalEvidenceAutoAcceptancePendingMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "pendingDefaultMissingFileCount" 0))
     productionExternalEvidenceAutoAcceptanceContractAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractAccepted" $false)
+    productionExternalEvidenceAutoAcceptanceContractSemanticPreflightGatePassed = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractSemanticPreflightGatePassed" $false)
+    productionExternalEvidenceAutoAcceptanceContractSemanticPreflightFailCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractSemanticPreflightFailCount" 0))
     productionExternalEvidenceAutoAcceptanceContractRealHostProjectEvidenceAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "acceptedContractRealHostProjectEvidenceAccepted" $true)
     productionExternalEvidenceAutoAcceptanceOwnerResponseBundleAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleAccepted" $false)
+    productionExternalEvidenceAutoAcceptanceOwnerResponseBundleSemanticPreflightGatePassed = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSemanticPreflightGatePassed" $false)
+    productionExternalEvidenceAutoAcceptanceOwnerResponseBundleSemanticPreflightFailCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSemanticPreflightFailCount" 0))
     productionExternalEvidenceAutoAcceptanceOwnerResponseBundleSourceCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleSourceCount" 0))
     productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipAccepted = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipAccepted" $false)
+    productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipSemanticPreflightGatePassed = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSemanticPreflightGatePassed" $false)
+    productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipSemanticPreflightFailCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSemanticPreflightFailCount" 0))
     productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipSourceCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSourceCount" 0))
     productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipSafe = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "ownerResponseBundleZipSafe" $false)
+    productionExternalEvidenceAutoAcceptanceSemanticBadOwnerResponseBundleRejected = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleRejected" $false)
+    productionExternalEvidenceAutoAcceptanceSemanticBadOwnerResponseBundleAcceptanceRun = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleAcceptanceRun" $true)
+    productionExternalEvidenceAutoAcceptanceSemanticBadOwnerResponseBundleSemanticPreflightFailCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "semanticBadOwnerResponseBundleSemanticPreflightFailCount" 0))
     productionExternalEvidenceAutoAcceptanceUnsafeZipRejected = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipRejected" $false)
     productionExternalEvidenceAutoAcceptanceUnsafeZipAcceptanceRun = (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipAcceptanceRun" $true)
     productionExternalEvidenceAutoAcceptanceUnsafeZipUnsafeEntryCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceAutoAcceptanceProbeManifest "unsafeOwnerResponseBundleZipUnsafeEntryCount" 0))
@@ -2916,10 +2950,14 @@ $reportLines = @(
     "- Production external evidence auto acceptance pending status: $($manifest.productionExternalEvidenceAutoAcceptancePendingStatus)",
     "- Production external evidence auto acceptance pending missing files: $($manifest.productionExternalEvidenceAutoAcceptancePendingMissingFileCount)",
     "- Production external evidence auto acceptance contract accepted: $($manifest.productionExternalEvidenceAutoAcceptanceContractAccepted)",
+    "- Production external evidence auto acceptance contract semantic preflight passed: $($manifest.productionExternalEvidenceAutoAcceptanceContractSemanticPreflightGatePassed)",
     "- Production external evidence auto acceptance owner response bundle accepted: $($manifest.productionExternalEvidenceAutoAcceptanceOwnerResponseBundleAccepted)",
+    "- Production external evidence auto acceptance owner response bundle semantic preflight passed: $($manifest.productionExternalEvidenceAutoAcceptanceOwnerResponseBundleSemanticPreflightGatePassed)",
     "- Production external evidence auto acceptance owner response bundle source count: $($manifest.productionExternalEvidenceAutoAcceptanceOwnerResponseBundleSourceCount)",
     "- Production external evidence auto acceptance owner response bundle zip accepted: $($manifest.productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipAccepted)",
+    "- Production external evidence auto acceptance owner response bundle zip semantic preflight passed: $($manifest.productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipSemanticPreflightGatePassed)",
     "- Production external evidence auto acceptance owner response bundle zip source count: $($manifest.productionExternalEvidenceAutoAcceptanceOwnerResponseBundleZipSourceCount)",
+    "- Production external evidence auto acceptance semantic-bad bundle rejected before acceptance: $($manifest.productionExternalEvidenceAutoAcceptanceSemanticBadOwnerResponseBundleRejected)",
     "- Production external evidence acceptance contract accepted: $($manifest.productionExternalEvidenceAcceptanceContractAccepted)",
     "- Production external evidence acceptance failure accepted: $($manifest.productionExternalEvidenceAcceptanceFailureAccepted)",
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
