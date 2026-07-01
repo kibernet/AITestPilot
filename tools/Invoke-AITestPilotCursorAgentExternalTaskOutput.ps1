@@ -5,6 +5,7 @@ param(
     [string]$ManifestPath,
     [string]$CursorAgentCommand = "",
     [string]$CursorAgentModel = "",
+    [string]$CursorAgentSandboxMode = "disabled",
     [int]$CursorAgentMaxAttempts = 3,
     [int]$CursorAgentRetryDelaySeconds = 2
 )
@@ -134,6 +135,8 @@ $externalSummaryPath = Join-Path $outputPath "repair-agent-summary.md"
 $contractCheckPath = Join-Path (Split-Path $outputPath -Parent) "cursor-agent-output-contract-check"
 
 $prompt = @"
+Execute this repair-agent output task now. Do not ask for another instruction, do not wait for clarification, and do not modify tracked repository files.
+
 You are acting as the external Cursor repair agent for the AI TestPilot repo.
 
 Strict output boundary:
@@ -186,6 +189,10 @@ function Invoke-CursorAgentPrint {
 
     if (-not [string]::IsNullOrWhiteSpace($Model)) {
         $arguments += @("--model", $Model)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($CursorAgentSandboxMode)) {
+        $arguments += @("--sandbox", $CursorAgentSandboxMode)
     }
 
     $arguments += @(
@@ -480,6 +487,7 @@ $manifest = [ordered]@{
     cursorAgentCommand = $resolvedCursorAgentCommand
     cursorAgentRequestedModel = $cursorAgentRequestedModel
     cursorAgentModel = $cursorAgentModelUsed
+    cursorAgentSandboxMode = $CursorAgentSandboxMode
     cursorAgentRetriedWithoutModel = [bool]$cursorAgentRetriedWithoutModel
     cursorAgentAttemptCount = [int]$cursorAgentAttemptCount
     cursorAgentTransientRetryCount = [int]$cursorAgentTransientRetryCount

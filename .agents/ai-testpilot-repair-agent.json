@@ -9,6 +9,7 @@
     "kind": "headless_cursor_agent",
     "windowsCommand": "cursor-agent.cmd",
     "portableCommand": "cursor-agent",
+    "sandboxMode": "disabled",
     "wrapper": "tools/Invoke-AITestPilotCursorAgentExternalTaskOutput.ps1",
     "pipelineSwitch": "-UseCursorAgentExternalTaskOutput"
   },
