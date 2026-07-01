@@ -205,6 +205,8 @@ $productionHandoffOwnerInputRequestPackManifest = Read-PolicyJson "production-ha
 $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-PolicyJson "production-handoff-owner-contact-external-intake-probe-manifest.json" "Production handoff owner contact external intake probe manifest"
 $productionHandoffSendDryRunProbeManifest = Read-PolicyJson "production-handoff-send-dry-run-probe-manifest.json" "Production handoff send dry-run probe manifest"
 $productionHandoffSendLocalWorkflowProbeManifest = Read-PolicyJson "production-handoff-send-local-workflow-probe-manifest.json" "Production handoff send local workflow probe manifest"
+$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest = Read-PolicyJson "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json" "Production handoff owner packet dispatch receipt intake probe manifest"
+$productionHandoffOwnerPacketRealReceiptGuardProbeManifest = Read-PolicyJson "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json" "Production handoff owner packet real receipt guard probe manifest"
 $productionHandoffOwnerResponseBundleProbeManifest = Read-PolicyJson "production-handoff-owner-response-bundle-probe-manifest.json" "Production handoff owner response bundle probe manifest"
 $productionHandoffOwnerResponseBundleKitManifest = Read-PolicyJson "production-handoff-owner-response-bundle-kit-manifest.json" "Production handoff owner response bundle kit manifest"
 $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest = Read-PolicyJson "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "Production handoff owner response bundle kit workflow probe manifest"
@@ -1472,6 +1474,76 @@ Add-PolicyCheck "production_handoff_send_local_workflow_probe_policy" $productio
     "Production handoff evidence must prove the local owner-packet two-stage send workflow can collect tokens and write receipts while preserving the real-send boundary." `
     "production_handoff_send_local_workflow_probe_not_accepted"
 
+$productionHandoffOwnerPacketDispatchReceiptIntakeProbeAccepted = (
+    $null -ne $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest -and
+    $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_owner_packet_dispatch_receipt_intake_probe.v1" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "ownerContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptsRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptRejectedByIntake" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptAcceptedByIntake" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptIntakeExitCode" 0)) -ne 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptAcceptedCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptRejectedCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptDetectedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "contractReceiptIntakeAccepted" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "contractReceiptAcceptedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "contractOwnerPacketDispatchStatus" "") -eq "CONTRACT_RECEIPTS_ACCEPTED_NOT_REAL_SEND" -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "contractRealOwnerPacketEmailSent" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "queuedReceiptIntakeAccepted" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "queuedReceiptAcceptedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "queuedReceiptQueuedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "queuedReceiptMessageIdCount" -1)) -eq 0 -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "realOwnerPacketEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "productionOutputBoundary" "") -eq "owner_packet_dispatch_receipt_intake_contract_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_owner_packet_dispatch_receipt_intake_probe_policy" $productionHandoffOwnerPacketDispatchReceiptIntakeProbeAccepted `
+    "Production handoff evidence must prove owner-packet dispatch receipt intake rejects fake workflow receipts and accepts contract/queued receipts only without claiming real sends." `
+    "production_handoff_owner_packet_dispatch_receipt_intake_probe_not_accepted"
+
+$productionHandoffOwnerPacketRealReceiptGuardProbeAccepted = (
+    $null -ne $productionHandoffOwnerPacketRealReceiptGuardProbeManifest -and
+    $productionHandoffOwnerPacketRealReceiptGuardProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "schemaVersion" "") -eq "aitestpilot.production_handoff_owner_packet_real_receipt_guard_probe.v1" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "ownerContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "confirmLocalOwnerPacketReceiptsSwitchAvailable" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "unconfirmedReceiptAcceptedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "unconfirmedOwnerPacketDispatchStatus" "") -eq "VALID_RECEIPTS_PENDING_OPERATOR_REAL_SEND_CONFIRMATION" -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "unconfirmedOperatorRealSendConfirmationRequired" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "unconfirmedOperatorRealSendConfirmed" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "unconfirmedRealOwnerPacketEmailSent" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "contractConfirmedReceiptAcceptedCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "ownerContactCount" -2)) -and
+    (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "contractConfirmedOwnerPacketDispatchStatus" "") -eq "CONTRACT_RECEIPTS_ACCEPTED_NOT_REAL_SEND" -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "contractConfirmedRealOwnerPacketEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "realOwnerPacketEmailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "productionOutputBoundary" "") -eq "owner_packet_real_receipt_guard_contract_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "checkCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_handoff_owner_packet_real_receipt_guard_probe_policy" $productionHandoffOwnerPacketRealReceiptGuardProbeAccepted `
+    "Production handoff evidence must prove valid owner-packet receipts still require operator real-send confirmation and contract mode cannot claim real sends." `
+    "production_handoff_owner_packet_real_receipt_guard_probe_not_accepted"
+
 $productionHandoffOwnerResponseBundleProbeAccepted = (
     $null -ne $productionHandoffOwnerResponseBundleProbeManifest -and
     $productionHandoffOwnerResponseBundleProbeManifest.status -eq "PASS" -and
@@ -2521,6 +2593,8 @@ $sourceFiles = @(
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "production-handoff-send-dry-run-probe-manifest.json",
     "production-handoff-send-local-workflow-probe-manifest.json",
+    "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json",
+    "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json",
     "production-handoff-owner-response-bundle-probe-manifest.json",
     "production-handoff-owner-response-bundle-kit-manifest.json",
     "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
@@ -2688,6 +2762,19 @@ $manifest = [ordered]@{
     productionHandoffSendLocalWorkflowReceiptCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "ownerPacketReceiptGeneratedCount" 0))
     productionHandoffSendLocalWorkflowRealOwnerPacketEmailSent = (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "realOwnerPacketEmailSent" $true)
     productionHandoffSendLocalWorkflowReleasePipelineSendsEmail = (Get-JsonValue $productionHandoffSendLocalWorkflowProbeManifest "releasePipelineSendsEmail" $true)
+    productionHandoffOwnerPacketDispatchReceiptIntakeProbeAccepted = [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeAccepted
+    productionHandoffOwnerPacketDispatchReceiptFakeRejected = (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptsRejected" $false)
+    productionHandoffOwnerPacketDispatchReceiptFakeRejectedByIntake = (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptRejectedByIntake" $false)
+    productionHandoffOwnerPacketDispatchReceiptFakeAcceptedByIntake = (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptAcceptedByIntake" $true)
+    productionHandoffOwnerPacketDispatchReceiptFakeDetectedCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fakeReceiptDetectedCount" 0))
+    productionHandoffOwnerPacketDispatchReceiptContractAcceptedCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "contractReceiptAcceptedCount" 0))
+    productionHandoffOwnerPacketDispatchReceiptQueuedAcceptedCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "queuedReceiptAcceptedCount" 0))
+    productionHandoffOwnerPacketDispatchReceiptRealOwnerPacketEmailSent = (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "realOwnerPacketEmailSent" $true)
+    productionHandoffOwnerPacketRealReceiptGuardProbeAccepted = [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeAccepted
+    productionHandoffOwnerPacketRealReceiptGuardUnconfirmedStatus = (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "unconfirmedOwnerPacketDispatchStatus" "")
+    productionHandoffOwnerPacketRealReceiptGuardUnconfirmedEmailSent = (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "unconfirmedRealOwnerPacketEmailSent" $true)
+    productionHandoffOwnerPacketRealReceiptGuardContractConfirmedStatus = (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "contractConfirmedOwnerPacketDispatchStatus" "")
+    productionHandoffOwnerPacketRealReceiptGuardContractConfirmedEmailSent = (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "contractConfirmedRealOwnerPacketEmailSent" $true)
     productionHandoffOwnerResponseBundleProbeAccepted = [bool]$productionHandoffOwnerResponseBundleProbeAccepted
     productionHandoffOwnerResponseBundleReady = (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseReadyForConfirmation" $false)
     productionHandoffOwnerResponseBundleEvidenceComplete = (Get-JsonValue $productionHandoffOwnerResponseBundleProbeManifest "ownerResponseEvidenceComplete" $false)
@@ -2944,6 +3031,14 @@ $reportLines = @(
     "- Production handoff send local workflow prepare tokens: $($manifest.productionHandoffSendLocalWorkflowPrepareTokenCount)",
     "- Production handoff send local workflow receipts: $($manifest.productionHandoffSendLocalWorkflowReceiptCount)",
     "- Production handoff send local workflow real owner email sent: $($manifest.productionHandoffSendLocalWorkflowRealOwnerPacketEmailSent)",
+    "- Production handoff owner packet dispatch receipt intake accepted: $($manifest.productionHandoffOwnerPacketDispatchReceiptIntakeProbeAccepted)",
+    "- Production handoff owner packet dispatch receipt fake rejected: $($manifest.productionHandoffOwnerPacketDispatchReceiptFakeRejected)",
+    "- Production handoff owner packet dispatch receipt fake rejected by intake: $($manifest.productionHandoffOwnerPacketDispatchReceiptFakeRejectedByIntake)",
+    "- Production handoff owner packet dispatch receipt fake detected count: $($manifest.productionHandoffOwnerPacketDispatchReceiptFakeDetectedCount)",
+    "- Production handoff owner packet dispatch receipt contract accepted count: $($manifest.productionHandoffOwnerPacketDispatchReceiptContractAcceptedCount)",
+    "- Production handoff owner packet real receipt guard accepted: $($manifest.productionHandoffOwnerPacketRealReceiptGuardProbeAccepted)",
+    "- Production handoff owner packet real receipt guard unconfirmed status: $($manifest.productionHandoffOwnerPacketRealReceiptGuardUnconfirmedStatus)",
+    "- Production handoff owner packet real receipt guard unconfirmed email sent: $($manifest.productionHandoffOwnerPacketRealReceiptGuardUnconfirmedEmailSent)",
     "- Production handoff owner response bundle probe accepted: $($manifest.productionHandoffOwnerResponseBundleProbeAccepted)",
     "- Production handoff owner response bundle ready: $($manifest.productionHandoffOwnerResponseBundleReady)",
     "- Production handoff owner response bundle evidence complete: $($manifest.productionHandoffOwnerResponseBundleEvidenceComplete)",

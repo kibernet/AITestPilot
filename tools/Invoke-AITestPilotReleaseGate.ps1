@@ -222,6 +222,8 @@ $productionHandoffOwnerInputRequestPackManifest = Read-Manifest "production-hand
 $productionHandoffOwnerContactExternalIntakeProbeManifest = Read-Manifest "production-handoff-owner-contact-external-intake-probe-manifest.json"
 $productionHandoffSendDryRunProbeManifest = Read-Manifest "production-handoff-send-dry-run-probe-manifest.json"
 $productionHandoffSendLocalWorkflowProbeManifest = Read-Manifest "production-handoff-send-local-workflow-probe-manifest.json"
+$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest = Read-Manifest "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json"
+$productionHandoffOwnerPacketRealReceiptGuardProbeManifest = Read-Manifest "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json"
 $productionHandoffOwnerResponseBundleProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-probe-manifest.json"
 $productionHandoffOwnerResponseBundleKitManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-manifest.json"
 $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest = Read-Manifest "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json"
@@ -2380,6 +2382,66 @@ if ($null -ne $productionHandoffSendLocalWorkflowProbeManifest) {
     Test-ListedFiles $productionHandoffSendLocalWorkflowProbeManifest "production_handoff_send_local_workflow_probe"
 }
 
+if ($null -ne $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest) {
+    Add-ReleaseCheck "production_handoff_owner_packet_dispatch_receipt_intake_probe" `
+        ($productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.status -eq "PASS" -and
+            $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_packet_dispatch_receipt_intake_probe.v1" -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.ownerContactCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.fakeReceiptsRejected -and
+            [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.fakeReceiptRejectedByIntake -and
+            -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.fakeReceiptAcceptedByIntake -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.fakeReceiptIntakeExitCode -ne 0 -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.fakeReceiptAcceptedCount -eq 0 -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.fakeReceiptRejectedCount -eq 0 -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.fakeReceiptDetectedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.contractReceiptIntakeAccepted -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.contractReceiptAcceptedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.contractOwnerPacketDispatchStatus -eq "CONTRACT_RECEIPTS_ACCEPTED_NOT_REAL_SEND" -and
+            -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.contractRealOwnerPacketEmailSent -and
+            [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.queuedReceiptIntakeAccepted -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.queuedReceiptAcceptedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.queuedReceiptQueuedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.queuedReceiptMessageIdCount -eq 0 -and
+            -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.realOwnerPacketEmailSent -and
+            -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.emailSent -and
+            -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.fixtureEvidencePromoted -and
+            $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.productionOutputBoundary -eq "owner_packet_dispatch_receipt_intake_contract_probe_only" -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.checkCount -eq 6 -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.failedCheckCount -eq 0) `
+        "Production handoff owner-packet dispatch receipt intake probe must reject fake workflow receipts and accept contract/queued receipts only without claiming real sends."
+
+    Test-ListedFiles $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "production_handoff_owner_packet_dispatch_receipt_intake_probe"
+}
+
+if ($null -ne $productionHandoffOwnerPacketRealReceiptGuardProbeManifest) {
+    Add-ReleaseCheck "production_handoff_owner_packet_real_receipt_guard_probe" `
+        ($productionHandoffOwnerPacketRealReceiptGuardProbeManifest.status -eq "PASS" -and
+            $productionHandoffOwnerPacketRealReceiptGuardProbeManifest.schemaVersion -eq "aitestpilot.production_handoff_owner_packet_real_receipt_guard_probe.v1" -and
+            [int]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.ownerContactCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.confirmLocalOwnerPacketReceiptsSwitchAvailable -and
+            [int]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.unconfirmedReceiptAcceptedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            $productionHandoffOwnerPacketRealReceiptGuardProbeManifest.unconfirmedOwnerPacketDispatchStatus -eq "VALID_RECEIPTS_PENDING_OPERATOR_REAL_SEND_CONFIRMATION" -and
+            [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.unconfirmedOperatorRealSendConfirmationRequired -and
+            -not [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.unconfirmedOperatorRealSendConfirmed -and
+            -not [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.unconfirmedRealOwnerPacketEmailSent -and
+            [int]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.contractConfirmedReceiptAcceptedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            $productionHandoffOwnerPacketRealReceiptGuardProbeManifest.contractConfirmedOwnerPacketDispatchStatus -eq "CONTRACT_RECEIPTS_ACCEPTED_NOT_REAL_SEND" -and
+            -not [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.contractConfirmedRealOwnerPacketEmailSent -and
+            -not [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.realOwnerPacketEmailSent -and
+            -not [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.emailSent -and
+            -not [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.fixtureEvidencePromoted -and
+            $productionHandoffOwnerPacketRealReceiptGuardProbeManifest.productionOutputBoundary -eq "owner_packet_real_receipt_guard_contract_probe_only" -and
+            [int]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.checkCount -eq 5 -and
+            [int]$productionHandoffOwnerPacketRealReceiptGuardProbeManifest.failedCheckCount -eq 0) `
+        "Production handoff owner-packet real receipt guard probe must prove valid receipts still require operator confirmation and contract mode cannot claim real sends."
+
+    Test-ListedFiles $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "production_handoff_owner_packet_real_receipt_guard_probe"
+}
+
 if ($null -ne $productionHandoffOwnerResponseBundleProbeManifest) {
     Add-ReleaseCheck "production_handoff_owner_response_bundle_probe" `
         ($productionHandoffOwnerResponseBundleProbeManifest.status -eq "PASS" -and
@@ -3442,6 +3504,19 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionHandoffSendLocalWorkflowReceiptCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
             -not [bool]$releaseRiskPolicyManifest.productionHandoffSendLocalWorkflowRealOwnerPacketEmailSent -and
             -not [bool]$releaseRiskPolicyManifest.productionHandoffSendLocalWorkflowReleasePipelineSendsEmail -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerPacketDispatchReceiptIntakeProbeAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerPacketDispatchReceiptFakeRejected -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerPacketDispatchReceiptFakeRejectedByIntake -and
+            -not [bool]$releaseRiskPolicyManifest.productionHandoffOwnerPacketDispatchReceiptFakeAcceptedByIntake -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerPacketDispatchReceiptFakeDetectedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerPacketDispatchReceiptContractAcceptedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerPacketDispatchReceiptQueuedAcceptedCount -eq [int]$productionHandoffOwnerContactExternalIntakeProbeManifest.ownerContactCount -and
+            -not [bool]$releaseRiskPolicyManifest.productionHandoffOwnerPacketDispatchReceiptRealOwnerPacketEmailSent -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerPacketRealReceiptGuardProbeAccepted -and
+            $releaseRiskPolicyManifest.productionHandoffOwnerPacketRealReceiptGuardUnconfirmedStatus -eq "VALID_RECEIPTS_PENDING_OPERATOR_REAL_SEND_CONFIRMATION" -and
+            -not [bool]$releaseRiskPolicyManifest.productionHandoffOwnerPacketRealReceiptGuardUnconfirmedEmailSent -and
+            $releaseRiskPolicyManifest.productionHandoffOwnerPacketRealReceiptGuardContractConfirmedStatus -eq "CONTRACT_RECEIPTS_ACCEPTED_NOT_REAL_SEND" -and
+            -not [bool]$releaseRiskPolicyManifest.productionHandoffOwnerPacketRealReceiptGuardContractConfirmedEmailSent -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleReady -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleEvidenceComplete -and
@@ -3605,6 +3680,8 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-contact-external-intake-probe-manifest.json",
         "production-handoff-send-dry-run-probe-manifest.json",
         "production-handoff-send-local-workflow-probe-manifest.json",
+        "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json",
+        "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json",
         "production-handoff-owner-response-bundle-probe-manifest.json",
         "production-handoff-owner-response-bundle-kit-manifest.json",
         "release-progress-notification-outbox-manifest.json",
@@ -3733,6 +3810,8 @@ $sourceManifests = @(
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "production-handoff-send-dry-run-probe-manifest.json",
     "production-handoff-send-local-workflow-probe-manifest.json",
+    "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json",
+    "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json",
     "release-progress-notification-outbox-manifest.json",
     "production-handoff-mail-helper-auth-status-probe-manifest.json",
     "release-progress-notification-confirmation-probe-manifest.json",

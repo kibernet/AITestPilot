@@ -204,6 +204,8 @@ $requiredArtifactNames = @(
     "release-gate-manifest.json",
     "production-handoff-export-zip-index-manifest.json",
     "production-handoff-send-local-workflow-probe-manifest.json",
+    "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json",
+    "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",
     "production-external-evidence-auto-acceptance-probe-manifest.json",
     "release-docs-freshness-manifest.json"
@@ -235,8 +237,12 @@ $requiredDocStrings = @(
     [ordered]@{ file = "README.md"; pattern = "ownerResponseBundleZipUnsafeCaseCount=0"; label = "owner response bundle zip unsafe case count target" },
     [ordered]@{ file = "README.md"; pattern = "ownerResponseBundleZipArbitraryWrapperReady=true"; label = "owner response bundle zip arbitrary wrapper readiness" },
     [ordered]@{ file = "README.md"; pattern = "production-handoff-send-local-workflow-probe-manifest.json"; label = "owner packet local workflow probe artifact" },
+    [ordered]@{ file = "README.md"; pattern = "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json"; label = "owner packet dispatch receipt intake probe artifact" },
+    [ordered]@{ file = "README.md"; pattern = "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json"; label = "owner packet real receipt guard probe artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "Release Pipeline Step Index"; label = "machine checked step index section" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production-handoff-send-local-workflow-probe-manifest.json"; label = "owner packet local workflow pipeline artifact" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json"; label = "owner packet dispatch receipt intake pipeline artifact" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json"; label = "owner packet real receipt guard pipeline artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release-docs-freshness-manifest.json"; label = "docs freshness artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "OwnerResponseBundleZipPath"; label = "owner response bundle zip parameter" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "unsafe, duplicate, absolute, or traversal zip entries are rejected"; label = "owner response bundle zip safety rejection" },
@@ -247,11 +253,14 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/architecture.md"; pattern = "release gate"; label = "gate architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "production handoff"; label = "production handoff architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "production-handoff-send-local-workflow-probe-manifest.json"; label = "owner packet local workflow architecture artifact" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json"; label = "owner packet dispatch receipt intake architecture artifact" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json"; label = "owner packet real receipt guard architecture artifact" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "OwnerResponseBundleZipPath"; label = "owner response bundle zip architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "unsafe/duplicate/absolute/traversal zip rejection"; label = "owner response bundle zip safety architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "ownerResponseBundleZipUnsafeCaseCount=0"; label = "owner response bundle zip unsafe case count" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "release docs freshness"; label = "roadmap freshness guard reference" },
-    [ordered]@{ file = "docs/roadmap.md"; pattern = "owner send local workflow proof"; label = "roadmap owner send local workflow proof" }
+    [ordered]@{ file = "docs/roadmap.md"; pattern = "owner send local workflow proof"; label = "roadmap owner send local workflow proof" },
+    [ordered]@{ file = "docs/roadmap.md"; pattern = "owner packet real receipt guard proof"; label = "roadmap owner packet real receipt guard proof" }
 )
 $missingRequiredDocStrings = @()
 foreach ($requiredDocString in $requiredDocStrings) {
@@ -280,6 +289,8 @@ $sourceManifestScripts = @(
 $requiredSourceManifestNames = @(
     "production-handoff-export-zip-index-manifest.json",
     "production-handoff-send-local-workflow-probe-manifest.json",
+    "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json",
+    "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json",
     "production-external-evidence-action-queue-manifest.json",
     "production-external-evidence-action-queue-probe-manifest.json",
     "production-external-evidence-gap-analysis-manifest.json",

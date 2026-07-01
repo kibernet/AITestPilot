@@ -335,6 +335,8 @@ function Get-DefaultSourceManifestNames {
         "production-handoff-owner-contact-external-intake-probe-manifest.json",
         "production-handoff-send-dry-run-probe-manifest.json",
         "production-handoff-send-local-workflow-probe-manifest.json",
+        "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json",
+        "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json",
         "production-handoff-owner-response-bundle-probe-manifest.json",
         "production-handoff-owner-response-bundle-kit-manifest.json",
         "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
