@@ -601,6 +601,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_external_evidence_action_queue" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueue.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_external_evidence_action_queue_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

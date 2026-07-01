@@ -233,6 +233,7 @@ $releaseProgressNotificationDispatchReceiptIntakeProbeManifest = Read-Manifest "
 $releaseProgressNotificationLocalSendWorkflowProbeManifest = Read-Manifest "release-progress-notification-local-send-workflow-probe-manifest.json"
 $releaseProgressNotificationRealReceiptGuardProbeManifest = Read-Manifest "release-progress-notification-real-receipt-guard-probe-manifest.json"
 $releaseProgressNotificationPostDispatchSnapshotProbeManifest = Read-Manifest "release-progress-notification-post-dispatch-snapshot-probe-manifest.json"
+$productionExternalEvidenceActionQueueManifest = Read-Manifest "production-external-evidence-action-queue-manifest.json"
 $productionExternalEvidenceActionQueueProbeManifest = Read-Manifest "production-external-evidence-action-queue-probe-manifest.json"
 $productionExternalEvidenceGapAnalysisManifest = Read-Manifest "production-external-evidence-gap-analysis-manifest.json"
 $productionExternalEvidencePartialMatrixProbeManifest = Read-Manifest "production-external-evidence-partial-matrix-probe-manifest.json"
@@ -2801,6 +2802,53 @@ if ($null -ne $releaseProgressNotificationPostDispatchSnapshotProbeManifest) {
     Test-ListedFiles $releaseProgressNotificationPostDispatchSnapshotProbeManifest "release_progress_notification_post_dispatch_snapshot_probe"
 }
 
+if ($null -ne $productionExternalEvidenceActionQueueManifest) {
+    $productionExternalEvidenceActionQueueSourceKind = [string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "sourceKind" "")
+    $productionExternalEvidenceActionQueuePendingStateAccepted = (
+        $productionExternalEvidenceActionQueueSourceKind -eq "remaining_work_snapshot" -and
+        -not ([bool](Get-JsonValue $productionExternalEvidenceActionQueueManifest "progressNotificationEmailSent" $true)) -and
+        [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "localProgressMailRemainingActionCount" 0) -eq 1 -and
+        [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "trackedRemainingWorkItemCount" 0) -eq 4 -and
+        [string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionOutputBoundary" "") -eq "production_external_evidence_action_queue_pending_progress_mail"
+    )
+    $productionExternalEvidenceActionQueuePostDispatchStateAccepted = (
+        $productionExternalEvidenceActionQueueSourceKind -eq "post_dispatch_snapshot" -and
+        [bool](Get-JsonValue $productionExternalEvidenceActionQueueManifest "progressNotificationEmailSent" $false) -and
+        [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "localProgressMailRemainingActionCount" 1) -eq 0 -and
+        [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "trackedRemainingWorkItemCount" 0) -eq 3 -and
+        [string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionOutputBoundary" "") -eq "production_external_evidence_action_queue_after_progress_mail"
+    )
+
+    Add-ReleaseCheck "production_external_evidence_action_queue" `
+        ($productionExternalEvidenceActionQueueManifest.status -eq "PASS" -and
+            $productionExternalEvidenceActionQueueManifest.schemaVersion -eq "aitestpilot.production_external_evidence_action_queue.v1" -and
+            ($productionExternalEvidenceActionQueuePendingStateAccepted -or $productionExternalEvidenceActionQueuePostDispatchStateAccepted) -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "externalRemainingWorkItemCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "externalRemainingMissingFileCount" 0) -eq 9 -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "externalRemainingBlockingReasonCount" 0) -eq 11 -and
+            @((Get-JsonValue $productionExternalEvidenceActionQueueManifest "actionQueue" @())).Count -eq 3 -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionDriverEvidenceExportHelperItemCount" 0) -eq 1 -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionLuaEvidenceExportHelperItemCount" 0) -eq 1 -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "liveModelSmokeEvidenceExportHelperItemCount" 0) -eq 1 -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "liveModelSmokeEvidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+            -not ([bool](Get-JsonValue $productionExternalEvidenceActionQueueManifest "releasePipelineSendsEmail" $true)) -and
+            -not ([bool](Get-JsonValue $productionExternalEvidenceActionQueueManifest "realHostProjectEvidenceAccepted" $true)) -and
+            -not ([bool](Get-JsonValue $productionExternalEvidenceActionQueueManifest "externalEvidenceAccepted" $true)) -and
+            -not ([bool](Get-JsonValue $productionExternalEvidenceActionQueueManifest "fixtureEvidencePromoted" $true)) -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "checkCount" 0) -eq 9 -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "failedCheckCount" 1) -eq 0) `
+        "Production external evidence action queue must refresh the canonical operator queue, keep pending-mail and post-dispatch states distinct, expose semantic-preflight-before-auto-acceptance commands, and preserve external evidence blockers."
+
+    Test-ListedFiles $productionExternalEvidenceActionQueueManifest "production_external_evidence_action_queue"
+}
+
 if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
     Add-ReleaseCheck "production_external_evidence_action_queue_probe" `
         ($productionExternalEvidenceActionQueueProbeManifest.status -eq "PASS" -and
@@ -3335,6 +3383,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueueAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueueProbeAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisAccepted -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisGapItemCount -eq 3 -and
@@ -3438,6 +3487,7 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-external-evidence-inbox-manifest.json",
         "production-external-evidence-inbox-contract-probe-manifest.json",
         "production-external-evidence-auto-acceptance-probe-manifest.json",
+        "production-external-evidence-action-queue-manifest.json",
         "production-external-evidence-action-queue-probe-manifest.json",
         "production-external-evidence-gap-analysis-manifest.json",
         "production-external-evidence-partial-matrix-probe-manifest.json",
@@ -3562,6 +3612,7 @@ $sourceManifests = @(
     "production-external-evidence-inbox-manifest.json",
     "production-external-evidence-inbox-contract-probe-manifest.json",
     "production-external-evidence-auto-acceptance-probe-manifest.json",
+    "production-external-evidence-action-queue-manifest.json",
     "production-external-evidence-action-queue-probe-manifest.json",
     "production-external-evidence-gap-analysis-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
