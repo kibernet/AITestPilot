@@ -682,6 +682,11 @@ try {
             -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
     }
 
+    Invoke-PipelineStep "release_evidence_index_field_coverage_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndexFieldCoverageProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "release_gate" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseGate.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `

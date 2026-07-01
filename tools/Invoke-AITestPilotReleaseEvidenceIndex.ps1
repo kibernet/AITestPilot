@@ -116,6 +116,200 @@ function Convert-ToInt {
     return [int]$Value
 }
 
+function Test-StrictBoolEquals {
+    param(
+        [object]$Value,
+        [bool]$ExpectedValue
+    )
+
+    if ($Value -is [bool]) {
+        return [bool]$Value -eq $ExpectedValue
+    }
+
+    $text = [string]$Value
+    if ($text -ieq "true" -or $text -eq "1") {
+        return $true -eq $ExpectedValue
+    }
+
+    if ($text -ieq "false" -or $text -eq "0") {
+        return $false -eq $ExpectedValue
+    }
+
+    return $false
+}
+
+function Convert-FieldValueForReport {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    if ($Value -is [bool] -or $Value -is [int] -or $Value -is [long] -or $Value -is [double] -or $Value -is [string]) {
+        return $Value
+    }
+
+    return [string]$Value
+}
+
+function Get-ManifestObject {
+    param([string]$FileName)
+
+    $path = Join-Path $evidenceBundlePath $FileName
+    if (-not (Test-Path $path)) {
+        return $null
+    }
+
+    try {
+        return Get-Content -Path $path -Encoding UTF8 -Raw | ConvertFrom-Json
+    }
+    catch {
+        return $null
+    }
+}
+
+function New-FieldCoverageCheck {
+    param(
+        [string]$ManifestName,
+        [string]$FieldName,
+        [string]$Operator,
+        [object]$ExpectedValue,
+        [string]$Label
+    )
+
+    $manifest = Get-ManifestObject $ManifestName
+    $manifestExists = $null -ne $manifest
+    $fieldExists = $false
+    $actualValue = $null
+    if ($manifestExists) {
+        $property = $manifest.PSObject.Properties[$FieldName]
+        if ($null -ne $property) {
+            $fieldExists = $true
+            $actualValue = $property.Value
+        }
+    }
+
+    $passed = $false
+    $failureKind = ""
+    if (-not $manifestExists) {
+        $failureKind = "manifest_missing"
+    }
+    elseif (-not $fieldExists) {
+        $failureKind = "field_missing"
+    }
+    else {
+        switch ($Operator) {
+            "bool-eq" {
+                $passed = Test-StrictBoolEquals $actualValue ([bool]$ExpectedValue)
+            }
+            "int-eq" {
+                $passed = (Convert-ToInt $actualValue) -eq [int]$ExpectedValue
+            }
+            "int-ge" {
+                $passed = (Convert-ToInt $actualValue) -ge [int]$ExpectedValue
+            }
+            "string-eq" {
+                $passed = [string]$actualValue -eq [string]$ExpectedValue
+            }
+            "contains" {
+                $passed = ([string]$actualValue).Contains([string]$ExpectedValue)
+            }
+            default {
+                throw "Unsupported field coverage operator: $Operator"
+            }
+        }
+
+        if (-not $passed) {
+            $failureKind = "value_mismatch"
+        }
+    }
+
+    return [ordered]@{
+        manifestName = $ManifestName
+        fieldName = $FieldName
+        operator = $Operator
+        expectedValue = (Convert-FieldValueForReport $ExpectedValue)
+        actualValue = (Convert-FieldValueForReport $actualValue)
+        label = $Label
+        manifestExists = [bool]$manifestExists
+        fieldExists = [bool]$fieldExists
+        passed = [bool]$passed
+        failureKind = $failureKind
+    }
+}
+
+function New-ReleaseEvidenceFieldCoverage {
+    $checks = @()
+    $checks += New-FieldCoverageCheck "production-handoff-send-readiness-manifest.json" "sendReadinessStatus" "string-eq" "BLOCKED_MISSING_OWNER_EMAILS" "owner packet send readiness remains blocked without owner contacts"
+    $checks += New-FieldCoverageCheck "production-handoff-send-readiness-manifest.json" "automaticEmailSendReady" "bool-eq" $false "owner packet automatic email send remains disabled"
+    $checks += New-FieldCoverageCheck "production-handoff-send-readiness-manifest.json" "mailAuthorizationCheckedByPipeline" "bool-eq" $false "release pipeline does not check local mail auth"
+    $checks += New-FieldCoverageCheck "production-handoff-send-readiness-manifest.json" "missingOwnerContactCount" "int-eq" 3 "default owner contact gap count stays explicit"
+    $checks += New-FieldCoverageCheck "production-handoff-send-readiness-manifest.json" "releasePipelineUsesFixture" "bool-eq" $false "send readiness does not promote fixtures"
+
+    $checks += New-FieldCoverageCheck "production-handoff-send-local-workflow-probe-manifest.json" "fakeAgentlyCliGenerated" "bool-eq" $true "owner packet local workflow uses fake CLI only"
+    $checks += New-FieldCoverageCheck "production-handoff-send-local-workflow-probe-manifest.json" "prepareConfirmationTokenReturnedCount" "int-eq" 3 "owner packet local workflow returns one token per owner"
+    $checks += New-FieldCoverageCheck "production-handoff-send-local-workflow-probe-manifest.json" "ownerPacketReceiptGeneratedCount" "int-eq" 3 "owner packet local workflow writes one receipt per owner"
+    $checks += New-FieldCoverageCheck "production-handoff-send-local-workflow-probe-manifest.json" "ownerPacketReceiptRealDeliveryVerifiedCount" "int-eq" 0 "fake owner packet receipts do not claim delivery"
+    $checks += New-FieldCoverageCheck "production-handoff-send-local-workflow-probe-manifest.json" "releasePipelineSendsEmail" "bool-eq" $false "release pipeline does not send owner packet email"
+    $checks += New-FieldCoverageCheck "production-handoff-send-local-workflow-probe-manifest.json" "realOwnerPacketEmailSent" "bool-eq" $false "owner packet local workflow remains not real sent"
+    $checks += New-FieldCoverageCheck "production-handoff-send-local-workflow-probe-manifest.json" "productionOutputBoundary" "string-eq" "owner_packet_local_send_workflow_probe_fake_cli_only" "owner packet local workflow boundary is fake CLI only"
+
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json" "fakeReceiptsRejected" "bool-eq" $true "owner packet fake workflow receipts are rejected"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json" "fakeReceiptRejectedByIntake" "bool-eq" $true "owner packet intake rejects fake receipts"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json" "fakeReceiptAcceptedByIntake" "bool-eq" $false "owner packet intake never accepts fake receipts"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json" "fakeReceiptDetectedCount" "int-eq" 3 "owner packet fake receipt count remains visible"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json" "contractOwnerPacketDispatchStatus" "string-eq" "CONTRACT_RECEIPTS_ACCEPTED_NOT_REAL_SEND" "contract owner packet receipts stay non-real"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json" "queuedReceiptQueuedCount" "int-eq" 3 "queued owner packet receipts count as dispatch evidence"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json" "realOwnerPacketEmailSent" "bool-eq" $false "owner packet receipt intake does not claim real send"
+
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json" "confirmLocalOwnerPacketReceiptsSwitchAvailable" "bool-eq" $true "owner packet receipt guard exposes operator confirmation switch"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json" "unconfirmedOwnerPacketDispatchStatus" "string-eq" "VALID_RECEIPTS_PENDING_OPERATOR_REAL_SEND_CONFIRMATION" "valid receipts remain pending operator confirmation"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json" "unconfirmedOperatorRealSendConfirmed" "bool-eq" $false "unconfirmed owner packet receipts do not set operator confirmation"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json" "contractConfirmedOwnerPacketDispatchStatus" "string-eq" "CONTRACT_RECEIPTS_ACCEPTED_NOT_REAL_SEND" "contract confirmed receipts still remain non-real"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json" "realOwnerPacketEmailSent" "bool-eq" $false "owner packet receipt guard does not claim real email sent"
+
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "requiredEvidenceFileCount" "int-eq" 9 "owner response bundle kit requires all production evidence files"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "emptyTemplateRejected" "bool-eq" $true "empty owner response template is rejected"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "completeTemplateAccepted" "bool-eq" $true "complete owner response template is accepted"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "semanticPreflightCommandsGenerated" "bool-eq" $true "owner kit generates semantic preflight commands"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "semanticPreflightZipCommandDocumented" "bool-eq" $true "owner kit documents zip semantic preflight"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "selfContainedSemanticPreflightReadOnly" "bool-eq" $true "self-contained semantic preflight is read-only"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "selfContainedSemanticPreflightAcceptanceRun" "bool-eq" $false "self-contained semantic preflight does not accept evidence"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "ownerResponseBundleZipEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" "owner kit documents zip environment variable"
+
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "pendingQueueItemSemanticPreflightCommandCount" "int-eq" 3 "pending action queue includes semantic preflight per owner area"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "postDispatchQueueItemAutoAcceptanceCommandCount" "int-eq" 3 "post-dispatch action queue includes auto acceptance per owner area"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "postDispatchQueueDriverExportHelperItemCount" "int-eq" 1 "action queue keeps driver export helper"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "postDispatchQueueLuaExportHelperItemCount" "int-eq" 1 "action queue keeps Lua export helper"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "postDispatchQueueLiveSmokeExportHelperItemCount" "int-eq" 1 "action queue keeps live smoke export helper"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "ownerResponseBundleZipEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" "action queue preserves owner response bundle zip variable"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "releasePipelineSendsEmail" "bool-eq" $false "action queue probe keeps mail boundary"
+
+    $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "externalRemainingWorkItemCount" "int-eq" 3 "gap analysis preserves three external owner work items"
+    $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "externalRemainingMissingFileCount" "int-eq" 9 "gap analysis preserves nine missing evidence files"
+    $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "externalRemainingBlockingReasonCount" "int-eq" 11 "gap analysis preserves eleven blocking reasons"
+    $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "repoSideClosableGapCount" "int-eq" 0 "gap analysis does not claim repo-side closure"
+    $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "releasePipelineSendsEmail" "bool-eq" $false "gap analysis keeps no-mail boundary"
+    $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "realHostProjectEvidenceAccepted" "bool-eq" $false "gap analysis does not accept host evidence"
+
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "readOnly" "bool-eq" $true "semantic preflight remains read-only"
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "acceptanceRun" "bool-eq" $false "semantic preflight does not run acceptance"
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "caseCount" "int-eq" 9 "semantic preflight covers all expected cases"
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "completeCandidateCaseCount" "int-eq" 4 "semantic preflight keeps four candidate-ready cases"
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "rejectedCaseCount" "int-eq" 5 "semantic preflight keeps five rejected cases"
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "ownerResponseBundleZipReady" "bool-eq" $true "semantic preflight accepts complete owner response bundle zip"
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "ownerResponseBundleZipUnsafeCaseCount" "int-eq" 0 "semantic preflight keeps unsafe zip count zero"
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "partialBundleZipRejected" "bool-eq" $true "semantic preflight rejects partial zips"
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "semanticBadBundleZipRejected" "bool-eq" $true "semantic preflight rejects semantic-bad zips"
+    $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "fixtureSignalRejectedWithoutContractMode" "bool-eq" $true "semantic preflight rejects fixture signals without contract mode"
+
+    $checks += New-FieldCoverageCheck "release-risk-policy-manifest.json" "productionHandoffOwnerPacketDispatchReceiptIntakeProbeAccepted" "bool-eq" $true "risk policy accepts owner packet receipt intake"
+    $checks += New-FieldCoverageCheck "release-risk-policy-manifest.json" "productionHandoffOwnerPacketRealReceiptGuardProbeAccepted" "bool-eq" $true "risk policy accepts owner packet real receipt guard"
+    $checks += New-FieldCoverageCheck "release-risk-policy-manifest.json" "productionExternalEvidenceGapAnalysisRepoSideClosableGapCount" "int-eq" 0 "risk policy preserves repo-side closure count"
+
+    return @($checks)
+}
+
 function Test-StatusAccepted {
     param(
         [string]$ManifestName,
@@ -475,6 +669,14 @@ foreach ($entry in $sourceEntries) {
     }
 }
 
+$fieldCoverageChecks = @(New-ReleaseEvidenceFieldCoverage)
+$fieldCoverageFailedChecks = @($fieldCoverageChecks | Where-Object { -not [bool]$_["passed"] })
+$fieldCoverageMissingManifestChecks = @($fieldCoverageChecks | Where-Object { [string]$_["failureKind"] -eq "manifest_missing" })
+$fieldCoverageMissingFieldChecks = @($fieldCoverageChecks | Where-Object { [string]$_["failureKind"] -eq "field_missing" })
+$fieldCoverageValueMismatchChecks = @($fieldCoverageChecks | Where-Object { [string]$_["failureKind"] -eq "value_mismatch" })
+$fieldCoverageManifestNames = @($fieldCoverageChecks | ForEach-Object { [string]$_["manifestName"] } | Sort-Object -Unique)
+$fieldLevelCoverageStatus = if ($fieldCoverageFailedChecks.Count -eq 0) { "PASS" } else { "BLOCKED" }
+
 $blockingReasons = @()
 if ($missingSourceEntries.Count -gt 0) {
     $blockingReasons += "source_manifest_missing"
@@ -493,6 +695,9 @@ if ($unacceptedSourceEntries.Count -gt 0) {
 }
 if ($missingListedFiles.Count -gt 0) {
     $blockingReasons += "source_manifest_listed_file_missing"
+}
+if ($fieldCoverageFailedChecks.Count -gt 0) {
+    $blockingReasons += "field_level_coverage_failed"
 }
 
 $status = "PASS"
@@ -533,6 +738,18 @@ $manifest = [ordered]@{
     liveModelEndpointSmokeExecuted = $liveModelEndpointSmokeExecuted
     liveModelEndpointSmokeProvenanceAccepted = [bool]$liveModelEndpointSmokeProvenanceAccepted
     liveModelEndpointSmokeContractFixtureAccepted = [bool]$liveModelEndpointSmokeContractFixtureAccepted
+    fieldLevelCoverageStatus = $fieldLevelCoverageStatus
+    fieldLevelCoverageSchemaVersion = "aitestpilot.release_evidence_field_level_coverage.v1"
+    fieldLevelRequiredManifestCount = [int]$fieldCoverageManifestNames.Count
+    fieldLevelRequiredFieldCount = [int]$fieldCoverageChecks.Count
+    fieldLevelCoveredFieldCount = [int]($fieldCoverageChecks.Count - $fieldCoverageMissingFieldChecks.Count)
+    semanticFieldCheckCount = [int]$fieldCoverageChecks.Count
+    semanticFieldCheckPassedCount = [int]($fieldCoverageChecks.Count - $fieldCoverageFailedChecks.Count)
+    semanticFieldCheckFailedCount = [int]$fieldCoverageFailedChecks.Count
+    fieldLevelMissingManifestCount = [int]$fieldCoverageMissingManifestChecks.Count
+    fieldLevelMissingFieldCount = [int]$fieldCoverageMissingFieldChecks.Count
+    fieldLevelValueMismatchCount = [int]$fieldCoverageValueMismatchChecks.Count
+    fieldLevelCoverageManifestNames = @($fieldCoverageManifestNames)
     evidenceBundlePath = $evidenceBundlePath
     requiredSourceManifestCount = [int]$SourceManifestNames.Count
     indexedSourceManifestCount = [int]@($sourceEntries | Where-Object { [bool]$_.exists -and [bool]$_.parseable }).Count
@@ -569,6 +786,22 @@ $index = [ordered]@{
     sourceManifests = @($sourceEntries)
     auxiliaryManifests = @($allAuxiliaryEntries)
     missingListedFiles = @($missingListedFiles)
+    fieldLevelCoverage = [ordered]@{
+        schemaVersion = "aitestpilot.release_evidence_field_level_coverage.v1"
+        status = $fieldLevelCoverageStatus
+        requiredManifestCount = [int]$fieldCoverageManifestNames.Count
+        requiredFieldCount = [int]$fieldCoverageChecks.Count
+        coveredFieldCount = [int]($fieldCoverageChecks.Count - $fieldCoverageMissingFieldChecks.Count)
+        semanticFieldCheckCount = [int]$fieldCoverageChecks.Count
+        semanticFieldCheckPassedCount = [int]($fieldCoverageChecks.Count - $fieldCoverageFailedChecks.Count)
+        semanticFieldCheckFailedCount = [int]$fieldCoverageFailedChecks.Count
+        missingManifestCount = [int]$fieldCoverageMissingManifestChecks.Count
+        missingFieldCount = [int]$fieldCoverageMissingFieldChecks.Count
+        valueMismatchCount = [int]$fieldCoverageValueMismatchChecks.Count
+        manifestNames = @($fieldCoverageManifestNames)
+        checks = @($fieldCoverageChecks)
+        failedChecks = @($fieldCoverageFailedChecks)
+    }
 }
 
 $reportLines = @(
@@ -583,6 +816,12 @@ $reportLines = @(
     "- Blocked source manifests: $($manifest.blockedSourceManifestCount)",
     "- Skipped source manifests: $($manifest.skippedSourceManifestCount)",
     "- Missing listed files: $($manifest.missingListedFileCount)",
+    "- Field-level coverage status: $($manifest.fieldLevelCoverageStatus)",
+    "- Field-level required manifests: $($manifest.fieldLevelRequiredManifestCount)",
+    "- Field-level required fields: $($manifest.fieldLevelRequiredFieldCount)",
+    "- Semantic field checks passed: $($manifest.semanticFieldCheckPassedCount) / $($manifest.semanticFieldCheckCount)",
+    "- Field-level missing fields: $($manifest.fieldLevelMissingFieldCount)",
+    "- Field-level value mismatches: $($manifest.fieldLevelValueMismatchCount)",
     "- All manifest files inventoried: $($manifest.allManifestFileCount)",
     "- Release gate manifest included at index time: $($manifest.releaseGateManifestIncluded)",
     "- Pipeline manifest included at index time: $($manifest.pipelineManifestIncluded)",
@@ -595,6 +834,19 @@ $reportLines = @(
 
 foreach ($entry in $sourceEntries) {
     $reportLines += "| $($entry.name) | $($entry.status) | $($entry.statusAccepted) | $($entry.listedFileCount) | $($entry.missingListedFileCount) |"
+}
+
+$reportLines += @(
+    "",
+    "## Field-Level Coverage",
+    "",
+    "| Manifest | Field | Expected | Actual | Passed | Label |",
+    "| --- | --- | --- | --- | --- | --- |"
+)
+foreach ($check in $fieldCoverageChecks) {
+    $expectedText = if ($null -eq $check["expectedValue"]) { "(null)" } else { [string]$check["expectedValue"] }
+    $actualText = if ($null -eq $check["actualValue"]) { "(null)" } else { [string]$check["actualValue"] }
+    $reportLines += "| $($check["manifestName"]) | $($check["fieldName"]) | $($expectedText.Replace("|", "\|")) | $($actualText.Replace("|", "\|")) | $($check["passed"]) | $(([string]$check["label"]).Replace("|", "\|")) |"
 }
 
 if ($blockingReasons.Count -gt 0) {

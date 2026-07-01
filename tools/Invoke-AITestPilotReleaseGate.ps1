@@ -130,6 +130,66 @@ function Test-ContainsAll {
     return $true
 }
 
+function Test-StringSetEquals {
+    param(
+        [object[]]$Actual,
+        [string[]]$Expected
+    )
+
+    $actualSet = @($Actual | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+    $expectedSet = @($Expected | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+    if ($actualSet.Count -ne $expectedSet.Count) {
+        return $false
+    }
+
+    foreach ($expectedItem in $expectedSet) {
+        if ($actualSet -notcontains $expectedItem) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+function Find-ProbeScenario {
+    param(
+        [object]$Manifest,
+        [string]$Name
+    )
+
+    foreach ($scenario in @((Get-JsonValue $Manifest "scenarios" @()))) {
+        if ((Get-JsonValue $scenario "name" "") -eq $Name) {
+            return $scenario
+        }
+    }
+
+    return $null
+}
+
+function Test-ProbeScenario {
+    param(
+        [object]$Manifest,
+        [string]$Name,
+        [bool]$ExpectPass,
+        [string]$ExpectedIndexStatus,
+        [string]$ExpectedFieldLevelCoverageStatus,
+        [string[]]$ExpectedBlockingReasons = @(),
+        [string[]]$ExpectedFailedFieldNames = @()
+    )
+
+    $scenario = Find-ProbeScenario $Manifest $Name
+    if ($null -eq $scenario) {
+        return $false
+    }
+
+    return (([bool](Get-JsonValue $scenario "expectPass" (-not $ExpectPass))) -eq $ExpectPass -and
+        [bool](Get-JsonValue $scenario "passed" $false) -and
+        (Get-JsonValue $scenario "indexStatus" "") -eq $ExpectedIndexStatus -and
+        (Get-JsonValue $scenario "fieldLevelCoverageStatus" "") -eq $ExpectedFieldLevelCoverageStatus -and
+        (Test-StringSetEquals -Actual @((Get-JsonValue $scenario "blockingReasons" @())) -Expected $ExpectedBlockingReasons) -and
+        (Test-StringSetEquals -Actual @((Get-JsonValue $scenario "failedFieldNames" @())) -Expected $ExpectedFailedFieldNames))
+}
+
 function Test-ListedFiles {
     param(
         [object]$Manifest,
@@ -250,6 +310,7 @@ $productionHardModeFailureProbeManifest = Read-Manifest "production-hard-mode-fa
 $productionHardModeSuccessContractProbeManifest = Read-Manifest "production-hard-mode-success-contract-probe-manifest.json"
 $releaseRiskPolicyManifest = Read-Manifest "release-risk-policy-manifest.json"
 $releaseEvidenceIndexManifest = Read-Manifest "release-evidence-index-manifest.json"
+$releaseEvidenceIndexFieldCoverageProbeManifest = Read-Manifest "release-evidence-index-field-coverage-probe-manifest.json"
 
 if ($null -ne $sceneManifest) {
     Add-ReleaseCheck "scene_validation" `
@@ -3725,6 +3786,14 @@ if ($null -ne $releaseEvidenceIndexManifest) {
             [bool]$releaseEvidenceIndexManifest.portalHandoffReady -and
             [bool]$releaseEvidenceIndexManifest.releaseGateManifestExpected -and
             [bool]$releaseEvidenceIndexManifest.pipelineManifestExpected -and
+            $releaseEvidenceIndexManifest.fieldLevelCoverageStatus -eq "PASS" -and
+            $releaseEvidenceIndexManifest.fieldLevelCoverageSchemaVersion -eq "aitestpilot.release_evidence_field_level_coverage.v1" -and
+            [int]$releaseEvidenceIndexManifest.fieldLevelRequiredManifestCount -ge 9 -and
+            [int]$releaseEvidenceIndexManifest.fieldLevelRequiredFieldCount -ge 58 -and
+            [int]$releaseEvidenceIndexManifest.semanticFieldCheckCount -eq [int]$releaseEvidenceIndexManifest.semanticFieldCheckPassedCount -and
+            [int]$releaseEvidenceIndexManifest.semanticFieldCheckFailedCount -eq 0 -and
+            [int]$releaseEvidenceIndexManifest.fieldLevelMissingFieldCount -eq 0 -and
+            [int]$releaseEvidenceIndexManifest.fieldLevelValueMismatchCount -eq 0 -and
             [int]$releaseEvidenceIndexManifest.requiredSourceManifestCount -ge 30 -and
             [int]$releaseEvidenceIndexManifest.indexedSourceManifestCount -eq [int]$releaseEvidenceIndexManifest.requiredSourceManifestCount -and
             [int]$releaseEvidenceIndexManifest.sourceManifestCoverageCount -eq [int]$releaseEvidenceIndexManifest.requiredSourceManifestCount -and
@@ -3742,6 +3811,31 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "Release evidence index must include all primary release-gate source manifests."
 
     Test-ListedFiles $releaseEvidenceIndexManifest "release_evidence_index"
+}
+
+if ($null -ne $releaseEvidenceIndexFieldCoverageProbeManifest) {
+    $releaseEvidenceIndexFieldCoverageProbeScenariosPassed = (
+        (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "baseline-pass-copy" -ExpectPass $true -ExpectedIndexStatus "PASS" -ExpectedFieldLevelCoverageStatus "PASS") -and
+        (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "owner-send-auto-email-promoted" -ExpectPass $false -ExpectedIndexStatus "BLOCKED" -ExpectedFieldLevelCoverageStatus "BLOCKED" -ExpectedBlockingReasons @("field_level_coverage_failed") -ExpectedFailedFieldNames @("automaticEmailSendReady")) -and
+        (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "owner-packet-fake-receipt-promoted" -ExpectPass $false -ExpectedIndexStatus "BLOCKED" -ExpectedFieldLevelCoverageStatus "BLOCKED" -ExpectedBlockingReasons @("field_level_coverage_failed") -ExpectedFailedFieldNames @("fakeReceiptAcceptedByIntake")) -and
+        (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "semantic-preflight-not-readonly" -ExpectPass $false -ExpectedIndexStatus "BLOCKED" -ExpectedFieldLevelCoverageStatus "BLOCKED" -ExpectedBlockingReasons @("field_level_coverage_failed") -ExpectedFailedFieldNames @("readOnly")) -and
+        (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "live-smoke-fixture-rejected-without-contract" -ExpectPass $false -ExpectedIndexStatus "BLOCKED" -ExpectedFieldLevelCoverageStatus "PASS" -ExpectedBlockingReasons @("source_manifest_status_not_accepted"))
+    )
+
+    Add-ReleaseCheck "release_evidence_index_field_coverage_probe" `
+        ($releaseEvidenceIndexFieldCoverageProbeManifest.status -eq "PASS" -and
+            $releaseEvidenceIndexFieldCoverageProbeManifest.schemaVersion -eq "aitestpilot.release_evidence_index_field_coverage_probe.v1" -and
+            [int]$releaseEvidenceIndexFieldCoverageProbeManifest.scenarioCount -eq 5 -and
+            [int]$releaseEvidenceIndexFieldCoverageProbeManifest.failedScenarioCount -eq 0 -and
+            $releaseEvidenceIndexFieldCoverageProbeScenariosPassed -and
+            [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.latestSnapshotUnchanged -and
+            -not [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.fixtureEvidencePromoted -and
+            $releaseEvidenceIndexFieldCoverageProbeManifest.productionOutputBoundary -eq "release_evidence_index_field_coverage_probe_isolated_copies_only") `
+        "Release evidence index field coverage probe must pass all isolated mutation scenarios without changing the latest bundle, sending email, accepting real-host evidence, or promoting fixture evidence."
+
+    Test-ListedFiles $releaseEvidenceIndexFieldCoverageProbeManifest "release_evidence_index_field_coverage_probe"
 }
 
 $allowRelease = $failedReasons.Count -eq 0
@@ -3832,7 +3926,8 @@ $sourceManifests = @(
     "production-hard-mode-failure-probe-manifest.json",
     "production-hard-mode-success-contract-probe-manifest.json",
     "release-risk-policy-manifest.json",
-    "release-evidence-index-manifest.json"
+    "release-evidence-index-manifest.json",
+    "release-evidence-index-field-coverage-probe-manifest.json"
 )
 
 if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {

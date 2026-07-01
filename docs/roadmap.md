@@ -77,7 +77,7 @@
 - Production hard-mode failure probe proving combined production driver, Lua, and live-model hard switches block current sample or missing evidence.
 - Production hard-mode success contract probe proving combined production driver, Lua, and live-model hard switches pass with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
 - release docs freshness guard proving README, CI release docs, architecture, roadmap, pipeline step IDs, core artifact names, and release source-manifest lists stay aligned before hard-mode and release gate checks.
-- Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers.
+- Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers, with release evidence index field coverage for 58 semantic fields plus a five-scenario field coverage probe that protects the latest bundle from isolated-case pollution and proves no email is sent, no real host-project evidence is accepted, and no fixture evidence is promoted to production evidence.
 - Release-gated risk policy blocking failing AI exploration, unresolved high-risk graph nodes, missing production driver evidence, missing production Lua evidence, missing live endpoint policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure/success-contract evidence.
 
 ## V0.2 Unity Import Gate

@@ -201,6 +201,7 @@ $selfPlaceholder = [ordered]@{
     riskPolicyPassedAsExpected = $true
     evidenceIndexStatus = "PASS"
     evidenceIndexPassedAsExpected = $true
+    evidenceIndexFieldLevelCoveragePassedAsExpected = $true
     releaseGateStatus = "PASS"
     releaseGatePassedAsExpected = $true
     contractFixtureMode = $true
@@ -214,7 +215,7 @@ $selfPlaceholder = [ordered]@{
     realHostProjectEvidenceAccepted = $false
     fixtureEvidencePromoted = $false
     productionOutputBoundary = "hard_mode_success_contract_probe_only"
-    checkCount = 4
+    checkCount = 5
     failedCheckCount = 0
     files = @($selfManifestName)
 }
@@ -319,6 +320,28 @@ $riskPolicyPassedAsExpected = $riskManifest.status -eq "PASS" -and
     (Convert-ToInt (Get-JsonValue $riskManifest "releaseBlockerCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $riskManifest "failedRiskPolicyCheckCount" 1)) -eq 0
 
+$fieldLevelRequiredManifestCount = Convert-ToInt (Get-JsonValue $indexManifest "fieldLevelRequiredManifestCount" 0)
+$fieldLevelRequiredFieldCount = Convert-ToInt (Get-JsonValue $indexManifest "fieldLevelRequiredFieldCount" 0)
+$semanticFieldCheckCount = Convert-ToInt (Get-JsonValue $indexManifest "semanticFieldCheckCount" 0)
+$semanticFieldCheckPassedCount = Convert-ToInt (Get-JsonValue $indexManifest "semanticFieldCheckPassedCount" 0)
+$semanticFieldCheckFailedCount = Convert-ToInt (Get-JsonValue $indexManifest "semanticFieldCheckFailedCount" 1)
+$fieldLevelMissingManifestCount = Convert-ToInt (Get-JsonValue $indexManifest "fieldLevelMissingManifestCount" 1)
+$fieldLevelMissingFieldCount = Convert-ToInt (Get-JsonValue $indexManifest "fieldLevelMissingFieldCount" 1)
+$fieldLevelValueMismatchCount = Convert-ToInt (Get-JsonValue $indexManifest "fieldLevelValueMismatchCount" 1)
+$fieldLevelCoverageSchemaVersion = [string](Get-JsonValue $indexManifest "fieldLevelCoverageSchemaVersion" "")
+$fieldLevelCoverageStatus = [string](Get-JsonValue $indexManifest "fieldLevelCoverageStatus" "")
+
+$evidenceIndexFieldLevelCoveragePassedAsExpected = $fieldLevelCoverageSchemaVersion -eq "aitestpilot.release_evidence_field_level_coverage.v1" -and
+    $fieldLevelCoverageStatus -eq "PASS" -and
+    $fieldLevelRequiredManifestCount -ge 9 -and
+    $fieldLevelRequiredFieldCount -ge 58 -and
+    $semanticFieldCheckCount -eq $fieldLevelRequiredFieldCount -and
+    $semanticFieldCheckPassedCount -eq $semanticFieldCheckCount -and
+    $semanticFieldCheckFailedCount -eq 0 -and
+    $fieldLevelMissingManifestCount -eq 0 -and
+    $fieldLevelMissingFieldCount -eq 0 -and
+    $fieldLevelValueMismatchCount -eq 0
+
 $evidenceIndexPassedAsExpected = $indexManifest.status -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $indexManifest "portalHandoffReady" $false)) -and
     (Convert-ToBool (Get-JsonValue $indexManifest "requireProductionReplayDriverBound" $false)) -and
@@ -333,7 +356,8 @@ $evidenceIndexPassedAsExpected = $indexManifest.status -eq "PASS" -and
     (Convert-ToInt (Get-JsonValue $indexManifest "blockedSourceManifestCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $indexManifest "unacceptedSourceManifestStatusCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $indexManifest "missingListedFileCount" 1)) -eq 0 -and
-    (Convert-ToInt (Get-JsonValue $indexManifest "blockingReasonCount" 1)) -eq 0
+    (Convert-ToInt (Get-JsonValue $indexManifest "blockingReasonCount" 1)) -eq 0 -and
+    $evidenceIndexFieldLevelCoveragePassedAsExpected
 
 $releaseGatePassedAsExpected = $gateManifest.status -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $gateManifest "allowRelease" $false)) -and
@@ -359,6 +383,7 @@ $checks = @()
 Add-ProbeCheck "accepted_fixture_sources_copied" $acceptedFixtureSourcesCopied "Probe bundle must replace hard-mode source manifests only inside the isolated contract bundle."
 Add-ProbeCheck "hard_mode_risk_policy_passed" $riskPolicyPassedAsExpected "Risk policy must pass when production driver, Lua, and live smoke accepted fixtures are canonical inside the isolated bundle."
 Add-ProbeCheck "hard_mode_evidence_index_passed" $evidenceIndexPassedAsExpected "Evidence index must stay complete and accepted under combined hard-mode switches."
+Add-ProbeCheck "hard_mode_evidence_index_field_coverage_passed" $evidenceIndexFieldLevelCoveragePassedAsExpected "Evidence index must report field-level coverage PASS with all semantic field checks passing in the hard-mode success bundle."
 Add-ProbeCheck "hard_mode_release_gate_passed" $releaseGatePassedAsExpected "Release gate must pass the isolated hard-mode accepted-fixture bundle."
 Add-ProbeCheck "source_canonical_evidence_preserved" $sourceCanonicalEvidencePreserved "Default release evidence canonical production manifests must not be replaced by the success contract probe."
 
@@ -393,6 +418,8 @@ $reportLines = @(
     "| Accepted fixture sources copied | $acceptedFixtureSourcesCopied |",
     "| Hard-mode risk policy status | $($riskManifest.status) |",
     "| Hard-mode evidence index status | $($indexManifest.status) |",
+    "| Hard-mode evidence index field coverage | $fieldLevelCoverageStatus |",
+    "| Hard-mode semantic field checks | $semanticFieldCheckPassedCount / $semanticFieldCheckCount |",
     "| Hard-mode release gate status | $($gateManifest.status) |",
     "| Source canonical evidence preserved | $sourceCanonicalEvidencePreserved |",
     "| Release pipeline uses fixture | False |",
@@ -461,6 +488,16 @@ $manifest = [ordered]@{
     liveModelContractFixtureEvidenceAccepted = Convert-ToBool (Get-JsonValue $riskManifest "liveModelContractFixtureEvidenceAccepted" $false)
     evidenceIndexStatus = $indexManifest.status
     evidenceIndexPassedAsExpected = [bool]$evidenceIndexPassedAsExpected
+    evidenceIndexFieldLevelCoverageStatus = $fieldLevelCoverageStatus
+    evidenceIndexFieldLevelCoveragePassedAsExpected = [bool]$evidenceIndexFieldLevelCoveragePassedAsExpected
+    evidenceIndexFieldLevelRequiredManifestCount = [int]$fieldLevelRequiredManifestCount
+    evidenceIndexFieldLevelRequiredFieldCount = [int]$fieldLevelRequiredFieldCount
+    evidenceIndexSemanticFieldCheckCount = [int]$semanticFieldCheckCount
+    evidenceIndexSemanticFieldCheckPassedCount = [int]$semanticFieldCheckPassedCount
+    evidenceIndexSemanticFieldCheckFailedCount = [int]$semanticFieldCheckFailedCount
+    evidenceIndexFieldLevelMissingManifestCount = [int]$fieldLevelMissingManifestCount
+    evidenceIndexFieldLevelMissingFieldCount = [int]$fieldLevelMissingFieldCount
+    evidenceIndexFieldLevelValueMismatchCount = [int]$fieldLevelValueMismatchCount
     evidenceIndexRequiredSourceManifestCount = Convert-ToInt (Get-JsonValue $indexManifest "requiredSourceManifestCount" 0)
     evidenceIndexMissingSourceManifestCount = Convert-ToInt (Get-JsonValue $indexManifest "missingSourceManifestCount" 0)
     evidenceIndexUnacceptedSourceManifestStatusCount = Convert-ToInt (Get-JsonValue $indexManifest "unacceptedSourceManifestStatusCount" 0)
