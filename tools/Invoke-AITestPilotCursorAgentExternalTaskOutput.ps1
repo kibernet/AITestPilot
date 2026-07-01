@@ -3,7 +3,7 @@ param(
     [string]$EvidenceBundleDir,
     [string]$OutputDir,
     [string]$ManifestPath,
-    [string]$CursorAgentCommand = "cursor-agent",
+    [string]$CursorAgentCommand = "",
     [string]$CursorAgentModel = "",
     [int]$CursorAgentMaxAttempts = 3,
     [int]$CursorAgentRetryDelaySeconds = 2
@@ -68,9 +68,29 @@ function Get-FileSha256OrEmpty {
     return (Get-FileHash -Algorithm SHA256 -Path $Path).Hash
 }
 
+function Resolve-CursorAgentCommand {
+    param([string]$RequestedCommand)
+
+    if (-not [string]::IsNullOrWhiteSpace($RequestedCommand)) {
+        return $RequestedCommand
+    }
+
+    if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) {
+        foreach ($candidate in @("cursor-agent.cmd", "cursor-agent.exe")) {
+            $command = Get-Command -Name $candidate -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Source)) {
+                return $command.Source
+            }
+        }
+    }
+
+    return "cursor-agent"
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $outputPath = Assert-PathUnderRepo $OutputDir "OutputDir"
 $manifestPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
+$resolvedCursorAgentCommand = Resolve-CursorAgentCommand -RequestedCommand $CursorAgentCommand
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -176,7 +196,7 @@ function Invoke-CursorAgentPrint {
 
     try {
         $script:ErrorActionPreference = "Continue"
-        $script:cursorAgentOutput = @(& $CursorAgentCommand @arguments 2>&1)
+        $script:cursorAgentOutput = @(& $resolvedCursorAgentCommand @arguments 2>&1)
         $script:cursorAgentExitCode = $LASTEXITCODE
     }
     finally {
@@ -456,7 +476,8 @@ $manifest = [ordered]@{
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
     source = "headless_cursor_agent"
     fixtureGenerated = $false
-    cursorAgentCommand = $CursorAgentCommand
+    cursorAgentRequestedCommand = $CursorAgentCommand
+    cursorAgentCommand = $resolvedCursorAgentCommand
     cursorAgentRequestedModel = $cursorAgentRequestedModel
     cursorAgentModel = $cursorAgentModelUsed
     cursorAgentRetriedWithoutModel = [bool]$cursorAgentRetriedWithoutModel

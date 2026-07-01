@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "aitestpilot.agent_contract.v1",
+  "agentId": "ai-testpilot-repair-agent",
+  "displayName": "AI TestPilot Repair Agent",
+  "status": "repo_contract_ready_external_agent_optional",
+  "owner": "kibernet",
+  "purpose": "Produce a task-bound repair-agent output package for AI TestPilot release evidence.",
+  "defaultProducer": {
+    "kind": "headless_cursor_agent",
+    "windowsCommand": "cursor-agent.cmd",
+    "portableCommand": "cursor-agent",
+    "wrapper": "tools/Invoke-AITestPilotCursorAgentExternalTaskOutput.ps1",
+    "pipelineSwitch": "-UseCursorAgentExternalTaskOutput"
+  },
+  "inputs": [
+    "Temp/release-evidence/latest/repair-agent-handoff.md",
+    "Temp/release-evidence/latest/repair-agent-run.json",
+    "Temp/release-evidence/latest/repair-task.json",
+    "Temp/release-evidence/latest/bug-package.json",
+    "Temp/release-evidence/latest/bug-knowledge-graph.json"
+  ],
+  "outputs": [
+    "Temp/release-evidence/cursor-agent-external-output/repair-agent-run.json",
+    "Temp/release-evidence/cursor-agent-external-output/repair-agent.patch",
+    "Temp/release-evidence/cursor-agent-external-output/repair-agent-summary.md"
+  ],
+  "releaseEvidence": [
+    "repair-agent-cursor-agent-external-output-manifest.json",
+    "repair-agent-cursor-agent-output-run.json",
+    "repair-agent-cursor-agent-output.patch",
+    "repair-agent-cursor-agent-output-summary.md",
+    "repair-agent-cursor-agent-output.log",
+    "repair-agent-cursor-agent-output-patch-output-manifest.json",
+    "repair-agent-cursor-agent-output-preflight-manifest.json",
+    "repair-agent-cursor-agent-external-output-binding-probe-manifest.json"
+  ],
+  "boundaries": {
+    "defaultPipelineUsesFixture": true,
+    "externalAgentRequiredForRealProducerEvidence": true,
+    "mainRepositoryPatchAppliedByProducer": false,
+    "ownerProductionEvidenceAccepted": false,
+    "emailSentByAgent": false
+  },
+  "validation": {
+    "repoValidation": "tools/Validate-AITestPilot.ps1",
+    "producerValidation": "tools/Invoke-AITestPilotCursorAgentExternalTaskOutput.ps1",
+    "acceptanceValidation": "tools/Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1 -ExternalOutputDir Temp/release-evidence/cursor-agent-external-output",
+    "fullPipelineValidation": "tools/Invoke-AITestPilotReleasePipeline.ps1 -UseCursorAgentExternalTaskOutput"
+  }
+}

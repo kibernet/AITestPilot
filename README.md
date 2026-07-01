@@ -114,7 +114,7 @@ To produce that external output directory with the installed headless Cursor Age
 .\tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1 -ExternalOutputDir .\Temp\release-evidence\cursor-agent-external-output
 ```
 
-The Cursor Agent wrapper requires `cursor-agent` to be authenticated. It writes only to `Temp\release-evidence\cursor-agent-external-output`, captures `repair-agent-cursor-agent-external-output-manifest.json`, and validates the produced package through patch import and safety preflight before any main worktree apply occurs.
+The Cursor Agent wrapper requires `cursor-agent` to be authenticated. On Windows it resolves `cursor-agent.cmd` by default so PowerShell does not accidentally choose the script shim; operators can still override the executable with `-CursorAgentCommand`. It writes only to `Temp\release-evidence\cursor-agent-external-output`, captures `repair-agent-cursor-agent-external-output-manifest.json`, and validates the produced package through patch import and safety preflight before any main worktree apply occurs. The committed agent contract is `.agents/ai-testpilot-repair-agent.json`.
 
 To prove optional Cursor Agent evidence is bound to the accepted external-output directory instead of stale `repair-agent-cursor-agent-*` files from an older run:
 
