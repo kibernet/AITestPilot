@@ -12,7 +12,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -32,6 +32,38 @@ $requiredHandlerKeys = @(
 
 $checks = @()
 $failedReasons = @()
+
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-PathUnderRepo {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
+        throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
 
 function Add-ReleaseCheck {
     param(
@@ -205,6 +237,12 @@ function Test-ListedFiles {
         $path = Join-Path $EvidenceBundleDir $fileName
         Add-ReleaseCheck ($CheckPrefix + ":file:" + $fileName) (Test-Path $path) "Listed file must exist."
     }
+}
+
+$EvidenceBundleDir = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
+$ReleaseGateManifestPath = Assert-PathUnderRepo $ReleaseGateManifestPath "ReleaseGateManifestPath"
+if (-not (Test-PathWithinRoot $ReleaseGateManifestPath $EvidenceBundleDir)) {
+    throw "ReleaseGateManifestPath must stay under evidence bundle: $ReleaseGateManifestPath"
 }
 
 if (-not (Test-Path $EvidenceBundleDir)) {
