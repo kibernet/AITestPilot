@@ -410,16 +410,26 @@ $completeExternalRoot = Join-Path $externalBundlePath "complete-external-root"
 $ownerBundleRoot = Join-Path $externalBundlePath "complete-owner-response-bundle"
 $partialBundleRoot = Join-Path $externalBundlePath "partial-owner-response-bundle"
 $semanticBadBundleRoot = Join-Path $externalBundlePath "semantic-bad-owner-response-bundle"
+$extraPayloadBundleRoot = Join-Path $externalBundlePath "extra-payload-owner-response-bundle"
+$nestedPayloadBundleRoot = Join-Path $externalBundlePath "nested-payload-owner-response-bundle"
 $ownerBundleZipPath = Join-Path $probePath "complete-owner-response-bundle.zip"
 $ownerBundleArbitraryWrapperZipPath = Join-Path $probePath "complete-owner-response-bundle-arbitrary-wrapper.zip"
 $partialBundleZipPath = Join-Path $probePath "partial-owner-response-bundle.zip"
 $semanticBadBundleZipPath = Join-Path $probePath "semantic-bad-owner-response-bundle.zip"
+$nestedPayloadBundleZipPath = Join-Path $probePath "nested-payload-owner-response-bundle.zip"
 $unsafeBundleZipPath = Join-Path $probePath "unsafe-owner-response-bundle.zip"
 
 Copy-CompleteBundle $completeExternalRoot
 Copy-CompleteBundle $ownerBundleRoot
 Copy-CompleteBundle $partialBundleRoot
 Copy-CompleteBundle $semanticBadBundleRoot
+Copy-CompleteBundle $extraPayloadBundleRoot
+Copy-CompleteBundle $nestedPayloadBundleRoot
+
+Set-Content -Path (Join-Path $extraPayloadBundleRoot "unexpected-owner-note.txt") -Encoding UTF8 -Value "unexpected payload"
+$nestedAreaDir = Join-Path $nestedPayloadBundleRoot "production-driver-evidence\nested"
+New-Item -ItemType Directory -Force $nestedAreaDir | Out-Null
+Set-Content -Path (Join-Path $nestedAreaDir "unexpected-nested.txt") -Encoding UTF8 -Value "unexpected nested payload"
 
 $missingLiveTrace = Join-Path $partialBundleRoot "live-smoke-evidence\live-model-endpoint-decision-trace.json"
 if (-not (Test-Path $missingLiveTrace)) {
@@ -439,6 +449,7 @@ New-OwnerResponseBundleZip $ownerBundleRoot $ownerBundleZipPath (Join-Path $exte
 New-OwnerResponseBundleZip $ownerBundleRoot $ownerBundleArbitraryWrapperZipPath (Join-Path $externalBundlePath "zip-staging-complete-arbitrary-wrapper") -WrapperName "returned-owner-upload"
 New-OwnerResponseBundleZip $partialBundleRoot $partialBundleZipPath (Join-Path $externalBundlePath "zip-staging-partial")
 New-OwnerResponseBundleZip $semanticBadBundleRoot $semanticBadBundleZipPath (Join-Path $externalBundlePath "zip-staging-semantic-bad")
+New-OwnerResponseBundleZip $nestedPayloadBundleRoot $nestedPayloadBundleZipPath (Join-Path $externalBundlePath "zip-staging-nested-payload")
 New-UnsafeOwnerResponseBundleZip $unsafeBundleZipPath
 
 $cases = @()
@@ -452,6 +463,8 @@ $cases += Invoke-PreflightCase "partial-owner-response-bundle" -OwnerResponseBun
 $cases += Invoke-PreflightCase "partial-owner-response-bundle-zip" -OwnerResponseBundleZipPath $partialBundleZipPath
 $cases += Invoke-PreflightCase "semantic-bad-owner-response-bundle" -OwnerResponseBundleDir $semanticBadBundleRoot
 $cases += Invoke-PreflightCase "semantic-bad-owner-response-bundle-zip" -OwnerResponseBundleZipPath $semanticBadBundleZipPath
+$cases += Invoke-PreflightCase "extra-payload-owner-response-bundle" -OwnerResponseBundleDir $extraPayloadBundleRoot -ContractFixtureMode
+$cases += Invoke-PreflightCase "nested-payload-owner-response-bundle-zip" -OwnerResponseBundleZipPath $nestedPayloadBundleZipPath -ContractFixtureMode
 
 $defaultCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "default-pending" } | Select-Object -First 1
 $completeRootCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete-external-root-contract" } | Select-Object -First 1
@@ -463,6 +476,8 @@ $partialCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "partial
 $partialZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "partial-owner-response-bundle-zip" } | Select-Object -First 1
 $semanticBadCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "semantic-bad-owner-response-bundle" } | Select-Object -First 1
 $semanticBadZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "semantic-bad-owner-response-bundle-zip" } | Select-Object -First 1
+$extraPayloadCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "extra-payload-owner-response-bundle" } | Select-Object -First 1
+$nestedPayloadZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "nested-payload-owner-response-bundle-zip" } | Select-Object -First 1
 
 $checks = @()
 Add-Check "default_missing_evidence_stays_pending" (
@@ -570,6 +585,36 @@ Add-Check "semantic_bad_owner_response_bundle_zip_rejected" (
     (Get-JsonValue $semanticBadZipCase.manifest "fixtureSignalCount" 0) -gt 0
 ) "Owner response bundle zip with complete files but fixture/template semantic signals must not be candidate-ready."
 
+Add-Check "extra_payload_owner_response_bundle_rejected" (
+    -not [bool]$extraPayloadCase.failed -and
+    (Get-JsonValue $extraPayloadCase.manifest "semanticPreflightStatus" "") -eq "NEEDS_OWNER_REPAIR" -and
+    -not (Convert-ToBool (Get-JsonValue $extraPayloadCase.manifest "readyForAcceptanceCandidate" $true)) -and
+    (Convert-ToBool (Get-JsonValue $extraPayloadCase.manifest "ownerResponseBundleStrictPayloadShape" $false)) -and
+    (Get-JsonValue $extraPayloadCase.manifest "ownerResponseBundlePayloadShapeViolationCount" 0) -ge 1 -and
+    (Test-ActionItemReason $extraPayloadCase.manifest "owner_response_bundle_extra_top_level_file") -and
+    -not (Convert-ToBool (Get-JsonValue $extraPayloadCase.manifest "acceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $extraPayloadCase.manifest "hardValidationRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $extraPayloadCase.manifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $extraPayloadCase.manifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $extraPayloadCase.manifest "fixtureEvidencePromoted" $true))
+) "Owner response bundle directories with unknown top-level files must be rejected before acceptance, hard validation, mail, or fixture promotion."
+
+Add-Check "nested_payload_owner_response_bundle_zip_rejected" (
+    -not [bool]$nestedPayloadZipCase.failed -and
+    (Get-JsonValue $nestedPayloadZipCase.manifest "semanticPreflightStatus" "") -eq "NEEDS_OWNER_REPAIR" -and
+    -not (Convert-ToBool (Get-JsonValue $nestedPayloadZipCase.manifest "readyForAcceptanceCandidate" $true)) -and
+    (Convert-ToBool (Get-JsonValue $nestedPayloadZipCase.manifest "ownerResponseBundleZipInspected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $nestedPayloadZipCase.manifest "zipSafe" $false)) -and
+    (Convert-ToBool (Get-JsonValue $nestedPayloadZipCase.manifest "ownerResponseBundleStrictPayloadShape" $false)) -and
+    (Get-JsonValue $nestedPayloadZipCase.manifest "ownerResponseBundlePayloadShapeViolationCount" 0) -ge 1 -and
+    (Test-ActionItemReason $nestedPayloadZipCase.manifest "owner_response_bundle_nested_area_directory") -and
+    -not (Convert-ToBool (Get-JsonValue $nestedPayloadZipCase.manifest "acceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $nestedPayloadZipCase.manifest "hardValidationRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $nestedPayloadZipCase.manifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $nestedPayloadZipCase.manifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $nestedPayloadZipCase.manifest "fixtureEvidencePromoted" $true))
+) "Owner response bundle zips with nested area payload directories must be rejected even when the zip path itself is safe."
+
 Add-Check "preflight_cases_are_read_only" (
     @($cases | Where-Object {
             (Convert-ToBool (Get-JsonValue $_.manifest "acceptanceRun" $true)) -or
@@ -621,6 +666,7 @@ $caseSummaries = @($cases | ForEach-Object {
             zipEntryCount = Get-JsonValue $caseManifest "zipEntryCount" 0
             zipUnsafeEntryCount = Get-JsonValue $caseManifest "zipUnsafeEntryCount" 0
             zipDuplicateEntryCount = Get-JsonValue $caseManifest "zipDuplicateEntryCount" 0
+            payloadShapeViolationCount = Get-JsonValue $caseManifest "ownerResponseBundlePayloadShapeViolationCount" 0
             ownerResponseBundleRootResolved = Convert-ToBool (Get-JsonValue $caseManifest "ownerResponseBundleRootResolved" $false)
             ownerResponseBundleRootResolutionKind = Get-JsonValue $caseManifest "ownerResponseBundleRootResolutionKind" ""
             ownerResponseBundleTopLevelWrapperDetected = Convert-ToBool (Get-JsonValue $caseManifest "ownerResponseBundleTopLevelWrapperDetected" $false)
@@ -669,12 +715,15 @@ $manifest = [ordered]@{
     partialBundleZipRejected = Get-CheckPassed "partial_owner_response_bundle_zip_rejected"
     semanticBadBundleRejected = Get-CheckPassed "semantic_bad_owner_response_bundle_rejected"
     semanticBadBundleZipRejected = Get-CheckPassed "semantic_bad_owner_response_bundle_zip_rejected"
+    extraPayloadBundleRejected = Get-CheckPassed "extra_payload_owner_response_bundle_rejected"
+    nestedPayloadBundleZipRejected = Get-CheckPassed "nested_payload_owner_response_bundle_zip_rejected"
     ownerResponseBundleZipCaseCount = @($caseSummaries | Where-Object { $_.ownerResponseBundleZipInspected }).Count
     ownerResponseBundleZipSafeCaseCount = @($caseSummaries | Where-Object { $_.ownerResponseBundleZipInspected -and $_.zipSafe }).Count
     ownerResponseBundleZipUnsafeCaseCount = @($caseSummaries | Where-Object { $_.ownerResponseBundleZipInspected -and -not $_.zipSafe }).Count
     semanticFailCaseCount = @($caseSummaries | Where-Object { $_.semanticFailCount -gt 0 }).Count
     fixtureSignalRejectedWithoutContractMode = [bool]([int](Get-JsonValue $semanticBadCase.manifest "fixtureSignalCount" 0) -gt 0 -and -not (Convert-ToBool (Get-JsonValue $semanticBadCase.manifest "readyForAcceptanceCandidate" $true)))
     ownerRepairRouteCaseCount = @($caseSummaries | Where-Object { $_.semanticPreflightStatus -eq "NEEDS_OWNER_REPAIR" }).Count
+    payloadShapeRejectedCaseCount = @($caseSummaries | Where-Object { $_.payloadShapeViolationCount -gt 0 -and -not $_.readyForAcceptanceCandidate }).Count
     missingEvidenceCaseCount = @($caseSummaries | Where-Object { $_.semanticPreflightStatus -eq "PENDING_EXTERNAL_EVIDENCE" }).Count
     semanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`""
     semanticPreflightZipCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`""
@@ -715,8 +764,8 @@ $reportLines = @(
     "",
     "## Cases",
     "",
-    "| Case | Status | Candidate | Zip inspected | Zip safe | Missing | Semantic FAIL | Fixture signals |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |"
+    "| Case | Status | Candidate | Zip inspected | Zip safe | Missing | Semantic FAIL | Payload shape | Fixture signals |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
 )
 
 foreach ($caseSummary in $caseSummaries) {
@@ -725,10 +774,11 @@ foreach ($caseSummary in $caseSummaries) {
     $caseCandidate = Get-JsonValue $caseSummary "readyForAcceptanceCandidate" $false
     $caseMissing = Get-JsonValue $caseSummary "missingRequiredFileCount" 0
     $caseSemanticFail = Get-JsonValue $caseSummary "semanticFailCount" 0
+    $casePayloadShape = Get-JsonValue $caseSummary "payloadShapeViolationCount" 0
     $caseFixtureSignals = Get-JsonValue $caseSummary "fixtureSignalCount" 0
     $caseZipInspected = Get-JsonValue $caseSummary "ownerResponseBundleZipInspected" $false
     $caseZipSafe = Get-JsonValue $caseSummary "zipSafe" $false
-    $reportLines += "| $(Format-MarkdownCell $caseName) | $(Format-MarkdownCell $caseStatus) | $caseCandidate | $caseZipInspected | $caseZipSafe | $caseMissing | $caseSemanticFail | $caseFixtureSignals |"
+    $reportLines += "| $(Format-MarkdownCell $caseName) | $(Format-MarkdownCell $caseStatus) | $caseCandidate | $caseZipInspected | $caseZipSafe | $caseMissing | $caseSemanticFail | $casePayloadShape | $caseFixtureSignals |"
 }
 
 $reportLines += @(

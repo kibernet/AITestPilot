@@ -531,6 +531,7 @@ $semanticPreflightReadyForAcceptanceCandidate = $false
 $semanticPreflightFailCount = 0
 $semanticPreflightWarnCount = 0
 $semanticPreflightMissingRequiredFileCount = 0
+$semanticPreflightPayloadShapeViolationCount = 0
 $semanticPreflightFixtureSignalCount = 0
 $semanticPreflightPlaceholderSignalCount = 0
 $semanticPreflightGateAcceptableStatuses = @(
@@ -596,6 +597,7 @@ if (-not $ownerResponseBundleZipRejected) {
         $semanticPreflightFailCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "semanticFailCount" 0)
         $semanticPreflightWarnCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "semanticWarnCount" 0)
         $semanticPreflightMissingRequiredFileCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "missingRequiredFileCount" 0)
+        $semanticPreflightPayloadShapeViolationCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "ownerResponseBundlePayloadShapeViolationCount" 0)
         $semanticPreflightFixtureSignalCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "fixtureSignalCount" 0)
         $semanticPreflightPlaceholderSignalCount = Convert-ToInt (Get-JsonValue $semanticPreflightManifest "placeholderSignalCount" 0)
         $semanticPreflightGatePassed = (
@@ -771,6 +773,7 @@ $manifest = [ordered]@{
     semanticPreflightFailCount = [int]$semanticPreflightFailCount
     semanticPreflightWarnCount = [int]$semanticPreflightWarnCount
     semanticPreflightMissingRequiredFileCount = [int]$semanticPreflightMissingRequiredFileCount
+    semanticPreflightPayloadShapeViolationCount = [int]$semanticPreflightPayloadShapeViolationCount
     semanticPreflightFixtureSignalCount = [int]$semanticPreflightFixtureSignalCount
     semanticPreflightPlaceholderSignalCount = [int]$semanticPreflightPlaceholderSignalCount
     acceptanceRun = [bool]$acceptanceRun
@@ -813,6 +816,7 @@ $reportLines = @(
     "| Semantic preflight status | $(Format-MarkdownCell $semanticPreflightStatus) |",
     "| Semantic preflight fail count | $semanticPreflightFailCount |",
     "| Semantic preflight missing required files | $semanticPreflightMissingRequiredFileCount |",
+    "| Semantic preflight payload shape violations | $semanticPreflightPayloadShapeViolationCount |",
     "| Semantic preflight blocked acceptance | $semanticPreflightGateBlockedAcceptance |",
     "| Acceptance run | $acceptanceRun |",
     "| All external evidence accepted | $allExternalEvidenceAccepted |",

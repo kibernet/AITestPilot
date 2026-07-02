@@ -995,9 +995,12 @@ $semanticPreflightBeforeAutoAcceptanceCheckPassed = (
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleZipRejected" $false) -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleRejected" $false) -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleZipRejected" $false) -and
-            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0) -eq 5 -and
-            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipSafeCaseCount" 0) -eq 4 -and
-            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 0) -eq 1)) -and
+            [bool](Get-ObjectProperty $semanticPreflightProbeManifest "extraPayloadBundleRejected" $false) -and
+            [bool](Get-ObjectProperty $semanticPreflightProbeManifest "nestedPayloadBundleZipRejected" $false) -and
+            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0) -eq 6 -and
+            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipSafeCaseCount" 0) -eq 5 -and
+            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 0) -eq 1 -and
+            [int](Get-ObjectProperty $semanticPreflightProbeManifest "payloadShapeRejectedCaseCount" 0) -eq 2)) -and
     ((-not $ownerResponseBundleKitAvailable) -or ($ownerResponseBundleKitSemanticPreflightCommandsDocumented -and $ownerResponseBundleKitAutoAcceptanceCommandsDocumented)) -and
     ((-not $operatorActionQueueAvailable) -or $operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented)
 )
@@ -1132,9 +1135,12 @@ $manifest = [ordered]@{
     semanticPreflightProbePartialBundleZipRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleZipRejected" $false)
     semanticPreflightProbeSemanticBadBundleRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleRejected" $false)
     semanticPreflightProbeSemanticBadBundleZipRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleZipRejected" $false)
+    semanticPreflightProbeExtraPayloadBundleRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "extraPayloadBundleRejected" $false)
+    semanticPreflightProbeNestedPayloadBundleZipRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "nestedPayloadBundleZipRejected" $false)
     semanticPreflightProbeOwnerResponseBundleZipCaseCount = [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0)
     semanticPreflightProbeOwnerResponseBundleZipSafeCaseCount = [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipSafeCaseCount" 0)
     semanticPreflightProbeOwnerResponseBundleZipUnsafeCaseCount = [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 1)
+    semanticPreflightProbePayloadShapeRejectedCaseCount = [int](Get-ObjectProperty $semanticPreflightProbeManifest "payloadShapeRejectedCaseCount" 0)
     semanticPreflightSelfContainedHelperIncluded = [bool]$semanticPreflightSelfContainedHelperIncluded
     semanticPreflightSelfContainedHelperDocumented = [bool]$semanticPreflightSelfContainedHelperDocumented
     semanticPreflightSelfContainedHelperContentValidated = [bool]$semanticPreflightSelfContainedHelperContentValidated

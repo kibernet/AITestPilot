@@ -2158,9 +2158,12 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.semanticPreflightProbeSemanticBadBundleZipRejected -and
             [bool]$productionHandoffExportManifest.semanticPreflightProbeOwnerResponseBundleZipArbitraryWrapperReady -and
             [bool]$productionHandoffExportManifest.semanticPreflightProbeUnsafeOwnerResponseBundleZipRejected -and
-            [int]$productionHandoffExportManifest.semanticPreflightProbeOwnerResponseBundleZipCaseCount -eq 5 -and
-            [int]$productionHandoffExportManifest.semanticPreflightProbeOwnerResponseBundleZipSafeCaseCount -eq 4 -and
+            [bool]$productionHandoffExportManifest.semanticPreflightProbeExtraPayloadBundleRejected -and
+            [bool]$productionHandoffExportManifest.semanticPreflightProbeNestedPayloadBundleZipRejected -and
+            [int]$productionHandoffExportManifest.semanticPreflightProbeOwnerResponseBundleZipCaseCount -eq 6 -and
+            [int]$productionHandoffExportManifest.semanticPreflightProbeOwnerResponseBundleZipSafeCaseCount -eq 5 -and
             [int]$productionHandoffExportManifest.semanticPreflightProbeOwnerResponseBundleZipUnsafeCaseCount -eq 1 -and
+            [int]$productionHandoffExportManifest.semanticPreflightProbePayloadShapeRejectedCaseCount -eq 2 -and
             [bool]$productionHandoffExportManifest.semanticPreflightSelfContainedHelperIncluded -and
             [bool]$productionHandoffExportManifest.semanticPreflightSelfContainedHelperDocumented -and
             [bool]$productionHandoffExportManifest.semanticPreflightSelfContainedHelperContentValidated -and
@@ -3485,9 +3488,9 @@ if ($null -ne $productionExternalEvidenceSemanticPreflightProbeManifest) {
             -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.externalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.releasePipelineUsesFixture -and
             -not [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.fixtureEvidencePromoted -and
-            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.caseCount -eq 10 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.caseCount -eq 12 -and
             [int]$productionExternalEvidenceSemanticPreflightProbeManifest.completeCandidateCaseCount -eq 4 -and
-            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.rejectedCaseCount -eq 6 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.rejectedCaseCount -eq 8 -and
             [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.defaultPendingAccepted -and
             [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.completeExternalRootReady -and
             [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.ownerResponseBundleReady -and
@@ -3498,17 +3501,20 @@ if ($null -ne $productionExternalEvidenceSemanticPreflightProbeManifest) {
             [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.partialBundleZipRejected -and
             [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.semanticBadBundleRejected -and
             [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.semanticBadBundleZipRejected -and
-            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.ownerResponseBundleZipCaseCount -eq 5 -and
-            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.ownerResponseBundleZipSafeCaseCount -eq 4 -and
+            [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.extraPayloadBundleRejected -and
+            [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.nestedPayloadBundleZipRejected -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.ownerResponseBundleZipCaseCount -eq 6 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.ownerResponseBundleZipSafeCaseCount -eq 5 -and
             [int]$productionExternalEvidenceSemanticPreflightProbeManifest.ownerResponseBundleZipUnsafeCaseCount -eq 1 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.payloadShapeRejectedCaseCount -eq 2 -and
             [bool]$productionExternalEvidenceSemanticPreflightProbeManifest.fixtureSignalRejectedWithoutContractMode -and
             [int]$productionExternalEvidenceSemanticPreflightProbeManifest.semanticFailCaseCount -ge 2 -and
             [int]$productionExternalEvidenceSemanticPreflightProbeManifest.ownerRepairRouteCaseCount -ge 3 -and
             [int]$productionExternalEvidenceSemanticPreflightProbeManifest.missingEvidenceCaseCount -ge 3 -and
             $productionExternalEvidenceSemanticPreflightProbeManifest.productionOutputBoundary -eq "production_external_evidence_semantic_preflight_probe_only" -and
-            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.checkCount -eq 12 -and
+            [int]$productionExternalEvidenceSemanticPreflightProbeManifest.checkCount -eq 14 -and
             [int]$productionExternalEvidenceSemanticPreflightProbeManifest.failedCheckCount -eq 0) `
-        "Production external evidence semantic preflight probe must reject missing, partial, and fixture/template-shaped returned owner bundle directories and zips before acceptance, while resolving expected and arbitrary single-directory zip wrappers without sending mail or promoting fixtures."
+        "Production external evidence semantic preflight probe must reject missing, partial, fixture/template-shaped, extra-payload, and nested-payload returned owner bundle directories and zips before acceptance, while resolving expected and arbitrary single-directory zip wrappers without sending mail or promoting fixtures."
 
     Test-ListedFiles $productionExternalEvidenceSemanticPreflightProbeManifest "production_external_evidence_semantic_preflight_probe"
 }
@@ -3647,6 +3653,19 @@ if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleRealHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleEmailSent -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.semanticBadOwnerResponseBundleFixtureEvidencePromoted -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleRejected -and
+            $productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleStatus -eq "FAIL" -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleAllEvidenceReady -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleSemanticPreflightGateRun -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleSemanticPreflightGatePassed -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleSemanticPreflightReadyForAcceptanceCandidate -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleSemanticPreflightPayloadShapeViolationCount -gt 0 -and
+            [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleSemanticPreflightGateBlockedAcceptance -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleAcceptanceRun -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleAllExternalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleRealHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleEmailSent -and
+            -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.extraPayloadOwnerResponseBundleFixtureEvidencePromoted -and
             [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipRejected -and
             $productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipStatus -eq "FAIL" -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.unsafeOwnerResponseBundleZipAcceptanceRun -and
@@ -3658,9 +3677,9 @@ if ($null -ne $productionExternalEvidenceAutoAcceptanceProbeManifest) {
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceAutoAcceptanceProbeManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceAutoAcceptanceProbeManifest.productionOutputBoundary -eq "production_external_evidence_auto_acceptance_probe_only" -and
-            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.checkCount -eq 10 -and
+            [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.checkCount -eq 11 -and
             [int]$productionExternalEvidenceAutoAcceptanceProbeManifest.failedCheckCount -eq 0) `
-        "Production external evidence auto acceptance probe must prove discovery stays pending when evidence is missing, complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance after semantic preflight, semantic-bad complete bundles are rejected before acceptance, and unsafe returned zips are rejected before expansion or acceptance without promoting fixtures."
+        "Production external evidence auto acceptance probe must prove discovery stays pending when evidence is missing, complete evidence root, owner response bundle directory, or owner response bundle zip evidence delegates to stable acceptance after semantic preflight, semantic-bad and extra-payload complete bundles are rejected before acceptance, and unsafe returned zips are rejected before expansion or acceptance without promoting fixtures."
 
     Test-ListedFiles $productionExternalEvidenceAutoAcceptanceProbeManifest "production_external_evidence_auto_acceptance_probe"
 }
@@ -3869,9 +3888,12 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipReady -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipArbitraryWrapperReady -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeUnsafeOwnerResponseBundleZipRejected -and
-            [int]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipCaseCount -eq 5 -and
-            [int]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipSafeCaseCount -eq 4 -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeExtraPayloadBundleRejected -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeNestedPayloadBundleZipRejected -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipCaseCount -eq 6 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipSafeCaseCount -eq 5 -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbeOwnerResponseBundleZipUnsafeCaseCount -eq 1 -and
+            [int]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbePayloadShapeRejectedCaseCount -eq 2 -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitAutoAcceptanceDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueIncluded -and
@@ -4046,17 +4068,23 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixSingleFileMissingRejected -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidencePartialMatrixMalformedZipRejected -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightProbeAccepted -and
-            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightCaseCount -eq 10 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightCaseCount -eq 12 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightCandidateCaseCount -eq 4 -and
-            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightRejectedCaseCount -eq 6 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightRejectedCaseCount -eq 8 -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleReady -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipReady -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipArbitraryWrapperReady -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightUnsafeOwnerResponseBundleZipRejected -and
-            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipCaseCount -eq 5 -and
-            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipSafeCaseCount -eq 4 -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightExtraPayloadBundleRejected -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightNestedPayloadBundleZipRejected -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipCaseCount -eq 6 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipSafeCaseCount -eq 5 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipUnsafeCaseCount -eq 1 -and
-            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightCheckCount -eq 12 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightPayloadShapeRejectedCaseCount -eq 2 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightCheckCount -eq 14 -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAutoAcceptanceExtraPayloadOwnerResponseBundleRejected -and
+            -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAutoAcceptanceExtraPayloadOwnerResponseBundleAcceptanceRun -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceAutoAcceptanceExtraPayloadOwnerResponseBundlePayloadShapeViolationCount -gt 0 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperItemCount -eq 1 -and
             ([string]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and

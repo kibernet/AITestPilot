@@ -354,27 +354,12 @@ function Resolve-OwnerResponseBundleRoot {
             ForEach-Object { Split-Path $_.FullName -Parent } |
             Sort-Object -Unique
     )
-    $manifestRootCandidates = @($manifestCandidates | Where-Object { Test-OwnerResponseBundleRoot $_ })
-    if ($manifestRootCandidates.Count -eq 1) {
-        $manifestRoot = Resolve-FullPath $manifestRootCandidates[0]
-        $manifestResolution = New-OwnerResponseBundleRootResolution `
-            -InputRoot $bundlePath `
-            -ResolvedRoot $manifestRoot `
-            -RootResolved $true `
-            -ResolutionKind "owner_response_bundle_manifest_parent" `
-            -TopLevelWrapperDetected (-not $manifestRoot.Equals($bundlePath, [System.StringComparison]::OrdinalIgnoreCase))
-        $relativePath = [string]($manifestResolution["resolvedRelativePathFromInputRoot"])
-        if (-not [string]::IsNullOrWhiteSpace($relativePath) -and $relativePath -ne ".") {
-            $manifestResolution["topLevelWrapperName"] = ($relativePath -split "/")[0]
-        }
-        return $manifestResolution
-    }
-    elseif ($manifestRootCandidates.Count -gt 1) {
+    if ($manifestCandidates.Count -gt 0) {
         return New-OwnerResponseBundleRootResolution `
             -InputRoot $bundlePath `
             -ResolvedRoot $bundlePath `
             -RootResolved $false `
-            -ResolutionKind "owner_response_bundle_manifest_ambiguous"
+            -ResolutionKind "owner_response_bundle_manifest_recursive_resolution_rejected"
     }
 
     return New-OwnerResponseBundleRootResolution `
@@ -736,6 +721,9 @@ $areaSpecs = @(
             "repair-driver-failure-manifest.json",
             "replay-profile-import-manifest.json"
         )
+        allowedHelperFiles = @(
+            "production-driver-evidence-intake-readiness-manifest.json"
+        )
         ownerHint = ".\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 -EvidenceBundleDir `"path\to\release-evidence`""
     },
     [ordered]@{
@@ -765,6 +753,45 @@ $areaStatuses = @()
 $presentFileRecords = @()
 $missingRequiredFileCount = 0
 $extraFileCount = 0
+$ownerResponseBundleStrictPayloadShape = ($ownerResponseBundleInputKind -eq "owner_response_bundle_zip" -or $ownerResponseBundleInputKind -eq "owner_response_bundle_dir") -and
+    [bool]($ownerResponseBundleRootResolution["rootResolved"])
+$ownerResponseBundlePayloadShapeViolations = @()
+$ownerResponseBundleRootHelperFiles = @(
+    "README.md",
+    "owner-contact-roster.json",
+    "owner-response-bundle-manifest.json",
+    "owner-response-bundle-preflight.json"
+)
+$ownerResponseBundleAreaHelperFiles = @(
+    "README.md",
+    "required-files.json"
+)
+
+if ($ownerResponseBundleStrictPayloadShape -and (Test-Path $sourceRootPath)) {
+    $allowedRootDirectories = @($areaSpecs | ForEach-Object { [string]$_.directory })
+    foreach ($topLevelEntry in @(Get-ChildItem -LiteralPath $sourceRootPath -Force)) {
+        if ($topLevelEntry.PSIsContainer) {
+            if ($allowedRootDirectories -notcontains $topLevelEntry.Name) {
+                $ownerResponseBundlePayloadShapeViolations += [ordered]@{
+                    area = "external_evidence_bundle"
+                    owner = "operator"
+                    path = $topLevelEntry.Name
+                    reason = "owner_response_bundle_extra_top_level_directory"
+                }
+                Add-SemanticFinding "external_evidence_bundle" "operator" $topLevelEntry.Name "FAIL" "owner_response_bundle_extra_top_level_directory" "OwnerResponseBundleDir" "Remove unknown top-level directories before returning the owner response bundle."
+            }
+        }
+        elseif ($ownerResponseBundleRootHelperFiles -notcontains $topLevelEntry.Name) {
+            $ownerResponseBundlePayloadShapeViolations += [ordered]@{
+                area = "external_evidence_bundle"
+                owner = "operator"
+                path = $topLevelEntry.Name
+                reason = "owner_response_bundle_extra_top_level_file"
+            }
+            Add-SemanticFinding "external_evidence_bundle" "operator" $topLevelEntry.Name "FAIL" "owner_response_bundle_extra_top_level_file" "OwnerResponseBundleDir" "Remove unknown top-level files before returning the owner response bundle."
+        }
+    }
+}
 
 foreach ($spec in $areaSpecs) {
     $area = [string]$spec.area
@@ -773,10 +800,44 @@ foreach ($spec in $areaSpecs) {
     $presentFiles = @()
     $missingFiles = @()
     $areaExtraFiles = @()
+    $areaSpecificHelperFiles = if ($spec -is [System.Collections.IDictionary] -and $spec.Contains("allowedHelperFiles")) {
+        @([string[]]$spec["allowedHelperFiles"])
+    }
+    else {
+        @()
+    }
 
     if (Test-Path $areaDir) {
         $requiredNames = @([string[]]$spec.requiredFiles)
-        $areaExtraFiles = @(Get-ChildItem -LiteralPath $areaDir -File | Where-Object { $requiredNames -notcontains $_.Name } | ForEach-Object { $_.Name })
+        $allowedAreaFileNames = if ($ownerResponseBundleStrictPayloadShape) {
+            @($requiredNames + $ownerResponseBundleAreaHelperFiles + $areaSpecificHelperFiles)
+        }
+        else {
+            @($requiredNames)
+        }
+        $areaExtraFiles = @(Get-ChildItem -LiteralPath $areaDir -File -Force | Where-Object { $allowedAreaFileNames -notcontains $_.Name } | ForEach-Object { $_.Name })
+        if ($ownerResponseBundleStrictPayloadShape) {
+            foreach ($extraFile in $areaExtraFiles) {
+                $ownerResponseBundlePayloadShapeViolations += [ordered]@{
+                    area = $area
+                    owner = $owner
+                    path = "$([string]$spec.directory)/$extraFile"
+                    reason = "owner_response_bundle_extra_area_file"
+                }
+                Add-SemanticFinding $area $owner $extraFile "FAIL" "owner_response_bundle_extra_area_file" "OwnerResponseBundleDir" "Remove unknown files from this evidence area before returning the owner response bundle."
+            }
+
+            foreach ($nestedDir in @(Get-ChildItem -LiteralPath $areaDir -Directory -Recurse -Force)) {
+                $nestedRelativePath = (Resolve-FullPath $nestedDir.FullName).Substring((Resolve-FullPath $sourceRootPath).Length).TrimStart([char[]]@("\", "/")).Replace("\", "/")
+                $ownerResponseBundlePayloadShapeViolations += [ordered]@{
+                    area = $area
+                    owner = $owner
+                    path = $nestedRelativePath
+                    reason = "owner_response_bundle_nested_area_directory"
+                }
+                Add-SemanticFinding $area $owner $nestedRelativePath "FAIL" "owner_response_bundle_nested_area_directory" "OwnerResponseBundleDir" "Move required evidence files to the evidence area root and remove nested directories before returning the owner response bundle."
+            }
+        }
     }
 
     foreach ($fileName in @([string[]]$spec.requiredFiles)) {
@@ -957,6 +1018,9 @@ $manifest = [ordered]@{
     ownerResponseBundleResolvedRelativePathFromInputRoot = [string]($ownerResponseBundleRootResolution["resolvedRelativePathFromInputRoot"])
     ownerResponseBundleTopLevelWrapperDetected = [bool]($ownerResponseBundleRootResolution["topLevelWrapperDetected"])
     ownerResponseBundleTopLevelWrapperName = [string]($ownerResponseBundleRootResolution["topLevelWrapperName"])
+    ownerResponseBundleStrictPayloadShape = [bool]$ownerResponseBundleStrictPayloadShape
+    ownerResponseBundlePayloadShapeViolationCount = [int]$ownerResponseBundlePayloadShapeViolations.Count
+    ownerResponseBundlePayloadShapeViolations = @($ownerResponseBundlePayloadShapeViolations)
     zipSafe = [bool]$zipSafetyReport.safe
     zipOpenSucceeded = [bool]$zipSafetyReport.zipOpenSucceeded
     zipEntryCount = [int]$zipSafetyReport.entryCount
