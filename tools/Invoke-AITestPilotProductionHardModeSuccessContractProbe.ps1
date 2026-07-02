@@ -362,7 +362,7 @@ $fieldLevelCoverageStatus = [string](Get-JsonValue $indexManifest "fieldLevelCov
 $evidenceIndexFieldLevelCoveragePassedAsExpected = $fieldLevelCoverageSchemaVersion -eq "aitestpilot.release_evidence_field_level_coverage.v1" -and
     $fieldLevelCoverageStatus -eq "PASS" -and
     $fieldLevelRequiredManifestCount -ge 14 -and
-    $fieldLevelRequiredFieldCount -ge 73 -and
+    $fieldLevelRequiredFieldCount -ge 74 -and
     $semanticFieldCheckCount -eq $fieldLevelRequiredFieldCount -and
     $semanticFieldCheckPassedCount -eq $semanticFieldCheckCount -and
     $semanticFieldCheckFailedCount -eq 0 -and

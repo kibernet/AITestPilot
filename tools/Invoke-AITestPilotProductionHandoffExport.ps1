@@ -990,13 +990,14 @@ $semanticPreflightBeforeAutoAcceptanceCheckPassed = (
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleReady" $false) -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipReady" $false) -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipArbitraryWrapperReady" $false) -and
+            [bool](Get-ObjectProperty $semanticPreflightProbeManifest "unsafeOwnerResponseBundleZipRejected" $false) -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleRejected" $false) -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleZipRejected" $false) -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleRejected" $false) -and
             [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleZipRejected" $false) -and
-            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0) -eq 4 -and
+            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0) -eq 5 -and
             [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipSafeCaseCount" 0) -eq 4 -and
-            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 1) -eq 0)) -and
+            [int](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 0) -eq 1)) -and
     ((-not $ownerResponseBundleKitAvailable) -or ($ownerResponseBundleKitSemanticPreflightCommandsDocumented -and $ownerResponseBundleKitAutoAcceptanceCommandsDocumented)) -and
     ((-not $operatorActionQueueAvailable) -or $operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented)
 )
@@ -1126,6 +1127,7 @@ $manifest = [ordered]@{
     semanticPreflightProbeOwnerResponseBundleReady = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleReady" $false)
     semanticPreflightProbeOwnerResponseBundleZipReady = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipReady" $false)
     semanticPreflightProbeOwnerResponseBundleZipArbitraryWrapperReady = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "ownerResponseBundleZipArbitraryWrapperReady" $false)
+    semanticPreflightProbeUnsafeOwnerResponseBundleZipRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "unsafeOwnerResponseBundleZipRejected" $false)
     semanticPreflightProbePartialBundleRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleRejected" $false)
     semanticPreflightProbePartialBundleZipRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "partialBundleZipRejected" $false)
     semanticPreflightProbeSemanticBadBundleRejected = [bool](Get-ObjectProperty $semanticPreflightProbeManifest "semanticBadBundleRejected" $false)

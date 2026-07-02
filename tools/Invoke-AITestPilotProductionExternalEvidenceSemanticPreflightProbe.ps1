@@ -152,6 +152,40 @@ function Format-MarkdownCell {
     return $text.Replace("`r", " ").Replace("`n", " ").Replace("|", "\|")
 }
 
+function Test-ManifestArrayContainsValue {
+    param(
+        [object]$Manifest,
+        [string]$ArrayName,
+        [string]$ExpectedValue
+    )
+
+    return @((Get-JsonValue $Manifest $ArrayName @()) | Where-Object { [string]$_ -eq $ExpectedValue }).Count -gt 0
+}
+
+function Test-ZipUnsafeEntryReason {
+    param(
+        [object]$Manifest,
+        [string]$EntryName,
+        [string]$Reason
+    )
+
+    $entries = @(Get-JsonValue $Manifest "zipUnsafeEntries" @())
+    return @($entries | Where-Object {
+            (Get-JsonValue $_ "name" "") -eq $EntryName -and
+            @((Get-JsonValue $_ "reasons" @())) -contains $Reason
+        }).Count -gt 0
+}
+
+function Test-ActionItemReason {
+    param(
+        [object]$Manifest,
+        [string]$Reason
+    )
+
+    $items = @(Get-JsonValue $Manifest "actionItems" @())
+    return @($items | Where-Object { (Get-JsonValue $_ "reason" "") -eq $Reason }).Count -gt 0
+}
+
 function Copy-RequiredFiles {
     param(
         [string]$SourceDir,
@@ -210,6 +244,49 @@ function New-OwnerResponseBundleZip {
         [System.IO.Compression.CompressionLevel]::Optimal,
         $false
     )
+}
+
+function Add-ZipTextEntry {
+    param(
+        [System.IO.Compression.ZipArchive]$Archive,
+        [string]$Name,
+        [string]$Content
+    )
+
+    $entry = $Archive.CreateEntry($Name)
+    $stream = $entry.Open()
+    $writer = [System.IO.StreamWriter]::new($stream, [System.Text.Encoding]::UTF8)
+    try {
+        $writer.Write($Content)
+    }
+    finally {
+        $writer.Dispose()
+    }
+}
+
+function New-UnsafeOwnerResponseBundleZip {
+    param([string]$ZipPath)
+
+    if (Test-Path $ZipPath) {
+        Remove-Item -LiteralPath $ZipPath -Force
+    }
+
+    Add-Type -AssemblyName System.IO.Compression | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+    $archive = [System.IO.Compression.ZipFile]::Open(
+        $ZipPath,
+        [System.IO.Compression.ZipArchiveMode]::Create
+    )
+    try {
+        Add-ZipTextEntry $archive "../outside.txt" "path traversal entry"
+        Add-ZipTextEntry $archive "/absolute.txt" "absolute entry"
+        Add-ZipTextEntry $archive "C:/drive-qualified.txt" "drive qualified entry"
+        Add-ZipTextEntry $archive "duplicate.txt" "first duplicate entry"
+        Add-ZipTextEntry $archive "duplicate.txt" "second duplicate entry"
+    }
+    finally {
+        $archive.Dispose()
+    }
 }
 
 function Invoke-PreflightCase {
@@ -337,6 +414,7 @@ $ownerBundleZipPath = Join-Path $probePath "complete-owner-response-bundle.zip"
 $ownerBundleArbitraryWrapperZipPath = Join-Path $probePath "complete-owner-response-bundle-arbitrary-wrapper.zip"
 $partialBundleZipPath = Join-Path $probePath "partial-owner-response-bundle.zip"
 $semanticBadBundleZipPath = Join-Path $probePath "semantic-bad-owner-response-bundle.zip"
+$unsafeBundleZipPath = Join-Path $probePath "unsafe-owner-response-bundle.zip"
 
 Copy-CompleteBundle $completeExternalRoot
 Copy-CompleteBundle $ownerBundleRoot
@@ -361,6 +439,7 @@ New-OwnerResponseBundleZip $ownerBundleRoot $ownerBundleZipPath (Join-Path $exte
 New-OwnerResponseBundleZip $ownerBundleRoot $ownerBundleArbitraryWrapperZipPath (Join-Path $externalBundlePath "zip-staging-complete-arbitrary-wrapper") -WrapperName "returned-owner-upload"
 New-OwnerResponseBundleZip $partialBundleRoot $partialBundleZipPath (Join-Path $externalBundlePath "zip-staging-partial")
 New-OwnerResponseBundleZip $semanticBadBundleRoot $semanticBadBundleZipPath (Join-Path $externalBundlePath "zip-staging-semantic-bad")
+New-UnsafeOwnerResponseBundleZip $unsafeBundleZipPath
 
 $cases = @()
 $cases += Invoke-PreflightCase "default-pending"
@@ -368,6 +447,7 @@ $cases += Invoke-PreflightCase "complete-external-root-contract" -EvidenceRoot $
 $cases += Invoke-PreflightCase "complete-owner-response-bundle-contract" -OwnerResponseBundleDir $ownerBundleRoot -ContractFixtureMode
 $cases += Invoke-PreflightCase "complete-owner-response-bundle-zip-contract" -OwnerResponseBundleZipPath $ownerBundleZipPath -ContractFixtureMode
 $cases += Invoke-PreflightCase "complete-owner-response-bundle-zip-arbitrary-wrapper-contract" -OwnerResponseBundleZipPath $ownerBundleArbitraryWrapperZipPath -ContractFixtureMode
+$cases += Invoke-PreflightCase "unsafe-owner-response-bundle-zip" -OwnerResponseBundleZipPath $unsafeBundleZipPath
 $cases += Invoke-PreflightCase "partial-owner-response-bundle" -OwnerResponseBundleDir $partialBundleRoot
 $cases += Invoke-PreflightCase "partial-owner-response-bundle-zip" -OwnerResponseBundleZipPath $partialBundleZipPath
 $cases += Invoke-PreflightCase "semantic-bad-owner-response-bundle" -OwnerResponseBundleDir $semanticBadBundleRoot
@@ -378,6 +458,7 @@ $completeRootCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "co
 $ownerBundleCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete-owner-response-bundle-contract" } | Select-Object -First 1
 $ownerBundleZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete-owner-response-bundle-zip-contract" } | Select-Object -First 1
 $ownerBundleArbitraryWrapperZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete-owner-response-bundle-zip-arbitrary-wrapper-contract" } | Select-Object -First 1
+$unsafeZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "unsafe-owner-response-bundle-zip" } | Select-Object -First 1
 $partialCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "partial-owner-response-bundle" } | Select-Object -First 1
 $partialZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "partial-owner-response-bundle-zip" } | Select-Object -First 1
 $semanticBadCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "semantic-bad-owner-response-bundle" } | Select-Object -First 1
@@ -432,6 +513,32 @@ Add-Check "complete_owner_response_bundle_zip_arbitrary_wrapper_ready" (
     (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "missingRequiredFileCount" 1) -eq 0 -and
     (Get-JsonValue $ownerBundleArbitraryWrapperZipCase.manifest "semanticFailCount" 1) -eq 0
 ) "Complete owner response bundle zip with an arbitrary single top-level wrapper directory must resolve and become candidate-ready only inside contract fixture mode."
+
+Add-Check "unsafe_owner_response_bundle_zip_rejected" (
+    -not [bool]$unsafeZipCase.failed -and
+    (Get-JsonValue $unsafeZipCase.manifest "semanticPreflightStatus" "") -eq "NEEDS_OWNER_REPAIR" -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeZipCase.manifest "readyForAcceptanceCandidate" $true)) -and
+    (Convert-ToBool (Get-JsonValue $unsafeZipCase.manifest "ownerResponseBundleZipInspected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $unsafeZipCase.manifest "zipOpenSucceeded" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeZipCase.manifest "zipSafe" $true)) -and
+    (Get-JsonValue $unsafeZipCase.manifest "zipEntryCount" 0) -eq 5 -and
+    (Get-JsonValue $unsafeZipCase.manifest "zipUnsafeEntryCount" 0) -eq 4 -and
+    (Get-JsonValue $unsafeZipCase.manifest "zipDuplicateEntryCount" 0) -eq 1 -and
+    (Test-ManifestArrayContainsValue $unsafeZipCase.manifest "zipSafetyErrors" "unsafe_zip_entries") -and
+    (Test-ManifestArrayContainsValue $unsafeZipCase.manifest "zipSafetyErrors" "duplicate_zip_entries") -and
+    (Test-ManifestArrayContainsValue $unsafeZipCase.manifest "zipDuplicateEntries" "duplicate.txt") -and
+    (Test-ZipUnsafeEntryReason $unsafeZipCase.manifest "../outside.txt" "path_traversal_segment") -and
+    (Test-ZipUnsafeEntryReason $unsafeZipCase.manifest "/absolute.txt" "absolute_entry_path") -and
+    (Test-ZipUnsafeEntryReason $unsafeZipCase.manifest "C:/drive-qualified.txt" "drive_qualified_entry_path") -and
+    (Test-ZipUnsafeEntryReason $unsafeZipCase.manifest "C:/drive-qualified.txt" "colon_in_entry_segment") -and
+    (Test-ZipUnsafeEntryReason $unsafeZipCase.manifest "duplicate.txt" "duplicate_entry_path") -and
+    (Test-ActionItemReason $unsafeZipCase.manifest "owner_response_bundle_zip_unsafe") -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeZipCase.manifest "acceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeZipCase.manifest "hardValidationRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeZipCase.manifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeZipCase.manifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $unsafeZipCase.manifest "fixtureEvidencePromoted" $true))
+) "Owner response bundle zip with traversal, absolute, drive-qualified, and duplicate entries must be rejected before extraction, acceptance, mail, or fixture promotion."
 
 Add-Check "partial_owner_response_bundle_rejected" (
     -not [bool]$partialCase.failed -and
@@ -557,6 +664,7 @@ $manifest = [ordered]@{
     ownerResponseBundleReady = Get-CheckPassed "complete_owner_response_bundle_contract_ready"
     ownerResponseBundleZipReady = Get-CheckPassed "complete_owner_response_bundle_zip_contract_ready"
     ownerResponseBundleZipArbitraryWrapperReady = Get-CheckPassed "complete_owner_response_bundle_zip_arbitrary_wrapper_ready"
+    unsafeOwnerResponseBundleZipRejected = Get-CheckPassed "unsafe_owner_response_bundle_zip_rejected"
     partialBundleRejected = Get-CheckPassed "partial_owner_response_bundle_rejected"
     partialBundleZipRejected = Get-CheckPassed "partial_owner_response_bundle_zip_rejected"
     semanticBadBundleRejected = Get-CheckPassed "semantic_bad_owner_response_bundle_rejected"
