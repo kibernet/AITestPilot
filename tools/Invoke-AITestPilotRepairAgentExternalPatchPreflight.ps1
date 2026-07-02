@@ -49,12 +49,30 @@ function Assert-PathUnderRepo {
         [string]$Label
     )
 
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
     return $fullPath
+}
+
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 function Test-AllowedPrefix {
