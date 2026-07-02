@@ -37,6 +37,19 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -44,7 +57,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -55,7 +68,7 @@ function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "Generated file must stay under evidence bundle: $fullPath"
     }
 
