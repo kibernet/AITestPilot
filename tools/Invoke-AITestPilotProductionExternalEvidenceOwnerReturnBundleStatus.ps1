@@ -13,6 +13,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$ownerResponseBundleZipEnvironmentVariableName = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+$ownerResponseBundleDirEnvironmentVariableName = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR"
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -259,6 +261,34 @@ if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
     throw "Pass either -OwnerResponseBundleDir or -OwnerResponseBundleZipPath, not both."
 }
 
+$ownerReturnBundleExplicitInputProvided = -not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -or
+    -not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)
+$ownerReturnBundleDiscoveredFromEnvironment = $false
+$ownerReturnBundleSourceKind = "none"
+
+if ($ownerReturnBundleExplicitInputProvided) {
+    if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+        $ownerReturnBundleSourceKind = "parameter:OwnerResponseBundleZipPath"
+    }
+    else {
+        $ownerReturnBundleSourceKind = "parameter:OwnerResponseBundleDir"
+    }
+}
+else {
+    $ownerResponseBundleZipEnvironmentValue = [Environment]::GetEnvironmentVariable($ownerResponseBundleZipEnvironmentVariableName)
+    $ownerResponseBundleDirEnvironmentValue = [Environment]::GetEnvironmentVariable($ownerResponseBundleDirEnvironmentVariableName)
+    if (-not [string]::IsNullOrWhiteSpace($ownerResponseBundleZipEnvironmentValue)) {
+        $OwnerResponseBundleZipPath = $ownerResponseBundleZipEnvironmentValue
+        $ownerReturnBundleDiscoveredFromEnvironment = $true
+        $ownerReturnBundleSourceKind = "environment_variable:$ownerResponseBundleZipEnvironmentVariableName"
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($ownerResponseBundleDirEnvironmentValue)) {
+        $OwnerResponseBundleDir = $ownerResponseBundleDirEnvironmentValue
+        $ownerReturnBundleDiscoveredFromEnvironment = $true
+        $ownerReturnBundleSourceKind = "environment_variable:$ownerResponseBundleDirEnvironmentVariableName"
+    }
+}
+
 $handoffStatusManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-status-manifest.json") "Production handoff status manifest"
 $inboxManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-inbox-manifest.json") "Production external evidence inbox manifest"
 $ownerInputRequestPackManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-input-request-pack-manifest.json") "Production handoff owner input request pack manifest"
@@ -421,6 +451,17 @@ Add-StatusCheck "semantic_preflight_result" `
             -not (Convert-ToBool (Get-JsonValue $semanticPreflightManifest "hardValidationRun" $true)) -and
             -not (Convert-ToBool (Get-JsonValue $semanticPreflightManifest "emailSent" $true)))) `
     "Optional semantic preflight must stay read-only and produce a parseable manifest."
+Add-StatusCheck "owner_return_input_source" `
+    (($ownerReturnBundleSourceKind -in @(
+            "none",
+            "parameter:OwnerResponseBundleDir",
+            "parameter:OwnerResponseBundleZipPath",
+            "environment_variable:$ownerResponseBundleDirEnvironmentVariableName",
+            "environment_variable:$ownerResponseBundleZipEnvironmentVariableName"
+        )) -and
+        (($ownerReturnBundleExplicitInputProvided -ne $ownerReturnBundleDiscoveredFromEnvironment) -or
+            (-not $ownerReturnBundleExplicitInputProvided -and -not $ownerReturnBundleDiscoveredFromEnvironment))) `
+    "Owner return bundle input source must be explicit, environment-discovered, or absent."
 Add-StatusCheck "read_only_boundary" `
     (-not $acceptanceRun -and
         -not $realHostProjectEvidenceAccepted -and
@@ -437,6 +478,7 @@ $semanticPreflightZipCommand = Format-MarkdownCell (Get-JsonValue $actionQueueMa
 $autoAcceptanceCommand = Format-MarkdownCell (Get-JsonValue $actionQueueManifest "ownerResponseBundleAutoAcceptanceCommand" "")
 $autoAcceptanceZipCommand = Format-MarkdownCell (Get-JsonValue $actionQueueManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
 $ownerResponseBundleZipEnvironmentVariable = Format-MarkdownCell (Get-JsonValue $actionQueueManifest "ownerResponseBundleZipEnvironmentVariable" "")
+$ownerResponseBundleDirEnvironmentVariable = Format-MarkdownCell $ownerResponseBundleDirEnvironmentVariableName
 
 $reportLines = @(
     "# Production External Evidence Owner Return Bundle Status",
@@ -451,6 +493,9 @@ $reportLines = @(
     "| Owner return readiness | $(Format-MarkdownCell $ownerReturnReadinessStatus) |",
     "| Next required action | $(Format-MarkdownCell $nextRequiredAction) |",
     "| Input kind | $(Format-MarkdownCell $ownerReturnBundleInputKind) |",
+    "| Input source | $(Format-MarkdownCell $ownerReturnBundleSourceKind) |",
+    "| Explicit input provided | $ownerReturnBundleExplicitInputProvided |",
+    "| Environment input discovered | $ownerReturnBundleDiscoveredFromEnvironment |",
     "| Semantic preflight run | $semanticPreflightRun |",
     "| Semantic preflight status | $(Format-MarkdownCell $semanticPreflightStatus) |",
     "| Ready for auto acceptance candidate | $readyForAcceptanceCandidate |",
@@ -487,6 +532,7 @@ $reportLines += @(
     "- Auto acceptance: $autoAcceptanceCommand",
     "- Auto acceptance zip: $autoAcceptanceZipCommand",
     "- Zip env var: $ownerResponseBundleZipEnvironmentVariable",
+    "- Dir env var: $ownerResponseBundleDirEnvironmentVariable",
     "",
     "## Boundary",
     "",
@@ -542,6 +588,9 @@ $manifest = [ordered]@{
     ownerReturnReadinessStatus = $ownerReturnReadinessStatus
     nextRequiredAction = $nextRequiredAction
     ownerReturnBundleInputKind = $ownerReturnBundleInputKind
+    ownerReturnBundleSourceKind = $ownerReturnBundleSourceKind
+    ownerReturnBundleExplicitInputProvided = [bool]$ownerReturnBundleExplicitInputProvided
+    ownerReturnBundleDiscoveredFromEnvironment = [bool]$ownerReturnBundleDiscoveredFromEnvironment
     ownerReturnBundlePath = $ownerReturnBundlePath
     ownerReturnBundleUnderRepo = [bool]$ownerReturnBundleUnderRepo
     ownerReturnBundleRootResolved = [bool]$ownerReturnBundleRootResolved
@@ -592,6 +641,7 @@ $manifest = [ordered]@{
     ownerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleAutoAcceptanceCommand" "")
     ownerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
     ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleZipEnvironmentVariable" "")
+    ownerResponseBundleDirEnvironmentVariable = $ownerResponseBundleDirEnvironmentVariableName
     ownerReturnStatuses = @($ownerReturnStatuses)
     productionOutputBoundary = "owner_return_bundle_status_only"
     sourceFiles = @($sourceFiles)

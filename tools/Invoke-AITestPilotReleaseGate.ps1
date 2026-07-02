@@ -3566,6 +3566,11 @@ if ($null -ne $productionExternalEvidenceOwnerReturnBundleStatusManifest) {
             $productionExternalEvidenceOwnerReturnBundleStatusManifest.schemaVersion -eq "aitestpilot.production_external_evidence_owner_return_bundle_status.v1" -and
             [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.readOnly -and
             $productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnReadinessStatus -eq "PENDING_EXTERNAL_EVIDENCE" -and
+            $productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnBundleSourceKind -eq "none" -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnBundleExplicitInputProvided -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnBundleDiscoveredFromEnvironment -and
+            $productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+            $productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerResponseBundleDirEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
             $productionExternalEvidenceOwnerReturnBundleStatusManifest.semanticPreflightStatus -eq "PENDING_EXTERNAL_EVIDENCE" -and
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.semanticPreflightRun -and
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.readyForAcceptanceCandidate -and
@@ -3586,7 +3591,7 @@ if ($null -ne $productionExternalEvidenceOwnerReturnBundleStatusManifest) {
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.externalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceOwnerReturnBundleStatusManifest.productionOutputBoundary -eq "owner_return_bundle_status_only" -and
-            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.checkCount -eq 7 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.checkCount -eq 8 -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.failedCheckCount -eq 0) `
         "Production external evidence owner return bundle status must summarize current returned-bundle readiness without running acceptance, sending mail, or claiming real evidence."
 
@@ -3605,19 +3610,29 @@ if ($null -ne $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest) {
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.externalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.fixtureEvidencePromoted -and
-            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.caseCount -eq 3 -and
+            $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+            $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.ownerResponseBundleDirEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.caseCount -eq 5 -and
             [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultPendingOwnerReturnStatus -and
             [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.ownerResponseBundleZipCandidateReady -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.envOwnerResponseBundleZipCandidateReady -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.explicitOwnerResponseBundleZipOverridesEnvironment -and
             [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.extraPayloadOwnerResponseBundleNeedsRepair -and
+            $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultOwnerReturnBundleSourceKind -eq "none" -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultOwnerReturnBundleDiscoveredFromEnvironment -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultPendingOwnerPacketCount -eq 3 -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultRemainingMissingFileCount -eq 9 -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultRemainingBlockingReasonCount -eq 11 -and
             [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.completeZipReadyForAcceptanceCandidate -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.completeZipMissingRequiredFileCount -eq 0 -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.completeZipSemanticFailCount -eq 0 -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.envCompleteZipReadyForAcceptanceCandidate -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.envCompleteZipMissingRequiredFileCount -eq 0 -and
+            $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.envCompleteZipSourceKind -eq "environment_variable:AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+            $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.explicitZipOverEnvSourceKind -eq "parameter:OwnerResponseBundleZipPath" -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.extraPayloadPayloadShapeViolationCount -gt 0 -and
             $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.productionOutputBoundary -eq "owner_return_bundle_status_probe_only" -and
-            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.checkCount -eq 8 -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.failedCheckCount -eq 0) `
         "Production external evidence owner return bundle status probe must prove pending, candidate-ready zip, and strict-payload repair states while preserving read-only boundaries."
 
@@ -4194,6 +4209,10 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusAccepted -and
             $releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleReadinessStatus -eq "PENDING_EXTERNAL_EVIDENCE" -and
             $releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleNextRequiredAction -eq "collect_owner_response_bundle_zip" -and
+            $releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleSourceKind -eq "none" -and
+            -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleDiscoveredFromEnvironment -and
+            $releaseRiskPolicyManifest.productionExternalEvidenceOwnerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+            $releaseRiskPolicyManifest.productionExternalEvidenceOwnerResponseBundleDirEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
             -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleSemanticPreflightRun -and
             -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleReadyForAcceptanceCandidate -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundlePendingOwnerPacketCount -eq 3 -and
@@ -4202,9 +4221,11 @@ if ($null -ne $releaseRiskPolicyManifest) {
             -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusAcceptanceRun -and
             -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusRealHostProjectEvidenceAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeAccepted -and
-            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeCaseCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeCaseCount -eq 5 -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeDefaultPending -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeZipCandidateReady -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeEnvZipCandidateReady -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeExplicitZipOverridesEnvironment -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeExtraPayloadNeedsRepair -and
             -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeAcceptanceRun -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAutoAcceptanceExtraPayloadOwnerResponseBundleRejected -and

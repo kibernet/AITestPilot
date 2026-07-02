@@ -11,6 +11,8 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+$ownerResponseBundleZipEnvironmentVariableName = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+$ownerResponseBundleDirEnvironmentVariableName = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR"
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -162,6 +164,8 @@ function Invoke-OwnerReturnStatusCase {
         [string]$Name,
         [string]$OwnerResponseBundleDir = "",
         [string]$OwnerResponseBundleZipPath = "",
+        [AllowNull()][string]$OwnerResponseBundleDirEnvironmentValue = $null,
+        [AllowNull()][string]$OwnerResponseBundleZipEnvironmentValue = $null,
         [switch]$ContractFixtureMode
     )
 
@@ -183,15 +187,30 @@ function Invoke-OwnerReturnStatusCase {
         $statusParams["ContractFixtureMode"] = $true
     }
 
+    $previousOwnerResponseBundleDirEnvironmentValue = [Environment]::GetEnvironmentVariable($ownerResponseBundleDirEnvironmentVariableName)
+    $previousOwnerResponseBundleZipEnvironmentValue = [Environment]::GetEnvironmentVariable($ownerResponseBundleZipEnvironmentVariableName)
     $failed = $false
     $errorMessage = ""
     try {
+        [Environment]::SetEnvironmentVariable($ownerResponseBundleDirEnvironmentVariableName, $null, "Process")
+        [Environment]::SetEnvironmentVariable($ownerResponseBundleZipEnvironmentVariableName, $null, "Process")
+        if ($null -ne $OwnerResponseBundleDirEnvironmentValue) {
+            [Environment]::SetEnvironmentVariable($ownerResponseBundleDirEnvironmentVariableName, $OwnerResponseBundleDirEnvironmentValue, "Process")
+        }
+        if ($null -ne $OwnerResponseBundleZipEnvironmentValue) {
+            [Environment]::SetEnvironmentVariable($ownerResponseBundleZipEnvironmentVariableName, $OwnerResponseBundleZipEnvironmentValue, "Process")
+        }
+
         $output = & (Join-Path $PSScriptRoot "Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") @statusParams 2>&1
     }
     catch {
         $failed = $true
         $output = @($_)
         $errorMessage = $_.Exception.Message
+    }
+    finally {
+        [Environment]::SetEnvironmentVariable($ownerResponseBundleDirEnvironmentVariableName, $previousOwnerResponseBundleDirEnvironmentValue, "Process")
+        [Environment]::SetEnvironmentVariable($ownerResponseBundleZipEnvironmentVariableName, $previousOwnerResponseBundleZipEnvironmentValue, "Process")
     }
     @($output | ForEach-Object { [string]$_ }) | Set-Content -Path $caseOutputPath -Encoding UTF8
 
@@ -243,14 +262,20 @@ $semanticPreflightProbeManifest = Read-JsonFile $semanticPreflightProbeManifestP
 $cases = @()
 $cases += Invoke-OwnerReturnStatusCase "default-owner-return-status"
 $cases += Invoke-OwnerReturnStatusCase "complete-owner-response-bundle-zip-status" -OwnerResponseBundleZipPath $completeOwnerResponseBundleZipPath -ContractFixtureMode
+$cases += Invoke-OwnerReturnStatusCase "env-complete-owner-response-bundle-zip-status" -OwnerResponseBundleZipEnvironmentValue $completeOwnerResponseBundleZipPath -ContractFixtureMode
+$cases += Invoke-OwnerReturnStatusCase "explicit-zip-over-env-owner-response-bundle-status" -OwnerResponseBundleZipPath $completeOwnerResponseBundleZipPath -OwnerResponseBundleDirEnvironmentValue $extraPayloadOwnerResponseBundleDir -ContractFixtureMode
 $cases += Invoke-OwnerReturnStatusCase "extra-payload-owner-response-bundle-status" -OwnerResponseBundleDir $extraPayloadOwnerResponseBundleDir -ContractFixtureMode
 
 $defaultCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "default-owner-return-status" } | Select-Object -First 1
 $completeZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete-owner-response-bundle-zip-status" } | Select-Object -First 1
+$envCompleteZipCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "env-complete-owner-response-bundle-zip-status" } | Select-Object -First 1
+$explicitZipOverEnvCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "explicit-zip-over-env-owner-response-bundle-status" } | Select-Object -First 1
 $extraPayloadCase = $cases | Where-Object { (Get-JsonValue $_ "name" "") -eq "extra-payload-owner-response-bundle-status" } | Select-Object -First 1
 
 $defaultManifest = Get-JsonValue $defaultCase "manifest" $null
 $completeZipManifest = Get-JsonValue $completeZipCase "manifest" $null
+$envCompleteZipManifest = Get-JsonValue $envCompleteZipCase "manifest" $null
+$explicitZipOverEnvManifest = Get-JsonValue $explicitZipOverEnvCase "manifest" $null
 $extraPayloadManifest = Get-JsonValue $extraPayloadCase "manifest" $null
 
 $checks = @()
@@ -264,6 +289,9 @@ Add-ProbeCheck "default_owner_return_stays_pending" `
         (Get-JsonValue $defaultManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_owner_return_bundle_status.v1" -and
         (Get-JsonValue $defaultManifest "status" "") -eq "PASS" -and
         (Get-JsonValue $defaultManifest "ownerReturnReadinessStatus" "") -eq "PENDING_EXTERNAL_EVIDENCE" -and
+        (Get-JsonValue $defaultManifest "ownerReturnBundleSourceKind" "") -eq "none" -and
+        -not (Convert-ToBool (Get-JsonValue $defaultManifest "ownerReturnBundleExplicitInputProvided" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $defaultManifest "ownerReturnBundleDiscoveredFromEnvironment" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $defaultManifest "semanticPreflightRun" $true)) -and
         (Convert-ToInt (Get-JsonValue $defaultManifest "pendingOwnerPacketCount" 0)) -eq 3 -and
         (Convert-ToInt (Get-JsonValue $defaultManifest "remainingMissingFileCount" 0)) -eq 9 -and
@@ -285,6 +313,31 @@ Add-ProbeCheck "complete_owner_response_bundle_zip_candidate_ready" `
         -not (Convert-ToBool (Get-JsonValue $completeZipManifest "acceptanceRun" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $completeZipManifest "realHostProjectEvidenceAccepted" $true))) `
     "A complete owner response bundle zip must become auto-acceptance candidate-ready without running acceptance."
+Add-ProbeCheck "env_complete_owner_response_bundle_zip_candidate_ready" `
+    (-not [bool](Get-JsonValue $envCompleteZipCase "failed" $true) -and
+        (Get-JsonValue $envCompleteZipManifest "status" "") -eq "PASS" -and
+        (Get-JsonValue $envCompleteZipManifest "ownerReturnReadinessStatus" "") -eq "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE" -and
+        (Get-JsonValue $envCompleteZipManifest "ownerReturnBundleSourceKind" "") -eq "environment_variable:$ownerResponseBundleZipEnvironmentVariableName" -and
+        -not (Convert-ToBool (Get-JsonValue $envCompleteZipManifest "ownerReturnBundleExplicitInputProvided" $true)) -and
+        (Convert-ToBool (Get-JsonValue $envCompleteZipManifest "ownerReturnBundleDiscoveredFromEnvironment" $false)) -and
+        (Convert-ToBool (Get-JsonValue $envCompleteZipManifest "readyForAcceptanceCandidate" $false)) -and
+        (Convert-ToBool (Get-JsonValue $envCompleteZipManifest "ownerReturnBundleZipInspected" $false)) -and
+        (Convert-ToInt (Get-JsonValue $envCompleteZipManifest "missingRequiredFileCount" -1)) -eq 0 -and
+        -not (Convert-ToBool (Get-JsonValue $envCompleteZipManifest "acceptanceRun" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $envCompleteZipManifest "realHostProjectEvidenceAccepted" $true))) `
+    "A complete owner response bundle zip from the environment variable must become candidate-ready without running acceptance."
+Add-ProbeCheck "explicit_owner_response_bundle_zip_overrides_environment" `
+    (-not [bool](Get-JsonValue $explicitZipOverEnvCase "failed" $true) -and
+        (Get-JsonValue $explicitZipOverEnvManifest "status" "") -eq "PASS" -and
+        (Get-JsonValue $explicitZipOverEnvManifest "ownerReturnReadinessStatus" "") -eq "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE" -and
+        (Get-JsonValue $explicitZipOverEnvManifest "ownerReturnBundleSourceKind" "") -eq "parameter:OwnerResponseBundleZipPath" -and
+        (Convert-ToBool (Get-JsonValue $explicitZipOverEnvManifest "ownerReturnBundleExplicitInputProvided" $false)) -and
+        -not (Convert-ToBool (Get-JsonValue $explicitZipOverEnvManifest "ownerReturnBundleDiscoveredFromEnvironment" $true)) -and
+        (Convert-ToBool (Get-JsonValue $explicitZipOverEnvManifest "readyForAcceptanceCandidate" $false)) -and
+        (Convert-ToInt (Get-JsonValue $explicitZipOverEnvManifest "missingRequiredFileCount" -1)) -eq 0 -and
+        -not (Convert-ToBool (Get-JsonValue $explicitZipOverEnvManifest "acceptanceRun" $true)) -and
+        -not (Convert-ToBool (Get-JsonValue $explicitZipOverEnvManifest "realHostProjectEvidenceAccepted" $true))) `
+    "An explicit owner response bundle zip parameter must override environment discovery and remain read-only."
 Add-ProbeCheck "extra_payload_owner_response_bundle_needs_repair" `
     (-not [bool](Get-JsonValue $extraPayloadCase "failed" $true) -and
         (Get-JsonValue $extraPayloadManifest "status" "") -eq "PASS" -and
@@ -331,6 +384,9 @@ $caseSummaries = @($cases | ForEach-Object {
             failed = Convert-ToBool (Get-JsonValue $_ "failed" $false)
             ownerReturnReadinessStatus = Get-JsonValue $caseManifest "ownerReturnReadinessStatus" ""
             semanticPreflightStatus = Get-JsonValue $caseManifest "semanticPreflightStatus" ""
+            ownerReturnBundleSourceKind = Get-JsonValue $caseManifest "ownerReturnBundleSourceKind" ""
+            ownerReturnBundleDiscoveredFromEnvironment = Convert-ToBool (Get-JsonValue $caseManifest "ownerReturnBundleDiscoveredFromEnvironment" $false)
+            ownerReturnBundleExplicitInputProvided = Convert-ToBool (Get-JsonValue $caseManifest "ownerReturnBundleExplicitInputProvided" $false)
             readyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $caseManifest "readyForAcceptanceCandidate" $false)
             missingRequiredFileCount = Convert-ToInt (Get-JsonValue $caseManifest "missingRequiredFileCount" 0)
             semanticFailCount = Convert-ToInt (Get-JsonValue $caseManifest "semanticFailCount" 0)
@@ -373,18 +429,28 @@ $manifest = [ordered]@{
     fixtureEvidencePromoted = $false
     productionOutputBoundary = "owner_return_bundle_status_probe_only"
     semanticPreflightProbeSourceStatus = [string](Get-JsonValue $semanticPreflightProbeManifest "status" "")
+    ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariableName
+    ownerResponseBundleDirEnvironmentVariable = $ownerResponseBundleDirEnvironmentVariableName
     completeOwnerResponseBundleZipPath = $completeOwnerResponseBundleZipPath
     extraPayloadOwnerResponseBundleDir = $extraPayloadOwnerResponseBundleDir
     caseCount = [int]$cases.Count
     defaultPendingOwnerReturnStatus = Convert-ToBool (Get-JsonValue ($checks | Where-Object { (Get-JsonValue $_ "name" "") -eq "default_owner_return_stays_pending" } | Select-Object -First 1) "passed" $false)
     ownerResponseBundleZipCandidateReady = Convert-ToBool (Get-JsonValue ($checks | Where-Object { (Get-JsonValue $_ "name" "") -eq "complete_owner_response_bundle_zip_candidate_ready" } | Select-Object -First 1) "passed" $false)
+    envOwnerResponseBundleZipCandidateReady = Convert-ToBool (Get-JsonValue ($checks | Where-Object { (Get-JsonValue $_ "name" "") -eq "env_complete_owner_response_bundle_zip_candidate_ready" } | Select-Object -First 1) "passed" $false)
+    explicitOwnerResponseBundleZipOverridesEnvironment = Convert-ToBool (Get-JsonValue ($checks | Where-Object { (Get-JsonValue $_ "name" "") -eq "explicit_owner_response_bundle_zip_overrides_environment" } | Select-Object -First 1) "passed" $false)
     extraPayloadOwnerResponseBundleNeedsRepair = Convert-ToBool (Get-JsonValue ($checks | Where-Object { (Get-JsonValue $_ "name" "") -eq "extra_payload_owner_response_bundle_needs_repair" } | Select-Object -First 1) "passed" $false)
     defaultPendingOwnerPacketCount = Convert-ToInt (Get-JsonValue $defaultManifest "pendingOwnerPacketCount" 0)
     defaultRemainingMissingFileCount = Convert-ToInt (Get-JsonValue $defaultManifest "remainingMissingFileCount" 0)
     defaultRemainingBlockingReasonCount = Convert-ToInt (Get-JsonValue $defaultManifest "remainingBlockingReasonCount" 0)
+    defaultOwnerReturnBundleSourceKind = [string](Get-JsonValue $defaultManifest "ownerReturnBundleSourceKind" "")
+    defaultOwnerReturnBundleDiscoveredFromEnvironment = Convert-ToBool (Get-JsonValue $defaultManifest "ownerReturnBundleDiscoveredFromEnvironment" $false)
     completeZipReadyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $completeZipManifest "readyForAcceptanceCandidate" $false)
     completeZipMissingRequiredFileCount = Convert-ToInt (Get-JsonValue $completeZipManifest "missingRequiredFileCount" 0)
     completeZipSemanticFailCount = Convert-ToInt (Get-JsonValue $completeZipManifest "semanticFailCount" 0)
+    envCompleteZipReadyForAcceptanceCandidate = Convert-ToBool (Get-JsonValue $envCompleteZipManifest "readyForAcceptanceCandidate" $false)
+    envCompleteZipMissingRequiredFileCount = Convert-ToInt (Get-JsonValue $envCompleteZipManifest "missingRequiredFileCount" 0)
+    envCompleteZipSourceKind = [string](Get-JsonValue $envCompleteZipManifest "ownerReturnBundleSourceKind" "")
+    explicitZipOverEnvSourceKind = [string](Get-JsonValue $explicitZipOverEnvManifest "ownerReturnBundleSourceKind" "")
     extraPayloadPayloadShapeViolationCount = Convert-ToInt (Get-JsonValue $extraPayloadManifest "ownerResponseBundlePayloadShapeViolationCount" 0)
     cases = @($caseSummaries)
     checkCount = [int]$checks.Count
@@ -398,6 +464,8 @@ $manifest = [ordered]@{
 $generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
 $defaultPendingStatus = Get-JsonValue $manifest "defaultPendingOwnerReturnStatus" $false
 $ownerBundleZipCandidateReady = Get-JsonValue $manifest "ownerResponseBundleZipCandidateReady" $false
+$envOwnerBundleZipCandidateReady = Get-JsonValue $manifest "envOwnerResponseBundleZipCandidateReady" $false
+$explicitOwnerBundleZipOverridesEnvironment = Get-JsonValue $manifest "explicitOwnerResponseBundleZipOverridesEnvironment" $false
 $extraPayloadNeedsRepair = Get-JsonValue $manifest "extraPayloadOwnerResponseBundleNeedsRepair" $false
 $probeAcceptanceRun = Get-JsonValue $manifest "acceptanceRun" $false
 $probeRealHostProjectEvidenceAccepted = Get-JsonValue $manifest "realHostProjectEvidenceAccepted" $false
@@ -416,17 +484,22 @@ $reportLines = @(
     "| Cases | $($cases.Count) |",
     "| Default pending | $defaultPendingStatus |",
     "| Complete zip candidate ready | $ownerBundleZipCandidateReady |",
+    "| Environment zip candidate ready | $envOwnerBundleZipCandidateReady |",
+    "| Explicit zip overrides environment | $explicitOwnerBundleZipOverridesEnvironment |",
     "| Extra payload needs repair | $extraPayloadNeedsRepair |",
     "| Acceptance run | $probeAcceptanceRun |",
     "| Real host-project evidence accepted | $probeRealHostProjectEvidenceAccepted |",
     "",
     "## Cases",
     "",
-    "| Case | Readiness | Semantic | Candidate | Missing | Semantic FAIL | Payload shape | Acceptance run |",
-    "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |"
+    "| Case | Source | Env | Explicit | Readiness | Semantic | Candidate | Missing | Semantic FAIL | Payload shape | Acceptance run |",
+    "| --- | --- | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |"
 )
 foreach ($caseSummary in $caseSummaries) {
     $nameCell = Format-MarkdownCell (Get-JsonValue $caseSummary "name" "")
+    $sourceCell = Format-MarkdownCell (Get-JsonValue $caseSummary "ownerReturnBundleSourceKind" "")
+    $envCell = Format-MarkdownCell (Get-JsonValue $caseSummary "ownerReturnBundleDiscoveredFromEnvironment" $false)
+    $explicitCell = Format-MarkdownCell (Get-JsonValue $caseSummary "ownerReturnBundleExplicitInputProvided" $false)
     $readinessCell = Format-MarkdownCell (Get-JsonValue $caseSummary "ownerReturnReadinessStatus" "")
     $semanticCell = Format-MarkdownCell (Get-JsonValue $caseSummary "semanticPreflightStatus" "")
     $candidateCell = Format-MarkdownCell (Get-JsonValue $caseSummary "readyForAcceptanceCandidate" $false)
@@ -434,7 +507,7 @@ foreach ($caseSummary in $caseSummaries) {
     $semanticFailCell = Format-MarkdownCell (Get-JsonValue $caseSummary "semanticFailCount" 0)
     $payloadShapeCell = Format-MarkdownCell (Get-JsonValue $caseSummary "payloadShapeViolationCount" 0)
     $acceptanceRunCell = Format-MarkdownCell (Get-JsonValue $caseSummary "acceptanceRun" $false)
-    $reportLines += "| $nameCell | $readinessCell | $semanticCell | $candidateCell | $missingCell | $semanticFailCell | $payloadShapeCell | $acceptanceRunCell |"
+    $reportLines += "| $nameCell | $sourceCell | $envCell | $explicitCell | $readinessCell | $semanticCell | $candidateCell | $missingCell | $semanticFailCell | $payloadShapeCell | $acceptanceRunCell |"
 }
 $reportLines += @(
     "",

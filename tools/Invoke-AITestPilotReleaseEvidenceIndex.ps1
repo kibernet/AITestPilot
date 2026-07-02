@@ -401,6 +401,9 @@ function New-ReleaseEvidenceFieldCoverage {
 
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "readOnly" "bool-eq" $true "owner return status remains read-only"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "ownerReturnReadinessStatus" "string-eq" "PENDING_EXTERNAL_EVIDENCE" "owner return status preserves current pending external evidence state"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "ownerReturnBundleSourceKind" "string-eq" "none" "owner return status default has no supplied bundle source"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "ownerReturnBundleDiscoveredFromEnvironment" "bool-eq" $false "owner return status default ignores absent environment discovery"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "ownerResponseBundleDirEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" "owner return status documents owner response bundle dir environment variable"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "semanticPreflightRun" "bool-eq" $false "owner return status default does not run semantic preflight"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "readyForAcceptanceCandidate" "bool-eq" $false "owner return status default is not acceptance candidate-ready"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "pendingOwnerPacketCount" "int-eq" 3 "owner return status preserves three pending owner packets"
@@ -410,9 +413,12 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "realHostProjectEvidenceAccepted" "bool-eq" $false "owner return status does not accept host evidence"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "productionOutputBoundary" "string-eq" "owner_return_bundle_status_only" "owner return status keeps read-only boundary"
 
-    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "caseCount" "int-eq" 3 "owner return status probe covers pending, complete zip, and repair cases"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "caseCount" "int-eq" 5 "owner return status probe covers pending, explicit zip, env zip, explicit-over-env, and repair cases"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "defaultPendingOwnerReturnStatus" "bool-eq" $true "owner return status probe verifies default pending state"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "ownerResponseBundleZipCandidateReady" "bool-eq" $true "owner return status probe verifies complete zip candidate readiness"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "envOwnerResponseBundleZipCandidateReady" "bool-eq" $true "owner return status probe verifies environment zip candidate readiness"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "explicitOwnerResponseBundleZipOverridesEnvironment" "bool-eq" $true "owner return status probe verifies explicit zip overrides environment discovery"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "explicitZipOverEnvSourceKind" "string-eq" "parameter:OwnerResponseBundleZipPath" "owner return status probe preserves explicit source kind over environment"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "extraPayloadOwnerResponseBundleNeedsRepair" "bool-eq" $true "owner return status probe verifies strict-payload repair routing"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "acceptanceRun" "bool-eq" $false "owner return status probe does not run acceptance"
     $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "realHostProjectEvidenceAccepted" "bool-eq" $false "owner return status probe does not accept host evidence"
