@@ -391,7 +391,15 @@ $productionDriverBindingKitExportHelperAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionDriverBindingKitManifest "productionEvidenceAccepted" $true)) -and
     (Get-JsonValue $productionDriverBindingKitManifest "authoringChecklistStatus" "") -eq "TEMPLATE_READY" -and
     -not (Convert-ToBool (Get-JsonValue $productionDriverBindingKitManifest "authoringChecklistRealProjectBound" $true)) -and
-    (Convert-ToInt (Get-JsonValue $productionDriverBindingKitManifest "authoringChecklistUnresolvedRequiredHookCount" 0)) -eq 5
+    (Convert-ToInt (Get-JsonValue $productionDriverBindingKitManifest "authoringChecklistUnresolvedRequiredHookCount" 0)) -eq 5 -and
+    (Convert-ToBool (Get-JsonValue $productionDriverBindingKitManifest "pathBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionDriverBindingKitManifest "generatorOutputDirBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionDriverBindingKitManifest "generatorManifestPathBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionDriverBindingKitManifest "exportHelperOutputDirBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionDriverBindingKitManifest "exportHelperZipPathBoundaryRejected" $false)) -and
+    (Get-JsonValue $productionDriverBindingKitManifest "productionOutputBoundary" "") -eq "production_driver_binding_kit_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionDriverBindingKitManifest "checkCount" 0)) -eq 1 -and
+    (Convert-ToInt (Get-JsonValue $productionDriverBindingKitManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_driver_binding_kit_export_helper_policy" $productionDriverBindingKitExportHelperAccepted `
@@ -493,6 +501,11 @@ $productionLuaEvidenceKitAccepted = (
     (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "acceptedReadinessReady" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "acceptedReadinessEvidenceAccepted" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "acceptedReadinessBlockingReasonCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "pathBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "generatorOutputDirBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "generatorManifestPathBoundaryRejected" $false)) -and
+    (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "productionOutputBoundary" "") -eq "production_lua_patch_evidence_kit_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "checkCount" 0)) -eq 6 -and
     (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -514,6 +527,8 @@ $productionLuaEvidenceKitExportHelperAccepted = (
     (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportRejectionReadinessRejectedCurrentTemplate" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportRejectionBlockingReasonCount" 0)) -ge 4 -and
     (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportRejectionProductionEvidenceBlockingReasonCount" 0)) -ge 5 -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportHelperOutputDirBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportHelperZipPathBoundaryRejected" $false)) -and
     ([string](Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "evidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
     (Convert-ToInt (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "failedCheckCount" 1)) -eq 0
 )
@@ -653,8 +668,14 @@ $liveModelConfigKitAccepted = (
     (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRejectedContractFixtureEvidence" $false)) -and
     (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRequiresDirectLiveHttpProvenance" $false)) -and
     ([string](Get-JsonValue $liveModelConfigKitProbeManifest "evidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "pathBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "generatorOutputDirBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "generatorManifestPathBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperOutputDirBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperZipPathBoundaryRejected" $false)) -and
+    (Get-JsonValue $liveModelConfigKitProbeManifest "productionOutputBoundary" "") -eq "live_model_endpoint_config_kit_probe_only" -and
     (Convert-ToInt (Get-JsonValue $liveModelConfigKitProbeManifest "generatedFileCount" 0)) -ge 7 -and
-    (Convert-ToInt (Get-JsonValue $liveModelConfigKitProbeManifest "checkCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $liveModelConfigKitProbeManifest "checkCount" 0)) -eq 5 -and
     (Convert-ToInt (Get-JsonValue $liveModelConfigKitProbeManifest "failedCheckCount" 1)) -eq 0
 )
 $liveModelConfigKitExportHelperAccepted = (
@@ -665,6 +686,8 @@ $liveModelConfigKitExportHelperAccepted = (
     (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRejectedMissingEvidence" $false)) -and
     (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRejectedContractFixtureEvidence" $false)) -and
     (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperRequiresDirectLiveHttpProvenance" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperOutputDirBoundaryRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $liveModelConfigKitProbeManifest "exportHelperZipPathBoundaryRejected" $false)) -and
     ([string](Get-JsonValue $liveModelConfigKitProbeManifest "evidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1")
 )
 
@@ -2706,6 +2729,10 @@ $manifest = [ordered]@{
     unresolvedHighRiskGraphNodeCount = [int]$unresolvedHighRiskGraphNodeCount
     driverEvidenceAccepted = [bool]$driverEvidenceAccepted
     productionDriverBindingKitExportHelperAccepted = [bool]$productionDriverBindingKitExportHelperAccepted
+    productionDriverBindingKitPathBoundaryRejected = (Get-JsonValue $productionDriverBindingKitManifest "pathBoundaryRejected" $false)
+    productionDriverBindingKitProductionOutputBoundary = (Get-JsonValue $productionDriverBindingKitManifest "productionOutputBoundary" "")
+    productionDriverBindingKitCheckCount = (Get-JsonValue $productionDriverBindingKitManifest "checkCount" 0)
+    productionDriverBindingKitFailedCheckCount = (Get-JsonValue $productionDriverBindingKitManifest "failedCheckCount" 1)
     productionDriverEvidenceContractAccepted = [bool]$productionDriverEvidenceContractAccepted
     driverEvidenceStatus = $driverEvidenceStatus
     productionDriverReady = [bool]$driverReadyForProduction
@@ -2714,6 +2741,10 @@ $manifest = [ordered]@{
     productionLuaEvidenceAccepted = [bool]$productionLuaEvidenceAccepted
     productionLuaEvidenceKitAccepted = [bool]$productionLuaEvidenceKitAccepted
     productionLuaEvidenceKitExportHelperAccepted = [bool]$productionLuaEvidenceKitExportHelperAccepted
+    productionLuaEvidenceKitPathBoundaryRejected = (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "pathBoundaryRejected" $false)
+    productionLuaEvidenceKitProductionOutputBoundary = (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "productionOutputBoundary" "")
+    productionLuaEvidenceKitCheckCount = (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "checkCount" 0)
+    productionLuaEvidenceKitFailedCheckCount = (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "failedCheckCount" 1)
     productionLuaExternalBundleIntakeAccepted = [bool]$productionLuaExternalBundleIntakeAccepted
     productionLuaEvidenceStatus = $productionLuaEvidenceStatus
     productionLuaReady = [bool]$productionLuaReadyForProduction
@@ -2731,6 +2762,10 @@ $manifest = [ordered]@{
     liveModelSmokeProductionLiveEndpointAccessProven = [bool]$liveModelSmokeProductionLiveEndpointAccessProven
     liveModelConfigKitAccepted = [bool]$liveModelConfigKitAccepted
     liveModelConfigKitExportHelperAccepted = [bool]$liveModelConfigKitExportHelperAccepted
+    liveModelConfigKitPathBoundaryRejected = (Get-JsonValue $liveModelConfigKitProbeManifest "pathBoundaryRejected" $false)
+    liveModelConfigKitProductionOutputBoundary = (Get-JsonValue $liveModelConfigKitProbeManifest "productionOutputBoundary" "")
+    liveModelConfigKitCheckCount = (Get-JsonValue $liveModelConfigKitProbeManifest "checkCount" 0)
+    liveModelConfigKitFailedCheckCount = (Get-JsonValue $liveModelConfigKitProbeManifest "failedCheckCount" 1)
     liveModelConfigKitEvidenceExportHelperCommand = (Get-JsonValue $liveModelConfigKitProbeManifest "evidenceExportHelperCommand" "")
     liveModelExternalSmokeIntakeAccepted = [bool]$liveModelExternalSmokeIntakeAccepted
     liveModelSmokeEvidenceContractAccepted = [bool]$liveModelSmokeEvidenceContractAccepted
@@ -3052,13 +3087,16 @@ $reportLines = @(
     "- High-risk policy accepted: $($manifest.highRiskPolicyAccepted)",
     "- Driver evidence: $($manifest.driverEvidenceStatus)",
     "- Production driver binding kit export helper accepted: $($manifest.productionDriverBindingKitExportHelperAccepted)",
+    "- Production driver binding kit path boundary rejected: $($manifest.productionDriverBindingKitPathBoundaryRejected)",
     "- Production driver evidence contract accepted: $($manifest.productionDriverEvidenceContractAccepted)",
     "- Production Lua evidence: $($manifest.productionLuaEvidenceStatus)",
     "- Production Lua evidence kit accepted: $($manifest.productionLuaEvidenceKitAccepted)",
+    "- Production Lua evidence kit path boundary rejected: $($manifest.productionLuaEvidenceKitPathBoundaryRejected)",
     "- Production Lua external bundle intake accepted: $($manifest.productionLuaExternalBundleIntakeAccepted)",
     "- Live model policy: $($manifest.liveModelPolicyStatus)",
     "- Live model config kit accepted: $($manifest.liveModelConfigKitAccepted)",
     "- Live model config kit export helper accepted: $($manifest.liveModelConfigKitExportHelperAccepted)",
+    "- Live model config kit path boundary rejected: $($manifest.liveModelConfigKitPathBoundaryRejected)",
     "- Live model external smoke intake accepted: $($manifest.liveModelExternalSmokeIntakeAccepted)",
     "- Live model smoke evidence contract accepted: $($manifest.liveModelSmokeEvidenceContractAccepted)",
     "- CI provider evidence accepted: $($manifest.ciProviderEvidenceAccepted)",

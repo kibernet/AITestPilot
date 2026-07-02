@@ -1092,13 +1092,22 @@ if ($null -ne $productionDriverBindingKitManifest) {
             [bool]$productionDriverBindingKitManifest.exportHelperRequiresProductionBoundReadiness -and
             [bool]$productionDriverBindingKitManifest.exportHelperRejectedSampleUnboundEvidence -and
             [bool]$productionDriverBindingKitManifest.exportRejectionReadinessRejectedCurrentSample -and
-            [int]$productionDriverBindingKitManifest.exportRejectionBlockingReasonCount -ge 1) `
+            [int]$productionDriverBindingKitManifest.exportRejectionBlockingReasonCount -ge 1 -and
+            [bool](Get-JsonValue $productionDriverBindingKitManifest "generatorOutputDirBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $productionDriverBindingKitManifest "generatorManifestPathBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $productionDriverBindingKitManifest "exportHelperOutputDirBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $productionDriverBindingKitManifest "exportHelperZipPathBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $productionDriverBindingKitManifest "pathBoundaryRejected" $false) -and
+            (Get-JsonValue $productionDriverBindingKitManifest "productionOutputBoundary" "") -eq "production_driver_binding_kit_probe_only" -and
+            [int](Get-JsonValue $productionDriverBindingKitManifest "checkCount" 0) -eq 1 -and
+            [int](Get-JsonValue $productionDriverBindingKitManifest "failedCheckCount" 1) -eq 0) `
         "Production driver binding kit probe must generate a host-project starter kit with production-bound validation commands and an export helper that rejects sample/unbound evidence."
 
     Add-ReleaseCheck "production_driver_binding_kit_boundary" `
         ([bool]$productionDriverBindingKitManifest.generatedKitOnly -and
             -not [bool]$productionDriverBindingKitManifest.readyForProductionDriverRelease -and
             -not [bool]$productionDriverBindingKitManifest.productionEvidenceAccepted -and
+            (Get-JsonValue $productionDriverBindingKitManifest "productionOutputBoundary" "") -eq "production_driver_binding_kit_probe_only" -and
             $productionDriverBindingKitManifest.authoringChecklistStatus -eq "TEMPLATE_READY" -and
             -not [bool]$productionDriverBindingKitManifest.authoringChecklistRealProjectBound -and
             [int]$productionDriverBindingKitManifest.authoringChecklistUnresolvedRequiredHookCount -eq 5) `
@@ -1416,8 +1425,14 @@ if ($null -ne $liveModelEndpointConfigKitProbeManifest) {
             [bool]$liveModelEndpointConfigKitProbeManifest.exportHelperRejectedContractFixtureEvidence -and
             [bool]$liveModelEndpointConfigKitProbeManifest.exportHelperRequiresDirectLiveHttpProvenance -and
             ([string]$liveModelEndpointConfigKitProbeManifest.evidenceExportHelperCommand).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+            [bool](Get-JsonValue $liveModelEndpointConfigKitProbeManifest "generatorOutputDirBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $liveModelEndpointConfigKitProbeManifest "generatorManifestPathBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $liveModelEndpointConfigKitProbeManifest "exportHelperOutputDirBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $liveModelEndpointConfigKitProbeManifest "exportHelperZipPathBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $liveModelEndpointConfigKitProbeManifest "pathBoundaryRejected" $false) -and
+            (Get-JsonValue $liveModelEndpointConfigKitProbeManifest "productionOutputBoundary" "") -eq "live_model_endpoint_config_kit_probe_only" -and
             [int]$liveModelEndpointConfigKitProbeManifest.generatedFileCount -ge 7 -and
-            [int]$liveModelEndpointConfigKitProbeManifest.checkCount -eq 4 -and
+            [int]$liveModelEndpointConfigKitProbeManifest.checkCount -eq 5 -and
             [int]$liveModelEndpointConfigKitProbeManifest.failedCheckCount -eq 0) `
         "Live model endpoint config kit probe must generate host configuration templates, prove static config intake, and block repo-external pending config without claiming provider access."
 
@@ -1630,11 +1645,17 @@ if ($null -ne $productionLuaPatchEvidenceKitProbeManifest) {
             [int]$productionLuaPatchEvidenceKitProbeManifest.exportRejectionBlockingReasonCount -ge 4 -and
             [int]$productionLuaPatchEvidenceKitProbeManifest.exportRejectionProductionEvidenceBlockingReasonCount -ge 5 -and
             ([string]$productionLuaPatchEvidenceKitProbeManifest.evidenceExportHelperCommand).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+            [bool](Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "generatorOutputDirBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "generatorManifestPathBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportHelperOutputDirBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "exportHelperZipPathBoundaryRejected" $false) -and
+            [bool](Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "pathBoundaryRejected" $false) -and
+            (Get-JsonValue $productionLuaPatchEvidenceKitProbeManifest "productionOutputBoundary" "") -eq "production_lua_patch_evidence_kit_probe_only" -and
             [bool]$productionLuaPatchEvidenceKitProbeManifest.acceptedReadinessReady -and
             [bool]$productionLuaPatchEvidenceKitProbeManifest.acceptedReadinessEvidenceAccepted -and
             [int]$productionLuaPatchEvidenceKitProbeManifest.acceptedReadinessBlockingReasonCount -eq 0 -and
             [int]$productionLuaPatchEvidenceKitProbeManifest.generatedFileCount -ge 8 -and
-            [int]$productionLuaPatchEvidenceKitProbeManifest.checkCount -eq 5 -and
+            [int]$productionLuaPatchEvidenceKitProbeManifest.checkCount -eq 6 -and
             [int]$productionLuaPatchEvidenceKitProbeManifest.failedCheckCount -eq 0) `
         "Production Lua patch evidence kit probe must generate the host evidence template and prove an isolated accepted fixture satisfies readiness without using fixture evidence in the release pipeline."
 

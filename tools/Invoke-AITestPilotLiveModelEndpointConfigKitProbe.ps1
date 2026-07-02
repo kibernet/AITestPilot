@@ -123,6 +123,30 @@ function Add-ProbeCheck {
     }
 }
 
+function Invoke-ExpectedFailure {
+    param(
+        [scriptblock]$Command,
+        [string]$ExpectedMessage
+    )
+
+    try {
+        & $Command | Out-Null
+        return [pscustomobject]@{
+            rejected = $false
+            message = ""
+            expectedMessageFound = $false
+        }
+    }
+    catch {
+        $message = $_.Exception.Message
+        return [pscustomobject]@{
+            rejected = $true
+            message = $message
+            expectedMessageFound = $message.Contains($ExpectedMessage)
+        }
+    }
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $kitPath = Assert-PathUnderRepo $KitDir "KitDir"
 $probeBundlePath = Assert-PathUnderRepo $ProbeBundleDir "ProbeBundleDir"
@@ -164,7 +188,9 @@ if (Test-Path $externalConfigPath) {
 $externalGeneratedManifestPath = Join-Path $externalConfigPath "live-model-endpoint-config-kit-generated-manifest.json"
 & (Join-Path $PSScriptRoot "New-AITestPilotLiveModelEndpointConfigKit.ps1") `
     -OutputDir $externalConfigPath `
-    -ManifestPath $externalGeneratedManifestPath
+    -ManifestPath $externalGeneratedManifestPath `
+    -ExternalOutputRoot $tempRoot `
+    -AllowExternalOutput
 
 $externalIntakeBundleDir = Join-Path $probeBundlePath "external-intake-bundle"
 New-Item -ItemType Directory -Force $externalIntakeBundleDir | Out-Null
@@ -212,8 +238,8 @@ $exportHelperText = Get-Content -Path $exportHelperPath -Encoding UTF8 -Raw
 
 $missingSmokeDir = Join-Path $probeBundlePath "missing-smoke-evidence"
 New-Item -ItemType Directory -Force $missingSmokeDir | Out-Null
-$missingExportOutputDir = Join-Path $probeBundlePath "missing-smoke-export\live-smoke-evidence"
-$missingExportZipPath = Join-Path $probeBundlePath "missing-smoke-export\live-smoke-evidence.zip"
+$missingExportOutputDir = Join-Path $evidenceBundlePath "live-model-endpoint-smoke-evidence-export\missing-smoke-export\live-smoke-evidence"
+$missingExportZipPath = Join-Path $evidenceBundlePath "live-model-endpoint-smoke-evidence-export\missing-smoke-export\live-smoke-evidence.zip"
 $exportMissingEvidenceRejected = $false
 $exportMissingEvidenceError = ""
 try {
@@ -272,8 +298,8 @@ $contractFixtureTrace = [ordered]@{
 $contractFixtureSmokeManifest | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $contractFixtureSmokeDir "live-model-endpoint-smoke-manifest.json") -Encoding UTF8
 $contractFixtureTrace | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $contractFixtureSmokeDir "live-model-endpoint-decision-trace.json") -Encoding UTF8
 
-$fixtureExportOutputDir = Join-Path $probeBundlePath "contract-fixture-smoke-export\live-smoke-evidence"
-$fixtureExportZipPath = Join-Path $probeBundlePath "contract-fixture-smoke-export\live-smoke-evidence.zip"
+$fixtureExportOutputDir = Join-Path $evidenceBundlePath "live-model-endpoint-smoke-evidence-export\contract-fixture-smoke-export\live-smoke-evidence"
+$fixtureExportZipPath = Join-Path $evidenceBundlePath "live-model-endpoint-smoke-evidence-export\contract-fixture-smoke-export\live-smoke-evidence.zip"
 $fixtureExportIntakeManifestPath = Join-Path (Split-Path $fixtureExportOutputDir -Parent) "live-model-endpoint-smoke-evidence-intake-for-export.json"
 $exportContractFixtureRejected = $false
 $exportContractFixtureError = ""
@@ -295,6 +321,41 @@ $fixtureExportRejectionIntake = if (Test-Path $fixtureExportIntakeManifestPath) 
 } else {
     $null
 }
+
+$generatorOutputDirBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "OutputDir must stay under repo root unless -AllowExternalOutput" `
+    -Command {
+        & (Join-Path $PSScriptRoot "New-AITestPilotLiveModelEndpointConfigKit.ps1") `
+            -OutputDir (Join-Path $tempRoot "AITestPilot\live-config-kit-boundary-probe\external-output") `
+            -ManifestPath (Join-Path $tempRoot "AITestPilot\live-config-kit-boundary-probe\external-output\live-model-endpoint-config-kit-generated-manifest.json")
+    }
+$generatorManifestPathBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "ManifestPath must stay under allowed root" `
+    -Command {
+        & (Join-Path $PSScriptRoot "New-AITestPilotLiveModelEndpointConfigKit.ps1") `
+            -OutputDir (Join-Path $probeBundlePath "manifest-boundary-output") `
+            -ManifestPath (Join-Path $probeBundlePath "manifest-escape.json")
+    }
+$exportHelperOutputDirBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "OutputDir must stay under" `
+    -Command {
+        & $exportHelperPath `
+            -AITestPilotRepoRoot $repoRoot `
+            -EvidenceBundleDir $evidenceBundlePath `
+            -LiveModelEndpointSmokeEvidenceDir $missingSmokeDir `
+            -OutputDir (Join-Path $probeBundlePath "export-output-escape\live-smoke-evidence") `
+            -ZipPath (Join-Path $evidenceBundlePath "live-model-endpoint-smoke-evidence-export\output-boundary\live-smoke-evidence.zip")
+    }
+$exportHelperZipPathBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "ZipPath must stay under" `
+    -Command {
+        & $exportHelperPath `
+            -AITestPilotRepoRoot $repoRoot `
+            -EvidenceBundleDir $evidenceBundlePath `
+            -LiveModelEndpointSmokeEvidenceDir $missingSmokeDir `
+            -OutputDir (Join-Path $evidenceBundlePath "live-model-endpoint-smoke-evidence-export\zip-boundary\live-smoke-evidence") `
+            -ZipPath (Join-Path $probeBundlePath "zip-escape.zip")
+    }
 
 $copiedAcceptedIntakeName = "live-model-endpoint-config-kit-accepted-intake-manifest.json"
 $copiedExternalIntakeName = "live-model-endpoint-external-config-intake-manifest.json"
@@ -387,11 +448,21 @@ $exportHelperBoundaryPassed = [bool]$exportMissingEvidenceRejected -and
     [int]$fixtureExportRejectionIntake.blockingReasonCount -ge 1 -and
     $fixtureExportBlockingReasons -contains "live_model_endpoint_fixture_smoke_not_allowed"
 
+$pathBoundaryRejected = [bool]$generatorOutputDirBoundary.rejected -and
+    [bool]$generatorOutputDirBoundary.expectedMessageFound -and
+    [bool]$generatorManifestPathBoundary.rejected -and
+    [bool]$generatorManifestPathBoundary.expectedMessageFound -and
+    [bool]$exportHelperOutputDirBoundary.rejected -and
+    [bool]$exportHelperOutputDirBoundary.expectedMessageFound -and
+    [bool]$exportHelperZipPathBoundary.rejected -and
+    [bool]$exportHelperZipPathBoundary.expectedMessageFound
+
 $checks = @()
 Add-ProbeCheck "template_kit_generated" $templateKitValid "Template config kit must generate without claiming provider access."
 Add-ProbeCheck "accepted_fixture_config_intake" $acceptedFixturePassed "Accepted config fixture must pass static intake without claiming live access."
 Add-ProbeCheck "external_template_blocked" $externalTemplateBlocked "Repo-external pending config must be read and rejected under complete-configuration mode."
 Add-ProbeCheck "export_helper_boundary" $exportHelperBoundaryPassed "Export helper must reject missing and contract-fixture smoke evidence unless direct live provider provenance is present."
+Add-ProbeCheck "path_boundary" $pathBoundaryRejected "Generator and export helper must reject unmanaged output, manifest, and zip paths before writing."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -442,6 +513,16 @@ $manifest = [ordered]@{
     exportHelperContractFixtureError = $exportContractFixtureError
     exportFixtureRejectionBlockingReasonCount = [int]$fixtureExportBlockingReasonCount
     exportFixtureRejectionBlockingReasons = @($fixtureExportBlockingReasons)
+    generatorOutputDirBoundaryRejected = [bool]$generatorOutputDirBoundary.rejected
+    generatorOutputDirBoundaryMessage = $generatorOutputDirBoundary.message
+    generatorManifestPathBoundaryRejected = [bool]$generatorManifestPathBoundary.rejected
+    generatorManifestPathBoundaryMessage = $generatorManifestPathBoundary.message
+    exportHelperOutputDirBoundaryRejected = [bool]$exportHelperOutputDirBoundary.rejected
+    exportHelperOutputDirBoundaryMessage = $exportHelperOutputDirBoundary.message
+    exportHelperZipPathBoundaryRejected = [bool]$exportHelperZipPathBoundary.rejected
+    exportHelperZipPathBoundaryMessage = $exportHelperZipPathBoundary.message
+    pathBoundaryRejected = [bool]$pathBoundaryRejected
+    productionOutputBoundary = "live_model_endpoint_config_kit_probe_only"
     evidenceExportHelperCommand = [string]$generatedManifest.evidenceExportHelperCommand
     evidenceExportZipPath = [string]$generatedManifest.evidenceExportZipPath
     evidenceExportManifestPath = [string]$generatedManifest.evidenceExportManifestPath

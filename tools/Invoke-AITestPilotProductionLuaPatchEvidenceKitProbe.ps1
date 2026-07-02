@@ -9,7 +9,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$repoRoot = [System.IO.Path]::GetFullPath((Resolve-Path (Join-Path $PSScriptRoot "..")).Path)
+$tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -32,6 +33,26 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -39,7 +60,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -70,6 +91,30 @@ function Add-ProbeCheck {
         name = $Name
         passed = [bool]$Passed
         message = $Message
+    }
+}
+
+function Invoke-ExpectedFailure {
+    param(
+        [scriptblock]$Command,
+        [string]$ExpectedMessage
+    )
+
+    try {
+        & $Command | Out-Null
+        return [pscustomobject]@{
+            rejected = $false
+            message = ""
+            expectedMessageFound = $false
+        }
+    }
+    catch {
+        $message = $_.Exception.Message
+        return [pscustomobject]@{
+            rejected = $true
+            message = $message
+            expectedMessageFound = $message.Contains($ExpectedMessage)
+        }
     }
 }
 
@@ -163,8 +208,8 @@ foreach ($fileName in $generatedFiles) {
 $copiedAcceptedReadinessName = "production-lua-patch-evidence-kit-accepted-readiness-manifest.json"
 Copy-Item -LiteralPath $acceptedReadinessManifestPath -Destination (Join-Path $evidenceBundlePath $copiedAcceptedReadinessName) -Force
 
-$templateExportOutputDir = Join-Path $probeBundlePath "template-export\production-lua-evidence"
-$templateExportZipPath = Join-Path $probeBundlePath "template-export\production-lua-evidence.zip"
+$templateExportOutputDir = Join-Path $evidenceBundlePath "production-lua-evidence-export\template-rejection\production-lua-evidence"
+$templateExportZipPath = Join-Path $evidenceBundlePath "production-lua-evidence-export\template-rejection\production-lua-evidence.zip"
 $templateExportReadinessPath = Join-Path (Split-Path $templateExportOutputDir -Parent) "production-lua-patch-readiness-for-export.json"
 $templateExportSucceeded = $false
 $templateExportMessage = ""
@@ -180,8 +225,8 @@ catch {
     $templateExportMessage = $_.Exception.Message
 }
 
-$acceptedFixtureExportOutputDir = Join-Path $probeBundlePath "accepted-fixture-export\production-lua-evidence"
-$acceptedFixtureExportZipPath = Join-Path $probeBundlePath "accepted-fixture-export\production-lua-evidence.zip"
+$acceptedFixtureExportOutputDir = Join-Path $acceptedReadinessBundleDir "production-lua-evidence-export\accepted-fixture-rejection\production-lua-evidence"
+$acceptedFixtureExportZipPath = Join-Path $acceptedReadinessBundleDir "production-lua-evidence-export\accepted-fixture-rejection\production-lua-evidence.zip"
 $acceptedFixtureExportSucceeded = $false
 $acceptedFixtureExportMessage = ""
 try {
@@ -201,6 +246,39 @@ $templateExportReadiness = if (Test-Path $templateExportReadinessPath) {
 } else {
     $null
 }
+
+$generatorOutputDirBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "OutputDir must stay under repo root unless -AllowExternalOutput" `
+    -Command {
+        & (Join-Path $PSScriptRoot "New-AITestPilotProductionLuaPatchEvidenceKit.ps1") `
+            -OutputDir (Join-Path $tempRoot "AITestPilot\lua-kit-boundary-probe\external-output") `
+            -ManifestPath (Join-Path $tempRoot "AITestPilot\lua-kit-boundary-probe\external-output\production-lua-patch-evidence-kit-generated-manifest.json")
+    }
+$generatorManifestPathBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "ManifestPath must stay under allowed root" `
+    -Command {
+        & (Join-Path $PSScriptRoot "New-AITestPilotProductionLuaPatchEvidenceKit.ps1") `
+            -OutputDir (Join-Path $probeBundlePath "manifest-boundary-output") `
+            -ManifestPath (Join-Path $probeBundlePath "manifest-escape.json")
+    }
+$exportHelperOutputDirBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "OutputDir must stay under" `
+    -Command {
+        & (Join-Path $kitPath "Export-ProductionLuaPatchEvidenceBundle.ps1") `
+            -EvidenceBundleDir $evidenceBundlePath `
+            -ProductionLuaEvidenceDir $kitPath `
+            -OutputDir (Join-Path $probeBundlePath "export-output-escape\production-lua-evidence") `
+            -ZipPath (Join-Path $evidenceBundlePath "production-lua-evidence-export\output-boundary\production-lua-evidence.zip")
+    }
+$exportHelperZipPathBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "ZipPath must stay under" `
+    -Command {
+        & (Join-Path $kitPath "Export-ProductionLuaPatchEvidenceBundle.ps1") `
+            -EvidenceBundleDir $evidenceBundlePath `
+            -ProductionLuaEvidenceDir $kitPath `
+            -OutputDir (Join-Path $evidenceBundlePath "production-lua-evidence-export\zip-boundary\production-lua-evidence") `
+            -ZipPath (Join-Path $probeBundlePath "zip-escape.zip")
+    }
 
 $checks = @()
 
@@ -283,11 +361,21 @@ $exportHelperBoundaryValid = [bool]$generatedManifest.exportHelperGenerated -and
     -not [bool]$acceptedFixtureExportSucceeded -and
     $acceptedFixtureExportMessage.Contains("realHostProjectEvidence=true")
 
+$pathBoundaryRejected = [bool]$generatorOutputDirBoundary.rejected -and
+    [bool]$generatorOutputDirBoundary.expectedMessageFound -and
+    [bool]$generatorManifestPathBoundary.rejected -and
+    [bool]$generatorManifestPathBoundary.expectedMessageFound -and
+    [bool]$exportHelperOutputDirBoundary.rejected -and
+    [bool]$exportHelperOutputDirBoundary.expectedMessageFound -and
+    [bool]$exportHelperZipPathBoundary.rejected -and
+    [bool]$exportHelperZipPathBoundary.expectedMessageFound
+
 Add-ProbeCheck "template_kit_generated" $templateKitValid "Template kit must generate without claiming real production evidence."
 Add-ProbeCheck "template_evidence_boundary" $templateEvidenceBoundaryValid "Default evidence JSON must remain pending and blocked."
 Add-ProbeCheck "accepted_fixture_generated" $acceptedFixtureValid "Accepted fixture must satisfy the readiness contract while marking itself as fixture-only."
 Add-ProbeCheck "accepted_fixture_readiness" $acceptedReadinessPassed "Readiness must accept the isolated fixture only inside the contract probe bundle."
 Add-ProbeCheck "export_helper_boundary" $exportHelperBoundaryValid "Export helper must reject template evidence and contract fixtures before packaging Lua evidence."
+Add-ProbeCheck "path_boundary" $pathBoundaryRejected "Generator and export helper must reject unmanaged output, manifest, and zip paths before writing."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -322,6 +410,16 @@ $manifest = [ordered]@{
     exportRejectionProductionEvidenceBlockingReasonCount = if ($null -ne $templateExportReadiness) { [int]$templateExportReadiness.productionEvidenceBlockingReasonCount } else { 0 }
     exportRejectionMessage = $templateExportMessage
     exportFixtureRejectionMessage = $acceptedFixtureExportMessage
+    generatorOutputDirBoundaryRejected = [bool]$generatorOutputDirBoundary.rejected
+    generatorOutputDirBoundaryMessage = $generatorOutputDirBoundary.message
+    generatorManifestPathBoundaryRejected = [bool]$generatorManifestPathBoundary.rejected
+    generatorManifestPathBoundaryMessage = $generatorManifestPathBoundary.message
+    exportHelperOutputDirBoundaryRejected = [bool]$exportHelperOutputDirBoundary.rejected
+    exportHelperOutputDirBoundaryMessage = $exportHelperOutputDirBoundary.message
+    exportHelperZipPathBoundaryRejected = [bool]$exportHelperZipPathBoundary.rejected
+    exportHelperZipPathBoundaryMessage = $exportHelperZipPathBoundary.message
+    pathBoundaryRejected = [bool]$pathBoundaryRejected
+    productionOutputBoundary = "production_lua_patch_evidence_kit_probe_only"
     evidenceExportHelperCommand = [string]$generatedManifest.evidenceExportHelperCommand
     evidenceExportZipPath = [string]$generatedManifest.evidenceExportZipPath
     acceptedReadinessReady = [bool]$acceptedReadiness.readyForProductionLuaPatchRelease

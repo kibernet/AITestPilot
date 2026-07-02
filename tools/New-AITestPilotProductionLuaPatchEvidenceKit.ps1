@@ -2,24 +2,97 @@
 param(
     [string]$OutputDir,
     [string]$ManifestPath,
-    [switch]$GenerateAcceptedFixture
+    [switch]$GenerateAcceptedFixture,
+    [string]$ExternalOutputRoot,
+    [switch]$AllowExternalOutput
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
+}
+
+function Assert-PathUnderRoot {
+    param(
+        [string]$Path,
+        [string]$Root,
+        [string]$Label
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $Root)) {
+        throw "$Label must stay under allowed root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Assert-ManagedOutputPath {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    $underRepo = Test-PathWithinRoot $fullPath $repoRoot
+    $underExternalRoot = (Test-PathWithinRoot $fullPath $externalOutputRootPath)
+    if (-not $underRepo -and -not ([bool]$AllowExternalOutput -and $underExternalRoot)) {
+        throw "$Label must stay under repo root unless -AllowExternalOutput is set for the configured external output root: $fullPath"
+    }
+
+    $pathRoot = [System.IO.Path]::GetPathRoot($fullPath)
+    if ($fullPath.Equals($pathRoot, $comparison) -or
+        $fullPath.Equals($repoRoot, $comparison) -or
+        $fullPath.Equals($repoTempRoot, $comparison) -or
+        $fullPath.Equals($externalOutputRootPath, $comparison)) {
+        throw "$Label must target a managed child directory, not a root directory: $fullPath"
+    }
+
+    return $fullPath
+}
+
+$repoRoot = Resolve-FullPath ((Resolve-Path (Join-Path $PSScriptRoot "..")).Path)
+$repoTempRoot = Resolve-FullPath (Join-Path $repoRoot "Temp")
+$tempRoot = Resolve-FullPath $env:TEMP
+if ([string]::IsNullOrWhiteSpace($ExternalOutputRoot)) {
+    $ExternalOutputRoot = $tempRoot
+}
+$externalOutputRootPath = Resolve-FullPath $ExternalOutputRoot
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     $OutputDir = Join-Path $repoRoot "Temp\production-lua-patch-evidence-kit\latest"
 }
 
-$outputPath = [System.IO.Path]::GetFullPath($OutputDir)
+$outputPath = Assert-ManagedOutputPath $OutputDir "OutputDir"
 if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
     $ManifestPath = Join-Path $outputPath "production-lua-patch-evidence-kit-generated-manifest.json"
 }
 
-$manifestPath = [System.IO.Path]::GetFullPath($ManifestPath)
+$manifestPath = Assert-PathUnderRoot $ManifestPath $outputPath "ManifestPath"
 
 if (Test-Path $outputPath) {
     Remove-Item -LiteralPath $outputPath -Recurse -Force
@@ -218,6 +291,53 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
+}
+
+function Assert-PathUnderRoot {
+    param(
+        [string]$Path,
+        [string]$Root,
+        [string]$Label,
+        [switch]$RequireChild
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if (-not (Test-PathWithinRoot $fullPath $fullRoot)) {
+        throw "$Label must stay under ${fullRoot}: $fullPath"
+    }
+
+    if ($RequireChild -and $fullPath.Equals($fullRoot, $comparison)) {
+        throw "$Label must target a child path under ${fullRoot}: $fullPath"
+    }
+
+    return $fullPath
+}
+
 function Read-JsonFile {
     param(
         [string]$Path,
@@ -258,8 +378,8 @@ if ([string]::IsNullOrWhiteSpace($ProductionLuaEvidenceDir)) {
     $ProductionLuaEvidenceDir = $PSScriptRoot
 }
 
-$evidenceBundlePath = [System.IO.Path]::GetFullPath($EvidenceBundleDir)
-$productionLuaEvidencePath = [System.IO.Path]::GetFullPath($ProductionLuaEvidenceDir)
+$evidenceBundlePath = Resolve-FullPath $EvidenceBundleDir
+$productionLuaEvidencePath = Resolve-FullPath $ProductionLuaEvidenceDir
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -269,15 +389,16 @@ if (-not (Test-Path $productionLuaEvidencePath)) {
     throw "Production Lua evidence directory does not exist: $productionLuaEvidencePath"
 }
 
+$exportRoot = Join-Path $evidenceBundlePath "production-lua-evidence-export"
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
-    $OutputDir = Join-Path (Join-Path $evidenceBundlePath "production-lua-evidence-export") "production-lua-evidence"
+    $OutputDir = Join-Path $exportRoot "production-lua-evidence"
 }
-$outputPath = [System.IO.Path]::GetFullPath($OutputDir)
+$outputPath = Assert-PathUnderRoot $OutputDir $exportRoot "OutputDir" -RequireChild
 
 if ([string]::IsNullOrWhiteSpace($ZipPath)) {
     $ZipPath = Join-Path (Split-Path $outputPath -Parent) "production-lua-evidence.zip"
 }
-$zipFullPath = [System.IO.Path]::GetFullPath($ZipPath)
+$zipFullPath = Assert-PathUnderRoot $ZipPath $exportRoot "ZipPath" -RequireChild
 
 $requiredFiles = @(
     "production-lua-patch-evidence.json",
@@ -295,7 +416,7 @@ if ($missingFiles.Count -gt 0) {
     throw "Production Lua evidence export is missing required files: $($missingFiles -join ', ')"
 }
 
-$readinessManifestPath = Join-Path (Split-Path $outputPath -Parent) "production-lua-patch-readiness-for-export.json"
+$readinessManifestPath = Assert-PathUnderRoot (Join-Path (Split-Path $outputPath -Parent) "production-lua-patch-readiness-for-export.json") $exportRoot "Readiness manifest path"
 New-Item -ItemType Directory -Force (Split-Path $readinessManifestPath -Parent) | Out-Null
 
 & (Join-Path $AITestPilotRepoRoot "tools\Invoke-AITestPilotProductionLuaPatchReadiness.ps1") `
@@ -349,7 +470,7 @@ if (Test-Path $zipFullPath) {
 }
 Compress-Archive -LiteralPath $outputPath -DestinationPath $zipFullPath -Force
 
-$manifestPath = Join-Path (Split-Path $outputPath -Parent) "production-lua-evidence-export-manifest.json"
+$manifestPath = Assert-PathUnderRoot (Join-Path (Split-Path $outputPath -Parent) "production-lua-evidence-export-manifest.json") $exportRoot "Export manifest path"
 $manifest = [ordered]@{
     schemaVersion = "aitestpilot.production_lua_patch_evidence_export.v1"
     status = "PASS"

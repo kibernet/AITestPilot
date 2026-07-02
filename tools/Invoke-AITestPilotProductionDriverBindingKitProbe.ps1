@@ -11,7 +11,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$repoRoot = [System.IO.Path]::GetFullPath((Resolve-Path (Join-Path $PSScriptRoot "..")).Path)
+$tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -31,12 +32,37 @@ function Assert-PathUnderRepo {
         [string]$Label
     )
 
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
     return $fullPath
+}
+
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
 }
 
 function Assert-True {
@@ -61,6 +87,44 @@ function Read-JsonFile {
     }
 
     return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
+}
+
+function Invoke-ExpectedFailure {
+    param(
+        [scriptblock]$Command,
+        [string]$ExpectedMessage
+    )
+
+    try {
+        & $Command | Out-Null
+        return [pscustomobject]@{
+            rejected = $false
+            message = ""
+            expectedMessageFound = $false
+        }
+    }
+    catch {
+        $message = $_.Exception.Message
+        return [pscustomobject]@{
+            rejected = $true
+            message = $message
+            expectedMessageFound = $message.Contains($ExpectedMessage)
+        }
+    }
+}
+
+function Add-ProbeCheck {
+    param(
+        [string]$Name,
+        [bool]$Passed,
+        [string]$Message
+    )
+
+    $script:checks += [ordered]@{
+        name = $Name
+        passed = [bool]$Passed
+        message = $Message
+    }
 }
 
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
@@ -192,9 +256,59 @@ Assert-True $readinessRejectedCurrentSample "Production-bound readiness must rej
 Assert-True $exportRejectedCurrentSample "Production driver evidence export helper must reject the current sample/unbound evidence."
 Assert-True (-not (Test-Path (Join-Path $rejectionBundlePath "production-driver-evidence-export\production-driver-evidence.zip"))) "Production driver evidence export zip must not be written for sample/unbound evidence."
 
+$generatorOutputDirBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "OutputDir must stay under repo root unless -AllowExternalOutput" `
+    -Command {
+        & (Join-Path $PSScriptRoot "New-AITestPilotProductionDriverBindingKit.ps1") `
+            -OutputDir (Join-Path $tempRoot "AITestPilot\driver-kit-boundary-probe\external-output") `
+            -ManifestPath (Join-Path $tempRoot "AITestPilot\driver-kit-boundary-probe\external-output\production-driver-binding-kit-generated-manifest.json") `
+            -DriverTypeName $DriverTypeName `
+            -DriverId $DriverId `
+            -DisplayName $DisplayName
+    }
+$generatorManifestPathBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "ManifestPath must stay under allowed root" `
+    -Command {
+        & (Join-Path $PSScriptRoot "New-AITestPilotProductionDriverBindingKit.ps1") `
+            -OutputDir (Join-Path $evidenceBundlePath "production-driver-binding-kit-manifest-boundary") `
+            -ManifestPath (Join-Path $evidenceBundlePath "production-driver-binding-kit-manifest-escape.json") `
+            -DriverTypeName $DriverTypeName `
+            -DriverId $DriverId `
+            -DisplayName $DisplayName
+    }
+$exportHelperOutputDirBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "OutputDir must stay under" `
+    -Command {
+        & $exportScriptPath `
+            -EvidenceBundleDir $rejectionBundlePath `
+            -OutputDir (Join-Path $evidenceBundlePath "driver-export-output-escape") `
+            -ZipPath (Join-Path $rejectionBundlePath "production-driver-evidence-export\production-driver-evidence.zip")
+    }
+$exportHelperZipPathBoundary = Invoke-ExpectedFailure `
+    -ExpectedMessage "ZipPath must stay under" `
+    -Command {
+        & $exportScriptPath `
+            -EvidenceBundleDir $rejectionBundlePath `
+            -OutputDir (Join-Path $rejectionBundlePath "production-driver-evidence-export\zip-boundary-output") `
+            -ZipPath (Join-Path $evidenceBundlePath "driver-export-zip-escape.zip")
+    }
+
+$checks = @()
+$pathBoundaryRejected = [bool]$generatorOutputDirBoundary.rejected -and
+    [bool]$generatorOutputDirBoundary.expectedMessageFound -and
+    [bool]$generatorManifestPathBoundary.rejected -and
+    [bool]$generatorManifestPathBoundary.expectedMessageFound -and
+    [bool]$exportHelperOutputDirBoundary.rejected -and
+    [bool]$exportHelperOutputDirBoundary.expectedMessageFound -and
+    [bool]$exportHelperZipPathBoundary.rejected -and
+    [bool]$exportHelperZipPathBoundary.expectedMessageFound
+Add-ProbeCheck "path_boundary" $pathBoundaryRejected "Generator and export helper must reject unmanaged output, manifest, and zip paths before writing."
+$failedChecks = @($checks | Where-Object { -not [bool]$_["passed"] })
+$status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
+
 $manifest = [ordered]@{
     schemaVersion = "aitestpilot.production_driver_binding_kit_probe.v1"
-    status = "PASS"
+    status = $status
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
     evidenceBundleDir = $evidenceBundlePath
     kitDir = $kitPath
@@ -218,6 +332,16 @@ $manifest = [ordered]@{
     exportRejectionReadinessRejectedCurrentSample = [bool]$readinessRejectedCurrentSample
     exportRejectionReadinessFailureMessage = $readinessFailureMessage
     exportRejectionBlockingReasonCount = [int]$rejectionReadiness.blockingReasonCount
+    generatorOutputDirBoundaryRejected = [bool]$generatorOutputDirBoundary.rejected
+    generatorOutputDirBoundaryMessage = $generatorOutputDirBoundary.message
+    generatorManifestPathBoundaryRejected = [bool]$generatorManifestPathBoundary.rejected
+    generatorManifestPathBoundaryMessage = $generatorManifestPathBoundary.message
+    exportHelperOutputDirBoundaryRejected = [bool]$exportHelperOutputDirBoundary.rejected
+    exportHelperOutputDirBoundaryMessage = $exportHelperOutputDirBoundary.message
+    exportHelperZipPathBoundaryRejected = [bool]$exportHelperZipPathBoundary.rejected
+    exportHelperZipPathBoundaryMessage = $exportHelperZipPathBoundary.message
+    pathBoundaryRejected = [bool]$pathBoundaryRejected
+    productionOutputBoundary = "production_driver_binding_kit_probe_only"
     readyForProductionDriverRelease = $false
     productionEvidenceAccepted = $false
     generatedKitOnly = $true
@@ -227,11 +351,18 @@ $manifest = [ordered]@{
         "repair-driver-failure-manifest.json",
         "replay-profile-import-manifest.json"
     )
+    checkCount = [int]$checks.Count
+    failedCheckCount = [int]$failedChecks.Count
+    checks = @($checks)
     files = @($generatedFiles)
 }
 
 New-Item -ItemType Directory -Force (Split-Path $manifestPath -Parent) | Out-Null
 $manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $manifestPath -Encoding UTF8
+
+if ($failedChecks.Count -gt 0) {
+    throw "Production driver binding kit probe failed: $($failedChecks.name -join ', ')"
+}
 
 Write-Output "Production driver binding kit probe manifest: $manifestPath"
 Write-Output "PASS AI TestPilot production driver binding kit probe"

@@ -167,7 +167,9 @@ if ($missingFiles.Count -gt 0) {
 $externalKitManifestPath = Join-Path $externalProductionLuaEvidencePath "production-lua-patch-evidence-kit-generated-manifest.json"
 & (Join-Path $PSScriptRoot "New-AITestPilotProductionLuaPatchEvidenceKit.ps1") `
     -OutputDir $externalProductionLuaEvidencePath `
-    -ManifestPath $externalKitManifestPath
+    -ManifestPath $externalKitManifestPath `
+    -ExternalOutputRoot $tempRoot `
+    -AllowExternalOutput
 
 $externalReadinessManifestPath = Join-Path $externalReadinessBundlePath "production-lua-patch-readiness-manifest.json"
 $readinessCommandFailed = $false
