@@ -429,8 +429,10 @@ function Read-ManifestEntry {
     $parseable = $false
     $manifest = $null
     $parseError = ""
+    $sourceManifestSha256 = ""
 
     if ($exists) {
+        $sourceManifestSha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
         try {
             $manifest = Get-Content -Path $path -Encoding UTF8 -Raw | ConvertFrom-Json
             $parseable = $true
@@ -525,6 +527,7 @@ function Read-ManifestEntry {
         name = $FileName
         sourceManifest = [bool]$SourceManifest
         exists = [bool]$exists
+        sourceManifestSha256 = $sourceManifestSha256
         parseable = [bool]$parseable
         status = $status
         statusAccepted = [bool]$statusAccepted
@@ -702,6 +705,12 @@ $sourceEntries = @()
 foreach ($name in $SourceManifestNames) {
     $sourceEntries += Read-ManifestEntry -FileName $name -SourceManifest $true
 }
+$sourceManifestHashLines = @($sourceEntries |
+    Where-Object { [bool]$_.exists -and -not [string]::IsNullOrWhiteSpace([string]$_.sourceManifestSha256) } |
+    ForEach-Object { "$($_.name)`t$($_.sourceManifestSha256)" } |
+    Sort-Object)
+$sourceManifestHashSetText = (@($sourceManifestHashLines) -join "`n") + "`n"
+$sourceManifestHashSetSha256 = Get-StringSha256 $sourceManifestHashSetText
 
 $allManifestEntries = @()
 $manifestFiles = @(Get-ChildItem -Path $evidenceBundlePath -Filter "*manifest.json" -File | Sort-Object -Property Name)
@@ -862,6 +871,10 @@ $manifest = [ordered]@{
     requiredSourceManifestCount = [int]$SourceManifestNames.Count
     indexedSourceManifestCount = [int]@($sourceEntries | Where-Object { [bool]$_.exists -and [bool]$_.parseable }).Count
     sourceManifestCoverageCount = [int]@($sourceEntries | Where-Object { [bool]$_.exists -and [bool]$_.parseable -and [bool]$_.statusAccepted }).Count
+    sourceManifestHashAlgorithm = "SHA256"
+    sourceManifestHashSetSha256 = $sourceManifestHashSetSha256
+    sourceManifestHashEntryCount = [int]$sourceManifestHashLines.Count
+    sourceManifestHashLines = @($sourceManifestHashLines)
     missingSourceManifestCount = [int]$missingSourceEntries.Count
     unparseableSourceManifestCount = [int]$unparseableSourceEntries.Count
     failedSourceManifestCount = [int]$failedSourceEntries.Count
@@ -890,6 +903,10 @@ $index = [ordered]@{
     machineReadable = $true
     portalHandoffReady = ($status -eq "PASS")
     evidenceBundlePath = $evidenceBundlePath
+    sourceManifestHashAlgorithm = "SHA256"
+    sourceManifestHashSetSha256 = $sourceManifestHashSetSha256
+    sourceManifestHashEntryCount = [int]$sourceManifestHashLines.Count
+    sourceManifestHashLines = @($sourceManifestHashLines)
     summary = $manifest
     sourceManifests = @($sourceEntries)
     auxiliaryManifests = @($allAuxiliaryEntries)
@@ -925,6 +942,8 @@ $reportLines = @(
     "- Status: $status",
     "- Source manifests indexed: $($manifest.indexedSourceManifestCount) / $($manifest.requiredSourceManifestCount)",
     "- Source manifest coverage: $($manifest.sourceManifestCoverageCount) / $($manifest.requiredSourceManifestCount)",
+    "- Source manifest hash set SHA256: $($manifest.sourceManifestHashSetSha256)",
+    "- Source manifest hash entries: $($manifest.sourceManifestHashEntryCount) / $($manifest.requiredSourceManifestCount)",
     "- Missing source manifests: $($manifest.missingSourceManifestCount)",
     "- Unparseable source manifests: $($manifest.unparseableSourceManifestCount)",
     "- Failed source manifests: $($manifest.failedSourceManifestCount)",
@@ -945,12 +964,12 @@ $reportLines = @(
     "",
     "## Source Manifests",
     "",
-    "| Manifest | Status | Accepted | Listed files | Missing listed files |",
-    "| --- | --- | --- | ---: | ---: |"
+    "| Manifest | SHA256 | Status | Accepted | Listed files | Missing listed files |",
+    "| --- | --- | --- | --- | ---: | ---: |"
 )
 
 foreach ($entry in $sourceEntries) {
-    $reportLines += "| $($entry.name) | $($entry.status) | $($entry.statusAccepted) | $($entry.listedFileCount) | $($entry.missingListedFileCount) |"
+    $reportLines += "| $($entry.name) | $($entry.sourceManifestSha256) | $($entry.status) | $($entry.statusAccepted) | $($entry.listedFileCount) | $($entry.missingListedFileCount) |"
 }
 
 $reportLines += @(

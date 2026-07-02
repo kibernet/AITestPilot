@@ -366,6 +366,11 @@ $fieldLevelCoverageDefinitionLines = @(Convert-ToArray (Get-JsonValue $indexMani
 $fieldLevelCoverageSourceScriptPath = [string](Get-JsonValue $indexManifest "fieldLevelCoverageSourceScriptPath" "")
 $fieldLevelCoverageSourceScriptSha256 = [string](Get-JsonValue $indexManifest "fieldLevelCoverageSourceScriptSha256" "")
 $releaseEvidenceIndexCurrentScriptSha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") -Algorithm SHA256).Hash
+$sourceManifestHashAlgorithm = [string](Get-JsonValue $indexManifest "sourceManifestHashAlgorithm" "")
+$sourceManifestHashSetSha256 = [string](Get-JsonValue $indexManifest "sourceManifestHashSetSha256" "")
+$sourceManifestHashEntryCount = Convert-ToInt (Get-JsonValue $indexManifest "sourceManifestHashEntryCount" 0)
+$sourceManifestHashLines = @(Convert-ToArray (Get-JsonValue $indexManifest "sourceManifestHashLines" @()))
+$requiredSourceManifestCount = Convert-ToInt (Get-JsonValue $indexManifest "requiredSourceManifestCount" 0)
 
 $evidenceIndexFieldLevelCoveragePassedAsExpected = $fieldLevelCoverageSchemaVersion -eq "aitestpilot.release_evidence_field_level_coverage.v1" -and
     $fieldLevelCoverageStatus -eq "PASS" -and
@@ -386,6 +391,12 @@ $evidenceIndexFieldLevelCoveragePassedAsExpected = $fieldLevelCoverageSchemaVers
     $fieldLevelMissingFieldCount -eq 0 -and
     $fieldLevelValueMismatchCount -eq 0
 
+$evidenceIndexSourceManifestHashesPassedAsExpected = $sourceManifestHashAlgorithm -eq "SHA256" -and
+    -not [string]::IsNullOrWhiteSpace($sourceManifestHashSetSha256) -and
+    $sourceManifestHashSetSha256.Length -eq 64 -and
+    $sourceManifestHashEntryCount -eq $requiredSourceManifestCount -and
+    $sourceManifestHashLines.Count -eq $sourceManifestHashEntryCount
+
 $evidenceIndexPassedAsExpected = $indexManifest.status -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $indexManifest "portalHandoffReady" $false)) -and
     (Convert-ToBool (Get-JsonValue $indexManifest "requireProductionReplayDriverBound" $false)) -and
@@ -401,7 +412,8 @@ $evidenceIndexPassedAsExpected = $indexManifest.status -eq "PASS" -and
     (Convert-ToInt (Get-JsonValue $indexManifest "unacceptedSourceManifestStatusCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $indexManifest "missingListedFileCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $indexManifest "blockingReasonCount" 1)) -eq 0 -and
-    $evidenceIndexFieldLevelCoveragePassedAsExpected
+    $evidenceIndexFieldLevelCoveragePassedAsExpected -and
+    $evidenceIndexSourceManifestHashesPassedAsExpected
 
 $fieldCoverageProbePassedAsExpected = $fieldCoverageProbeManifest.status -eq "PASS" -and
     (Get-JsonValue $fieldCoverageProbeManifest "schemaVersion" "") -eq "aitestpilot.release_evidence_index_field_coverage_probe.v1" -and
@@ -434,6 +446,7 @@ Add-ProbeCheck "accepted_fixture_sources_copied" $acceptedFixtureSourcesCopied "
 Add-ProbeCheck "hard_mode_risk_policy_passed" $riskPolicyPassedAsExpected "Risk policy must pass when production driver, Lua, and live smoke accepted fixtures are canonical inside the isolated bundle."
 Add-ProbeCheck "hard_mode_evidence_index_passed" $evidenceIndexPassedAsExpected "Evidence index must stay complete and accepted under combined hard-mode switches."
 Add-ProbeCheck "hard_mode_evidence_index_field_coverage_passed" $evidenceIndexFieldLevelCoveragePassedAsExpected "Evidence index must report field-level coverage PASS with all semantic field checks passing in the hard-mode success bundle."
+Add-ProbeCheck "hard_mode_evidence_index_source_manifest_hashes_passed" $evidenceIndexSourceManifestHashesPassedAsExpected "Evidence index must bind source manifests by SHA256 inside the hard-mode success bundle."
 Add-ProbeCheck "hard_mode_evidence_index_field_coverage_probe_passed" $fieldCoverageProbePassedAsExpected "Evidence index field coverage probe must pass inside the hard-mode success bundle before release gate."
 Add-ProbeCheck "hard_mode_release_gate_passed" $releaseGatePassedAsExpected "Release gate must pass the isolated hard-mode accepted-fixture bundle."
 Add-ProbeCheck "source_canonical_evidence_preserved" $sourceCanonicalEvidencePreserved "Default release evidence canonical production manifests must not be replaced by the success contract probe."
@@ -476,6 +489,8 @@ $reportLines = @(
     "| Hard-mode evidence index field coverage | $fieldLevelCoverageStatus |",
     "| Hard-mode evidence index field coverage definition SHA256 | $fieldLevelCoverageDefinitionSha256 |",
     "| Hard-mode evidence index source script SHA256 | $fieldLevelCoverageSourceScriptSha256 |",
+    "| Hard-mode evidence index source manifest hash set SHA256 | $sourceManifestHashSetSha256 |",
+    "| Hard-mode evidence index source manifest hash entries | $sourceManifestHashEntryCount / $requiredSourceManifestCount |",
     "| Hard-mode semantic field checks | $semanticFieldCheckPassedCount / $semanticFieldCheckCount |",
     "| Hard-mode field coverage probe status | $($fieldCoverageProbeManifest.status) |",
     "| Hard-mode release gate status | $($gateManifest.status) |",
@@ -554,6 +569,12 @@ $manifest = [ordered]@{
     evidenceIndexFieldLevelCoverageDefinitionCount = [int]$fieldLevelCoverageDefinitionCount
     evidenceIndexFieldLevelCoverageSourceScriptSha256 = $fieldLevelCoverageSourceScriptSha256
     evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent = [bool]($fieldLevelCoverageSourceScriptSha256 -eq $releaseEvidenceIndexCurrentScriptSha256)
+    evidenceIndexSourceManifestHashesPassedAsExpected = [bool]$evidenceIndexSourceManifestHashesPassedAsExpected
+    evidenceIndexSourceManifestHashAlgorithm = $sourceManifestHashAlgorithm
+    evidenceIndexSourceManifestHashSetSha256 = $sourceManifestHashSetSha256
+    evidenceIndexSourceManifestHashEntryCount = [int]$sourceManifestHashEntryCount
+    evidenceIndexSourceManifestHashLineCount = [int]$sourceManifestHashLines.Count
+    evidenceIndexSourceManifestHashEntryCountMatchesRequired = [bool]($sourceManifestHashEntryCount -eq $requiredSourceManifestCount -and $sourceManifestHashLines.Count -eq $sourceManifestHashEntryCount)
     evidenceIndexFieldCoverageProbeStatus = $fieldCoverageProbeManifest.status
     evidenceIndexFieldCoverageProbePassedAsExpected = [bool]$fieldCoverageProbePassedAsExpected
     evidenceIndexFieldLevelRequiredManifestCount = [int]$fieldLevelRequiredManifestCount

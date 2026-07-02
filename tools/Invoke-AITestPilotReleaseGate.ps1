@@ -38,6 +38,20 @@ else {
     ""
 }
 
+function Get-StringSha256 {
+    param([string]$Text)
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+        $hash = $sha.ComputeHash($bytes)
+        return -join ($hash | ForEach-Object { $_.ToString("x2") })
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
 $checks = @()
 $failedReasons = @()
 
@@ -195,6 +209,21 @@ function Test-StringSetEquals {
     }
 
     return $true
+}
+
+function Get-SourceManifestHashLines {
+    param([string[]]$ManifestNames)
+
+    $lines = @()
+    foreach ($manifestName in @($ManifestNames)) {
+        $name = [string]$manifestName
+        $path = Join-Path $EvidenceBundleDir $name
+        if (Test-Path $path -PathType Leaf) {
+            $lines += "$name`t$((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash)"
+        }
+    }
+
+    return @($lines | Sort-Object)
 }
 
 function Find-ProbeScenario {
@@ -3634,7 +3663,11 @@ if ($null -ne $productionHardModeSuccessContractProbeManifest) {
         $productionHardModeSuccessContractSelfReference -or
         ((-not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" ""))) -and
             ([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" "")).Length -eq 64 -and
-            [bool](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent" $false))
+            [bool](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent" $false) -and
+            [bool](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashesPassedAsExpected" $false) -and
+            [bool](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashEntryCountMatchesRequired" $false) -and
+            (-not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashSetSha256" ""))) -and
+            ([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashSetSha256" "")).Length -eq 64)
     )
 
     Add-ReleaseCheck "production_hard_mode_success_contract_probe" `
@@ -3688,7 +3721,11 @@ if ($null -ne $releaseRiskPolicyManifest) {
         $releaseRiskPolicyHardModeSuccessSelfReference -or
         ((-not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexDefinitionSha256" ""))) -and
             ([string](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexDefinitionSha256" "")).Length -eq 64 -and
-            [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexSourceScriptHashMatchesCurrent" $false))
+            [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexSourceScriptHashMatchesCurrent" $false) -and
+            [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexSourceManifestHashesPassedAsExpected" $false) -and
+            [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexSourceManifestHashEntryCountMatchesRequired" $false) -and
+            (-not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexSourceManifestHashSetSha256" ""))) -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexSourceManifestHashSetSha256" "")).Length -eq 64)
     )
 
     Add-ReleaseCheck "release_risk_policy" `
@@ -3937,6 +3974,12 @@ if ($null -ne $releaseRiskPolicyManifest) {
 }
 
 $expectedIndexedSourceManifests = @()
+$currentSourceManifestHashLines = @()
+$currentSourceManifestHashSetSha256 = ""
+$releaseEvidenceIndexSourceManifestHashLines = @()
+$releaseEvidenceIndexSourceManifestHashSetSha256 = ""
+$releaseEvidenceIndexSourceManifestHashEntryCount = 0
+$releaseEvidenceIndexSourceManifestHashesValid = $false
 
 if ($null -ne $releaseEvidenceIndexManifest) {
     $requiredIndexedManifests = @(
@@ -4046,6 +4089,22 @@ if ($null -ne $releaseEvidenceIndexManifest) {
     }
 
     $expectedIndexedSourceManifests = @($requiredIndexedManifests)
+    $currentSourceManifestHashLines = @(Get-SourceManifestHashLines -ManifestNames $requiredIndexedManifests)
+    $currentSourceManifestHashSetText = (@($currentSourceManifestHashLines) -join "`n") + "`n"
+    $currentSourceManifestHashSetSha256 = Get-StringSha256 $currentSourceManifestHashSetText
+    $releaseEvidenceIndexSourceManifestHashLines = @((Get-JsonValue $releaseEvidenceIndexManifest "sourceManifestHashLines" @()) | ForEach-Object { [string]$_ })
+    $releaseEvidenceIndexSourceManifestHashSetSha256 = [string](Get-JsonValue $releaseEvidenceIndexManifest "sourceManifestHashSetSha256" "")
+    $releaseEvidenceIndexSourceManifestHashEntryCount = [int](Get-JsonValue $releaseEvidenceIndexManifest "sourceManifestHashEntryCount" 0)
+    $releaseEvidenceIndexSourceManifestHashesValid = (
+        (Get-JsonValue $releaseEvidenceIndexManifest "sourceManifestHashAlgorithm" "") -eq "SHA256" -and
+        -not [string]::IsNullOrWhiteSpace($releaseEvidenceIndexSourceManifestHashSetSha256) -and
+        $releaseEvidenceIndexSourceManifestHashSetSha256.Length -eq 64 -and
+        $releaseEvidenceIndexSourceManifestHashSetSha256 -eq $currentSourceManifestHashSetSha256 -and
+        $releaseEvidenceIndexSourceManifestHashEntryCount -eq [int]$releaseEvidenceIndexManifest.requiredSourceManifestCount -and
+        @($releaseEvidenceIndexSourceManifestHashLines).Count -eq $releaseEvidenceIndexSourceManifestHashEntryCount -and
+        @($currentSourceManifestHashLines).Count -eq $releaseEvidenceIndexSourceManifestHashEntryCount -and
+        (Test-StringSetEquals -Actual $releaseEvidenceIndexSourceManifestHashLines -Expected $currentSourceManifestHashLines)
+    )
 
     Add-ReleaseCheck "release_evidence_index" `
         ($releaseEvidenceIndexManifest.status -eq "PASS" -and
@@ -4087,6 +4146,10 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         (Test-StringSetEquals -Actual @($releaseEvidenceIndexManifest.sourceManifestNames) -Expected $requiredIndexedManifests) `
         "Release evidence index source manifests must exactly match the primary release-gate source manifest set."
 
+    Add-ReleaseCheck "release_evidence_index_source_manifest_hashes" `
+        $releaseEvidenceIndexSourceManifestHashesValid `
+        "Release evidence index source manifest SHA256 hash set must match the current primary release-gate source manifest files."
+
     Test-ListedFiles $releaseEvidenceIndexManifest "release_evidence_index"
 }
 
@@ -4114,6 +4177,8 @@ if ($null -ne $releaseEvidenceIndexFieldCoverageProbeManifest) {
             [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageDefinitionCountsMatchRequired -and
             [string]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageSourceScriptSha256 -eq $releaseEvidenceIndexCurrentScriptSha256 -and
             [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageSourceScriptHashesMatchCurrent -and
+            [bool](Get-JsonValue $releaseEvidenceIndexFieldCoverageProbeManifest "sourceManifestHashSetsValid" $false) -and
+            [bool](Get-JsonValue $releaseEvidenceIndexFieldCoverageProbeManifest "sourceManifestHashEntryCountsMatchRequired" $false) -and
             -not [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.releasePipelineSendsEmail -and
             -not [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.fixtureEvidencePromoted -and
@@ -4254,6 +4319,11 @@ $manifest = [ordered]@{
     checks = @($checks)
     sourceManifests = @($gateEvidenceManifests)
     indexedSourceManifests = @($expectedIndexedSourceManifests)
+    indexedSourceManifestHashSetSha256 = $releaseEvidenceIndexSourceManifestHashSetSha256
+    currentSourceManifestHashSetSha256 = $currentSourceManifestHashSetSha256
+    sourceManifestHashEntryCount = [int]$releaseEvidenceIndexSourceManifestHashEntryCount
+    currentSourceManifestHashEntryCount = [int]@($currentSourceManifestHashLines).Count
+    sourceManifestHashesValid = [bool]$releaseEvidenceIndexSourceManifestHashesValid
     gateEvidenceManifests = @($gateEvidenceManifests)
 }
 

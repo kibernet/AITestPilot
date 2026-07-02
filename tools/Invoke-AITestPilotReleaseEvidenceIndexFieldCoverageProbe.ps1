@@ -281,10 +281,21 @@ function Invoke-IndexScenario {
     $sourceScriptSha256 = if ($null -ne $indexManifest) { [string]$indexManifest.fieldLevelCoverageSourceScriptSha256 } else { "" }
     $sourceScriptHashMatchesCurrent = (-not [string]::IsNullOrWhiteSpace($sourceScriptSha256)) -and
         $sourceScriptSha256 -eq $releaseEvidenceIndexCurrentScriptSha256
+    $sourceManifestHashAlgorithm = if ($null -ne $indexManifest) { [string]$indexManifest.sourceManifestHashAlgorithm } else { "" }
+    $sourceManifestHashSetSha256 = if ($null -ne $indexManifest) { [string]$indexManifest.sourceManifestHashSetSha256 } else { "" }
+    $sourceManifestHashEntryCount = if ($null -ne $indexManifest) { [int]$indexManifest.sourceManifestHashEntryCount } else { 0 }
+    $sourceManifestHashLineCount = if ($null -ne $indexManifest) { @($indexManifest.sourceManifestHashLines).Count } else { 0 }
+    $requiredSourceManifestCount = if ($null -ne $indexManifest) { [int]$indexManifest.requiredSourceManifestCount } else { 0 }
+    $sourceManifestHashSetValid = $sourceManifestHashAlgorithm -eq "SHA256" -and
+        (-not [string]::IsNullOrWhiteSpace($sourceManifestHashSetSha256)) -and
+        $sourceManifestHashSetSha256.Length -eq 64
+    $sourceManifestHashEntryCountMatchesRequired = $sourceManifestHashEntryCount -eq $requiredSourceManifestCount -and
+        $sourceManifestHashLineCount -eq $sourceManifestHashEntryCount
 
     $passed = if ($ExpectPass) {
         (-not $indexThrew -and $null -ne $indexManifest -and $indexManifest.status -eq "PASS" -and $indexManifest.fieldLevelCoverageStatus -eq "PASS" -and
-            $fieldDefinitionHashValid -and $fieldDefinitionCountMatchesRequired -and $sourceScriptHashMatchesCurrent)
+            $fieldDefinitionHashValid -and $fieldDefinitionCountMatchesRequired -and $sourceScriptHashMatchesCurrent -and
+            $sourceManifestHashSetValid -and $sourceManifestHashEntryCountMatchesRequired)
     }
     else {
         ($null -ne $indexManifest -and $indexManifest.status -eq "BLOCKED" -and
@@ -292,7 +303,9 @@ function Invoke-IndexScenario {
             $failedFieldMatched -and
             $fieldDefinitionHashValid -and
             $fieldDefinitionCountMatchesRequired -and
-            $sourceScriptHashMatchesCurrent)
+            $sourceScriptHashMatchesCurrent -and
+            $sourceManifestHashSetValid -and
+            $sourceManifestHashEntryCountMatchesRequired)
     }
 
     $result = [ordered]@{
@@ -312,6 +325,13 @@ function Invoke-IndexScenario {
         fieldLevelCoverageDefinitionCountMatchesRequired = [bool]$fieldDefinitionCountMatchesRequired
         fieldLevelCoverageSourceScriptSha256 = $sourceScriptSha256
         fieldLevelCoverageSourceScriptHashMatchesCurrent = [bool]$sourceScriptHashMatchesCurrent
+        sourceManifestHashAlgorithm = $sourceManifestHashAlgorithm
+        sourceManifestHashSetSha256 = $sourceManifestHashSetSha256
+        sourceManifestHashEntryCount = [int]$sourceManifestHashEntryCount
+        sourceManifestHashLineCount = [int]$sourceManifestHashLineCount
+        requiredSourceManifestCount = [int]$requiredSourceManifestCount
+        sourceManifestHashSetValid = [bool]$sourceManifestHashSetValid
+        sourceManifestHashEntryCountMatchesRequired = [bool]$sourceManifestHashEntryCountMatchesRequired
         blockingReasonsMatchedExactly = [bool]$blockingReasonsMatchedExactly
         expectedBlockingReasons = @($ExpectedBlockingReasons)
         blockingReasons = @($blockingReasons)
@@ -425,7 +445,9 @@ $uniqueDefinitionHashes = @($definitionHashes | Sort-Object -Unique)
 $definitionHashStableAcrossScenarios = $definitionHashes.Count -eq $scenarioResults.Count -and $uniqueDefinitionHashes.Count -eq 1
 $definitionCountsMatchRequired = @($scenarioResults | Where-Object { -not [bool]$_["fieldLevelCoverageDefinitionCountMatchesRequired"] }).Count -eq 0
 $sourceScriptHashesMatchCurrent = @($scenarioResults | Where-Object { -not [bool]$_["fieldLevelCoverageSourceScriptHashMatchesCurrent"] }).Count -eq 0
-$status = if ($failedScenarios.Count -eq 0 -and $latestSnapshotUnchanged -and $definitionHashStableAcrossScenarios -and $definitionCountsMatchRequired -and $sourceScriptHashesMatchCurrent) { "PASS" } else { "FAIL" }
+$sourceManifestHashSetsValid = @($scenarioResults | Where-Object { -not [bool]$_["sourceManifestHashSetValid"] }).Count -eq 0
+$sourceManifestHashEntryCountsMatchRequired = @($scenarioResults | Where-Object { -not [bool]$_["sourceManifestHashEntryCountMatchesRequired"] }).Count -eq 0
+$status = if ($failedScenarios.Count -eq 0 -and $latestSnapshotUnchanged -and $definitionHashStableAcrossScenarios -and $definitionCountsMatchRequired -and $sourceScriptHashesMatchCurrent -and $sourceManifestHashSetsValid -and $sourceManifestHashEntryCountsMatchRequired) { "PASS" } else { "FAIL" }
 
 $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $manifestFullPath),
@@ -453,6 +475,8 @@ $reportLines = @(
     "- Field definition SHA256: $(if ($uniqueDefinitionHashes.Count -eq 1) { $uniqueDefinitionHashes[0] } else { '(mixed)' })",
     "- Field definition counts match required fields: $definitionCountsMatchRequired",
     "- Field coverage source script hashes match current: $sourceScriptHashesMatchCurrent",
+    "- Source manifest hash sets valid: $sourceManifestHashSetsValid",
+    "- Source manifest hash entry counts match required: $sourceManifestHashEntryCountsMatchRequired",
     "",
     "## Scenarios",
     "",
@@ -479,6 +503,8 @@ $manifest = [ordered]@{
     fieldLevelCoverageDefinitionCountsMatchRequired = [bool]$definitionCountsMatchRequired
     fieldLevelCoverageSourceScriptSha256 = [string]$releaseEvidenceIndexCurrentScriptSha256
     fieldLevelCoverageSourceScriptHashesMatchCurrent = [bool]$sourceScriptHashesMatchCurrent
+    sourceManifestHashSetsValid = [bool]$sourceManifestHashSetsValid
+    sourceManifestHashEntryCountsMatchRequired = [bool]$sourceManifestHashEntryCountsMatchRequired
     beforeManifestFileCount = [int]$beforeSnapshot.manifestFileCount
     afterManifestFileCount = [int]$afterSnapshot.manifestFileCount
     scenarios = @($scenarioResults)

@@ -2628,7 +2628,11 @@ $productionHardModeSuccessContractEvidenceIndexBindingAccepted = (
     $productionHardModeSuccessContractSelfReference -or
     ((-not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" ""))) -and
         ([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" "")).Length -eq 64 -and
-        (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent" $false)))
+        (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent" $false)) -and
+        (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashesPassedAsExpected" $false)) -and
+        (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashEntryCountMatchesRequired" $false)) -and
+        (-not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashSetSha256" ""))) -and
+        ([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashSetSha256" "")).Length -eq 64)
 )
 
 $productionHardModeSuccessContractAccepted = (
@@ -3126,6 +3130,9 @@ $manifest = [ordered]@{
     productionHardModeSuccessContractEvidenceIndexBindingAccepted = [bool]$productionHardModeSuccessContractEvidenceIndexBindingAccepted
     productionHardModeSuccessContractEvidenceIndexDefinitionSha256 = (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" "")
     productionHardModeSuccessContractEvidenceIndexSourceScriptHashMatchesCurrent = (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent" $false)
+    productionHardModeSuccessContractEvidenceIndexSourceManifestHashSetSha256 = (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashSetSha256" "")
+    productionHardModeSuccessContractEvidenceIndexSourceManifestHashesPassedAsExpected = (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashesPassedAsExpected" $false)
+    productionHardModeSuccessContractEvidenceIndexSourceManifestHashEntryCountMatchesRequired = (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexSourceManifestHashEntryCountMatchesRequired" $false)
     riskPolicyCheckCount = [int]$riskPolicyChecks.Count
     passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
     failedRiskPolicyCheckCount = [int]$failedRiskPolicyCheckCount
@@ -3383,6 +3390,8 @@ $reportLines = @(
     "- Production hard-mode success contract status: $($manifest.productionHardModeSuccessContractStatus)",
     "- Production hard-mode success contract evidence index definition SHA256: $($manifest.productionHardModeSuccessContractEvidenceIndexDefinitionSha256)",
     "- Production hard-mode success contract evidence index source script hash matches current: $($manifest.productionHardModeSuccessContractEvidenceIndexSourceScriptHashMatchesCurrent)",
+    "- Production hard-mode success contract evidence index source manifest hash set SHA256: $($manifest.productionHardModeSuccessContractEvidenceIndexSourceManifestHashSetSha256)",
+    "- Production hard-mode success contract evidence index source manifest hashes passed: $($manifest.productionHardModeSuccessContractEvidenceIndexSourceManifestHashesPassedAsExpected)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",
     "## Boundary Summary",
