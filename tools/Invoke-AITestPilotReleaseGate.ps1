@@ -477,6 +477,8 @@ $productionHandoffOwnerRouteMapManifest = Read-Manifest "production-handoff-owne
 $productionHandoffOwnerRouteMapProbeManifest = Read-Manifest "production-handoff-owner-route-map-probe-manifest.json"
 $productionExternalEvidencePartialMatrixProbeManifest = Read-Manifest "production-external-evidence-partial-matrix-probe-manifest.json"
 $productionExternalEvidenceSemanticPreflightProbeManifest = Read-Manifest "production-external-evidence-semantic-preflight-probe-manifest.json"
+$productionExternalEvidenceOwnerReturnBundleStatusManifest = Read-Manifest "production-external-evidence-owner-return-bundle-status-manifest.json"
+$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest = Read-Manifest "production-external-evidence-owner-return-bundle-status-probe-manifest.json"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-Manifest "production-external-evidence-acceptance-contract-probe-manifest.json"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-Manifest "production-external-evidence-acceptance-failure-probe-manifest.json"
 $productionExternalEvidenceInboxManifest = Read-Manifest "production-external-evidence-inbox-manifest.json"
@@ -3558,6 +3560,70 @@ if ($null -ne $productionExternalEvidenceSemanticPreflightProbeManifest) {
     Test-ListedFiles $productionExternalEvidenceSemanticPreflightProbeManifest "production_external_evidence_semantic_preflight_probe"
 }
 
+if ($null -ne $productionExternalEvidenceOwnerReturnBundleStatusManifest) {
+    Add-ReleaseCheck "production_external_evidence_owner_return_bundle_status" `
+        ($productionExternalEvidenceOwnerReturnBundleStatusManifest.status -eq "PASS" -and
+            $productionExternalEvidenceOwnerReturnBundleStatusManifest.schemaVersion -eq "aitestpilot.production_external_evidence_owner_return_bundle_status.v1" -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.readOnly -and
+            $productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnReadinessStatus -eq "PENDING_EXTERNAL_EVIDENCE" -and
+            $productionExternalEvidenceOwnerReturnBundleStatusManifest.semanticPreflightStatus -eq "PENDING_EXTERNAL_EVIDENCE" -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.semanticPreflightRun -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.readyForAcceptanceCandidate -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.requiredEvidenceFileCount -eq 9 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.missingRequiredFileCount -eq 9 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerPacketCount -eq 3 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.acceptedOwnerPacketCount -eq 0 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.pendingOwnerPacketCount -eq 3 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.remainingMissingFileCount -eq 9 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.remainingBlockingReasonCount -eq 11 -and
+            $productionExternalEvidenceOwnerReturnBundleStatusManifest.nextRequiredAction -eq "collect_owner_response_bundle_zip" -and
+            (Convert-ToArray (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnStatuses" @())).Count -eq 3 -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.acceptanceRun -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.hardValidationRun -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.emailSent -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.externalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.fixtureEvidencePromoted -and
+            $productionExternalEvidenceOwnerReturnBundleStatusManifest.productionOutputBoundary -eq "owner_return_bundle_status_only" -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.checkCount -eq 7 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.failedCheckCount -eq 0) `
+        "Production external evidence owner return bundle status must summarize current returned-bundle readiness without running acceptance, sending mail, or claiming real evidence."
+
+    Test-ListedFiles $productionExternalEvidenceOwnerReturnBundleStatusManifest "production_external_evidence_owner_return_bundle_status"
+}
+
+if ($null -ne $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest) {
+    Add-ReleaseCheck "production_external_evidence_owner_return_bundle_status_probe" `
+        ($productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.status -eq "PASS" -and
+            $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_owner_return_bundle_status_probe.v1" -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.readOnly -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.acceptanceRun -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.hardValidationRun -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.releasePipelineSendsEmail -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.emailSent -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.realHostProjectEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.externalEvidenceAccepted -and
+            -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.fixtureEvidencePromoted -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.caseCount -eq 3 -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultPendingOwnerReturnStatus -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.ownerResponseBundleZipCandidateReady -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.extraPayloadOwnerResponseBundleNeedsRepair -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultPendingOwnerPacketCount -eq 3 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultRemainingMissingFileCount -eq 9 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.defaultRemainingBlockingReasonCount -eq 11 -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.completeZipReadyForAcceptanceCandidate -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.completeZipMissingRequiredFileCount -eq 0 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.completeZipSemanticFailCount -eq 0 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.extraPayloadPayloadShapeViolationCount -gt 0 -and
+            $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.productionOutputBoundary -eq "owner_return_bundle_status_probe_only" -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.checkCount -eq 6 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.failedCheckCount -eq 0) `
+        "Production external evidence owner return bundle status probe must prove pending, candidate-ready zip, and strict-payload repair states while preserving read-only boundaries."
+
+    Test-ListedFiles $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "production_external_evidence_owner_return_bundle_status_probe"
+}
+
 if ($null -ne $productionExternalEvidenceInboxManifest) {
     Add-ReleaseCheck "production_external_evidence_inbox" `
         ($productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -4125,6 +4191,22 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightOwnerResponseBundleZipUnsafeCaseCount -eq 1 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightPayloadShapeRejectedCaseCount -eq 2 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceSemanticPreflightCheckCount -eq 14 -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusAccepted -and
+            $releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleReadinessStatus -eq "PENDING_EXTERNAL_EVIDENCE" -and
+            $releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleNextRequiredAction -eq "collect_owner_response_bundle_zip" -and
+            -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleSemanticPreflightRun -and
+            -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleReadyForAcceptanceCandidate -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundlePendingOwnerPacketCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleRemainingMissingFileCount -eq 9 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleRemainingBlockingReasonCount -eq 11 -and
+            -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusAcceptanceRun -and
+            -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusRealHostProjectEvidenceAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeAccepted -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeCaseCount -eq 3 -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeDefaultPending -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeZipCandidateReady -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeExtraPayloadNeedsRepair -and
+            -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusProbeAcceptanceRun -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAutoAcceptanceExtraPayloadOwnerResponseBundleRejected -and
             -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAutoAcceptanceExtraPayloadOwnerResponseBundleAcceptanceRun -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceAutoAcceptanceExtraPayloadOwnerResponseBundlePayloadShapeViolationCount -gt 0 -and
@@ -4244,6 +4326,8 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "production-handoff-owner-route-map-probe-manifest.json",
         "production-external-evidence-partial-matrix-probe-manifest.json",
         "production-external-evidence-semantic-preflight-probe-manifest.json",
+        "production-external-evidence-owner-return-bundle-status-manifest.json",
+        "production-external-evidence-owner-return-bundle-status-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "production-hard-mode-success-contract-probe-manifest.json",
         "release-risk-policy-manifest.json"
@@ -4457,6 +4541,8 @@ $sourceManifests = @(
     "production-handoff-owner-route-map-probe-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",
+    "production-external-evidence-owner-return-bundle-status-manifest.json",
+    "production-external-evidence-owner-return-bundle-status-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "production-hard-mode-success-contract-probe-manifest.json",
     "release-risk-policy-manifest.json",

@@ -230,6 +230,8 @@ $requiredArtifactNames = @(
     "release-progress-notification-remaining-work-snapshot-probe-manifest.json",
     "release-progress-notification-post-dispatch-snapshot-probe-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",
+    "production-external-evidence-owner-return-bundle-status-manifest.json",
+    "production-external-evidence-owner-return-bundle-status-probe-manifest.json",
     "production-external-evidence-auto-acceptance-probe-manifest.json",
     "release-docs-freshness-manifest.json"
 )
@@ -264,6 +266,11 @@ $requiredDocStrings = @(
     [ordered]@{ file = "README.md"; pattern = "ownerResponseBundleZipUnsafeCaseCount=1"; label = "owner response bundle zip unsafe case count target" },
     [ordered]@{ file = "README.md"; pattern = "ownerResponseBundleZipArbitraryWrapperReady=true"; label = "owner response bundle zip arbitrary wrapper readiness" },
     [ordered]@{ file = "README.md"; pattern = "payloadShapeRejectedCaseCount=2"; label = "owner response bundle payload shape rejected count" },
+    [ordered]@{ file = "README.md"; pattern = "production-external-evidence-owner-return-bundle-status-manifest.json"; label = "owner return bundle status artifact" },
+    [ordered]@{ file = "README.md"; pattern = "production-external-evidence-owner-return-bundle-status-probe-manifest.json"; label = "owner return bundle status probe artifact" },
+    [ordered]@{ file = "README.md"; pattern = "ownerReturnReadinessStatus=PENDING_EXTERNAL_EVIDENCE"; label = "owner return bundle default pending state" },
+    [ordered]@{ file = "README.md"; pattern = "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE"; label = "owner return bundle candidate-ready state" },
+    [ordered]@{ file = "README.md"; pattern = "NEEDS_OWNER_REPAIR"; label = "owner return bundle repair-needed state" },
     [ordered]@{ file = "README.md"; pattern = "extraPayloadOwnerResponseBundleRejected=true"; label = "auto acceptance extra payload rejection" },
     [ordered]@{ file = "README.md"; pattern = "production-handoff-send-local-workflow-probe-manifest.json"; label = "owner packet local workflow probe artifact" },
     [ordered]@{ file = "README.md"; pattern = "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json"; label = "owner packet dispatch receipt intake probe artifact" },
@@ -277,7 +284,7 @@ $requiredDocStrings = @(
     [ordered]@{ file = "README.md"; pattern = "Invoke-AITestPilotReleaseEvidenceIndexFieldCoverageProbe.ps1"; label = "release evidence index field coverage probe command" },
     [ordered]@{ file = "README.md"; pattern = "release evidence index field coverage"; label = "release evidence index field coverage overview" },
     [ordered]@{ file = "README.md"; pattern = "core artifact names, source files, and source-manifest lists"; label = "docs freshness source files overview" },
-    [ordered]@{ file = "README.md"; pattern = "91 semantic field checks"; label = "release evidence index 91-field coverage count" },
+    [ordered]@{ file = "README.md"; pattern = "107 semantic field checks"; label = "release evidence index 107-field coverage count" },
     [ordered]@{ file = "README.md"; pattern = "field-level definition SHA256 and source script SHA256"; label = "release evidence index definition hash binding" },
     [ordered]@{ file = "README.md"; pattern = "source manifest SHA256 hash set"; label = "release evidence index source manifest hash binding" },
     [ordered]@{ file = "README.md"; pattern = "release risk policy source script SHA256"; label = "release risk policy source hash binding" },
@@ -290,7 +297,7 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release_evidence_index_field_coverage_probe"; label = "field coverage pipeline step" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "repair_agent_cursor_agent_external_output_binding_probe"; label = "Cursor Agent external output binding pipeline step" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release-evidence-index-field-coverage-probe-manifest.json"; label = "field coverage pipeline artifact" },
-    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "91 semantic fields"; label = "field coverage pipeline count" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "107 semantic fields"; label = "field coverage pipeline count" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "field-level definition and source script SHA256 binding"; label = "field coverage pipeline definition hash binding" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "source manifest SHA256 hash set binding"; label = "field coverage pipeline source manifest hash binding" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release risk policy source script SHA256"; label = "risk policy pipeline source hash binding" },
@@ -306,6 +313,11 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release_progress_notification_outbox_strict_payload_shape_refresh"; label = "strict payload progress outbox refresh step" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release_progress_notification_remaining_work_snapshot_strict_payload_shape_probe"; label = "strict payload remaining-work snapshot step" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production_external_evidence_strict_payload_shape"; label = "strict payload latest big node" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production_external_evidence_owner_return_bundle_status"; label = "owner return bundle status pipeline step" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production_external_evidence_owner_return_bundle_status_probe"; label = "owner return bundle status probe pipeline step" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production-external-evidence-owner-return-bundle-status-manifest.json"; label = "owner return bundle status pipeline artifact" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production-external-evidence-owner-return-bundle-status-probe-manifest.json"; label = "owner return bundle status probe pipeline artifact" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "ownerReturnReadinessStatus=PENDING_EXTERNAL_EVIDENCE"; label = "owner return bundle pipeline default pending state" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production-handoff-owner-route-map-manifest.json"; label = "owner route map pipeline artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = 'operator-actions\NEXT-STEPS.md'; label = "operator next steps pipeline artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "source-to-export SHA256 proof for every kit file"; label = "owner response bundle kit pipeline source hash proof" },
@@ -322,7 +334,7 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/architecture.md"; pattern = "release evidence index"; label = "evidence index architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "release pipeline step index, source files"; label = "docs freshness architecture source files reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "release evidence index field coverage"; label = "field coverage architecture reference" },
-    [ordered]@{ file = "docs/architecture.md"; pattern = "91 semantic fields"; label = "field coverage architecture count" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "107 semantic fields"; label = "field coverage architecture count" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "field-level definition SHA256 and the source script SHA256"; label = "field coverage architecture definition hash binding" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "source manifest SHA256 hash set"; label = "field coverage architecture source manifest hash binding" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "release risk policy source script SHA256 binding"; label = "risk policy architecture source hash binding" },
@@ -342,10 +354,13 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/architecture.md"; pattern = "unsafe/duplicate/absolute/traversal zip rejection"; label = "owner response bundle zip safety architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "ownerResponseBundleZipUnsafeCaseCount=1"; label = "owner response bundle zip unsafe case count" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "payloadShapeRejectedCaseCount=2"; label = "owner response bundle payload shape rejected count" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "production-external-evidence-owner-return-bundle-status-manifest.json"; label = "owner return bundle status architecture artifact" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "production-external-evidence-owner-return-bundle-status-probe-manifest.json"; label = "owner return bundle status probe architecture artifact" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE"; label = "owner return bundle architecture candidate-ready state" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "release docs freshness"; label = "roadmap freshness guard reference" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "core artifact names, source files, and release source-manifest lists"; label = "roadmap freshness source files reference" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "release evidence index field coverage"; label = "roadmap field coverage reference" },
-    [ordered]@{ file = "docs/roadmap.md"; pattern = "91 semantic fields"; label = "roadmap field coverage count" },
+    [ordered]@{ file = "docs/roadmap.md"; pattern = "107 semantic fields"; label = "roadmap field coverage count" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "field-level definition/source-script SHA256 binding"; label = "roadmap field coverage definition hash binding" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "source manifest SHA256 hash set"; label = "roadmap source manifest hash binding" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "release risk policy source script SHA256 binding"; label = "roadmap risk policy source hash binding" },
@@ -356,7 +371,8 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/roadmap.md"; pattern = "production handoff owner route map"; label = "roadmap owner route map reference" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = 'operator-actions\NEXT-STEPS.md'; label = "roadmap operator next steps artifact" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "source-to-export SHA256 proof for every kit file"; label = "roadmap owner response bundle kit source hash proof" },
-    [ordered]@{ file = "docs/roadmap.md"; pattern = "production handoff owner route map and probe"; label = "roadmap owner route map probe reference" }
+    [ordered]@{ file = "docs/roadmap.md"; pattern = "production handoff owner route map and probe"; label = "roadmap owner route map probe reference" },
+    [ordered]@{ file = "docs/roadmap.md"; pattern = "Production external evidence owner return bundle status and probe"; label = "roadmap owner return bundle status reference" }
 )
 $missingRequiredDocStrings = @()
 foreach ($requiredDocString in $requiredDocStrings) {
@@ -397,6 +413,8 @@ $requiredSourceManifestNames = @(
     "release-progress-notification-post-dispatch-snapshot-probe-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",
+    "production-external-evidence-owner-return-bundle-status-manifest.json",
+    "production-external-evidence-owner-return-bundle-status-probe-manifest.json",
     "production-external-evidence-auto-acceptance-probe-manifest.json",
     "release-docs-freshness-manifest.json"
 )

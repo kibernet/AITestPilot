@@ -837,6 +837,16 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_external_evidence_owner_return_bundle_status" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
+    Invoke-PipelineStep "production_external_evidence_owner_return_bundle_status_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatusProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "release_progress_notification_outbox_strict_payload_shape_refresh" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `

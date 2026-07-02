@@ -342,6 +342,8 @@ $productionHandoffOwnerRouteMapManifest = Read-PolicyJson "production-handoff-ow
 $productionHandoffOwnerRouteMapProbeManifest = Read-PolicyJson "production-handoff-owner-route-map-probe-manifest.json" "Production handoff owner route map probe manifest"
 $productionExternalEvidencePartialMatrixProbeManifest = Read-PolicyJson "production-external-evidence-partial-matrix-probe-manifest.json" "Production external evidence partial matrix probe manifest"
 $productionExternalEvidenceSemanticPreflightProbeManifest = Read-PolicyJson "production-external-evidence-semantic-preflight-probe-manifest.json" "Production external evidence semantic preflight probe manifest"
+$productionExternalEvidenceOwnerReturnBundleStatusManifest = Read-PolicyJson "production-external-evidence-owner-return-bundle-status-manifest.json" "Production external evidence owner return bundle status manifest"
+$productionExternalEvidenceOwnerReturnBundleStatusProbeManifest = Read-PolicyJson "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "Production external evidence owner return bundle status probe manifest"
 $productionExternalEvidenceAcceptanceContractProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-contract-probe-manifest.json" "Production external evidence acceptance contract probe manifest"
 $productionExternalEvidenceAcceptanceFailureProbeManifest = Read-PolicyJson "production-external-evidence-acceptance-failure-probe-manifest.json" "Production external evidence acceptance failure probe manifest"
 $productionExternalEvidenceInboxManifest = Read-PolicyJson "production-external-evidence-inbox-manifest.json" "Production external evidence inbox manifest"
@@ -2530,6 +2532,72 @@ Add-PolicyCheck "production_external_evidence_semantic_preflight_probe_policy" $
     "Production evidence handoff must prove returned owner bundle directories and safe zips, including arbitrary single-directory wrapper zips, are semantically preflighted before acceptance, with unsafe zips, missing, partial, fixture/template-shaped, extra-payload, and nested-payload content rejected without accepting evidence, sending mail, or promoting fixtures." `
     "production_external_evidence_semantic_preflight_probe_not_accepted"
 
+$productionExternalEvidenceOwnerReturnBundleStatusAccepted = (
+    $null -ne $productionExternalEvidenceOwnerReturnBundleStatusManifest -and
+    $productionExternalEvidenceOwnerReturnBundleStatusManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_owner_return_bundle_status.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "readOnly" $false)) -and
+    (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnReadinessStatus" "") -eq "PENDING_EXTERNAL_EVIDENCE" -and
+    (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "semanticPreflightStatus" "") -eq "PENDING_EXTERNAL_EVIDENCE" -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "semanticPreflightRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "readyForAcceptanceCandidate" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "requiredEvidenceFileCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "missingRequiredFileCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerPacketCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "acceptedOwnerPacketCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "pendingOwnerPacketCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "remainingMissingFileCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "remainingBlockingReasonCount" 0)) -eq 11 -and
+    (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "nextRequiredAction" "") -eq "collect_owner_response_bundle_zip" -and
+    (Convert-ToArray (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnStatuses" @())).Count -eq 3 -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "acceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "hardValidationRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "fixtureEvidencePromoted" $true)) -and
+    (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "productionOutputBoundary" "") -eq "owner_return_bundle_status_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "checkCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_owner_return_bundle_status_policy" $productionExternalEvidenceOwnerReturnBundleStatusAccepted `
+    "Production evidence handoff must expose a read-only owner return status that keeps the current external owner work pending until a real returned bundle is supplied." `
+    "production_external_evidence_owner_return_bundle_status_not_accepted"
+
+$productionExternalEvidenceOwnerReturnBundleStatusProbeAccepted = (
+    $null -ne $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest -and
+    $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_owner_return_bundle_status_probe.v1" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "readOnly" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "acceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "hardValidationRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "caseCount" 0)) -eq 3 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "defaultPendingOwnerReturnStatus" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "ownerResponseBundleZipCandidateReady" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "extraPayloadOwnerResponseBundleNeedsRepair" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "defaultPendingOwnerPacketCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "defaultRemainingMissingFileCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "defaultRemainingBlockingReasonCount" 0)) -eq 11 -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "completeZipReadyForAcceptanceCandidate" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "completeZipMissingRequiredFileCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "completeZipSemanticFailCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "extraPayloadPayloadShapeViolationCount" 0)) -gt 0 -and
+    (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "productionOutputBoundary" "") -eq "owner_return_bundle_status_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "failedCheckCount" 1)) -eq 0
+)
+
+Add-PolicyCheck "production_external_evidence_owner_return_bundle_status_probe_policy" $productionExternalEvidenceOwnerReturnBundleStatusProbeAccepted `
+    "Production evidence handoff must prove owner return status maps default pending, complete returned zip candidate-ready, and strict-payload repair states without accepting evidence or sending mail." `
+    "production_external_evidence_owner_return_bundle_status_probe_not_accepted"
+
 $productionExternalEvidenceInboxAccepted = (
     $null -ne $productionExternalEvidenceInboxManifest -and
     $productionExternalEvidenceInboxManifest.status -eq "PASS" -and
@@ -2919,6 +2987,8 @@ $sourceFiles = @(
     "production-handoff-owner-route-map-probe-manifest.json",
     "production-external-evidence-partial-matrix-probe-manifest.json",
     "production-external-evidence-semantic-preflight-probe-manifest.json",
+    "production-external-evidence-owner-return-bundle-status-manifest.json",
+    "production-external-evidence-owner-return-bundle-status-probe-manifest.json",
     "production-hard-mode-failure-probe-manifest.json",
     "production-hard-mode-success-contract-probe-manifest.json"
 )
@@ -3275,6 +3345,22 @@ $manifest = [ordered]@{
     productionExternalEvidenceSemanticPreflightFixtureSignalRejected = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "fixtureSignalRejectedWithoutContractMode" $false)
     productionExternalEvidenceSemanticPreflightAcceptanceRun = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "acceptanceRun" $true)
     productionExternalEvidenceSemanticPreflightEmailSent = (Get-JsonValue $productionExternalEvidenceSemanticPreflightProbeManifest "emailSent" $true)
+    productionExternalEvidenceOwnerReturnBundleStatusAccepted = [bool]$productionExternalEvidenceOwnerReturnBundleStatusAccepted
+    productionExternalEvidenceOwnerReturnBundleReadinessStatus = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnReadinessStatus" "")
+    productionExternalEvidenceOwnerReturnBundleNextRequiredAction = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "nextRequiredAction" "")
+    productionExternalEvidenceOwnerReturnBundleSemanticPreflightRun = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "semanticPreflightRun" $true)
+    productionExternalEvidenceOwnerReturnBundleReadyForAcceptanceCandidate = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "readyForAcceptanceCandidate" $true)
+    productionExternalEvidenceOwnerReturnBundlePendingOwnerPacketCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "pendingOwnerPacketCount" 0))
+    productionExternalEvidenceOwnerReturnBundleRemainingMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "remainingMissingFileCount" 0))
+    productionExternalEvidenceOwnerReturnBundleRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "remainingBlockingReasonCount" 0))
+    productionExternalEvidenceOwnerReturnBundleStatusAcceptanceRun = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "acceptanceRun" $true)
+    productionExternalEvidenceOwnerReturnBundleStatusRealHostProjectEvidenceAccepted = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "realHostProjectEvidenceAccepted" $true)
+    productionExternalEvidenceOwnerReturnBundleStatusProbeAccepted = [bool]$productionExternalEvidenceOwnerReturnBundleStatusProbeAccepted
+    productionExternalEvidenceOwnerReturnBundleStatusProbeCaseCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "caseCount" 0))
+    productionExternalEvidenceOwnerReturnBundleStatusProbeDefaultPending = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "defaultPendingOwnerReturnStatus" $false)
+    productionExternalEvidenceOwnerReturnBundleStatusProbeZipCandidateReady = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "ownerResponseBundleZipCandidateReady" $false)
+    productionExternalEvidenceOwnerReturnBundleStatusProbeExtraPayloadNeedsRepair = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "extraPayloadOwnerResponseBundleNeedsRepair" $false)
+    productionExternalEvidenceOwnerReturnBundleStatusProbeAcceptanceRun = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusProbeManifest "acceptanceRun" $true)
     productionHandoffBlockedSendCount = (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "blockedSendCount" 0))
     productionHandoffMissingOwnerContactCount = (Convert-ToInt (Get-JsonValue $productionHandoffContactReadinessManifest "missingOwnerContactCount" 0))
     productionHandoffRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffStatusManifest "remainingBlockingReasonCount" 0))
@@ -3563,6 +3649,15 @@ $reportLines = @(
     "- Production external evidence semantic preflight semantic-bad bundle rejected: $($manifest.productionExternalEvidenceSemanticPreflightSemanticBadBundleRejected)",
     "- Production external evidence semantic preflight semantic-bad bundle zip rejected: $($manifest.productionExternalEvidenceSemanticPreflightSemanticBadBundleZipRejected)",
     "- Production external evidence semantic preflight fixture signal rejected: $($manifest.productionExternalEvidenceSemanticPreflightFixtureSignalRejected)",
+    "- Production external evidence owner return bundle status accepted: $($manifest.productionExternalEvidenceOwnerReturnBundleStatusAccepted)",
+    "- Production external evidence owner return bundle readiness: $($manifest.productionExternalEvidenceOwnerReturnBundleReadinessStatus)",
+    "- Production external evidence owner return bundle next action: $($manifest.productionExternalEvidenceOwnerReturnBundleNextRequiredAction)",
+    "- Production external evidence owner return bundle pending owners: $($manifest.productionExternalEvidenceOwnerReturnBundlePendingOwnerPacketCount)",
+    "- Production external evidence owner return bundle missing files: $($manifest.productionExternalEvidenceOwnerReturnBundleRemainingMissingFileCount)",
+    "- Production external evidence owner return bundle status probe accepted: $($manifest.productionExternalEvidenceOwnerReturnBundleStatusProbeAccepted)",
+    "- Production external evidence owner return bundle status probe cases: $($manifest.productionExternalEvidenceOwnerReturnBundleStatusProbeCaseCount)",
+    "- Production external evidence owner return bundle status probe zip candidate ready: $($manifest.productionExternalEvidenceOwnerReturnBundleStatusProbeZipCandidateReady)",
+    "- Production external evidence owner return bundle status probe extra payload needs repair: $($manifest.productionExternalEvidenceOwnerReturnBundleStatusProbeExtraPayloadNeedsRepair)",
     "- Production handoff blocked sends: $($manifest.productionHandoffBlockedSendCount)",
     "- Production handoff missing owner contacts: $($manifest.productionHandoffMissingOwnerContactCount)",
     "- Production handoff pending owner packets: $($manifest.productionHandoffPendingOwnerPacketCount)",

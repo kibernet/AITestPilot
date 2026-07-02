@@ -399,6 +399,24 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "payloadShapeRejectedCaseCount" "int-eq" 2 "semantic preflight covers two payload-shape rejected cases"
     $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "fixtureSignalRejectedWithoutContractMode" "bool-eq" $true "semantic preflight rejects fixture signals without contract mode"
 
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "readOnly" "bool-eq" $true "owner return status remains read-only"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "ownerReturnReadinessStatus" "string-eq" "PENDING_EXTERNAL_EVIDENCE" "owner return status preserves current pending external evidence state"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "semanticPreflightRun" "bool-eq" $false "owner return status default does not run semantic preflight"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "readyForAcceptanceCandidate" "bool-eq" $false "owner return status default is not acceptance candidate-ready"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "pendingOwnerPacketCount" "int-eq" 3 "owner return status preserves three pending owner packets"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "remainingMissingFileCount" "int-eq" 9 "owner return status preserves nine missing files"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "remainingBlockingReasonCount" "int-eq" 11 "owner return status preserves eleven blockers"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "acceptanceRun" "bool-eq" $false "owner return status does not run acceptance"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "realHostProjectEvidenceAccepted" "bool-eq" $false "owner return status does not accept host evidence"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "productionOutputBoundary" "string-eq" "owner_return_bundle_status_only" "owner return status keeps read-only boundary"
+
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "caseCount" "int-eq" 3 "owner return status probe covers pending, complete zip, and repair cases"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "defaultPendingOwnerReturnStatus" "bool-eq" $true "owner return status probe verifies default pending state"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "ownerResponseBundleZipCandidateReady" "bool-eq" $true "owner return status probe verifies complete zip candidate readiness"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "extraPayloadOwnerResponseBundleNeedsRepair" "bool-eq" $true "owner return status probe verifies strict-payload repair routing"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "acceptanceRun" "bool-eq" $false "owner return status probe does not run acceptance"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-probe-manifest.json" "realHostProjectEvidenceAccepted" "bool-eq" $false "owner return status probe does not accept host evidence"
+
     $checks += New-FieldCoverageCheck "production-external-evidence-auto-acceptance-probe-manifest.json" "extraPayloadOwnerResponseBundleRejected" "bool-eq" $true "auto acceptance rejects extra-payload owner bundles before acceptance"
 
     $checks += New-FieldCoverageCheck "release-risk-policy-manifest.json" "productionHandoffOwnerPacketDispatchReceiptIntakeProbeAccepted" "bool-eq" $true "risk policy accepts owner packet receipt intake"
@@ -656,6 +674,8 @@ function Get-DefaultSourceManifestNames {
         "production-handoff-owner-route-map-probe-manifest.json",
         "production-external-evidence-partial-matrix-probe-manifest.json",
         "production-external-evidence-semantic-preflight-probe-manifest.json",
+        "production-external-evidence-owner-return-bundle-status-manifest.json",
+        "production-external-evidence-owner-return-bundle-status-probe-manifest.json",
         "production-hard-mode-failure-probe-manifest.json",
         "production-hard-mode-success-contract-probe-manifest.json",
         "release-risk-policy-manifest.json"
