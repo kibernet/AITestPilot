@@ -4,7 +4,8 @@ param(
     [string]$InboxDir,
     [string]$ManifestPath,
     [string]$ReportPath,
-    [string]$GameReplayDriverType = "Your.Game.Tests.ProductionReplayDriver"
+    [string]$GameReplayDriverType = "Your.Game.Tests.ProductionReplayDriver",
+    [switch]$AllowExternalInboxDir
 )
 
 Set-StrictMode -Version Latest
@@ -55,6 +56,20 @@ function Assert-PathUnderRepo {
     $fullPath = Resolve-FullPath $Path
     if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Assert-PathUnderEvidenceBundle {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Assert-PathUnderRepo $Path $Label
+    if (-not (Test-PathWithinRoot $fullPath $script:evidenceBundlePath)) {
+        throw "$Label must stay under evidence bundle: $fullPath"
     }
 
     return $fullPath
@@ -169,9 +184,13 @@ function Get-InboxDirectoryName {
 }
 
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
-$inboxPath = Resolve-FullPath $InboxDir
-$manifestFullPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
-$reportFullPath = Assert-PathUnderRepo $ReportPath "ReportPath"
+$inboxPath = if ([bool]$AllowExternalInboxDir) {
+    Resolve-FullPath $InboxDir
+} else {
+    Assert-PathUnderEvidenceBundle $InboxDir "InboxDir"
+}
+$manifestFullPath = Assert-PathUnderEvidenceBundle $ManifestPath "ManifestPath"
+$reportFullPath = Assert-PathUnderEvidenceBundle $ReportPath "ReportPath"
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -850,6 +869,7 @@ $manifest = [ordered]@{
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
     evidenceBundleDir = $evidenceBundlePath
     inboxDir = $inboxPath
+    allowExternalInboxDir = [bool]$AllowExternalInboxDir
     reportPath = $reportFullPath
     reportGenerated = (Test-Path $reportFullPath)
     reportContentValidated = [bool]$reportContentValidated

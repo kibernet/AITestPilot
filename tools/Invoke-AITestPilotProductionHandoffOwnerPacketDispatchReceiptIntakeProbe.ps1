@@ -32,11 +32,52 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-PathUnderRepo {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
+        throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Assert-PathUnderEvidenceBundle {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Assert-PathUnderRepo $Path $Label
+    if (-not (Test-PathWithinRoot $fullPath $script:evidenceBundlePath)) {
+        throw "$Label must stay under evidence bundle: $fullPath"
+    }
+
+    return $fullPath
+}
+
 function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "Generated file must stay under evidence bundle: $fullPath"
     }
 
@@ -208,8 +249,9 @@ function Invoke-OwnerPacketReceiptIntake {
     )
 
     $outputPath = Join-Path $probePath "$Name-output.txt"
-    $manifestPathForRun = Join-Path $probePath "$Name-manifest.json"
-    $reportPathForRun = Join-Path $probePath "$Name.md"
+    $runOutputDir = Join-Path $acceptedIntakeBundlePath "owner-packet-dispatch-receipt-intake-probe"
+    $manifestPathForRun = Join-Path $runOutputDir "$Name-manifest.json"
+    $reportPathForRun = Join-Path $runOutputDir "$Name.md"
     $powerShellArgs = @(
         "-NoProfile",
         "-ExecutionPolicy",
@@ -258,10 +300,10 @@ function Invoke-OwnerPacketReceiptIntake {
     }
 }
 
-$evidenceBundlePath = Resolve-FullPath $EvidenceBundleDir
-$probePath = Resolve-FullPath $ProbeDir
-$manifestFullPath = Resolve-FullPath $ManifestPath
-$reportFullPath = Resolve-FullPath $ReportPath
+$evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
+$probePath = Assert-PathUnderEvidenceBundle $ProbeDir "ProbeDir"
+$manifestFullPath = Assert-PathUnderEvidenceBundle $ManifestPath "ManifestPath"
+$reportFullPath = Assert-PathUnderEvidenceBundle $ReportPath "ReportPath"
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -283,10 +325,16 @@ $acceptedContacts = Read-JsonFile (Join-Path $acceptedIntakeBundlePath "producti
 $queueEntries = @(Convert-ToArray (Get-JsonValue $acceptedSendQueue "entries" @()))
 $contactEntries = @(Convert-ToArray (Get-JsonValue $acceptedContacts "entries" @()))
 $ownerContactCount = Convert-ToInt (Get-JsonValue $ownerContactExternalIntakeProbeManifest "ownerContactCount" 0)
+$acceptedIntakeProbePath = Join-Path $acceptedIntakeBundlePath "owner-packet-dispatch-receipt-intake-probe"
+if (Test-Path $acceptedIntakeProbePath) {
+    Remove-Item -LiteralPath $acceptedIntakeProbePath -Recurse -Force
+}
+New-Item -ItemType Directory -Force $acceptedIntakeProbePath | Out-Null
 
-$fakeReceiptDir = Join-Path $evidenceBundlePath "production-handoff-send-local-workflow-probe\owner-packet-send-receipts"
-$contractReceiptDir = Join-Path $probePath "contract-owner-packet-send-receipts"
-$queuedReceiptDir = Join-Path $probePath "queued-owner-packet-send-receipts"
+$fakeReceiptDir = Join-Path $acceptedIntakeBundlePath "owner-packet-dispatch-receipt-intake-probe\fake-owner-packet-send-receipts"
+$contractReceiptDir = Join-Path $acceptedIntakeBundlePath "owner-packet-dispatch-receipt-intake-probe\contract-owner-packet-send-receipts"
+$queuedReceiptDir = Join-Path $acceptedIntakeBundlePath "owner-packet-dispatch-receipt-intake-probe\queued-owner-packet-send-receipts"
+New-OwnerPacketReceiptSet -ReceiptDir $fakeReceiptDir -MessagePrefix "msg_owner_packet_workflow"
 New-OwnerPacketReceiptSet -ReceiptDir $contractReceiptDir -MessagePrefix "msg_contract_owner_packet_receipt"
 New-OwnerPacketReceiptSet -ReceiptDir $queuedReceiptDir -MessagePrefix "msg_contract_owner_packet_queued" -QueuedOnly
 
@@ -302,9 +350,19 @@ $queuedResult = Invoke-OwnerPacketReceiptIntake `
     -ReceiptDir $queuedReceiptDir `
     -ContractFixtureMode
 
+$outsideEvidenceReceiptDir = Join-Path ($acceptedIntakeBundlePath + "-sibling") "owner-packet-send-receipts"
+$pathBoundaryResult = Invoke-OwnerPacketReceiptIntake `
+    -Name "receipt-dir-boundary" `
+    -ReceiptDir $outsideEvidenceReceiptDir `
+    -ContractFixtureMode
+
 $fakeManifest = $fakeResult.manifest
 $contractManifest = $contractResult.manifest
 $queuedManifest = $queuedResult.manifest
+$pathBoundaryRejected = $pathBoundaryResult.exitCode -ne 0 -and
+    $null -eq $pathBoundaryResult.manifest -and
+    -not (Test-Path $pathBoundaryResult.manifestPath) -and
+    -not (Test-Path $pathBoundaryResult.reportPath)
 
 $checks = @()
 Add-ProbeCheck "owner_packet_receipt_intake_sources_available" `
@@ -352,6 +410,9 @@ Add-ProbeCheck "release_pipeline_owner_packet_boundary_preserved" `
         -not (Get-JsonValue $contractManifest "realHostProjectEvidenceAccepted" $true) -and
         -not (Get-JsonValue $contractManifest "fixtureEvidencePromoted" $true)) `
     "Owner-packet receipt intake proof must not send email, accept host-project evidence, or promote fixtures."
+Add-ProbeCheck "owner_packet_receipt_paths_reject_outside_evidence_bundle" `
+    ([bool]$pathBoundaryRejected) `
+    "Owner-packet receipt intake must reject receipt directories outside the current evidence bundle before writing output."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -369,6 +430,7 @@ $reportLines = @(
     "",
     "- Fake local workflow receipts are rejected as real dispatch evidence.",
     "- Contract and queued receipts prove shape only.",
+    "- Receipt directories outside the current evidence bundle are rejected before output is written.",
     "- The release pipeline does not send owner-packet email.",
     "",
     "## Checks",
@@ -384,6 +446,7 @@ $reportLines | Set-Content -Path $reportFullPath -Encoding UTF8
 $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $manifestFullPath),
     (Convert-ToEvidenceRelativePath $reportFullPath),
+    (Convert-ToEvidenceRelativePath $fakeReceiptDir),
     (Convert-ToEvidenceRelativePath $contractReceiptDir),
     (Convert-ToEvidenceRelativePath $queuedReceiptDir),
     (Convert-ToEvidenceRelativePath $fakeResult.outputPath),
@@ -394,13 +457,13 @@ $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $contractResult.reportPath),
     (Convert-ToEvidenceRelativePath $queuedResult.outputPath),
     (Convert-ToEvidenceRelativePath $queuedResult.manifestPath),
-    (Convert-ToEvidenceRelativePath $queuedResult.reportPath)
+    (Convert-ToEvidenceRelativePath $queuedResult.reportPath),
+    (Convert-ToEvidenceRelativePath $pathBoundaryResult.outputPath)
 )
 $sourceFiles = @(
     "production-handoff-send-readiness-manifest.json",
     "production-handoff-owner-contact-external-intake-probe-manifest.json",
     "production-handoff-send-local-workflow-probe-manifest.json",
-    "production-handoff-send-local-workflow-probe/owner-packet-send-receipts",
     "production-handoff-owner-contact-external-intake-probe/intake-bundle/production-handoff-send/production-handoff-send-queue.json",
     "production-handoff-owner-contact-external-intake-probe/intake-bundle/production-handoff-contact-roster.json"
 )
@@ -427,6 +490,7 @@ $manifest = [ordered]@{
     queuedReceiptAcceptedCount = Convert-ToInt (Get-JsonValue $queuedManifest "receiptAcceptedCount" 0)
     queuedReceiptQueuedCount = Convert-ToInt (Get-JsonValue $queuedManifest "ownerPacketReceiptQueuedCount" 0)
     queuedReceiptMessageIdCount = Convert-ToInt (Get-JsonValue $queuedManifest "ownerPacketReceiptMessageIdCount" 0)
+    pathBoundaryRejected = [bool]$pathBoundaryRejected
     releasePipelineSendsEmail = $false
     realOwnerPacketEmailSent = $false
     emailSent = $false

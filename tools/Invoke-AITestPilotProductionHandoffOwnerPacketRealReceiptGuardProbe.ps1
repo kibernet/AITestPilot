@@ -32,11 +32,52 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-PathUnderRepo {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
+        throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Assert-PathUnderEvidenceBundle {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Assert-PathUnderRepo $Path $Label
+    if (-not (Test-PathWithinRoot $fullPath $script:evidenceBundlePath)) {
+        throw "$Label must stay under evidence bundle: $fullPath"
+    }
+
+    return $fullPath
+}
+
 function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "Generated file must stay under evidence bundle: $fullPath"
     }
 
@@ -202,8 +243,9 @@ function Invoke-OwnerPacketReceiptIntake {
     )
 
     $outputPath = Join-Path $probePath "$Name-output.txt"
-    $manifestPathForRun = Join-Path $probePath "$Name-manifest.json"
-    $reportPathForRun = Join-Path $probePath "$Name.md"
+    $runOutputDir = Join-Path $acceptedIntakeBundlePath "owner-packet-real-receipt-guard-probe"
+    $manifestPathForRun = Join-Path $runOutputDir "$Name-manifest.json"
+    $reportPathForRun = Join-Path $runOutputDir "$Name.md"
     $powerShellArgs = @(
         "-NoProfile",
         "-ExecutionPolicy",
@@ -255,10 +297,10 @@ function Invoke-OwnerPacketReceiptIntake {
     }
 }
 
-$evidenceBundlePath = Resolve-FullPath $EvidenceBundleDir
-$probePath = Resolve-FullPath $ProbeDir
-$manifestFullPath = Resolve-FullPath $ManifestPath
-$reportFullPath = Resolve-FullPath $ReportPath
+$evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
+$probePath = Assert-PathUnderEvidenceBundle $ProbeDir "ProbeDir"
+$manifestFullPath = Assert-PathUnderEvidenceBundle $ManifestPath "ManifestPath"
+$reportFullPath = Assert-PathUnderEvidenceBundle $ReportPath "ReportPath"
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -282,9 +324,14 @@ $contactEntries = @(Convert-ToArray (Get-JsonValue $acceptedContacts "entries" @
 $ownerContactCount = $queueEntries.Count
 $intakeScriptPath = Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffOwnerPacketDispatchReceiptIntake.ps1"
 $intakeScriptText = Get-Content -Path $intakeScriptPath -Encoding UTF8 -Raw
+$acceptedIntakeProbePath = Join-Path $acceptedIntakeBundlePath "owner-packet-real-receipt-guard-probe"
+if (Test-Path $acceptedIntakeProbePath) {
+    Remove-Item -LiteralPath $acceptedIntakeProbePath -Recurse -Force
+}
+New-Item -ItemType Directory -Force $acceptedIntakeProbePath | Out-Null
 
-$unconfirmedReceiptDir = Join-Path $probePath "valid-owner-packet-receipts-without-operator-confirmation"
-$contractConfirmedReceiptDir = Join-Path $probePath "contract-owner-packet-receipts-with-operator-confirmation"
+$unconfirmedReceiptDir = Join-Path $acceptedIntakeBundlePath "owner-packet-real-receipt-guard-probe\valid-owner-packet-receipts-without-operator-confirmation"
+$contractConfirmedReceiptDir = Join-Path $acceptedIntakeBundlePath "owner-packet-real-receipt-guard-probe\contract-owner-packet-receipts-with-operator-confirmation"
 New-OwnerPacketReceiptSet -ReceiptDir $unconfirmedReceiptDir -MessagePrefix "msg_owner_packet_guard"
 New-OwnerPacketReceiptSet -ReceiptDir $contractConfirmedReceiptDir -MessagePrefix "msg_contract_owner_packet_guard"
 

@@ -1506,8 +1506,9 @@ $productionHandoffOwnerPacketDispatchReceiptIntakeProbeAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "emailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "pathBoundaryRejected" $false)) -and
     (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "productionOutputBoundary" "") -eq "owner_packet_dispatch_receipt_intake_contract_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "checkCount" 0)) -eq 7 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -1972,8 +1973,9 @@ $releaseProgressNotificationDispatchReceiptIntakeProbeAccepted = (
     (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "canonicalOutboxDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "canonicalOutboxEmailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "fixtureEvidencePromoted" $true)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "pathBoundaryRejected" $false)) -and
     (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "productionOutputBoundary" "") -eq "progress_notification_dispatch_receipt_intake_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "checkCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "checkCount" 0)) -eq 7 -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2354,6 +2356,8 @@ $productionExternalEvidenceInboxContractAccepted = (
     $productionExternalEvidenceInboxContractProbeManifest.status -eq "PASS" -and
     (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_inbox_contract_probe.v1" -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "externalBundleUnderRepo" $true)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "externalInboxWithoutOptInRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "externalInboxExplicitOptIn" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "inboxTemplateGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "inboxAcceptanceWrapperSupportsOwnerResponseBundle" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "inboxAcceptanceWrapperRequiresSemanticPreflightCandidate" $false)) -and
@@ -2384,7 +2388,7 @@ $productionExternalEvidenceInboxContractAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "releasePipelineUsesFixture" $true)) -and
     (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "productionOutputBoundary" "") -eq "accepted_fixture_external_evidence_inbox_contract_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "checkCount" 0)) -eq 10 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "checkCount" 0)) -eq 11 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2831,6 +2835,7 @@ $manifest = [ordered]@{
     productionHandoffOwnerPacketDispatchReceiptContractAcceptedCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "contractReceiptAcceptedCount" 0))
     productionHandoffOwnerPacketDispatchReceiptQueuedAcceptedCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "queuedReceiptAcceptedCount" 0))
     productionHandoffOwnerPacketDispatchReceiptRealOwnerPacketEmailSent = (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "realOwnerPacketEmailSent" $true)
+    productionHandoffOwnerPacketDispatchReceiptPathBoundaryRejected = (Get-JsonValue $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest "pathBoundaryRejected" $false)
     productionHandoffOwnerPacketRealReceiptGuardProbeAccepted = [bool]$productionHandoffOwnerPacketRealReceiptGuardProbeAccepted
     productionHandoffOwnerPacketRealReceiptGuardUnconfirmedStatus = (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "unconfirmedOwnerPacketDispatchStatus" "")
     productionHandoffOwnerPacketRealReceiptGuardUnconfirmedEmailSent = (Get-JsonValue $productionHandoffOwnerPacketRealReceiptGuardProbeManifest "unconfirmedRealOwnerPacketEmailSent" $true)
@@ -2909,6 +2914,7 @@ $manifest = [ordered]@{
     releaseProgressNotificationDispatchReceiptContractRealEmailSentAccepted = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "contractRealEmailSentAccepted" $true)
     releaseProgressNotificationDispatchReceiptQueuedAccepted = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedReceiptAccepted" $false)
     releaseProgressNotificationDispatchReceiptQueuedEvidencePresent = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "queuedReceiptDispatchEvidencePresent" $false)
+    releaseProgressNotificationDispatchReceiptPathBoundaryRejected = (Get-JsonValue $releaseProgressNotificationDispatchReceiptIntakeProbeManifest "pathBoundaryRejected" $false)
     releaseProgressNotificationLocalSendWorkflowProbeAccepted = [bool]$releaseProgressNotificationLocalSendWorkflowProbeAccepted
     releaseProgressNotificationLocalWorkflowUnauthMessageSendCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "unauthenticatedMessageSendCallCount" 0))
     releaseProgressNotificationLocalWorkflowPrepareTokenReturned = (Get-JsonValue $releaseProgressNotificationLocalSendWorkflowProbeManifest "prepareConfirmationTokenReturned" $false)
@@ -2994,6 +3000,8 @@ $manifest = [ordered]@{
     productionExternalEvidenceInboxMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceInboxManifest "missingRequiredFileCount" 0))
     productionExternalEvidenceInboxSupportsOwnerResponseBundle = (Get-JsonValue $productionExternalEvidenceInboxManifest "acceptanceWrapperSupportsOwnerResponseBundle" $false)
     productionExternalEvidenceInboxContractAccepted = [bool]$productionExternalEvidenceInboxContractAccepted
+    productionExternalEvidenceInboxContractExternalInboxWithoutOptInRejected = (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "externalInboxWithoutOptInRejected" $false)
+    productionExternalEvidenceInboxContractExternalInboxExplicitOptIn = (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "externalInboxExplicitOptIn" $false)
     productionExternalEvidenceInboxContractOwnerResponseBundleDirectoryAccepted = (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleDirectoryAcceptancePassed" $false)
     productionExternalEvidenceInboxContractOwnerResponseBundleZipAccepted = (Get-JsonValue $productionExternalEvidenceInboxContractProbeManifest "ownerResponseBundleZipAcceptancePassed" $false)
     productionExternalEvidenceAutoAcceptanceProbeAccepted = [bool]$productionExternalEvidenceAutoAcceptanceProbeAccepted
@@ -3119,6 +3127,7 @@ $reportLines = @(
     "- Production handoff owner packet dispatch receipt fake rejected by intake: $($manifest.productionHandoffOwnerPacketDispatchReceiptFakeRejectedByIntake)",
     "- Production handoff owner packet dispatch receipt fake detected count: $($manifest.productionHandoffOwnerPacketDispatchReceiptFakeDetectedCount)",
     "- Production handoff owner packet dispatch receipt contract accepted count: $($manifest.productionHandoffOwnerPacketDispatchReceiptContractAcceptedCount)",
+    "- Production handoff owner packet dispatch receipt path boundary rejected: $($manifest.productionHandoffOwnerPacketDispatchReceiptPathBoundaryRejected)",
     "- Production handoff owner packet real receipt guard accepted: $($manifest.productionHandoffOwnerPacketRealReceiptGuardProbeAccepted)",
     "- Production handoff owner packet real receipt guard unconfirmed status: $($manifest.productionHandoffOwnerPacketRealReceiptGuardUnconfirmedStatus)",
     "- Production handoff owner packet real receipt guard unconfirmed email sent: $($manifest.productionHandoffOwnerPacketRealReceiptGuardUnconfirmedEmailSent)",
@@ -3180,6 +3189,7 @@ $reportLines = @(
     "- Release progress notification dispatch receipt fake rejected: $($manifest.releaseProgressNotificationDispatchReceiptFakeRejected)",
     "- Release progress notification dispatch receipt contract accepted: $($manifest.releaseProgressNotificationDispatchReceiptContractAccepted)",
     "- Release progress notification dispatch receipt contract real email sent accepted: $($manifest.releaseProgressNotificationDispatchReceiptContractRealEmailSentAccepted)",
+    "- Release progress notification dispatch receipt path boundary rejected: $($manifest.releaseProgressNotificationDispatchReceiptPathBoundaryRejected)",
     "- Release progress notification local send workflow probe accepted: $($manifest.releaseProgressNotificationLocalSendWorkflowProbeAccepted)",
     "- Release progress notification local workflow unauth message sends: $($manifest.releaseProgressNotificationLocalWorkflowUnauthMessageSendCount)",
     "- Release progress notification local workflow prepare token returned: $($manifest.releaseProgressNotificationLocalWorkflowPrepareTokenReturned)",
@@ -3249,6 +3259,8 @@ $reportLines = @(
     "- Production external evidence inbox missing files: $($manifest.productionExternalEvidenceInboxMissingFileCount)",
     "- Production external evidence inbox supports owner response bundle: $($manifest.productionExternalEvidenceInboxSupportsOwnerResponseBundle)",
     "- Production external evidence inbox contract accepted: $($manifest.productionExternalEvidenceInboxContractAccepted)",
+    "- Production external evidence inbox contract external inbox without opt-in rejected: $($manifest.productionExternalEvidenceInboxContractExternalInboxWithoutOptInRejected)",
+    "- Production external evidence inbox contract external inbox explicit opt-in: $($manifest.productionExternalEvidenceInboxContractExternalInboxExplicitOptIn)",
     "- Production external evidence inbox owner response bundle directory accepted: $($manifest.productionExternalEvidenceInboxContractOwnerResponseBundleDirectoryAccepted)",
     "- Production external evidence inbox owner response bundle zip accepted: $($manifest.productionExternalEvidenceInboxContractOwnerResponseBundleZipAccepted)",
     "- Production external evidence auto acceptance probe accepted: $($manifest.productionExternalEvidenceAutoAcceptanceProbeAccepted)",

@@ -31,6 +31,59 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-PathUnderRepo {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
+        throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Assert-PathUnderEvidenceBundle {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Assert-PathUnderRepo $Path $Label
+    if (-not (Test-PathWithinRoot $fullPath $script:evidenceBundlePath)) {
+        throw "$Label must stay under evidence bundle: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Convert-ToEvidenceRelativePath {
+    param([string]$Path)
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
+        throw "Generated file must stay under evidence bundle: $fullPath"
+    }
+
+    $relativePath = $fullPath.Substring($evidenceBundlePath.Length).TrimStart([char[]]@("\", "/"))
+    return $relativePath.Replace("\", "/")
+}
+
 function Read-JsonFile {
     param(
         [string]$Path,
@@ -132,9 +185,9 @@ function Get-ReceiptQueued {
     }
 }
 
-$evidenceBundlePath = Resolve-FullPath $EvidenceBundleDir
-$manifestFullPath = Resolve-FullPath $ManifestPath
-$reportFullPath = Resolve-FullPath $ReportPath
+$evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
+$manifestFullPath = Assert-PathUnderEvidenceBundle $ManifestPath "ManifestPath"
+$reportFullPath = Assert-PathUnderEvidenceBundle $ReportPath "ReportPath"
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -143,7 +196,7 @@ if (-not (Test-Path $evidenceBundlePath)) {
 if ([string]::IsNullOrWhiteSpace($ReceiptPath)) {
     $ReceiptPath = Join-Path $evidenceBundlePath "release-progress-notification-outbox\progress-notification-send-receipt.json"
 }
-$receiptFullPath = Resolve-FullPath $ReceiptPath
+$receiptFullPath = Assert-PathUnderEvidenceBundle $ReceiptPath "ReceiptPath"
 
 $outboxManifest = Read-JsonFile (Join-Path $evidenceBundlePath "release-progress-notification-outbox-manifest.json") "Release progress notification outbox manifest"
 
@@ -269,12 +322,12 @@ New-Item -ItemType Directory -Force (Split-Path $reportFullPath -Parent) | Out-N
 $reportLines | Set-Content -Path $reportFullPath -Encoding UTF8
 
 $files = @(
-    (Split-Path $manifestFullPath -Leaf),
-    (Split-Path $reportFullPath -Leaf),
+    (Convert-ToEvidenceRelativePath $manifestFullPath),
+    (Convert-ToEvidenceRelativePath $reportFullPath),
     "release-progress-notification-outbox-manifest.json"
 )
-if ($receiptExists -and $receiptFullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
-    $files += $receiptFullPath.Substring($evidenceBundlePath.Length).TrimStart([char[]]@("\", "/")).Replace("\", "/")
+if ($receiptExists) {
+    $files += Convert-ToEvidenceRelativePath $receiptFullPath
 }
 
 $manifest = [ordered]@{

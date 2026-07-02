@@ -33,6 +33,19 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -40,7 +53,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -54,7 +67,7 @@ function Assert-PathUnderTemp {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $tempRoot)) {
         throw "$Label must stay under system temp for this probe: $fullPath"
     }
 
@@ -200,12 +213,27 @@ $liveAcceptedSourceDir = Resolve-FullPath ([string]$liveContract.externalBundleD
 $externalInboxPath = Join-Path $externalBundlePath "production-external-evidence-inbox"
 $filledInboxManifestPath = Join-Path $probeBundlePath "production-external-evidence-inbox-filled-manifest.json"
 $filledInboxReportPath = Join-Path $probeBundlePath "production-external-evidence-inbox-filled.md"
+$externalInboxWithoutOptInRejected = $false
+$externalInboxWithoutOptInOutputCapturePath = Join-Path $probeBundlePath "external-inbox-without-opt-in-output.txt"
+try {
+    $externalInboxWithoutOptInOutput = & (Join-Path $PSScriptRoot "Invoke-AITestPilotProductionExternalEvidenceInbox.ps1") `
+        -EvidenceBundleDir $evidenceBundlePath `
+        -InboxDir $externalInboxPath `
+        -ManifestPath $filledInboxManifestPath `
+        -ReportPath $filledInboxReportPath 2>&1
+}
+catch {
+    $externalInboxWithoutOptInRejected = $true
+    $externalInboxWithoutOptInOutput = @($_)
+}
+@($externalInboxWithoutOptInOutput | ForEach-Object { [string]$_ }) | Set-Content -Path $externalInboxWithoutOptInOutputCapturePath -Encoding UTF8
 
 & (Join-Path $PSScriptRoot "Invoke-AITestPilotProductionExternalEvidenceInbox.ps1") `
     -EvidenceBundleDir $evidenceBundlePath `
     -InboxDir $externalInboxPath `
     -ManifestPath $filledInboxManifestPath `
-    -ReportPath $filledInboxReportPath | Out-Null
+    -ReportPath $filledInboxReportPath `
+    -AllowExternalInboxDir | Out-Null
 
 $externalDriverDir = Join-Path $externalInboxPath "production-driver-evidence"
 $externalLuaDir = Join-Path $externalInboxPath "production-lua-evidence"
@@ -224,7 +252,8 @@ Copy-RequiredFiles $liveAcceptedSourceDir (Join-Path $ownerResponseBundlePath "l
     -EvidenceBundleDir $evidenceBundlePath `
     -InboxDir $externalInboxPath `
     -ManifestPath $filledInboxManifestPath `
-    -ReportPath $filledInboxReportPath | Out-Null
+    -ReportPath $filledInboxReportPath `
+    -AllowExternalInboxDir | Out-Null
 
 $filledInboxManifest = Read-JsonFile $filledInboxManifestPath "Filled production external evidence inbox manifest"
 
@@ -421,6 +450,9 @@ $checks = @()
 Add-ProbeCheck "external_inbox_generated" `
     ((-not [bool]$externalBundleUnderRepo) -and (Test-Path $externalInboxPath) -and [bool]$filledInboxManifest.inboxTemplateGenerated) `
     "Returned-evidence inbox must be generated outside the repository for contract probing."
+Add-ProbeCheck "external_inbox_requires_explicit_opt_in" `
+    ([bool]$externalInboxWithoutOptInRejected -and [bool](Get-JsonValue $filledInboxManifest "allowExternalInboxDir" $false)) `
+    "External returned-evidence inbox generation must require -AllowExternalInboxDir, while the contract probe keeps using that explicit opt-in."
 Add-ProbeCheck "accepted_fixture_files_loaded" `
     $filledInboxComplete `
     "Accepted fixture files must fill every returned-evidence inbox area without claiming real evidence."
@@ -477,6 +509,8 @@ $manifest = [ordered]@{
     probeBundleDir = $probeBundlePath
     externalBundleUnderRepo = [bool]$externalBundleUnderRepo
     ownerResponseBundleUnderRepo = [bool]$ownerResponseBundleUnderRepo
+    externalInboxWithoutOptInRejected = [bool]$externalInboxWithoutOptInRejected
+    externalInboxExplicitOptIn = [bool](Get-JsonValue $filledInboxManifest "allowExternalInboxDir" $false)
     inboxTemplateGenerated = [bool]$filledInboxManifest.inboxTemplateGenerated
     inboxAcceptanceWrapperSupportsOwnerResponseBundle = [bool]$filledInboxManifest.acceptanceWrapperSupportsOwnerResponseBundle
     inboxAcceptanceWrapperRequiresSemanticPreflightCandidate = [bool]$filledInboxManifest.acceptanceWrapperRequiresSemanticPreflightCandidate

@@ -32,11 +32,52 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-PathUnderRepo {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
+        throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Assert-PathUnderEvidenceBundle {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Assert-PathUnderRepo $Path $Label
+    if (-not (Test-PathWithinRoot $fullPath $script:evidenceBundlePath)) {
+        throw "$Label must stay under evidence bundle: $fullPath"
+    }
+
+    return $fullPath
+}
+
 function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "Generated file must stay under evidence bundle: $fullPath"
     }
 
@@ -193,11 +234,14 @@ function Invoke-ReceiptIntake {
     }
 }
 
-$evidenceBundlePath = Resolve-FullPath $EvidenceBundleDir
-$probePath = Resolve-FullPath $ProbeDir
-$manifestFullPath = Resolve-FullPath $ManifestPath
-$reportFullPath = Resolve-FullPath $ReportPath
+$evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
+$probePath = Assert-PathUnderEvidenceBundle $ProbeDir "ProbeDir"
+$manifestFullPath = Assert-PathUnderEvidenceBundle $ManifestPath "ManifestPath"
+$reportFullPath = Assert-PathUnderEvidenceBundle $ReportPath "ReportPath"
 
+if (Test-Path $probePath) {
+    Remove-Item -LiteralPath $probePath -Recurse -Force
+}
 New-Item -ItemType Directory -Force $probePath | Out-Null
 New-Item -ItemType Directory -Force (Split-Path $manifestFullPath -Parent) | Out-Null
 New-Item -ItemType Directory -Force (Split-Path $reportFullPath -Parent) | Out-Null
@@ -230,9 +274,20 @@ $queuedResult = Invoke-ReceiptIntake `
     -ManifestPath (Join-Path $probePath "queued-receipt-intake-manifest.json") `
     -ReportPath (Join-Path $probePath "queued-receipt-intake.md")
 
+$outsideEvidenceReceiptPath = Join-Path ($evidenceBundlePath + "-sibling") "progress-notification-send-receipt.json"
+$pathBoundaryResult = Invoke-ReceiptIntake `
+    -Name "receipt-path-boundary" `
+    -ReceiptPath $outsideEvidenceReceiptPath `
+    -ManifestPath (Join-Path $probePath "receipt-path-boundary-manifest.json") `
+    -ReportPath (Join-Path $probePath "receipt-path-boundary.md")
+
 $fakeManifest = $fakeResult.manifest
 $contractManifest = $contractResult.manifest
 $queuedManifest = $queuedResult.manifest
+$pathBoundaryRejected = $pathBoundaryResult.exitCode -ne 0 -and
+    $null -eq $pathBoundaryResult.manifest -and
+    -not (Test-Path $pathBoundaryResult.manifestPath) -and
+    -not (Test-Path $pathBoundaryResult.reportPath)
 
 $checks = @()
 Add-ProbeCheck "dispatch_receipt_sources_available" `
@@ -274,6 +329,9 @@ Add-ProbeCheck "canonical_outbox_boundary_preserved" `
     ((Get-JsonValue $outboxManifest "notificationDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
         -not (Get-JsonValue $outboxManifest "emailSent" $true)) `
     "Canonical outbox must stay pending until a real local send receipt is provided."
+Add-ProbeCheck "dispatch_receipt_paths_reject_outside_evidence_bundle" `
+    ([bool]$pathBoundaryRejected) `
+    "Dispatch receipt intake must reject receipt paths outside the current evidence bundle before writing output."
 
 $failedChecks = @($checks | Where-Object { -not [bool]$_.passed })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -299,6 +357,7 @@ $reportLines = @(
     "- Fake CLI receipt ids are rejected.",
     "- Queued-only CLI receipts are accepted as dispatch evidence.",
     "- Contract receipt shape proof does not mark emailSent=true.",
+    "- Receipt paths outside the current evidence bundle are rejected before output is written.",
     "- Real dispatch evidence still requires a real local agently-cli send receipt.",
     "",
     "## Checks",
@@ -325,7 +384,8 @@ $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $contractResult.reportPath),
     (Convert-ToEvidenceRelativePath $queuedResult.outputPath),
     (Convert-ToEvidenceRelativePath $queuedResult.manifestPath),
-    (Convert-ToEvidenceRelativePath $queuedResult.reportPath)
+    (Convert-ToEvidenceRelativePath $queuedResult.reportPath),
+    (Convert-ToEvidenceRelativePath $pathBoundaryResult.outputPath)
 )
 
 $sourceFiles = @(
@@ -353,6 +413,7 @@ $manifest = [ordered]@{
     queuedNotificationDispatchStatus = (Get-JsonValue $queuedManifest "notificationDispatchStatus" "")
     queuedRealEmailSentAccepted = (Get-JsonValue $queuedManifest "realEmailSentAccepted" $true)
     queuedEmailSent = (Get-JsonValue $queuedManifest "emailSent" $true)
+    pathBoundaryRejected = [bool]$pathBoundaryRejected
     releasePipelineSendsEmail = $false
     canonicalOutboxDispatchStatus = (Get-JsonValue $outboxManifest "notificationDispatchStatus" "")
     canonicalOutboxEmailSent = (Get-JsonValue $outboxManifest "emailSent" $false)

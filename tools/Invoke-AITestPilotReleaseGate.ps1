@@ -2554,8 +2554,9 @@ if ($null -ne $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest) {
             -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.emailSent -and
             -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.fixtureEvidencePromoted -and
+            [bool]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.pathBoundaryRejected -and
             $productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.productionOutputBoundary -eq "owner_packet_dispatch_receipt_intake_contract_probe_only" -and
-            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.checkCount -eq 6 -and
+            [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.checkCount -eq 7 -and
             [int]$productionHandoffOwnerPacketDispatchReceiptIntakeProbeManifest.failedCheckCount -eq 0) `
         "Production handoff owner-packet dispatch receipt intake probe must reject fake workflow receipts and accept contract/queued receipts only without claiming real sends."
 
@@ -2984,8 +2985,9 @@ if ($null -ne $releaseProgressNotificationDispatchReceiptIntakeProbeManifest) {
             $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.canonicalOutboxDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.canonicalOutboxEmailSent -and
             -not [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.fixtureEvidencePromoted -and
+            [bool]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.pathBoundaryRejected -and
             $releaseProgressNotificationDispatchReceiptIntakeProbeManifest.productionOutputBoundary -eq "progress_notification_dispatch_receipt_intake_probe_only" -and
-            [int]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.checkCount -eq 6 -and
+            [int]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.checkCount -eq 7 -and
             [int]$releaseProgressNotificationDispatchReceiptIntakeProbeManifest.failedCheckCount -eq 0) `
         "Release progress notification dispatch receipt intake probe must reject fake receipt ids and accept contract-shaped or queued receipts without claiming real email."
 
@@ -3368,6 +3370,8 @@ if ($null -ne $productionExternalEvidenceInboxContractProbeManifest) {
         ($productionExternalEvidenceInboxContractProbeManifest.status -eq "PASS" -and
             $productionExternalEvidenceInboxContractProbeManifest.schemaVersion -eq "aitestpilot.production_external_evidence_inbox_contract_probe.v1" -and
             -not [bool]$productionExternalEvidenceInboxContractProbeManifest.externalBundleUnderRepo -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.externalInboxWithoutOptInRejected -and
+            [bool]$productionExternalEvidenceInboxContractProbeManifest.externalInboxExplicitOptIn -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.inboxTemplateGenerated -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.inboxAcceptanceWrapperSupportsOwnerResponseBundle -and
             [bool]$productionExternalEvidenceInboxContractProbeManifest.inboxAcceptanceWrapperRequiresSemanticPreflightCandidate -and
@@ -3398,7 +3402,7 @@ if ($null -ne $productionExternalEvidenceInboxContractProbeManifest) {
             -not [bool]$productionExternalEvidenceInboxContractProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceInboxContractProbeManifest.releasePipelineUsesFixture -and
             $productionExternalEvidenceInboxContractProbeManifest.productionOutputBoundary -eq "accepted_fixture_external_evidence_inbox_contract_only" -and
-            [int]$productionExternalEvidenceInboxContractProbeManifest.checkCount -eq 10 -and
+            [int]$productionExternalEvidenceInboxContractProbeManifest.checkCount -eq 11 -and
             [int]$productionExternalEvidenceInboxContractProbeManifest.failedCheckCount -eq 0) `
         "Production external evidence inbox contract probe must prove returned complete evidence can pass the wrapper from direct inbox files, owner response bundle directories, and owner response bundle zips while preserving the fixture boundary."
 
