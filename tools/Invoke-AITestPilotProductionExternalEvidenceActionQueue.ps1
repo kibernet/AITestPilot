@@ -30,6 +30,19 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -37,8 +50,22 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Assert-PathUnderEvidenceBundle {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Assert-PathUnderRepo $Path $Label
+    if (-not (Test-PathWithinRoot $fullPath $script:evidenceBundlePath)) {
+        throw "$Label must stay under evidence bundle: $fullPath"
     }
 
     return $fullPath
@@ -48,7 +75,7 @@ function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "Generated file must stay under evidence bundle: $fullPath"
     }
 
@@ -163,8 +190,8 @@ function Add-QueueCheck {
 }
 
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
-$manifestFullPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
-$reportFullPath = Assert-PathUnderRepo $ReportPath "ReportPath"
+$manifestFullPath = Assert-PathUnderEvidenceBundle $ManifestPath "ManifestPath"
+$reportFullPath = Assert-PathUnderEvidenceBundle $ReportPath "ReportPath"
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -178,7 +205,7 @@ if (-not [bool]$IgnorePostDispatchSnapshot -and [string]::IsNullOrWhiteSpace($Po
 $postDispatchSnapshot = $null
 $postDispatchSnapshotExists = -not [string]::IsNullOrWhiteSpace($PostDispatchSnapshotPath) -and (Test-Path $PostDispatchSnapshotPath)
 if ($postDispatchSnapshotExists) {
-    $postDispatchSnapshotPathFull = Assert-PathUnderRepo $PostDispatchSnapshotPath "PostDispatchSnapshotPath"
+    $postDispatchSnapshotPathFull = Assert-PathUnderEvidenceBundle $PostDispatchSnapshotPath "PostDispatchSnapshotPath"
     $postDispatchSnapshot = Read-JsonFile $postDispatchSnapshotPathFull "Release progress notification post-dispatch snapshot"
 }
 else {
@@ -377,11 +404,11 @@ Add-QueueCheck "external_evidence_action_queue_item_bundle_commands" `
     "Every external evidence queue item must carry owner response bundle area paths plus directory/zip semantic preflight and auto-acceptance commands, and driver/Lua/live-smoke items must expose evidence export helpers."
 Add-QueueCheck "external_evidence_action_queue_current_bundle_paths" `
     ((-not [string]::IsNullOrWhiteSpace($responseKitZipPath)) -and
-        $responseKitZipPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase) -and
+        (Test-PathWithinRoot $responseKitZipPath $evidenceBundlePath) -and
         @($queueItems | Where-Object {
                 $itemInboxPath = [string](Get-JsonValue $_ "inboxPath" "")
                 [string]::IsNullOrWhiteSpace($itemInboxPath) -or
-                    -not $itemInboxPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)
+                    -not (Test-PathWithinRoot $itemInboxPath $evidenceBundlePath)
             }).Count -eq 0) `
     "Action queue paths must resolve under the current evidence bundle, not stale source artifact paths."
 Add-QueueCheck "external_evidence_action_queue_post_dispatch_boundary" `

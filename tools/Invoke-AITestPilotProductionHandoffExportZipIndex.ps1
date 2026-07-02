@@ -32,6 +32,19 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -39,8 +52,22 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+function Assert-PathUnderEvidenceBundle {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Assert-PathUnderRepo $Path $Label
+    if (-not (Test-PathWithinRoot $fullPath $script:evidenceBundlePath)) {
+        throw "$Label must stay under evidence bundle: $fullPath"
     }
 
     return $fullPath
@@ -50,7 +77,7 @@ function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "File must stay under evidence bundle: $fullPath"
     }
 
@@ -119,6 +146,30 @@ function Normalize-ZipEntryPath {
     return ([string]$Path).Replace("/", "\").TrimStart([char[]]@("\", "/"))
 }
 
+function Test-ZipEntryPathUnsafe {
+    param([string]$Path)
+
+    $rawPath = [string]$Path
+    if ([string]::IsNullOrWhiteSpace($rawPath)) {
+        return $true
+    }
+
+    $normalized = $rawPath.Replace("/", "\")
+    if ($normalized.StartsWith("\", [System.StringComparison]::Ordinal) -or
+        [System.IO.Path]::IsPathRooted($normalized) -or
+        $normalized.Contains(":")) {
+        return $true
+    }
+
+    foreach ($segment in @($normalized.Split([char[]]@("\"), [System.StringSplitOptions]::RemoveEmptyEntries))) {
+        if ($segment -eq "..") {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 function Convert-ExportPathToZipEntryPath {
     param([string]$ExportPath)
 
@@ -174,9 +225,9 @@ function Add-ZipIndexCheck {
 }
 
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
-$manifestFullPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
-$reportFullPath = Assert-PathUnderRepo $ReportPath "ReportPath"
-$indexFullPath = Assert-PathUnderRepo $IndexPath "IndexPath"
+$manifestFullPath = Assert-PathUnderEvidenceBundle $ManifestPath "ManifestPath"
+$reportFullPath = Assert-PathUnderEvidenceBundle $ReportPath "ReportPath"
+$indexFullPath = Assert-PathUnderEvidenceBundle $IndexPath "IndexPath"
 
 if (-not (Test-Path $evidenceBundlePath)) {
     throw "Evidence bundle does not exist: $evidenceBundlePath"
@@ -197,8 +248,10 @@ $zipArchive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
 try {
     $zipEntries = @()
     foreach ($entry in $zipArchive.Entries) {
+        $entryRawPath = [string]$entry.FullName
         $entryPath = Normalize-ZipEntryPath $entry.FullName
         $isDirectory = [string]::IsNullOrEmpty($entry.Name)
+        $entryNameUnsafe = Test-ZipEntryPathUnsafe $entryRawPath
         $sourceRelativePath = ""
         $sourceExists = $false
         $sourceSha256 = ""
@@ -206,9 +259,6 @@ try {
         $hashMatches = $false
 
         if (-not $isDirectory) {
-            $sourceRelativePath = "production-handoff-export\" + $entryPath
-            $sourcePath = Join-Path $evidenceBundlePath $sourceRelativePath
-            $sourceExists = Test-Path $sourcePath
             $entryStream = $entry.Open()
             try {
                 $entrySha256 = Get-StreamSha256Hex $entryStream
@@ -217,13 +267,25 @@ try {
                 $entryStream.Dispose()
             }
 
-            if ($sourceExists) {
-                $sourceSha256 = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
-                $hashMatches = ($entrySha256 -eq $sourceSha256)
+            if (-not $entryNameUnsafe) {
+                $sourceRelativePath = "production-handoff-export\" + $entryPath
+                $sourcePath = Resolve-FullPath (Join-Path $evidenceBundlePath $sourceRelativePath)
+                if (-not (Test-PathWithinRoot $sourcePath (Join-Path $evidenceBundlePath "production-handoff-export"))) {
+                    $entryNameUnsafe = $true
+                    $sourceRelativePath = ""
+                }
+                else {
+                    $sourceExists = Test-Path $sourcePath
+                    if ($sourceExists) {
+                        $sourceSha256 = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
+                        $hashMatches = ($entrySha256 -eq $sourceSha256)
+                    }
+                }
             }
         }
 
         $zipEntries += [ordered]@{
+            rawPath = $entryRawPath
             path = $entryPath
             sourceRelativePath = $sourceRelativePath
             length = [int64]$entry.Length
@@ -233,6 +295,7 @@ try {
             sourceSha256 = $sourceSha256
             sourceExists = [bool]$sourceExists
             hashMatches = [bool]$hashMatches
+            unsafeEntryName = [bool]$entryNameUnsafe
         }
     }
 }
@@ -303,13 +366,18 @@ $canonicalActionQueueManifestZipMatchesRoot = (
     (Convert-ToBool (Get-JsonValue $exportManifest "operatorActionQueueManifestHashMatchesCanonical" $false))
 )
 
-$pathTraversalEntries = @($zipEntryPaths | Where-Object {
-        $_ -eq ".." -or
-        $_.StartsWith("..\", [System.StringComparison]::OrdinalIgnoreCase) -or
-        $_.Contains("\..\")
-    })
-$rootedPathEntries = @($zipEntryPaths | Where-Object {
-        [System.IO.Path]::IsPathRooted($_) -or $_.Contains(":")
+$pathTraversalEntries = @($zipFileEntries | Where-Object {
+        $normalizedRawPath = ([string]$_["rawPath"]).Replace("/", "\")
+        @($normalizedRawPath.Split([char[]]@("\"), [System.StringSplitOptions]::RemoveEmptyEntries) | Where-Object { $_ -eq ".." }).Count -gt 0
+    } | ForEach-Object { [string]$_["path"] })
+$rootedPathEntries = @($zipFileEntries | Where-Object {
+        $normalizedRawPath = ([string]$_["rawPath"]).Replace("/", "\")
+        $normalizedRawPath.StartsWith("\", [System.StringComparison]::Ordinal) -or
+        [System.IO.Path]::IsPathRooted($normalizedRawPath) -or
+        $normalizedRawPath.Contains(":")
+    } | ForEach-Object { [string]$_["path"] })
+$unsafeZipEntries = @($zipFileEntries | Where-Object {
+        [bool]$_["unsafeEntryName"]
     })
 
 $checks = @()
@@ -335,7 +403,7 @@ Add-ZipIndexCheck "zip_index_canonical_action_queue_manifest_hash" `
     $canonicalActionQueueManifestZipMatchesRoot `
     "Zip file must contain the canonical action queue manifest, and its entry hash must match the root canonical manifest hash recorded by the export manifest."
 Add-ZipIndexCheck "zip_index_paths_safe" `
-    ($emptyEntryNameCount -eq 0 -and $pathTraversalEntries.Count -eq 0 -and $rootedPathEntries.Count -eq 0) `
+    ($unsafeZipEntries.Count -eq 0) `
     "Zip entries must not contain empty names, rooted paths, drive-qualified paths, or parent traversal."
 Add-ZipIndexCheck "zip_index_duplicate_entries_absent" `
     ($duplicateZipEntries.Count -eq 0) `
@@ -436,7 +504,7 @@ $index = [ordered]@{
     unexpectedZipEntryCount = [int]$unexpectedZipEntries.Count
     hashMismatchCount = [int]$hashMismatchEntries.Count
     missingSourceFileCount = [int]$missingSourceFileEntries.Count
-    unsafeEntryNameCount = [int]($emptyEntryNameCount + $pathTraversalEntries.Count + $rootedPathEntries.Count)
+    unsafeEntryNameCount = [int]$unsafeZipEntries.Count
     duplicateEntryCount = [int]$duplicateZipEntries.Count
     entries = @($zipFileEntries)
     expectedZipEntries = @($expectedZipEntries)
@@ -470,7 +538,7 @@ $manifest = [ordered]@{
     unexpectedZipEntryCount = [int]$unexpectedZipEntries.Count
     hashMismatchCount = [int]$hashMismatchEntries.Count
     missingSourceFileCount = [int]$missingSourceFileEntries.Count
-    unsafeEntryNameCount = [int]($emptyEntryNameCount + $pathTraversalEntries.Count + $rootedPathEntries.Count)
+    unsafeEntryNameCount = [int]$unsafeZipEntries.Count
     duplicateEntryCount = [int]$duplicateZipEntries.Count
     requiredZipEntryCount = [int]$requiredZipEntries.Count
     missingRequiredZipEntryCount = [int]$missingRequiredZipEntries.Count
