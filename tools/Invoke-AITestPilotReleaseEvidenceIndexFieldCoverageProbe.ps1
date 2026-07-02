@@ -365,6 +365,16 @@ $scenarioResults += Invoke-IndexScenario `
     -ExpectedFailedFieldName "readOnly"
 
 $scenarioResults += Invoke-IndexScenario `
+    -Name "handoff-export-next-steps-unvalidated" `
+    -Mutate {
+        param($ScenarioDir)
+        Set-JsonField (Join-Path $ScenarioDir "production-handoff-export-manifest.json") "operatorActionNextStepsContentValidated" $false
+    } `
+    -ExpectPass $false `
+    -ExpectedBlockingReasons @("field_level_coverage_failed") `
+    -ExpectedFailedFieldName "operatorActionNextStepsContentValidated"
+
+$scenarioResults += Invoke-IndexScenario `
     -Name "live-smoke-fixture-rejected-without-contract" `
     -Mutate {
         param($ScenarioDir)

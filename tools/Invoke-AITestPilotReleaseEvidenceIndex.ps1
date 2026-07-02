@@ -298,6 +298,10 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "ownerResponseBundleZipEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" "action queue preserves owner response bundle zip variable"
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "releasePipelineSendsEmail" "bool-eq" $false "action queue probe keeps mail boundary"
 
+    $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionNextStepsIncluded" "bool-eq" $true "handoff export includes operator next-steps checklist"
+    $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionNextStepsContentValidated" "bool-eq" $true "handoff export validates operator next-steps content"
+    $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionNextStepsPath" "contains" "operator-actions\NEXT-STEPS.md" "handoff export exposes the operator next-steps path"
+
     $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "externalRemainingWorkItemCount" "int-eq" 3 "gap analysis preserves three external owner work items"
     $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "externalRemainingMissingFileCount" "int-eq" 9 "gap analysis preserves nine missing evidence files"
     $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "externalRemainingBlockingReasonCount" "int-eq" 11 "gap analysis preserves eleven blocking reasons"

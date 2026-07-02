@@ -4016,8 +4016,8 @@ if ($null -ne $releaseEvidenceIndexManifest) {
             [bool]$releaseEvidenceIndexManifest.pipelineManifestExpected -and
             $releaseEvidenceIndexManifest.fieldLevelCoverageStatus -eq "PASS" -and
             $releaseEvidenceIndexManifest.fieldLevelCoverageSchemaVersion -eq "aitestpilot.release_evidence_field_level_coverage.v1" -and
-            [int]$releaseEvidenceIndexManifest.fieldLevelRequiredManifestCount -ge 9 -and
-            [int]$releaseEvidenceIndexManifest.fieldLevelRequiredFieldCount -ge 58 -and
+            [int]$releaseEvidenceIndexManifest.fieldLevelRequiredManifestCount -ge 14 -and
+            [int]$releaseEvidenceIndexManifest.fieldLevelRequiredFieldCount -ge 73 -and
             [int]$releaseEvidenceIndexManifest.semanticFieldCheckCount -eq [int]$releaseEvidenceIndexManifest.semanticFieldCheckPassedCount -and
             [int]$releaseEvidenceIndexManifest.semanticFieldCheckFailedCount -eq 0 -and
             [int]$releaseEvidenceIndexManifest.fieldLevelMissingFieldCount -eq 0 -and
@@ -4047,13 +4047,14 @@ if ($null -ne $releaseEvidenceIndexFieldCoverageProbeManifest) {
         (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "owner-send-auto-email-promoted" -ExpectPass $false -ExpectedIndexStatus "BLOCKED" -ExpectedFieldLevelCoverageStatus "BLOCKED" -ExpectedBlockingReasons @("field_level_coverage_failed") -ExpectedFailedFieldNames @("automaticEmailSendReady")) -and
         (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "owner-packet-fake-receipt-promoted" -ExpectPass $false -ExpectedIndexStatus "BLOCKED" -ExpectedFieldLevelCoverageStatus "BLOCKED" -ExpectedBlockingReasons @("field_level_coverage_failed") -ExpectedFailedFieldNames @("fakeReceiptAcceptedByIntake")) -and
         (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "semantic-preflight-not-readonly" -ExpectPass $false -ExpectedIndexStatus "BLOCKED" -ExpectedFieldLevelCoverageStatus "BLOCKED" -ExpectedBlockingReasons @("field_level_coverage_failed") -ExpectedFailedFieldNames @("readOnly")) -and
+        (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "handoff-export-next-steps-unvalidated" -ExpectPass $false -ExpectedIndexStatus "BLOCKED" -ExpectedFieldLevelCoverageStatus "BLOCKED" -ExpectedBlockingReasons @("field_level_coverage_failed") -ExpectedFailedFieldNames @("operatorActionNextStepsContentValidated")) -and
         (Test-ProbeScenario -Manifest $releaseEvidenceIndexFieldCoverageProbeManifest -Name "live-smoke-fixture-rejected-without-contract" -ExpectPass $false -ExpectedIndexStatus "BLOCKED" -ExpectedFieldLevelCoverageStatus "PASS" -ExpectedBlockingReasons @("source_manifest_status_not_accepted"))
     )
 
     Add-ReleaseCheck "release_evidence_index_field_coverage_probe" `
         ($releaseEvidenceIndexFieldCoverageProbeManifest.status -eq "PASS" -and
             $releaseEvidenceIndexFieldCoverageProbeManifest.schemaVersion -eq "aitestpilot.release_evidence_index_field_coverage_probe.v1" -and
-            [int]$releaseEvidenceIndexFieldCoverageProbeManifest.scenarioCount -eq 5 -and
+            [int]$releaseEvidenceIndexFieldCoverageProbeManifest.scenarioCount -eq 6 -and
             [int]$releaseEvidenceIndexFieldCoverageProbeManifest.failedScenarioCount -eq 0 -and
             $releaseEvidenceIndexFieldCoverageProbeScenariosPassed -and
             [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.latestSnapshotUnchanged -and
