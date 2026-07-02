@@ -166,6 +166,15 @@ function Join-MarkdownList {
     return [string]::Join(", ", $items)
 }
 
+function Get-OwnerAreaKey {
+    param(
+        [string]$Owner,
+        [string]$Area
+    )
+
+    return "$Owner|$Area"
+}
+
 function Get-AreaAcceptance {
     param(
         [object]$AcceptanceManifest,
@@ -210,6 +219,52 @@ function Get-AreaAcceptance {
     }
 }
 
+function Get-MissingEvidenceStatus {
+    param(
+        [object]$Packet,
+        [object]$Acceptance,
+        [object]$InboxAreaStatus,
+        [bool]$Accepted,
+        [bool]$UsesRealAcceptanceManifest
+    )
+
+    if ($Accepted) {
+        return [ordered]@{
+            missingFileCount = 0
+            missingFiles = @()
+            missingEvidenceSource = "accepted_external_evidence_manifest"
+            evidencePath = [string](Get-JsonValue $Acceptance "evidencePath" "")
+        }
+    }
+
+    $acceptanceMissingFileCount = Convert-ToInt (Get-JsonValue $Acceptance "missingFileCount" -1)
+    if ($UsesRealAcceptanceManifest -and $acceptanceMissingFileCount -ge 0) {
+        return [ordered]@{
+            missingFileCount = [int]$acceptanceMissingFileCount
+            missingFiles = @(Convert-ToArray (Get-JsonValue $Acceptance "missingFiles" @()) | ForEach-Object { [string]$_ })
+            missingEvidenceSource = "production_external_evidence_acceptance_manifest"
+            evidencePath = [string](Get-JsonValue $Acceptance "evidencePath" "")
+        }
+    }
+
+    if ($null -ne $InboxAreaStatus) {
+        return [ordered]@{
+            missingFileCount = (Convert-ToInt (Get-JsonValue $InboxAreaStatus "missingFileCount" -1))
+            missingFiles = @(Convert-ToArray (Get-JsonValue $InboxAreaStatus "missingFiles" @()) | ForEach-Object { [string]$_ })
+            missingEvidenceSource = "production_external_evidence_inbox_manifest"
+            evidencePath = [string](Get-JsonValue $InboxAreaStatus "inboxPath" "")
+        }
+    }
+
+    $requiredEvidenceFiles = @(Convert-ToArray (Get-JsonValue $Packet "requiredEvidenceFiles" @()) | ForEach-Object { [string]$_ })
+    return [ordered]@{
+        missingFileCount = [int]$requiredEvidenceFiles.Count
+        missingFiles = @($requiredEvidenceFiles)
+        missingEvidenceSource = "owner_packet_required_evidence_contract"
+        evidencePath = ""
+    }
+}
+
 function Add-StatusCheck {
     param(
         [string]$Name,
@@ -239,6 +294,7 @@ $requiredEvidence = Read-JsonFile (Join-Path $evidenceBundlePath "production-han
 $handoffExportManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-handoff-export-manifest.json") "Production handoff export manifest"
 $contractProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-contract-probe-manifest.json") "Production external evidence acceptance contract probe manifest"
 $failureProbeManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-acceptance-failure-probe-manifest.json") "Production external evidence acceptance failure probe manifest"
+$inboxManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-inbox-manifest.json") "Production external evidence inbox manifest"
 
 if ([string]::IsNullOrWhiteSpace($AcceptanceManifestPath)) {
     $candidateAcceptancePath = Join-Path $evidenceBundlePath "production-external-evidence-acceptance-manifest.json"
@@ -253,11 +309,23 @@ $usesRealAcceptanceManifest = $hasAcceptanceManifest -and
     (Get-JsonValue $acceptanceManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_acceptance.v1" -and
     -not (Convert-ToBool (Get-JsonValue $acceptanceManifest "contractFixtureMode" $true))
 
+$inboxAreaStatusByKey = @{}
+foreach ($areaStatus in @(Convert-ToArray (Get-JsonValue $inboxManifest "areaStatuses" @()))) {
+    $inboxAreaStatusByKey[(Get-OwnerAreaKey ([string](Get-JsonValue $areaStatus "owner" "")) ([string](Get-JsonValue $areaStatus "area" "")))] = $areaStatus
+}
+
 $ownerStatuses = @()
 foreach ($packet in @(Convert-ToArray $ownerPacketIndex.packets)) {
     $area = [string](Get-JsonValue $packet "area" "")
+    $owner = [string](Get-JsonValue $packet "owner" "")
     $acceptance = Get-AreaAcceptance $acceptanceManifest $area
     $accepted = Convert-ToBool (Get-JsonValue $acceptance "accepted" $false)
+    $inboxAreaStatusKey = Get-OwnerAreaKey $owner $area
+    $inboxAreaStatus = if ($inboxAreaStatusByKey.ContainsKey($inboxAreaStatusKey)) { $inboxAreaStatusByKey[$inboxAreaStatusKey] } else { $null }
+    $requiredEvidenceFiles = @(Convert-ToArray (Get-JsonValue $packet "requiredEvidenceFiles" @()) | ForEach-Object { [string]$_ })
+    $missingEvidence = Get-MissingEvidenceStatus $packet $acceptance $inboxAreaStatus $accepted $usesRealAcceptanceManifest
+    $missingFiles = @(Convert-ToArray (Get-JsonValue $missingEvidence "missingFiles" @()) | ForEach-Object { [string]$_ })
+    $missingFileCount = Convert-ToInt (Get-JsonValue $missingEvidence "missingFileCount" $missingFiles.Count)
     $remainingReasons = @(Convert-ToArray (Get-JsonValue $packet "remainingBlockingReasons" @()) | ForEach-Object { [string]$_ })
     $remainingReasonCount = if ($accepted) { 0 } else { [int]$remainingReasons.Count }
     $status = if ($accepted) {
@@ -269,15 +337,16 @@ foreach ($packet in @(Convert-ToArray $ownerPacketIndex.packets)) {
     }
 
     $ownerStatuses += [ordered]@{
-        owner = [string](Get-JsonValue $packet "owner" "")
+        owner = $owner
         area = $area
         status = $status
         packetPath = [string](Get-JsonValue $packet "packetPath" "")
-        evidencePath = [string](Get-JsonValue $acceptance "evidencePath" "")
-        requiredEvidenceFiles = @(Convert-ToArray (Get-JsonValue $packet "requiredEvidenceFiles" @()) | ForEach-Object { [string]$_ })
+        evidencePath = [string](Get-JsonValue $missingEvidence "evidencePath" "")
+        requiredEvidenceFiles = @($requiredEvidenceFiles)
         evidenceFilesPresent = (Convert-ToBool (Get-JsonValue $acceptance "filesPresent" $false))
-        missingFileCount = (Convert-ToInt (Get-JsonValue $acceptance "missingFileCount" -1))
-        missingFiles = @(Convert-ToArray (Get-JsonValue $acceptance "missingFiles" @()) | ForEach-Object { [string]$_ })
+        missingFileCount = [int]$missingFileCount
+        missingFiles = @($missingFiles)
+        missingEvidenceSource = [string](Get-JsonValue $missingEvidence "missingEvidenceSource" "")
         acceptedExternalEvidence = [bool]$accepted
         remainingBlockingReasonCount = [int]$remainingReasonCount
         remainingBlockingReasons = if ($accepted) { @() } else { @($remainingReasons) }
@@ -291,8 +360,34 @@ $acceptedOwnerPacketCount = @($ownerStatuses | Where-Object { Convert-ToBool (Ge
 $pendingOwnerPacketCount = @($ownerStatuses | Where-Object { -not (Convert-ToBool (Get-JsonValue $_ "acceptedExternalEvidence" $false)) }).Count
 $remainingBlockingReasonCountMeasure = @($ownerStatuses | ForEach-Object { Convert-ToInt (Get-JsonValue $_ "remainingBlockingReasonCount" 0) } | Measure-Object -Sum)
 $remainingBlockingReasonCount = if ($null -eq $remainingBlockingReasonCountMeasure.Sum) { 0 } else { [int]$remainingBlockingReasonCountMeasure.Sum }
+$remainingMissingFileCountMeasure = @($ownerStatuses | Where-Object { -not (Convert-ToBool (Get-JsonValue $_ "acceptedExternalEvidence" $false)) } | ForEach-Object { Convert-ToInt (Get-JsonValue $_ "missingFileCount" 0) } | Measure-Object -Sum)
+$remainingMissingFileCount = if ($null -eq $remainingMissingFileCountMeasure.Sum) { 0 } else { [int]$remainingMissingFileCountMeasure.Sum }
 $externalEvidenceCollectionComplete = $ownerStatuses.Count -gt 0 -and $acceptedOwnerPacketCount -eq $ownerStatuses.Count
 $realHostProjectEvidenceAccepted = $usesRealAcceptanceManifest -and (Convert-ToBool (Get-JsonValue $acceptanceManifest "realHostProjectEvidenceAccepted" $false))
+$ownerMissingEvidenceDetailsValid = $true
+foreach ($ownerStatus in $ownerStatuses) {
+    $ownerAccepted = Convert-ToBool (Get-JsonValue $ownerStatus "acceptedExternalEvidence" $false)
+    $ownerMissingFileCount = Convert-ToInt (Get-JsonValue $ownerStatus "missingFileCount" -1)
+    $ownerMissingFiles = @(Convert-ToArray (Get-JsonValue $ownerStatus "missingFiles" @()))
+    $ownerRequiredFiles = @(Convert-ToArray (Get-JsonValue $ownerStatus "requiredEvidenceFiles" @()) | ForEach-Object { [string]$_ })
+    if ($ownerMissingFileCount -lt 0) {
+        $ownerMissingEvidenceDetailsValid = $false
+    }
+
+    if ($ownerAccepted -and ($ownerMissingFileCount -ne 0 -or $ownerMissingFiles.Count -ne 0)) {
+        $ownerMissingEvidenceDetailsValid = $false
+    }
+
+    if ((-not $ownerAccepted) -and $ownerMissingFileCount -ne $ownerMissingFiles.Count) {
+        $ownerMissingEvidenceDetailsValid = $false
+    }
+
+    foreach ($missingFile in $ownerMissingFiles) {
+        if ($ownerRequiredFiles -notcontains ([string]$missingFile)) {
+            $ownerMissingEvidenceDetailsValid = $false
+        }
+    }
+}
 
 $checks = @()
 Add-StatusCheck "handoff_package_source" `
@@ -320,6 +415,10 @@ Add-StatusCheck "owner_status_math" `
         $acceptedOwnerPacketCount + $pendingOwnerPacketCount -eq $ownerStatuses.Count -and
         $remainingBlockingReasonCount -le (Convert-ToInt (Get-JsonValue $ownerPacketIndex "totalBlockingReasonCount" 0))) `
     "Owner status counts must match the owner packet index and blocker totals."
+Add-StatusCheck "owner_missing_evidence_details" `
+    ($ownerMissingEvidenceDetailsValid -and
+        $remainingMissingFileCount -ge 0) `
+    "Owner status rows must expose concrete missing evidence files from the inbox manifest or owner-packet required-evidence contract until real acceptance exists."
 Add-StatusCheck "fixture_boundary_preserved" `
     ((-not $hasAcceptanceManifest) -or $usesRealAcceptanceManifest -or (-not (Convert-ToBool (Get-JsonValue $acceptanceManifest "realHostProjectEvidenceAccepted" $true)))) `
     "Fixture acceptance manifests must not claim real host-project evidence."
@@ -338,14 +437,15 @@ $reportLines = @(
     "| Accepted owner packets | $acceptedOwnerPacketCount |",
     "| Pending owner packets | $pendingOwnerPacketCount |",
     "| Remaining blocker reasons | $remainingBlockingReasonCount |",
+    "| Remaining missing files | $remainingMissingFileCount |",
     "| External evidence collection complete | $externalEvidenceCollectionComplete |",
     "| Real host-project evidence accepted | $realHostProjectEvidenceAccepted |",
     "| Real acceptance manifest used | $usesRealAcceptanceManifest |",
     "",
     "## Owner Status",
     "",
-    "| Owner | Area | Status | Accepted | Remaining blockers | Required evidence | Next command |",
-    "| --- | --- | --- | --- | --- | --- | --- |"
+    "| Owner | Area | Status | Accepted | Missing evidence | Remaining blockers | Required evidence | Next command |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |"
 )
 
 foreach ($ownerStatus in $ownerStatuses) {
@@ -353,10 +453,11 @@ foreach ($ownerStatus in $ownerStatuses) {
     $area = Format-MarkdownCell (Get-JsonValue $ownerStatus "area" "")
     $statusText = Format-MarkdownCell (Get-JsonValue $ownerStatus "status" "")
     $acceptedText = Format-MarkdownCell (Get-JsonValue $ownerStatus "acceptedExternalEvidence" $false)
+    $missing = Format-MarkdownCell (Join-MarkdownList @(Get-JsonValue $ownerStatus "missingFiles" @()))
     $blockers = Format-MarkdownCell (Join-MarkdownList @(Get-JsonValue $ownerStatus "remainingBlockingReasons" @()))
     $requiredFiles = Format-MarkdownCell (Join-MarkdownList @(Get-JsonValue $ownerStatus "requiredEvidenceFiles" @()))
     $nextCommand = Format-MarkdownCell (Get-JsonValue $ownerStatus "acceptanceWrapperCommand" "")
-    $reportLines += "| $owner | $area | $statusText | $acceptedText | $blockers | $requiredFiles | $nextCommand |"
+    $reportLines += "| $owner | $area | $statusText | $acceptedText | $missing | $blockers | $requiredFiles | $nextCommand |"
 }
 
 $reportLines += @(
@@ -396,7 +497,8 @@ $sourceFiles = @(
     "production-handoff-package/required-external-evidence.json",
     "production-handoff-export-manifest.json",
     "production-external-evidence-acceptance-contract-probe-manifest.json",
-    "production-external-evidence-acceptance-failure-probe-manifest.json"
+    "production-external-evidence-acceptance-failure-probe-manifest.json",
+    "production-external-evidence-inbox-manifest.json"
 )
 if ($usesRealAcceptanceManifest -and -not [string]::IsNullOrWhiteSpace($AcceptanceManifestPath)) {
     $sourceFiles += (Resolve-FullPath $AcceptanceManifestPath)
@@ -416,6 +518,7 @@ $manifest = [ordered]@{
     hostProjectActionItemCount = (Convert-ToInt (Get-JsonValue $ownerPacketIndex "hostProjectActionItemCount" 0))
     totalBlockingReasonCount = (Convert-ToInt (Get-JsonValue $ownerPacketIndex "totalBlockingReasonCount" 0))
     remainingBlockingReasonCount = [int]$remainingBlockingReasonCount
+    remainingMissingFileCount = [int]$remainingMissingFileCount
     externalEvidenceCollectionComplete = [bool]$externalEvidenceCollectionComplete
     realAcceptanceManifestUsed = [bool]$usesRealAcceptanceManifest
     realHostProjectEvidenceAccepted = [bool]$realHostProjectEvidenceAccepted

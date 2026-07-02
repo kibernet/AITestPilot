@@ -183,6 +183,26 @@ function Get-JsonValue {
     return $property.Value
 }
 
+function Convert-ToArray {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return @()
+    }
+
+    return @($Value)
+}
+
+function Convert-ToInt {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return 0
+    }
+
+    return [int]$Value
+}
+
 function Test-ContainsAll {
     param(
         [object[]]$Actual,
@@ -212,6 +232,70 @@ function Test-StringSetEquals {
 
     foreach ($expectedItem in $expectedSet) {
         if ($actualSet -notcontains $expectedItem) {
+            return $false
+        }
+    }
+
+    return $true
+}
+
+function Test-ProductionHandoffOwnerMissingEvidenceSplit {
+    param([object]$Manifest)
+
+    $expectedMissingFilesByArea = @{
+        "production_driver_binding" = @(
+            "production-replay-integration-checklist.json",
+            "repair-retest-manifest.json",
+            "repair-driver-failure-manifest.json",
+            "replay-profile-import-manifest.json"
+        )
+        "production_lua_patch_evidence" = @(
+            "production-lua-patch-evidence.json",
+            "production-lua-patch-retest-template.md",
+            "production-lua-patch-rollback-plan-template.md"
+        )
+        "live_model_endpoint_smoke" = @(
+            "live-model-endpoint-smoke-manifest.json",
+            "live-model-endpoint-decision-trace.json"
+        )
+    }
+
+    $ownerStatuses = @(Convert-ToArray (Get-JsonValue $Manifest "ownerStatuses" @()))
+    if ($ownerStatuses.Count -ne $expectedMissingFilesByArea.Count) {
+        return $false
+    }
+
+    foreach ($area in $expectedMissingFilesByArea.Keys) {
+        $expectedFiles = @($expectedMissingFilesByArea[$area])
+        $matches = @($ownerStatuses | Where-Object { [string](Get-JsonValue $_ "area" "") -eq $area })
+        if ($matches.Count -ne 1) {
+            return $false
+        }
+
+        $ownerStatus = $matches[0]
+        $missingFiles = @(Convert-ToArray (Get-JsonValue $ownerStatus "missingFiles" @()) | ForEach-Object { [string]$_ })
+        $requiredFiles = @(Convert-ToArray (Get-JsonValue $ownerStatus "requiredEvidenceFiles" @()) | ForEach-Object { [string]$_ })
+        if ([bool](Get-JsonValue $ownerStatus "acceptedExternalEvidence" $true)) {
+            return $false
+        }
+
+        if ((Convert-ToInt (Get-JsonValue $ownerStatus "missingFileCount" -1)) -ne $expectedFiles.Count) {
+            return $false
+        }
+
+        if ($missingFiles.Count -ne $expectedFiles.Count) {
+            return $false
+        }
+
+        if ([string](Get-JsonValue $ownerStatus "missingEvidenceSource" "") -ne "production_external_evidence_inbox_manifest") {
+            return $false
+        }
+
+        if (-not (Test-StringSetEquals -Actual $missingFiles -Expected $expectedFiles)) {
+            return $false
+        }
+
+        if (-not (Test-StringSetEquals -Actual $requiredFiles -Expected $expectedFiles)) {
             return $false
         }
     }
@@ -2210,14 +2294,17 @@ if ($null -ne $productionHandoffStatusManifest) {
             [int]$productionHandoffStatusManifest.pendingOwnerPacketCount -ge 0 -and
             ([int]$productionHandoffStatusManifest.acceptedOwnerPacketCount + [int]$productionHandoffStatusManifest.pendingOwnerPacketCount) -eq [int]$productionHandoffStatusManifest.ownerPacketCount -and
             [int]$productionHandoffStatusManifest.totalBlockingReasonCount -eq [int]$productionHandoffExportManifest.ownerPacketBlockingReasonCount -and
-            [int]$productionHandoffStatusManifest.remainingBlockingReasonCount -le [int]$productionHandoffStatusManifest.totalBlockingReasonCount -and
+            [int]$productionHandoffStatusManifest.totalBlockingReasonCount -eq 11 -and
+            [int]$productionHandoffStatusManifest.remainingBlockingReasonCount -eq 11 -and
+            [int]$productionHandoffStatusManifest.remainingMissingFileCount -eq 9 -and
+            (Test-ProductionHandoffOwnerMissingEvidenceSplit $productionHandoffStatusManifest) -and
             -not [bool]$productionHandoffStatusManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffStatusManifest.fixtureEvidencePromoted -and
             -not [bool]$productionHandoffStatusManifest.realHostProjectEvidenceAccepted -and
             $productionHandoffStatusManifest.productionOutputBoundary -eq "host_project_external_evidence_collection_status_only" -and
-            [int]$productionHandoffStatusManifest.checkCount -eq 8 -and
+            [int]$productionHandoffStatusManifest.checkCount -eq 9 -and
             [int]$productionHandoffStatusManifest.failedCheckCount -eq 0) `
-        "Production handoff status must summarize owner evidence collection, remaining blockers, and fixture boundary without claiming real host-project evidence."
+        "Production handoff status must summarize owner evidence collection, nine missing evidence files, remaining blockers, and fixture boundary without claiming real host-project evidence."
 
     Test-ListedFiles $productionHandoffStatusManifest "production_handoff_status"
 }

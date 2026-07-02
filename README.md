@@ -299,7 +299,7 @@ That script writes `production-external-evidence-inbox-manifest.json`, `producti
 
 The release pipeline also runs `Invoke-AITestPilotProductionExternalEvidenceInboxContractProbe.ps1`, which fills the returned-evidence inbox with complete accepted fixture evidence from outside the repository, executes `accept-returned-evidence.ps1` in contract mode, and records the result as wrapper proof while keeping `realHostProjectEvidenceAccepted=false`.
 
-To summarize external evidence collection after distributing owner packets, run `.\tools\Invoke-AITestPilotProductionHandoffStatus.ps1`. It writes `production-handoff-status-manifest.json` and `production-handoff-status.md`, showing accepted versus pending owner packets, remaining blocker counts, required evidence files, and the next acceptance-wrapper commands without promoting fixture evidence as real host-project evidence.
+To summarize external evidence collection after distributing owner packets, run `.\tools\Invoke-AITestPilotProductionHandoffStatus.ps1`. It writes `production-handoff-status-manifest.json` and `production-handoff-status.md`, showing accepted versus pending owner packets, remaining blocker counts, inbox-derived missing evidence files, required evidence files, and the next acceptance-wrapper commands without promoting fixture evidence as real host-project evidence. In the default package-release path it tracks nine missing evidence files from `production-external-evidence-inbox-manifest.json`.
 
 To prepare the owner dispatch queue and email drafts before real owner addresses are configured:
 
