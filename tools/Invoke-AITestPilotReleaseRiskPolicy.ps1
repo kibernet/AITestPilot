@@ -114,6 +114,17 @@ function Convert-ToInt {
     return [int]$Value
 }
 
+function Get-ReleaseRiskPolicyScriptSha256 {
+    $scriptPath = if (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
+        $PSCommandPath
+    }
+    else {
+        $MyInvocation.MyCommand.Path
+    }
+
+    return (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash
+}
+
 function Test-ContainsAll {
     param(
         [object[]]$Actual,
@@ -2690,6 +2701,9 @@ $generatedFiles = @(
     "release-risk-policy.md"
 )
 
+$releaseRiskPolicySourceScriptPath = "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1"
+$releaseRiskPolicySourceScriptSha256 = Get-ReleaseRiskPolicyScriptSha256
+
 $sourceFiles = @(
     "manifest.json",
     "scene-validation.json",
@@ -2765,6 +2779,9 @@ $manifest = [ordered]@{
     allowPackageRelease = ($status -eq "PASS")
     releaseBlockerCount = [int]$failedRiskPolicyCheckCount
     releaseBlockers = @($releaseBlockers)
+    releaseRiskPolicySourceScriptPath = $releaseRiskPolicySourceScriptPath
+    releaseRiskPolicySourceScriptHashAlgorithm = "SHA256"
+    releaseRiskPolicySourceScriptSha256 = $releaseRiskPolicySourceScriptSha256
     requireProductionReplayDriverBound = [bool]$RequireProductionReplayDriverBound
     requireProductionLuaPatched = [bool]$RequireProductionLuaPatched
     requireLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke
@@ -3148,6 +3165,7 @@ $reportLines = @(
     "# AI TestPilot Release Risk Policy",
     "",
     "- Status: $status",
+    "- Source script SHA256: $($manifest.releaseRiskPolicySourceScriptSha256)",
     "- Package release allowed: $($manifest.allowPackageRelease)",
     "- Release blockers: $($manifest.releaseBlockerCount)",
     "- AI exploration accepted: $($manifest.aiExplorationAccepted)",

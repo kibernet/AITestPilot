@@ -38,6 +38,14 @@ else {
     ""
 }
 
+$releaseRiskPolicyScriptPath = Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1"
+$releaseRiskPolicyCurrentScriptSha256 = if (Test-Path $releaseRiskPolicyScriptPath) {
+    (Get-FileHash -LiteralPath $releaseRiskPolicyScriptPath -Algorithm SHA256).Hash
+}
+else {
+    ""
+}
+
 function Get-StringSha256 {
     param([string]$Text)
 
@@ -3702,6 +3710,13 @@ if ($null -ne $productionHardModeSuccessContractProbeManifest) {
 }
 
 if ($null -ne $releaseRiskPolicyManifest) {
+    $releaseRiskPolicySourceScriptHashValid = (
+        (Get-JsonValue $releaseRiskPolicyManifest "releaseRiskPolicySourceScriptPath" "") -eq "tools\Invoke-AITestPilotReleaseRiskPolicy.ps1" -and
+        (Get-JsonValue $releaseRiskPolicyManifest "releaseRiskPolicySourceScriptHashAlgorithm" "") -eq "SHA256" -and
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $releaseRiskPolicyManifest "releaseRiskPolicySourceScriptSha256" "")) -and
+        ([string](Get-JsonValue $releaseRiskPolicyManifest "releaseRiskPolicySourceScriptSha256" "")).Length -eq 64 -and
+        (Get-JsonValue $releaseRiskPolicyManifest "releaseRiskPolicySourceScriptSha256" "") -eq $releaseRiskPolicyCurrentScriptSha256
+    )
     $expectedDriverEvidenceStatus = if ($RequireProductionReplayDriverBound) { "PRODUCTION_BOUND_ACCEPTED" } else { "EXPLICIT_SAMPLE_BOUNDARY_ACCEPTED" }
     $expectedProductionLuaEvidenceStatus = if ($RequireProductionLuaPatched) { "PRODUCTION_LUA_PATCH_ACCEPTED" } else { "EXPLICIT_NO_PRODUCTION_LUA_BOUNDARY_ACCEPTED" }
     $liveModelStatusAccepted = $releaseRiskPolicyManifest.liveModelPolicyStatus -eq "LIVE_MODEL_SMOKE_ACCEPTED" -or
@@ -3969,6 +3984,10 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.missingOrInvalidSourceFileCount -eq 0) `
         "Release risk policy must explicitly accept AI exploration, high-risk graph, driver evidence, Lua evidence, live-model policy, and CI provider controls before release."
+
+    Add-ReleaseCheck "release_risk_policy_source_script_hash" `
+        $releaseRiskPolicySourceScriptHashValid `
+        "Release risk policy source script SHA256 must match the current generator."
 
     Test-ListedFiles $releaseRiskPolicyManifest "release_risk_policy"
 }

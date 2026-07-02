@@ -80,7 +80,7 @@
 - release docs freshness guard proving README, CI release docs, architecture, roadmap, pipeline step IDs, core artifact names, source files, and release source-manifest lists stay aligned before hard-mode and release gate checks.
 - Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers, with release evidence index field coverage for 74 semantic fields plus field-level definition/source-script SHA256 binding, a source manifest SHA256 hash set, and a six-scenario field coverage probe that protects the latest bundle from isolated-case pollution and proves no email is sent, no real host-project evidence is accepted, and no fixture evidence is promoted to production evidence.
 - Release-gated Cursor Agent external output binding probe before the release gate, with `repair-agent-cursor-agent-external-output-binding-probe-manifest.json` covering no-Cursor baseline, stale optional evidence rejection, hash-mismatch rejection, and matched binding pass cases.
-- Release-gated risk policy blocking failing AI exploration, unresolved high-risk graph nodes, missing production driver evidence, missing production Lua evidence, missing live endpoint policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure/success-contract evidence.
+- Release-gated risk policy with release risk policy source script SHA256 binding, blocking failing AI exploration, unresolved high-risk graph nodes, missing production driver evidence, missing production Lua evidence, missing live endpoint policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure/success-contract evidence.
 
 ## V0.2 Unity Import Gate
 

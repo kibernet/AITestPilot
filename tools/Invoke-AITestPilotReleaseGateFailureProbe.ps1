@@ -201,6 +201,43 @@ function Invoke-TamperedSourceManifestHashScenario {
     }
 }
 
+function Invoke-TamperedRiskPolicySourceScriptHashScenario {
+    param([string]$Name)
+
+    $scenarioDir = Join-Path $ProbeBundleDir $Name
+    New-Item -ItemType Directory -Force $scenarioDir | Out-Null
+    Copy-Item -Path (Join-Path $EvidenceBundleDir "*") -Destination $scenarioDir -Recurse -Force
+
+    $riskPolicyManifestPath = Join-Path $scenarioDir "release-risk-policy-manifest.json"
+    $riskPolicyManifest = Get-Content -Path $riskPolicyManifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+    $riskPolicyManifest.releaseRiskPolicySourceScriptSha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+    $riskPolicyManifest | ConvertTo-Json -Depth 12 | Set-Content -Path $riskPolicyManifestPath -Encoding UTF8
+
+    $scenarioGateManifestPath = Join-Path $scenarioDir "release-gate-manifest.json"
+    $releaseGateOutput = & $releaseGateScript `
+        -EvidenceBundleDir $scenarioDir `
+        -ReleaseGateManifestPath $scenarioGateManifestPath `
+        -ExpectBlocked `
+        -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+        -RequireProductionLuaPatched:$RequireProductionLuaPatched `
+        -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
+
+    $scenarioGateManifest = Get-Content -Path $scenarioGateManifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+    $failedReasons = @($scenarioGateManifest.failedReasons | ForEach-Object { [string]$_ })
+    $hashReasonMatched = @($failedReasons | Where-Object { $_.Contains("release_risk_policy_source_script_hash") }).Count -gt 0
+    return [ordered]@{
+        name = $Name
+        tamperedManifestName = "release-risk-policy-manifest.json"
+        tamperedFieldName = "releaseRiskPolicySourceScriptSha256"
+        releaseGateManifestPath = $scenarioGateManifestPath
+        releaseGateStatus = [string]$scenarioGateManifest.status
+        failedReasonCount = [int]$scenarioGateManifest.failedReasonCount
+        failedReasons = @($failedReasons)
+        releaseGateOutput = @($releaseGateOutput | ForEach-Object { [string]$_ })
+        blockedAsExpected = ([string]$scenarioGateManifest.status -eq "BLOCKED" -and [int]$scenarioGateManifest.failedReasonCount -gt 0 -and $hashReasonMatched)
+    }
+}
+
 $scenarioResults = @(
     (Invoke-MissingEvidenceScenario "missing-repair-driver-failure" @(
         "repair-driver-failure-manifest.json",
@@ -214,7 +251,8 @@ $scenarioResults = @(
         "file:production-external-evidence-action-queue-manifest.json"
     )),
     (Invoke-ExtraSourceManifestScenario "extra-release-evidence-index-source-manifest"),
-    (Invoke-TamperedSourceManifestHashScenario "tampered-release-evidence-index-source-manifest-hash")
+    (Invoke-TamperedSourceManifestHashScenario "tampered-release-evidence-index-source-manifest-hash"),
+    (Invoke-TamperedRiskPolicySourceScriptHashScenario "tampered-release-risk-policy-source-script-hash")
 )
 
 if (-not [bool]$RequireProductionReplayDriverBound) {
