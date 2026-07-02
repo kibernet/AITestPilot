@@ -159,7 +159,7 @@ function Invoke-ReceiptIntake {
     finally {
         $ErrorActionPreference = $oldErrorActionPreference
     }
-    @($output | ForEach-Object { [string]$_ }) | Set-Content -Path $outputPath -Encoding UTF8
+    Set-Content -Path $outputPath -Value @($output | ForEach-Object { [string]$_ }) -Encoding UTF8
 
     $manifest = $null
     if (Test-Path $ManifestPath) {

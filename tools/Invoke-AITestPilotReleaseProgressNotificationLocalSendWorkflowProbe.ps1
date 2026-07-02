@@ -202,7 +202,7 @@ function Invoke-ReceiptIntake {
         $ErrorActionPreference = $oldErrorActionPreference
     }
 
-    @($output | ForEach-Object { [string]$_ }) | Set-Content -Path $OutputPath -Encoding UTF8
+    Set-Content -Path $OutputPath -Value @($output | ForEach-Object { [string]$_ }) -Encoding UTF8
     $manifest = $null
     if (Test-Path $ManifestPath) {
         $manifest = Read-JsonFile $ManifestPath "Local workflow dispatch receipt intake manifest"

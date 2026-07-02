@@ -196,7 +196,7 @@ function Invoke-OwnerBundleVerify {
         $errorMessage = $_.Exception.Message
     }
 
-    @($output | ForEach-Object { [string]$_ }) | Set-Content -Path $TranscriptPath -Encoding UTF8
+    Set-Content -Path $TranscriptPath -Value @($output | ForEach-Object { [string]$_ }) -Encoding UTF8
 
     $preflight = $null
     if (Test-Path $OutputPath) {
@@ -463,7 +463,7 @@ catch {
     $importOutput = @($_)
     $importErrorMessage = $_.Exception.Message
 }
-@($importOutput | ForEach-Object { [string]$_ }) | Set-Content -Path $importTranscriptPath -Encoding UTF8
+Set-Content -Path $importTranscriptPath -Value @($importOutput | ForEach-Object { [string]$_ }) -Encoding UTF8
 
 $importedRosterPath = Join-Path $isolatedEvidencePath "production-handoff-contact-roster.json"
 $importedInboxPath = Join-Path $isolatedEvidencePath "production-external-evidence-inbox"
@@ -504,7 +504,7 @@ catch {
     $selfContainedSemanticPreflightOutput = @($_)
     $selfContainedSemanticPreflightErrorMessage = $_.Exception.Message
 }
-@($selfContainedSemanticPreflightOutput | ForEach-Object { [string]$_ }) | Set-Content -Path $selfContainedSemanticPreflightTranscriptPath -Encoding UTF8
+Set-Content -Path $selfContainedSemanticPreflightTranscriptPath -Value @($selfContainedSemanticPreflightOutput | ForEach-Object { [string]$_ }) -Encoding UTF8
 
 $selfContainedSemanticPreflightManifestPath = Join-Path $selfContainedSemanticPreflightOutputDir "production-external-evidence-semantic-preflight-manifest.json"
 $selfContainedSemanticPreflightReportPath = Join-Path $selfContainedSemanticPreflightOutputDir "production-external-evidence-semantic-preflight.md"
