@@ -1890,9 +1890,10 @@ $releaseProgressNotificationOutboxAccepted = (
     $releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_outbox.v1" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "recipient" "") -eq "kibernet@sina.com" -and
-    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "") -eq "production_handoff_owner_route_map" -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeName" "") -eq "production_external_evidence_strict_payload_shape" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "latestBigNodeStatus" "") -eq "PASS" -and
-    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "requireOwnerRouteMapLatestBigNode" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "requireOwnerRouteMapLatestBigNode" $true)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "requireStrictPayloadShapeLatestBigNode" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalContactIntakeAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalSendReadyForConfirmation" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "sendDryRunAuthorizationFree" $false)) -and
@@ -1913,11 +1914,34 @@ $releaseProgressNotificationOutboxAccepted = (
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapRepoSideClosableGapCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeScenarioCount" 0)) -eq 4 -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeFailedScenarioCount" 1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "productionExternalEvidenceSemanticPreflightProbeAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "productionExternalEvidenceStrictPayloadShapeAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightPayloadShapeAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightReadOnly" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightAcceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightHardValidationRun" $true)) -and
+    (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightProductionOutputBoundary" "") -eq "production_external_evidence_semantic_preflight_probe_only" -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightCaseCount" 0)) -eq 12 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightCompleteCandidateCaseCount" 0)) -eq 4 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightRejectedCaseCount" 0)) -eq 8 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightCheckCount" 0)) -eq 14 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightFailedCheckCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightPayloadShapeRejectedCaseCount" 0)) -eq 2 -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightExtraPayloadBundleRejected" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightNestedPayloadBundleZipRejected" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightOwnerResponseBundleZipCaseCount" 0)) -eq 6 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightOwnerResponseBundleZipSafeCaseCount" 0)) -eq 5 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightOwnerResponseBundleZipUnsafeCaseCount" 0)) -eq 1 -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightCompleteOwnerBundleCaseAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightCompleteOwnerBundleZipCaseAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightExtraPayloadCaseAccepted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightNestedPayloadZipCaseAccepted" $false)) -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationCadencePolicy" "") -eq "BIG_NODE_ONLY" -and
     (Get-JsonValue $releaseProgressNotificationOutboxManifest "notificationTriggerKind" "") -eq "BIG_NODE" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "bigNodeNotificationEligible" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "smallNodeEmailSuppression" $false)) -and
-    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "suppressedSmallNodeCount" 0)) -eq 7 -and
+    (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "suppressedSmallNodeCount" 0)) -eq 8 -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "cadencePolicyGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "cadencePolicyContentValidated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationOutboxManifest "remainingWorkSnapshotGenerated" $false)) -and
@@ -1981,9 +2005,10 @@ $releaseProgressNotificationRemainingWorkSnapshotProbeAccepted = (
     (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "schemaVersion" "") -eq "aitestpilot.release_progress_notification_remaining_work_snapshot_probe.v1" -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "snapshotSchemaVersionAccepted" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "snapshotContentValidated" $false)) -and
-    (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "latestBigNodeName" "") -eq "production_handoff_owner_route_map" -and
+    (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "latestBigNodeName" "") -eq "production_external_evidence_strict_payload_shape" -and
     (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "latestBigNodeStatus" "") -eq "PASS" -and
-    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "requireOwnerRouteMapLatestBigNode" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "requireOwnerRouteMapLatestBigNode" $true)) -and
+    (Convert-ToBool (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "requireStrictPayloadShapeLatestBigNode" $false)) -and
     (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "notificationDispatchStatus" "") -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $releaseProgressNotificationRemainingWorkSnapshotProbeManifest "externalRemainingBlockingReasonCount" 0)) -eq
@@ -3106,6 +3131,14 @@ $manifest = [ordered]@{
     releaseProgressNotificationOwnerRouteMapRepoSideClosableGapCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapRepoSideClosableGapCount" 0))
     releaseProgressNotificationOwnerRouteMapProbeScenarioCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeScenarioCount" 0))
     releaseProgressNotificationOwnerRouteMapProbeFailedScenarioCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "ownerRouteMapProbeFailedScenarioCount" 0))
+    releaseProgressNotificationStrictPayloadShapeAccepted = (Get-JsonValue $releaseProgressNotificationOutboxManifest "productionExternalEvidenceStrictPayloadShapeAccepted" $false)
+    releaseProgressNotificationSemanticPreflightPayloadShapeAccepted = (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightPayloadShapeAccepted" $false)
+    releaseProgressNotificationSemanticPreflightCaseCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightCaseCount" 0))
+    releaseProgressNotificationSemanticPreflightCompleteCandidateCaseCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightCompleteCandidateCaseCount" 0))
+    releaseProgressNotificationSemanticPreflightRejectedCaseCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightRejectedCaseCount" 0))
+    releaseProgressNotificationSemanticPreflightPayloadShapeRejectedCaseCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightPayloadShapeRejectedCaseCount" 0))
+    releaseProgressNotificationSemanticPreflightExtraPayloadBundleRejected = (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightExtraPayloadBundleRejected" $false)
+    releaseProgressNotificationSemanticPreflightNestedPayloadBundleZipRejected = (Get-JsonValue $releaseProgressNotificationOutboxManifest "semanticPreflightNestedPayloadBundleZipRejected" $false)
     releaseProgressNotificationExternalRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingWorkItemCount" 0))
     releaseProgressNotificationExternalRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingBlockingReasonCount" 0))
     releaseProgressNotificationExternalRemainingMissingFileCount = (Convert-ToInt (Get-JsonValue $releaseProgressNotificationOutboxManifest "externalRemainingMissingFileCount" 0))

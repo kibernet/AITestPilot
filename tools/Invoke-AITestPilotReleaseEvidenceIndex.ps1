@@ -365,9 +365,13 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "releasePipelineSendsEmail" "bool-eq" $false "owner route map keeps no-mail boundary"
     $checks += New-FieldCoverageCheck "production-handoff-owner-route-map-manifest.json" "realHostProjectEvidenceAccepted" "bool-eq" $false "owner route map does not accept host evidence"
 
-    $checks += New-FieldCoverageCheck "release-progress-notification-outbox-manifest.json" "latestBigNodeName" "string-eq" "production_handoff_owner_route_map" "progress notification final outbox targets owner route map"
+    $checks += New-FieldCoverageCheck "release-progress-notification-outbox-manifest.json" "latestBigNodeName" "string-eq" "production_external_evidence_strict_payload_shape" "progress notification final outbox targets strict payload shape"
+    $checks += New-FieldCoverageCheck "release-progress-notification-outbox-manifest.json" "requireStrictPayloadShapeLatestBigNode" "bool-eq" $true "progress notification final outbox requires strict payload shape latest node"
+    $checks += New-FieldCoverageCheck "release-progress-notification-outbox-manifest.json" "productionExternalEvidenceStrictPayloadShapeAccepted" "bool-eq" $true "progress notification final outbox accepts strict payload shape node"
+    $checks += New-FieldCoverageCheck "release-progress-notification-outbox-manifest.json" "suppressedSmallNodeCount" "int-eq" 8 "progress notification final outbox suppresses semantic preflight as small probe"
     $checks += New-FieldCoverageCheck "release-progress-notification-outbox-manifest.json" "ownerRouteMapProbeAccepted" "bool-eq" $true "progress notification final outbox requires owner route map probe"
-    $checks += New-FieldCoverageCheck "release-progress-notification-remaining-work-snapshot-probe-manifest.json" "latestBigNodeName" "string-eq" "production_handoff_owner_route_map" "remaining-work snapshot probe verifies route map final refresh"
+    $checks += New-FieldCoverageCheck "release-progress-notification-remaining-work-snapshot-probe-manifest.json" "latestBigNodeName" "string-eq" "production_external_evidence_strict_payload_shape" "remaining-work snapshot probe verifies strict payload shape final refresh"
+    $checks += New-FieldCoverageCheck "release-progress-notification-remaining-work-snapshot-probe-manifest.json" "requireStrictPayloadShapeLatestBigNode" "bool-eq" $true "remaining-work snapshot probe requires strict payload shape final refresh"
     $checks += New-FieldCoverageCheck "release-progress-notification-post-dispatch-snapshot-probe-manifest.json" "contractFixtureRejected" "bool-eq" $true "post-dispatch snapshot probe rejects contract fixture receipts"
 
     $checks += New-FieldCoverageCheck "production-external-evidence-semantic-preflight-probe-manifest.json" "readOnly" "bool-eq" $true "semantic preflight remains read-only"

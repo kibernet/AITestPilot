@@ -5,13 +5,18 @@ param(
     [string]$ManifestPath,
     [string]$ReportPath,
     [string]$ProgressRecipient = "kibernet@sina.com",
-    [switch]$RequireOwnerRouteMapLatestBigNode
+    [switch]$RequireOwnerRouteMapLatestBigNode,
+    [switch]$RequireStrictPayloadShapeLatestBigNode
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+
+if ([bool]$RequireOwnerRouteMapLatestBigNode -and [bool]$RequireStrictPayloadShapeLatestBigNode) {
+    throw "RequireOwnerRouteMapLatestBigNode and RequireStrictPayloadShapeLatestBigNode are mutually exclusive."
+}
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -205,6 +210,52 @@ function Add-OutboxCheck {
     }
 }
 
+function Get-NamedJsonObject {
+    param(
+        [object[]]$Items,
+        [string]$Name
+    )
+
+    foreach ($item in @($Items)) {
+        if (([string](Get-JsonValue $item "name" "")) -eq $Name) {
+            return $item
+        }
+    }
+
+    return $null
+}
+
+function Read-EvidenceRelativeJsonFile {
+    param([string]$RelativePath)
+
+    if ([string]::IsNullOrWhiteSpace($RelativePath)) {
+        return $null
+    }
+
+    $path = Join-Path $script:evidenceBundlePath $RelativePath
+    $fullPath = Resolve-FullPath $path
+    if (-not (Test-PathWithinRoot $fullPath $script:evidenceBundlePath)) {
+        throw "Evidence-relative JSON path escapes evidence bundle: $RelativePath"
+    }
+
+    return Read-OptionalJsonFile $fullPath
+}
+
+function Test-PayloadShapeViolationReason {
+    param(
+        [object]$Manifest,
+        [string]$Reason
+    )
+
+    foreach ($violation in @(Convert-ToArray (Get-JsonValue $Manifest "ownerResponseBundlePayloadShapeViolations" @()))) {
+        if (([string](Get-JsonValue $violation "reason" "")) -eq $Reason) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $outboxPath = Assert-PathUnderEvidenceBundle $OutboxDir "OutboxDir"
 $manifestFullPath = Assert-PathUnderEvidenceBundle $ManifestPath "ManifestPath"
@@ -232,6 +283,7 @@ $productionLuaPatchReadinessManifest = Read-JsonFile (Join-Path $evidenceBundleP
 $productionExternalEvidenceInboxManifest = Read-JsonFile (Join-Path $evidenceBundlePath "production-external-evidence-inbox-manifest.json") "Production external evidence inbox manifest"
 $ownerRouteMapManifest = Read-OptionalJsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-route-map-manifest.json")
 $ownerRouteMapProbeManifest = Read-OptionalJsonFile (Join-Path $evidenceBundlePath "production-handoff-owner-route-map-probe-manifest.json")
+$semanticPreflightProbeManifest = Read-OptionalJsonFile (Join-Path $evidenceBundlePath "production-external-evidence-semantic-preflight-probe-manifest.json")
 
 $ownerRouteMapRouteCount = Convert-ToInt (Get-JsonValue $ownerRouteMapManifest "ownerRouteCount" 0)
 $ownerRouteMapMissingFileCount = Convert-ToInt (Get-JsonValue $ownerRouteMapManifest "externalRemainingMissingFileCount" 0)
@@ -261,6 +313,105 @@ $ownerRouteMapProbeAccepted = (
     (Convert-ToBool (Get-JsonValue $ownerRouteMapProbeManifest "missingRouteEndpointBlocked" $false)) -and
     (Convert-ToBool (Get-JsonValue $ownerRouteMapProbeManifest "autoAcceptanceWithoutSemanticPreflightBlocked" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $ownerRouteMapProbeManifest "releasePipelineSendsEmail" $true))
+)
+$semanticPreflightCaseCount = Convert-ToInt (Get-JsonValue $semanticPreflightProbeManifest "caseCount" 0)
+$semanticPreflightCompleteCandidateCaseCount = Convert-ToInt (Get-JsonValue $semanticPreflightProbeManifest "completeCandidateCaseCount" 0)
+$semanticPreflightRejectedCaseCount = Convert-ToInt (Get-JsonValue $semanticPreflightProbeManifest "rejectedCaseCount" 0)
+$semanticPreflightCheckCount = Convert-ToInt (Get-JsonValue $semanticPreflightProbeManifest "checkCount" 0)
+$semanticPreflightFailedCheckCount = Convert-ToInt (Get-JsonValue $semanticPreflightProbeManifest "failedCheckCount" 1)
+$semanticPreflightPayloadShapeRejectedCaseCount = Convert-ToInt (Get-JsonValue $semanticPreflightProbeManifest "payloadShapeRejectedCaseCount" 0)
+$semanticPreflightOwnerResponseBundleZipCaseCount = Convert-ToInt (Get-JsonValue $semanticPreflightProbeManifest "ownerResponseBundleZipCaseCount" 0)
+$semanticPreflightOwnerResponseBundleZipSafeCaseCount = Convert-ToInt (Get-JsonValue $semanticPreflightProbeManifest "ownerResponseBundleZipSafeCaseCount" 0)
+$semanticPreflightOwnerResponseBundleZipUnsafeCaseCount = Convert-ToInt (Get-JsonValue $semanticPreflightProbeManifest "ownerResponseBundleZipUnsafeCaseCount" 0)
+$semanticPreflightExtraPayloadBundleRejected = Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "extraPayloadBundleRejected" $false)
+$semanticPreflightNestedPayloadBundleZipRejected = Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "nestedPayloadBundleZipRejected" $false)
+$semanticPreflightReadOnly = Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "readOnly" $false)
+$semanticPreflightAcceptanceRun = Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "acceptanceRun" $true)
+$semanticPreflightHardValidationRun = Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "hardValidationRun" $true)
+$semanticPreflightProductionOutputBoundary = [string](Get-JsonValue $semanticPreflightProbeManifest "productionOutputBoundary" "")
+$semanticPreflightCases = @(Convert-ToArray (Get-JsonValue $semanticPreflightProbeManifest "cases" @()))
+$semanticCompleteOwnerBundleCase = Get-NamedJsonObject $semanticPreflightCases "complete-owner-response-bundle-contract"
+$semanticCompleteOwnerBundleZipCase = Get-NamedJsonObject $semanticPreflightCases "complete-owner-response-bundle-zip-contract"
+$semanticCompleteOwnerBundleArbitraryZipCase = Get-NamedJsonObject $semanticPreflightCases "complete-owner-response-bundle-zip-arbitrary-wrapper-contract"
+$semanticExtraPayloadCase = Get-NamedJsonObject $semanticPreflightCases "extra-payload-owner-response-bundle"
+$semanticNestedPayloadZipCase = Get-NamedJsonObject $semanticPreflightCases "nested-payload-owner-response-bundle-zip"
+$semanticCompleteOwnerBundleCaseManifest = Read-EvidenceRelativeJsonFile ([string](Get-JsonValue $semanticCompleteOwnerBundleCase "manifest" ""))
+$semanticCompleteOwnerBundleZipCaseManifest = Read-EvidenceRelativeJsonFile ([string](Get-JsonValue $semanticCompleteOwnerBundleZipCase "manifest" ""))
+$semanticCompleteOwnerBundleArbitraryZipCaseManifest = Read-EvidenceRelativeJsonFile ([string](Get-JsonValue $semanticCompleteOwnerBundleArbitraryZipCase "manifest" ""))
+$semanticExtraPayloadCaseManifest = Read-EvidenceRelativeJsonFile ([string](Get-JsonValue $semanticExtraPayloadCase "manifest" ""))
+$semanticNestedPayloadZipCaseManifest = Read-EvidenceRelativeJsonFile ([string](Get-JsonValue $semanticNestedPayloadZipCase "manifest" ""))
+$semanticPreflightCompleteOwnerBundleCaseAccepted = (
+    $null -ne $semanticCompleteOwnerBundleCaseManifest -and
+    (Get-JsonValue $semanticCompleteOwnerBundleCaseManifest "semanticPreflightStatus" "") -eq "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE" -and
+    (Convert-ToBool (Get-JsonValue $semanticCompleteOwnerBundleCaseManifest "readyForAcceptanceCandidate" $false)) -and
+    (Convert-ToBool (Get-JsonValue $semanticCompleteOwnerBundleCaseManifest "ownerResponseBundleStrictPayloadShape" $false)) -and
+    (Convert-ToInt (Get-JsonValue $semanticCompleteOwnerBundleCaseManifest "ownerResponseBundlePayloadShapeViolationCount" 1)) -eq 0
+)
+$semanticPreflightCompleteOwnerBundleZipCaseAccepted = (
+    $null -ne $semanticCompleteOwnerBundleZipCaseManifest -and
+    (Get-JsonValue $semanticCompleteOwnerBundleZipCaseManifest "semanticPreflightStatus" "") -eq "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE" -and
+    (Convert-ToBool (Get-JsonValue $semanticCompleteOwnerBundleZipCaseManifest "readyForAcceptanceCandidate" $false)) -and
+    (Convert-ToBool (Get-JsonValue $semanticCompleteOwnerBundleZipCaseManifest "ownerResponseBundleStrictPayloadShape" $false)) -and
+    (Convert-ToInt (Get-JsonValue $semanticCompleteOwnerBundleZipCaseManifest "ownerResponseBundlePayloadShapeViolationCount" 1)) -eq 0
+)
+$semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted = (
+    $null -ne $semanticCompleteOwnerBundleArbitraryZipCaseManifest -and
+    (Get-JsonValue $semanticCompleteOwnerBundleArbitraryZipCaseManifest "semanticPreflightStatus" "") -eq "READY_FOR_AUTO_ACCEPTANCE_CANDIDATE" -and
+    (Convert-ToBool (Get-JsonValue $semanticCompleteOwnerBundleArbitraryZipCaseManifest "readyForAcceptanceCandidate" $false)) -and
+    (Convert-ToBool (Get-JsonValue $semanticCompleteOwnerBundleArbitraryZipCaseManifest "ownerResponseBundleStrictPayloadShape" $false)) -and
+    (Convert-ToInt (Get-JsonValue $semanticCompleteOwnerBundleArbitraryZipCaseManifest "ownerResponseBundlePayloadShapeViolationCount" 1)) -eq 0
+)
+$semanticPreflightExtraPayloadCaseAccepted = (
+    $null -ne $semanticExtraPayloadCaseManifest -and
+    (Get-JsonValue $semanticExtraPayloadCaseManifest "semanticPreflightStatus" "") -eq "NEEDS_OWNER_REPAIR" -and
+    -not (Convert-ToBool (Get-JsonValue $semanticExtraPayloadCaseManifest "readyForAcceptanceCandidate" $true)) -and
+    (Convert-ToBool (Get-JsonValue $semanticExtraPayloadCaseManifest "ownerResponseBundleStrictPayloadShape" $false)) -and
+    (Convert-ToInt (Get-JsonValue $semanticExtraPayloadCaseManifest "ownerResponseBundlePayloadShapeViolationCount" 0)) -ge 1 -and
+    (Test-PayloadShapeViolationReason $semanticExtraPayloadCaseManifest "owner_response_bundle_extra_top_level_file")
+)
+$semanticPreflightNestedPayloadZipCaseAccepted = (
+    $null -ne $semanticNestedPayloadZipCaseManifest -and
+    (Get-JsonValue $semanticNestedPayloadZipCaseManifest "semanticPreflightStatus" "") -eq "NEEDS_OWNER_REPAIR" -and
+    -not (Convert-ToBool (Get-JsonValue $semanticNestedPayloadZipCaseManifest "readyForAcceptanceCandidate" $true)) -and
+    (Convert-ToBool (Get-JsonValue $semanticNestedPayloadZipCaseManifest "ownerResponseBundleStrictPayloadShape" $false)) -and
+    (Convert-ToInt (Get-JsonValue $semanticNestedPayloadZipCaseManifest "ownerResponseBundlePayloadShapeViolationCount" 0)) -ge 1 -and
+    (Test-PayloadShapeViolationReason $semanticNestedPayloadZipCaseManifest "owner_response_bundle_nested_area_directory")
+)
+$semanticPreflightProbeAccepted = (
+    $null -ne $semanticPreflightProbeManifest -and
+    (Get-JsonValue $semanticPreflightProbeManifest "status" "") -eq "PASS" -and
+    $semanticPreflightFailedCheckCount -eq 0
+)
+$semanticPreflightPayloadShapeAccepted = (
+    $null -ne $semanticPreflightProbeManifest -and
+    (Get-JsonValue $semanticPreflightProbeManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_semantic_preflight_probe.v1" -and
+    (Get-JsonValue $semanticPreflightProbeManifest "status" "") -eq "PASS" -and
+    $semanticPreflightReadOnly -and
+    $semanticPreflightCaseCount -eq 12 -and
+    $semanticPreflightCompleteCandidateCaseCount -eq 4 -and
+    $semanticPreflightRejectedCaseCount -eq 8 -and
+    $semanticPreflightCheckCount -eq 14 -and
+    $semanticPreflightFailedCheckCount -eq 0 -and
+    $semanticPreflightExtraPayloadBundleRejected -and
+    $semanticPreflightNestedPayloadBundleZipRejected -and
+    $semanticPreflightPayloadShapeRejectedCaseCount -eq 2 -and
+    $semanticPreflightOwnerResponseBundleZipCaseCount -eq 6 -and
+    $semanticPreflightOwnerResponseBundleZipSafeCaseCount -eq 5 -and
+    $semanticPreflightOwnerResponseBundleZipUnsafeCaseCount -eq 1 -and
+    $semanticPreflightCompleteOwnerBundleCaseAccepted -and
+    $semanticPreflightCompleteOwnerBundleZipCaseAccepted -and
+    $semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted -and
+    $semanticPreflightExtraPayloadCaseAccepted -and
+    $semanticPreflightNestedPayloadZipCaseAccepted -and
+    -not $semanticPreflightAcceptanceRun -and
+    -not $semanticPreflightHardValidationRun -and
+    -not (Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "releasePipelineSendsEmail" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "emailSent" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "realHostProjectEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "externalEvidenceAccepted" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "releasePipelineUsesFixture" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $semanticPreflightProbeManifest "fixtureEvidencePromoted" $true)) -and
+    $semanticPreflightProductionOutputBoundary -eq "production_external_evidence_semantic_preflight_probe_only"
 )
 $ownerInputRequestStatus = [string](Get-JsonValue $ownerInputRequestManifest "ownerInputRequestStatus" "")
 $ownerUnblockStatus = [string](Get-JsonValue $ownerInputRequestManifest "ownerUnblockStatus" "")
@@ -292,8 +443,13 @@ $ownerResponseBundleKitAccepted = (
     $ownerResponseBundleKitRequiredFileCount -gt 0 -and
     -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "emailSent" $true))
 )
-$latestBigNodeRouteRequirementSatisfied = $false
-if ($ownerRouteMapAccepted -and $ownerRouteMapProbeAccepted) {
+$latestBigNodeRequirementSatisfied = $false
+if ($semanticPreflightPayloadShapeAccepted -and -not [bool]$RequireOwnerRouteMapLatestBigNode) {
+    $latestBigNodeName = "production_external_evidence_strict_payload_shape"
+    $latestBigNodeStatus = [string](Get-JsonValue $semanticPreflightProbeManifest "status" "")
+    $notificationSubject = "AI TestPilot progress - strict owner bundle payload checks ready"
+    $latestBigNodeAccepted = $true
+} elseif ($ownerRouteMapAccepted -and $ownerRouteMapProbeAccepted) {
     $latestBigNodeName = "production_handoff_owner_route_map"
     $latestBigNodeStatus = [string](Get-JsonValue $ownerRouteMapManifest "status" "")
     $notificationSubject = "AI TestPilot progress - owner route map ready"
@@ -305,15 +461,21 @@ if ($ownerRouteMapAccepted -and $ownerRouteMapProbeAccepted) {
     $latestBigNodeAccepted = $ownerResponseBundleKitAccepted
 }
 if ([bool]$RequireOwnerRouteMapLatestBigNode) {
-    $latestBigNodeRouteRequirementSatisfied = (
+    $latestBigNodeRequirementSatisfied = (
         $latestBigNodeName -eq "production_handoff_owner_route_map" -and
         $ownerRouteMapAccepted -and
         $ownerRouteMapProbeAccepted
     )
+} elseif ([bool]$RequireStrictPayloadShapeLatestBigNode) {
+    $latestBigNodeRequirementSatisfied = (
+        $latestBigNodeName -eq "production_external_evidence_strict_payload_shape" -and
+        $semanticPreflightPayloadShapeAccepted
+    )
 } else {
-    $latestBigNodeRouteRequirementSatisfied = (
-        $latestBigNodeName -in @("production_handoff_owner_response_bundle_kit", "production_handoff_owner_route_map") -and
-        ($latestBigNodeName -ne "production_handoff_owner_route_map" -or ($ownerRouteMapAccepted -and $ownerRouteMapProbeAccepted))
+    $latestBigNodeRequirementSatisfied = (
+        $latestBigNodeName -in @("production_handoff_owner_response_bundle_kit", "production_handoff_owner_route_map", "production_external_evidence_strict_payload_shape") -and
+        ($latestBigNodeName -ne "production_handoff_owner_route_map" -or ($ownerRouteMapAccepted -and $ownerRouteMapProbeAccepted)) -and
+        ($latestBigNodeName -ne "production_external_evidence_strict_payload_shape" -or $semanticPreflightPayloadShapeAccepted)
     )
 }
 $notificationDispatchStatus = "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION"
@@ -329,7 +491,8 @@ $suppressedSmallNodeNames = @(
     "release_progress_notification_dispatch_receipt_intake_probe",
     "release_progress_notification_local_send_workflow_probe",
     "release_progress_notification_real_receipt_guard_probe",
-    "release_progress_notification_remaining_work_snapshot_probe"
+    "release_progress_notification_remaining_work_snapshot_probe",
+    "production_external_evidence_semantic_preflight_probe"
 )
 $suppressedSmallNodeCount = @($suppressedSmallNodeNames).Count
 
@@ -406,6 +569,7 @@ $status = [ordered]@{
     latestBigNodeName = $latestBigNodeName
     latestBigNodeStatus = $latestBigNodeStatus
     requireOwnerRouteMapLatestBigNode = [bool]$RequireOwnerRouteMapLatestBigNode
+    requireStrictPayloadShapeLatestBigNode = [bool]$RequireStrictPayloadShapeLatestBigNode
     ownerInputRequestStatus = $ownerInputRequestStatus
     ownerUnblockStatus = $ownerUnblockStatus
     externalContactIntakeAccepted = [bool]$externalContactIntakeAccepted
@@ -426,6 +590,29 @@ $status = [ordered]@{
     ownerRouteMapMissingFileCount = [int]$ownerRouteMapMissingFileCount
     ownerRouteMapBlockingReasonCount = [int]$ownerRouteMapBlockingReasonCount
     ownerRouteMapRepoSideClosableGapCount = [int]$ownerRouteMapRepoSideClosableGapCount
+    productionExternalEvidenceSemanticPreflightProbeAccepted = [bool]($null -ne $semanticPreflightProbeManifest -and (Get-JsonValue $semanticPreflightProbeManifest "status" "") -eq "PASS" -and $semanticPreflightFailedCheckCount -eq 0)
+    productionExternalEvidenceStrictPayloadShapeAccepted = [bool]$semanticPreflightPayloadShapeAccepted
+    semanticPreflightPayloadShapeAccepted = [bool]$semanticPreflightPayloadShapeAccepted
+    semanticPreflightReadOnly = [bool]$semanticPreflightReadOnly
+    semanticPreflightAcceptanceRun = [bool]$semanticPreflightAcceptanceRun
+    semanticPreflightHardValidationRun = [bool]$semanticPreflightHardValidationRun
+    semanticPreflightProductionOutputBoundary = $semanticPreflightProductionOutputBoundary
+    semanticPreflightCaseCount = [int]$semanticPreflightCaseCount
+    semanticPreflightCompleteCandidateCaseCount = [int]$semanticPreflightCompleteCandidateCaseCount
+    semanticPreflightRejectedCaseCount = [int]$semanticPreflightRejectedCaseCount
+    semanticPreflightCheckCount = [int]$semanticPreflightCheckCount
+    semanticPreflightFailedCheckCount = [int]$semanticPreflightFailedCheckCount
+    semanticPreflightPayloadShapeRejectedCaseCount = [int]$semanticPreflightPayloadShapeRejectedCaseCount
+    semanticPreflightExtraPayloadBundleRejected = [bool]$semanticPreflightExtraPayloadBundleRejected
+    semanticPreflightNestedPayloadBundleZipRejected = [bool]$semanticPreflightNestedPayloadBundleZipRejected
+    semanticPreflightOwnerResponseBundleZipCaseCount = [int]$semanticPreflightOwnerResponseBundleZipCaseCount
+    semanticPreflightOwnerResponseBundleZipSafeCaseCount = [int]$semanticPreflightOwnerResponseBundleZipSafeCaseCount
+    semanticPreflightOwnerResponseBundleZipUnsafeCaseCount = [int]$semanticPreflightOwnerResponseBundleZipUnsafeCaseCount
+    semanticPreflightCompleteOwnerBundleCaseAccepted = [bool]$semanticPreflightCompleteOwnerBundleCaseAccepted
+    semanticPreflightCompleteOwnerBundleZipCaseAccepted = [bool]$semanticPreflightCompleteOwnerBundleZipCaseAccepted
+    semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted = [bool]$semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted
+    semanticPreflightExtraPayloadCaseAccepted = [bool]$semanticPreflightExtraPayloadCaseAccepted
+    semanticPreflightNestedPayloadZipCaseAccepted = [bool]$semanticPreflightNestedPayloadZipCaseAccepted
     notificationCadencePolicy = $notificationCadencePolicy
     notificationTriggerKind = $notificationTriggerKind
     bigNodeNotificationEligible = [bool]$bigNodeNotificationEligible
@@ -483,6 +670,12 @@ $remainingWorkSnapshot = [ordered]@{
     subject = $notificationSubject
     latestBigNodeName = $latestBigNodeName
     latestBigNodeStatus = $latestBigNodeStatus
+    productionExternalEvidenceStrictPayloadShapeAccepted = [bool]$semanticPreflightPayloadShapeAccepted
+    semanticPreflightPayloadShapeAccepted = [bool]$semanticPreflightPayloadShapeAccepted
+    semanticPreflightCompleteCandidateCaseCount = [int]$semanticPreflightCompleteCandidateCaseCount
+    semanticPreflightPayloadShapeRejectedCaseCount = [int]$semanticPreflightPayloadShapeRejectedCaseCount
+    semanticPreflightExtraPayloadBundleRejected = [bool]$semanticPreflightExtraPayloadBundleRejected
+    semanticPreflightNestedPayloadBundleZipRejected = [bool]$semanticPreflightNestedPayloadBundleZipRejected
     ownerInputRequestStatus = $ownerInputRequestStatus
     ownerUnblockStatus = $ownerUnblockStatus
     notificationDispatchStatus = $notificationDispatchStatus
@@ -592,6 +785,29 @@ $emailDraftLines = @(
     "- Owner route map missing files: $ownerRouteMapMissingFileCount",
     "- Owner route map blockers: $ownerRouteMapBlockingReasonCount",
     "- Owner route map repo-side closable gaps: $ownerRouteMapRepoSideClosableGapCount",
+    "- Production external evidence semantic preflight probe accepted: $semanticPreflightProbeAccepted",
+    "- Production external evidence strict payload shape accepted: $semanticPreflightPayloadShapeAccepted",
+    "- Strict owner bundle payload-shape checks accepted: $semanticPreflightPayloadShapeAccepted",
+    "- Semantic preflight read-only: $semanticPreflightReadOnly",
+    "- Semantic preflight acceptance run: $semanticPreflightAcceptanceRun",
+    "- Semantic preflight hard validation run: $semanticPreflightHardValidationRun",
+    "- Semantic preflight output boundary: $semanticPreflightProductionOutputBoundary",
+    "- Semantic preflight cases: $semanticPreflightCaseCount",
+    "- Semantic preflight complete candidate cases: $semanticPreflightCompleteCandidateCaseCount",
+    "- Semantic preflight rejected cases: $semanticPreflightRejectedCaseCount",
+    "- Semantic preflight checks: $semanticPreflightCheckCount",
+    "- Semantic preflight failed checks: $semanticPreflightFailedCheckCount",
+    "- Extra-payload owner response bundle rejected: $semanticPreflightExtraPayloadBundleRejected",
+    "- Nested-payload owner response bundle zip rejected: $semanticPreflightNestedPayloadBundleZipRejected",
+    "- Payload-shape rejected cases: $semanticPreflightPayloadShapeRejectedCaseCount",
+    "- Owner response bundle zip cases: $semanticPreflightOwnerResponseBundleZipCaseCount",
+    "- Owner response bundle zip safe cases: $semanticPreflightOwnerResponseBundleZipSafeCaseCount",
+    "- Owner response bundle zip unsafe cases: $semanticPreflightOwnerResponseBundleZipUnsafeCaseCount",
+    "- Complete owner response bundle payload case accepted: $semanticPreflightCompleteOwnerBundleCaseAccepted",
+    "- Complete owner response bundle zip payload case accepted: $semanticPreflightCompleteOwnerBundleZipCaseAccepted",
+    "- Complete owner response bundle arbitrary-wrapper zip payload case accepted: $semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted",
+    "- Extra-payload owner response bundle case accepted: $semanticPreflightExtraPayloadCaseAccepted",
+    "- Nested-payload owner response bundle zip case accepted: $semanticPreflightNestedPayloadZipCaseAccepted",
     "- Notification cadence policy: $notificationCadencePolicy",
     "- Notification trigger kind: $notificationTriggerKind",
     "- Small-node email suppression active: $smallNodeEmailSuppression",
@@ -632,6 +848,8 @@ $emailDraftLines = @(
     "- production-handoff-owner-route-map.md",
     "- production-handoff-owner-route-map-probe-manifest.json",
     "- production-handoff-owner-route-map-probe.md",
+    "- production-external-evidence-semantic-preflight-probe-manifest.json",
+    "- production-external-evidence-semantic-preflight-probe.md",
     "- release-progress-notification-outbox-manifest.json",
     "- release-progress-notification-outbox/remaining-work-snapshot.json",
     "- release-progress-notification-outbox/remaining-work-snapshot.md",
@@ -791,6 +1009,29 @@ $reportLines = @(
     "| Owner route map missing files | $ownerRouteMapMissingFileCount |",
     "| Owner route map blockers | $ownerRouteMapBlockingReasonCount |",
     "| Owner route map repo-side closable gaps | $ownerRouteMapRepoSideClosableGapCount |",
+    "| Production external evidence semantic preflight probe accepted | $semanticPreflightProbeAccepted |",
+    "| Production external evidence strict payload shape accepted | $semanticPreflightPayloadShapeAccepted |",
+    "| Strict owner bundle payload-shape checks accepted | $semanticPreflightPayloadShapeAccepted |",
+    "| Semantic preflight read-only | $semanticPreflightReadOnly |",
+    "| Semantic preflight acceptance run | $semanticPreflightAcceptanceRun |",
+    "| Semantic preflight hard validation run | $semanticPreflightHardValidationRun |",
+    "| Semantic preflight output boundary | $(Format-MarkdownCell $semanticPreflightProductionOutputBoundary) |",
+    "| Semantic preflight cases | $semanticPreflightCaseCount |",
+    "| Semantic preflight complete candidate cases | $semanticPreflightCompleteCandidateCaseCount |",
+    "| Semantic preflight rejected cases | $semanticPreflightRejectedCaseCount |",
+    "| Semantic preflight checks | $semanticPreflightCheckCount |",
+    "| Semantic preflight failed checks | $semanticPreflightFailedCheckCount |",
+    "| Extra-payload owner response bundle rejected | $semanticPreflightExtraPayloadBundleRejected |",
+    "| Nested-payload owner response bundle zip rejected | $semanticPreflightNestedPayloadBundleZipRejected |",
+    "| Payload-shape rejected cases | $semanticPreflightPayloadShapeRejectedCaseCount |",
+    "| Owner response bundle zip cases | $semanticPreflightOwnerResponseBundleZipCaseCount |",
+    "| Owner response bundle zip safe cases | $semanticPreflightOwnerResponseBundleZipSafeCaseCount |",
+    "| Owner response bundle zip unsafe cases | $semanticPreflightOwnerResponseBundleZipUnsafeCaseCount |",
+    "| Complete owner response bundle payload case accepted | $semanticPreflightCompleteOwnerBundleCaseAccepted |",
+    "| Complete owner response bundle zip payload case accepted | $semanticPreflightCompleteOwnerBundleZipCaseAccepted |",
+    "| Complete owner response bundle arbitrary-wrapper zip payload case accepted | $semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted |",
+    "| Extra-payload owner response bundle case accepted | $semanticPreflightExtraPayloadCaseAccepted |",
+    "| Nested-payload owner response bundle zip case accepted | $semanticPreflightNestedPayloadZipCaseAccepted |",
     "| Notification cadence policy | $(Format-MarkdownCell $notificationCadencePolicy) |",
     "| Notification trigger kind | $(Format-MarkdownCell $notificationTriggerKind) |",
     "| Big-node notification eligible | $bigNodeNotificationEligible |",
@@ -904,7 +1145,7 @@ Add-OutboxCheck "progress_notification_sources_available" `
     "Progress notification outbox must be based on passing owner input request, owner contact external intake, send dry-run, owner response bundle, owner response bundle kit, owner unblock, mail-auth readiness, send readiness, production driver readiness, production Lua readiness, and external evidence inbox evidence."
 Add-OutboxCheck "progress_notification_latest_big_node_accepted" `
     ($latestBigNodeAccepted -and
-        $latestBigNodeRouteRequirementSatisfied -and
+        $latestBigNodeRequirementSatisfied -and
         $latestBigNodeStatus -eq "PASS" -and
         $externalContactIntakeAccepted -and
         $externalSendReadyForConfirmation -and
@@ -953,10 +1194,11 @@ Add-OutboxCheck "progress_notification_big_node_only_cadence" `
         $notificationTriggerKind -eq "BIG_NODE" -and
         $bigNodeNotificationEligible -and
         $smallNodeEmailSuppression -and
-        $suppressedSmallNodeCount -eq 7 -and
+        $suppressedSmallNodeCount -eq 8 -and
         $suppressedSmallNodeNames -contains "release_progress_notification_confirmation_probe" -and
         $suppressedSmallNodeNames -contains "release_progress_notification_real_receipt_guard_probe" -and
         $suppressedSmallNodeNames -contains "release_progress_notification_remaining_work_snapshot_probe" -and
+        $suppressedSmallNodeNames -contains "production_external_evidence_semantic_preflight_probe" -and
         @($eligibleBigNodeNames).Count -eq 1 -and
         $eligibleBigNodeNames[0] -eq $latestBigNodeName) `
     "Progress notification cadence must be big-node-only and suppress separate emails for small proof/probe nodes."
@@ -1006,6 +1248,15 @@ if ($null -ne $ownerRouteMapManifest) {
 if ($null -ne $ownerRouteMapProbeManifest) {
     $sourceFiles += "production-handoff-owner-route-map-probe-manifest.json"
 }
+if ($null -ne $semanticPreflightProbeManifest) {
+    $sourceFiles += "production-external-evidence-semantic-preflight-probe-manifest.json"
+    foreach ($semanticCase in @($semanticCompleteOwnerBundleCase, $semanticCompleteOwnerBundleZipCase, $semanticCompleteOwnerBundleArbitraryZipCase, $semanticExtraPayloadCase, $semanticNestedPayloadZipCase)) {
+        $semanticCaseManifestPath = [string](Get-JsonValue $semanticCase "manifest" "")
+        if (-not [string]::IsNullOrWhiteSpace($semanticCaseManifestPath)) {
+            $sourceFiles += $semanticCaseManifestPath
+        }
+    }
+}
 
 $manifest = [ordered]@{
     schemaVersion = "aitestpilot.release_progress_notification_outbox.v1"
@@ -1019,6 +1270,7 @@ $manifest = [ordered]@{
     latestBigNodeName = $latestBigNodeName
     latestBigNodeStatus = $latestBigNodeStatus
     requireOwnerRouteMapLatestBigNode = [bool]$RequireOwnerRouteMapLatestBigNode
+    requireStrictPayloadShapeLatestBigNode = [bool]$RequireStrictPayloadShapeLatestBigNode
     ownerInputRequestStatus = $ownerInputRequestStatus
     ownerUnblockStatus = $ownerUnblockStatus
     externalContactIntakeAccepted = [bool]$externalContactIntakeAccepted
@@ -1041,6 +1293,29 @@ $manifest = [ordered]@{
     ownerRouteMapRepoSideClosableGapCount = [int]$ownerRouteMapRepoSideClosableGapCount
     ownerRouteMapProbeScenarioCount = [int]$ownerRouteMapProbeScenarioCount
     ownerRouteMapProbeFailedScenarioCount = [int]$ownerRouteMapProbeFailedScenarioCount
+    productionExternalEvidenceSemanticPreflightProbeAccepted = [bool]($null -ne $semanticPreflightProbeManifest -and (Get-JsonValue $semanticPreflightProbeManifest "status" "") -eq "PASS" -and $semanticPreflightFailedCheckCount -eq 0)
+    productionExternalEvidenceStrictPayloadShapeAccepted = [bool]$semanticPreflightPayloadShapeAccepted
+    semanticPreflightPayloadShapeAccepted = [bool]$semanticPreflightPayloadShapeAccepted
+    semanticPreflightReadOnly = [bool]$semanticPreflightReadOnly
+    semanticPreflightAcceptanceRun = [bool]$semanticPreflightAcceptanceRun
+    semanticPreflightHardValidationRun = [bool]$semanticPreflightHardValidationRun
+    semanticPreflightProductionOutputBoundary = $semanticPreflightProductionOutputBoundary
+    semanticPreflightCaseCount = [int]$semanticPreflightCaseCount
+    semanticPreflightCompleteCandidateCaseCount = [int]$semanticPreflightCompleteCandidateCaseCount
+    semanticPreflightRejectedCaseCount = [int]$semanticPreflightRejectedCaseCount
+    semanticPreflightCheckCount = [int]$semanticPreflightCheckCount
+    semanticPreflightFailedCheckCount = [int]$semanticPreflightFailedCheckCount
+    semanticPreflightPayloadShapeRejectedCaseCount = [int]$semanticPreflightPayloadShapeRejectedCaseCount
+    semanticPreflightExtraPayloadBundleRejected = [bool]$semanticPreflightExtraPayloadBundleRejected
+    semanticPreflightNestedPayloadBundleZipRejected = [bool]$semanticPreflightNestedPayloadBundleZipRejected
+    semanticPreflightOwnerResponseBundleZipCaseCount = [int]$semanticPreflightOwnerResponseBundleZipCaseCount
+    semanticPreflightOwnerResponseBundleZipSafeCaseCount = [int]$semanticPreflightOwnerResponseBundleZipSafeCaseCount
+    semanticPreflightOwnerResponseBundleZipUnsafeCaseCount = [int]$semanticPreflightOwnerResponseBundleZipUnsafeCaseCount
+    semanticPreflightCompleteOwnerBundleCaseAccepted = [bool]$semanticPreflightCompleteOwnerBundleCaseAccepted
+    semanticPreflightCompleteOwnerBundleZipCaseAccepted = [bool]$semanticPreflightCompleteOwnerBundleZipCaseAccepted
+    semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted = [bool]$semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted
+    semanticPreflightExtraPayloadCaseAccepted = [bool]$semanticPreflightExtraPayloadCaseAccepted
+    semanticPreflightNestedPayloadZipCaseAccepted = [bool]$semanticPreflightNestedPayloadZipCaseAccepted
     notificationCadencePolicy = $notificationCadencePolicy
     notificationTriggerKind = $notificationTriggerKind
     bigNodeNotificationEligible = [bool]$bigNodeNotificationEligible

@@ -3,13 +3,18 @@ param(
     [string]$EvidenceBundleDir,
     [string]$ManifestPath,
     [string]$ReportPath,
-    [switch]$RequireOwnerRouteMapLatestBigNode
+    [switch]$RequireOwnerRouteMapLatestBigNode,
+    [switch]$RequireStrictPayloadShapeLatestBigNode
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+
+if ([bool]$RequireOwnerRouteMapLatestBigNode -and [bool]$RequireStrictPayloadShapeLatestBigNode) {
+    throw "RequireOwnerRouteMapLatestBigNode and RequireStrictPayloadShapeLatestBigNode are mutually exclusive."
+}
 
 function Test-PathWithinRoot {
     param(
@@ -219,8 +224,10 @@ $latestBigNodeName = [string](Get-JsonValue $snapshot "latestBigNodeName" "")
 $latestBigNodeStatus = [string](Get-JsonValue $snapshot "latestBigNodeStatus" "")
 $latestBigNodeRequirementSatisfied = if ([bool]$RequireOwnerRouteMapLatestBigNode) {
     $latestBigNodeName -eq "production_handoff_owner_route_map"
+} elseif ([bool]$RequireStrictPayloadShapeLatestBigNode) {
+    $latestBigNodeName -eq "production_external_evidence_strict_payload_shape"
 } else {
-    $latestBigNodeName -in @("production_handoff_owner_response_bundle_kit", "production_handoff_owner_route_map")
+    $latestBigNodeName -in @("production_handoff_owner_response_bundle_kit", "production_handoff_owner_route_map", "production_external_evidence_strict_payload_shape")
 }
 
 $driverBlockingReasonCount = Convert-ToInt (Get-JsonValue $productionDriverReadinessManifest "blockingReasonCount" 0)
@@ -382,6 +389,7 @@ $manifest = [ordered]@{
     latestBigNodeName = $latestBigNodeName
     latestBigNodeStatus = $latestBigNodeStatus
     requireOwnerRouteMapLatestBigNode = [bool]$RequireOwnerRouteMapLatestBigNode
+    requireStrictPayloadShapeLatestBigNode = [bool]$RequireStrictPayloadShapeLatestBigNode
     snapshotSchemaVersionAccepted = (Get-JsonValue $snapshot "schemaVersion" "") -eq "aitestpilot.release_progress_notification_remaining_work_snapshot.v1"
     snapshotContentValidated = [bool]$contentValidated
     notificationDispatchStatus = $notificationDispatchStatus

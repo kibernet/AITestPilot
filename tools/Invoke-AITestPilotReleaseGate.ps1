@@ -2936,9 +2936,10 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
         ($releaseProgressNotificationOutboxManifest.status -eq "PASS" -and
             $releaseProgressNotificationOutboxManifest.schemaVersion -eq "aitestpilot.release_progress_notification_outbox.v1" -and
             $releaseProgressNotificationOutboxManifest.recipient -eq "kibernet@sina.com" -and
-            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_handoff_owner_route_map" -and
+            $releaseProgressNotificationOutboxManifest.latestBigNodeName -eq "production_external_evidence_strict_payload_shape" -and
             $releaseProgressNotificationOutboxManifest.latestBigNodeStatus -eq "PASS" -and
-            [bool]$releaseProgressNotificationOutboxManifest.requireOwnerRouteMapLatestBigNode -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.requireOwnerRouteMapLatestBigNode -and
+            [bool]$releaseProgressNotificationOutboxManifest.requireStrictPayloadShapeLatestBigNode -and
             [bool]$releaseProgressNotificationOutboxManifest.externalContactIntakeAccepted -and
             [bool]$releaseProgressNotificationOutboxManifest.externalSendReadyForConfirmation -and
             [bool]$releaseProgressNotificationOutboxManifest.sendDryRunAuthorizationFree -and
@@ -2959,11 +2960,34 @@ if ($null -ne $releaseProgressNotificationOutboxManifest) {
             [int]$releaseProgressNotificationOutboxManifest.ownerRouteMapRepoSideClosableGapCount -eq 0 -and
             [int]$releaseProgressNotificationOutboxManifest.ownerRouteMapProbeScenarioCount -eq 4 -and
             [int]$releaseProgressNotificationOutboxManifest.ownerRouteMapProbeFailedScenarioCount -eq 0 -and
+            [bool]$releaseProgressNotificationOutboxManifest.productionExternalEvidenceSemanticPreflightProbeAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.productionExternalEvidenceStrictPayloadShapeAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightPayloadShapeAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightReadOnly -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightAcceptanceRun -and
+            -not [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightHardValidationRun -and
+            $releaseProgressNotificationOutboxManifest.semanticPreflightProductionOutputBoundary -eq "production_external_evidence_semantic_preflight_probe_only" -and
+            [int]$releaseProgressNotificationOutboxManifest.semanticPreflightCaseCount -eq 12 -and
+            [int]$releaseProgressNotificationOutboxManifest.semanticPreflightCompleteCandidateCaseCount -eq 4 -and
+            [int]$releaseProgressNotificationOutboxManifest.semanticPreflightRejectedCaseCount -eq 8 -and
+            [int]$releaseProgressNotificationOutboxManifest.semanticPreflightCheckCount -eq 14 -and
+            [int]$releaseProgressNotificationOutboxManifest.semanticPreflightFailedCheckCount -eq 0 -and
+            [int]$releaseProgressNotificationOutboxManifest.semanticPreflightPayloadShapeRejectedCaseCount -eq 2 -and
+            [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightExtraPayloadBundleRejected -and
+            [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightNestedPayloadBundleZipRejected -and
+            [int]$releaseProgressNotificationOutboxManifest.semanticPreflightOwnerResponseBundleZipCaseCount -eq 6 -and
+            [int]$releaseProgressNotificationOutboxManifest.semanticPreflightOwnerResponseBundleZipSafeCaseCount -eq 5 -and
+            [int]$releaseProgressNotificationOutboxManifest.semanticPreflightOwnerResponseBundleZipUnsafeCaseCount -eq 1 -and
+            [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightCompleteOwnerBundleCaseAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightCompleteOwnerBundleZipCaseAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightCompleteOwnerBundleArbitraryZipCaseAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightExtraPayloadCaseAccepted -and
+            [bool]$releaseProgressNotificationOutboxManifest.semanticPreflightNestedPayloadZipCaseAccepted -and
             $releaseProgressNotificationOutboxManifest.notificationCadencePolicy -eq "BIG_NODE_ONLY" -and
             $releaseProgressNotificationOutboxManifest.notificationTriggerKind -eq "BIG_NODE" -and
             [bool]$releaseProgressNotificationOutboxManifest.bigNodeNotificationEligible -and
             [bool]$releaseProgressNotificationOutboxManifest.smallNodeEmailSuppression -and
-            [int]$releaseProgressNotificationOutboxManifest.suppressedSmallNodeCount -eq 7 -and
+            [int]$releaseProgressNotificationOutboxManifest.suppressedSmallNodeCount -eq 8 -and
             [bool]$releaseProgressNotificationOutboxManifest.cadencePolicyGenerated -and
             [bool]$releaseProgressNotificationOutboxManifest.cadencePolicyContentValidated -and
             [bool]$releaseProgressNotificationOutboxManifest.remainingWorkSnapshotGenerated -and
@@ -3017,9 +3041,10 @@ if ($null -ne $releaseProgressNotificationRemainingWorkSnapshotProbeManifest) {
             $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.schemaVersion -eq "aitestpilot.release_progress_notification_remaining_work_snapshot_probe.v1" -and
             [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.snapshotSchemaVersionAccepted -and
             [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.snapshotContentValidated -and
-            $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.latestBigNodeName -eq "production_handoff_owner_route_map" -and
+            $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.latestBigNodeName -eq "production_external_evidence_strict_payload_shape" -and
             $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.latestBigNodeStatus -eq "PASS" -and
-            [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.requireOwnerRouteMapLatestBigNode -and
+            -not [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.requireOwnerRouteMapLatestBigNode -and
+            [bool]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.requireStrictPayloadShapeLatestBigNode -and
             $releaseProgressNotificationRemainingWorkSnapshotProbeManifest.notificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.externalRemainingWorkItemCount -eq 3 -and
             [int]$releaseProgressNotificationRemainingWorkSnapshotProbeManifest.externalRemainingBlockingReasonCount -eq [int]$releaseProgressNotificationOutboxManifest.externalRemainingBlockingReasonCount -and
@@ -3993,13 +4018,13 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowLuaEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowLiveModelSmokeEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOutboxAccepted -and
-            $releaseRiskPolicyManifest.releaseProgressNotificationLatestBigNodeName -eq "production_handoff_owner_route_map" -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationLatestBigNodeName -eq "production_external_evidence_strict_payload_shape" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationLatestBigNodeStatus -eq "PASS" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationDispatchStatus -eq "PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationCadencePolicy -eq "BIG_NODE_ONLY" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationTriggerKind -eq "BIG_NODE" -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationSmallNodeEmailSuppression -and
-            [int]$releaseRiskPolicyManifest.releaseProgressNotificationSuppressedSmallNodeCount -eq 7 -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationSuppressedSmallNodeCount -eq 8 -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapAccepted -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapProbeAccepted -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapRouteCount -eq 3 -and
@@ -4008,8 +4033,12 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapRepoSideClosableGapCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapProbeScenarioCount -eq 4 -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationOwnerRouteMapProbeFailedScenarioCount -eq 0 -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationStrictPayloadShapeAccepted -and
+            [int]$releaseRiskPolicyManifest.releaseProgressNotificationSemanticPreflightPayloadShapeRejectedCaseCount -eq 2 -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationSemanticPreflightExtraPayloadBundleRejected -and
+            [bool]$releaseRiskPolicyManifest.releaseProgressNotificationSemanticPreflightNestedPayloadBundleZipRejected -and
             [bool]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeAccepted -and
-            $releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeLatestBigNodeName -eq "production_handoff_owner_route_map" -and
+            $releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeLatestBigNodeName -eq "production_external_evidence_strict_payload_shape" -and
             $releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeLatestBigNodeStatus -eq "PASS" -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalWorkItemCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.releaseProgressNotificationRemainingWorkSnapshotProbeExternalBlockingReasonCount -eq [int]$releaseRiskPolicyManifest.productionHandoffRemainingBlockingReasonCount -and
