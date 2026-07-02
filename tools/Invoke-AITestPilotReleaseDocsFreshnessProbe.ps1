@@ -273,6 +273,7 @@ $requiredDocStrings = @(
     [ordered]@{ file = "README.md"; pattern = "production-handoff-owner-route-map-probe-manifest.json"; label = "owner route map probe artifact" },
     [ordered]@{ file = "README.md"; pattern = "Invoke-AITestPilotReleaseEvidenceIndexFieldCoverageProbe.ps1"; label = "release evidence index field coverage probe command" },
     [ordered]@{ file = "README.md"; pattern = "release evidence index field coverage"; label = "release evidence index field coverage overview" },
+    [ordered]@{ file = "README.md"; pattern = "core artifact names, source files, and source-manifest lists"; label = "docs freshness source files overview" },
     [ordered]@{ file = "README.md"; pattern = "73 semantic field checks"; label = "release evidence index 73-field coverage count" },
     [ordered]@{ file = "README.md"; pattern = "six isolated scenarios"; label = "release evidence index six-scenario probe count" },
     [ordered]@{ file = "README.md"; pattern = "handoff export NEXT-STEPS validation rejection"; label = "handoff export next steps field coverage scenario" },
@@ -295,12 +296,14 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = 'operator-actions\NEXT-STEPS.md'; label = "operator next steps pipeline artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production-handoff-owner-route-map-probe-manifest.json"; label = "owner route map probe pipeline artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release-docs-freshness-manifest.json"; label = "docs freshness artifact" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "required release artifact names, source files, and source-manifest coverage"; label = "docs freshness pipeline source files reference" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "OwnerResponseBundleZipPath"; label = "owner response bundle zip parameter" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "unsafe, duplicate, absolute, or traversal zip entries are rejected"; label = "owner response bundle zip safety rejection" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "ownerResponseBundleZipSafeCaseCount=4"; label = "owner response bundle zip safe case count" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "Invoke-AITestPilotReleasePipeline.ps1"; label = "pipeline architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "release risk policy"; label = "risk policy architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "release evidence index"; label = "evidence index architecture reference" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "release pipeline step index, source files"; label = "docs freshness architecture source files reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "release evidence index field coverage"; label = "field coverage architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "73 semantic fields"; label = "field coverage architecture count" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "six isolated field-contract scenarios"; label = "field coverage architecture scenario count" },
@@ -318,6 +321,7 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/architecture.md"; pattern = "unsafe/duplicate/absolute/traversal zip rejection"; label = "owner response bundle zip safety architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "ownerResponseBundleZipUnsafeCaseCount=0"; label = "owner response bundle zip unsafe case count" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "release docs freshness"; label = "roadmap freshness guard reference" },
+    [ordered]@{ file = "docs/roadmap.md"; pattern = "core artifact names, source files, and release source-manifest lists"; label = "roadmap freshness source files reference" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "release evidence index field coverage"; label = "roadmap field coverage reference" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "73 semantic fields"; label = "roadmap field coverage count" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "six-scenario field coverage probe"; label = "roadmap field coverage scenario count" },
@@ -425,6 +429,25 @@ Add-DocsCheck "previous_artifact_pipeline_manifest_readable_when_present" `
     ((-not $previousArtifactPipelineManifestPresent) -or ($previousArtifactPipelineStatus.Length -gt 0 -and $previousArtifactPipelineStepCount -gt 0)) `
     "Previous copied artifact pipeline manifest is optional for the probe, but must be readable when present."
 
+$documentedFiles = @(
+    "README.md",
+    "docs/ci-release-pipeline.md",
+    "docs/architecture.md",
+    "docs/roadmap.md",
+    "tools/Invoke-AITestPilotReleasePipeline.ps1",
+    "tools/Invoke-AITestPilotReleaseRiskPolicy.ps1",
+    "tools/Invoke-AITestPilotReleaseEvidenceIndex.ps1",
+    "tools/Invoke-AITestPilotReleaseGate.ps1",
+    "tools/Invoke-AITestPilotProductionHardModeFailureProbe.ps1",
+    "tools/Invoke-AITestPilotProductionHardModeSuccessContractProbe.ps1"
+)
+$sourceFiles = @($documentedFiles | Sort-Object -Unique)
+$missingSourceFiles = @($sourceFiles | Where-Object { -not (Test-Path (Join-Path $repoRoot $_)) })
+
+Add-DocsCheck "source_files_present" `
+    ($missingSourceFiles.Count -eq 0) `
+    "Docs freshness source files must exist and be listed in the manifest."
+
 $reportPreviewLines = @(
     "# Release Docs Freshness",
     "",
@@ -432,12 +455,14 @@ $reportPreviewLines = @(
     "| --- | --- |",
     "| Status | PREVIEW |",
     "| Pipeline source steps | $($pipelineSteps.Count) |",
+    "| Source files checked | $($sourceFiles.Count) |",
     "| Missing Pipeline Step Docs | $($missingPipelineStepDocs.Count) |",
     "| Missing Source Manifest References | $($missingSourceManifestReferences.Count) |"
 )
 $reportPreviewText = $reportPreviewLines -join [Environment]::NewLine
 $reportContentValidated = $reportPreviewText.Contains("Release Docs Freshness") -and
     $reportPreviewText.Contains("Pipeline source steps") -and
+    $reportPreviewText.Contains("Source files checked") -and
     $reportPreviewText.Contains("Missing Pipeline Step Docs") -and
     $reportPreviewText.Contains("Missing Source Manifest References") -and
     -not $reportPreviewText.Contains("System.Collections") -and
@@ -463,6 +488,8 @@ $reportLines = @(
     "| Missing required artifact docs | $($missingRequiredArtifactDocs.Count) |",
     "| Missing required doc strings | $($missingRequiredDocStrings.Count) |",
     "| Missing source manifest references | $($missingSourceManifestReferences.Count) |",
+    "| Source files checked | $($sourceFiles.Count) |",
+    "| Missing source files | $($missingSourceFiles.Count) |",
     "| Hard-mode default source probe failures | $($hardModeDefaultSourceProbeFailures.Count) |",
     "| Previous artifact pipeline status | $(Format-MarkdownCell $previousArtifactPipelineStatus) |",
     "| Previous artifact pipeline step count | $previousArtifactPipelineStepCount |",
@@ -512,19 +539,6 @@ $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $manifestFullPath),
     (Convert-ToEvidenceRelativePath $reportFullPath)
 )
-$sourceFiles = @()
-$documentedFiles = @(
-    "README.md",
-    "docs/ci-release-pipeline.md",
-    "docs/architecture.md",
-    "docs/roadmap.md",
-    "tools/Invoke-AITestPilotReleasePipeline.ps1",
-    "tools/Invoke-AITestPilotReleaseRiskPolicy.ps1",
-    "tools/Invoke-AITestPilotReleaseEvidenceIndex.ps1",
-    "tools/Invoke-AITestPilotReleaseGate.ps1",
-    "tools/Invoke-AITestPilotProductionHardModeFailureProbe.ps1",
-    "tools/Invoke-AITestPilotProductionHardModeSuccessContractProbe.ps1"
-)
 
 $manifest = [ordered]@{
     schemaVersion = "aitestpilot.release_docs_freshness.v1"
@@ -549,6 +563,10 @@ $manifest = [ordered]@{
     missingRequiredDocStringCount = [int]$missingRequiredDocStrings.Count
     missingRequiredDocStrings = @($missingRequiredDocStrings)
     sourceManifestListAligned = [bool]$sourceManifestListAligned
+    sourceFilesPresent = [bool]($missingSourceFiles.Count -eq 0)
+    sourceFileCount = [int]$sourceFiles.Count
+    sourceFileMissingCount = [int]$missingSourceFiles.Count
+    missingSourceFiles = @($missingSourceFiles)
     blockingReasonCount = [int]$failedChecks.Count
     requiredSourceManifestNames = @($requiredSourceManifestNames)
     sourceManifestScripts = @($sourceManifestScripts)
@@ -571,7 +589,7 @@ $manifest = [ordered]@{
     sourceFiles = @($sourceFiles)
     generatedFiles = @($generatedFiles)
     documentedFiles = @($documentedFiles)
-    files = @($generatedFiles + $sourceFiles)
+    files = @($generatedFiles)
     blockingReasons = @($failedChecks | ForEach-Object { $_.name })
     checkCount = [int]$checks.Count
     failedCheckCount = [int]$failedChecks.Count

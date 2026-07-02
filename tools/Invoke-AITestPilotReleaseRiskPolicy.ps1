@@ -1021,6 +1021,9 @@ $releaseDocsFreshnessAccepted = (
     (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingRequiredArtifactDocCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingRequiredDocStringCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "sourceManifestListAligned" $false)) -and
+    (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "sourceFilesPresent" $false)) -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "sourceFileCount" 0)) -ge 10 -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "sourceFileMissingCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingSourceManifestReferenceCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "hardModeDefaultSourceProbeFailureCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "reportGenerated" $false)) -and
@@ -1030,12 +1033,12 @@ $releaseDocsFreshnessAccepted = (
     -not (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $releaseDocsFreshnessManifest "productionOutputBoundary" "") -eq "release_docs_freshness_only" -and
-    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "checkCount" 0)) -eq 10 -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "checkCount" 0)) -eq 11 -and
     (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "release_docs_freshness_policy" $releaseDocsFreshnessAccepted `
-    "Release evidence must include a docs freshness proof that the README, CI release docs, architecture, roadmap, pipeline step index, core artifact names, and source-manifest lists match the current release pipeline before hard-mode copied-bundle checks run." `
+    "Release evidence must include a docs freshness proof that the README, CI release docs, architecture, roadmap, pipeline step index, core artifact names, source files, and source-manifest lists match the current release pipeline before hard-mode copied-bundle checks run." `
     "release_docs_freshness_not_accepted"
 
 $productionHandoffStatusAccepted = (

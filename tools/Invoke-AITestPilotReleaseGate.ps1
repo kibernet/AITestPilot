@@ -2128,6 +2128,9 @@ if ($null -ne $releaseDocsFreshnessManifest) {
             [int]$releaseDocsFreshnessManifest.missingRequiredArtifactDocCount -eq 0 -and
             [int]$releaseDocsFreshnessManifest.missingRequiredDocStringCount -eq 0 -and
             [bool]$releaseDocsFreshnessManifest.sourceManifestListAligned -and
+            [bool]$releaseDocsFreshnessManifest.sourceFilesPresent -and
+            [int]$releaseDocsFreshnessManifest.sourceFileCount -ge 10 -and
+            [int]$releaseDocsFreshnessManifest.sourceFileMissingCount -eq 0 -and
             [int]$releaseDocsFreshnessManifest.missingSourceManifestReferenceCount -eq 0 -and
             [int]$releaseDocsFreshnessManifest.hardModeDefaultSourceProbeFailureCount -eq 0 -and
             [bool]$releaseDocsFreshnessManifest.reportGenerated -and
@@ -2137,9 +2140,9 @@ if ($null -ne $releaseDocsFreshnessManifest) {
             -not [bool]$releaseDocsFreshnessManifest.externalEvidenceAccepted -and
             -not [bool]$releaseDocsFreshnessManifest.fixtureEvidencePromoted -and
             $releaseDocsFreshnessManifest.productionOutputBoundary -eq "release_docs_freshness_only" -and
-            [int]$releaseDocsFreshnessManifest.checkCount -eq 10 -and
+            [int]$releaseDocsFreshnessManifest.checkCount -eq 11 -and
             [int]$releaseDocsFreshnessManifest.failedCheckCount -eq 0) `
-        "Release docs freshness must prove README, CI release docs, architecture, roadmap, pipeline step index, core artifact names, and source-manifest lists align with the current release pipeline before hard-mode copied-bundle probes."
+        "Release docs freshness must prove README, CI release docs, architecture, roadmap, pipeline step index, core artifact names, source files, and source-manifest lists align with the current release pipeline before hard-mode copied-bundle probes."
 
     Test-ListedFiles $releaseDocsFreshnessManifest "release_docs_freshness"
 }
