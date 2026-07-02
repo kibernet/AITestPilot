@@ -42,6 +42,26 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
+}
+
 function Assert-PathUnderTemp {
     param(
         [string]$Path,
@@ -49,7 +69,7 @@ function Assert-PathUnderTemp {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $tempRoot)) {
         throw "$Label must stay under system temp for this probe: $fullPath"
     }
 
@@ -63,7 +83,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -168,14 +188,14 @@ $externalReadinessManifest = Read-JsonFile $externalReadinessManifestPath "Exter
 $externalEvidence = Read-JsonFile (Join-Path $externalProductionLuaEvidencePath "production-lua-patch-evidence.json") "External production Lua evidence template"
 $externalKitManifest = Read-JsonFile $externalKitManifestPath "External production Lua evidence kit manifest"
 
-$externalBundleUnderRepo = $externalBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
+$externalBundleUnderRepo = Test-PathWithinRoot $externalBundlePath $repoRoot
 $blockingReasons = @($externalReadinessManifest.blockingReasons)
 $expectedBlockingReasonsFound = Test-ContainsAll -Actual $blockingReasons -Required $expectedBlockingReasons
 
 $templateEvidenceRead = [bool]$externalReadinessManifest.productionLuaBundleProvided -and
     [bool]$externalReadinessManifest.productionLuaEvidenceCopied -and
     -not [bool]$externalReadinessManifest.productionLuaEvidenceAccepted -and
-    $externalReadinessManifest.productionLuaEvidencePath.StartsWith($externalProductionLuaEvidencePath, [System.StringComparison]::OrdinalIgnoreCase)
+    (Test-PathWithinRoot $externalReadinessManifest.productionLuaEvidencePath $externalProductionLuaEvidencePath)
 
 $expectedBlockedPassed = [bool]$readinessCommandFailed -and
     $externalReadinessManifest.status -eq "PASS" -and

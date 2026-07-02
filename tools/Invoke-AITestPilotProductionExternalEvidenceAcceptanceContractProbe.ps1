@@ -33,6 +33,26 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -40,7 +60,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -54,7 +74,7 @@ function Assert-PathUnderTemp {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $tempRoot)) {
         throw "$Label must stay under system temp for this probe: $fullPath"
     }
 
@@ -181,7 +201,7 @@ $acceptedAcceptance = Read-JsonFile $acceptedAcceptanceManifestPath "Accepted ex
 Copy-Item -LiteralPath $acceptedAcceptanceManifestPath -Destination (Join-Path $evidenceBundlePath $acceptedAcceptanceName) -Force
 Copy-Item -LiteralPath $acceptedAcceptanceReportPath -Destination (Join-Path $evidenceBundlePath $acceptedAcceptanceReportName) -Force
 
-$externalBundleUnderRepo = $externalBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
+$externalBundleUnderRepo = Test-PathWithinRoot $externalBundlePath $repoRoot
 $fixtureDirsGenerated = (Test-Path $externalDriverDir) -and (Test-Path $externalLuaDir) -and (Test-Path $externalLiveDir)
 $acceptedReportGenerated = (Test-Path $acceptedAcceptanceReportPath) -and
     [bool]$acceptedAcceptance.reportGenerated -and

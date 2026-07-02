@@ -42,6 +42,26 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -49,7 +69,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -64,7 +84,7 @@ function Assert-PathUnderTemp {
 
     $tempRoot = Resolve-FullPath $env:TEMP
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $tempRoot)) {
         throw "$Label must stay under temp root: $fullPath"
     }
 
@@ -75,7 +95,7 @@ function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "Generated file must stay under evidence bundle: $fullPath"
     }
 
@@ -387,7 +407,7 @@ $sendDryRunOutput = Get-Content -Path $sendDryRunOutputPath -Encoding UTF8 -Raw
 $preparedPreviewCount = [int]@($sendDryRunOutput -split "`r?`n" | Where-Object { $_ -like "Prepared send command for *" }).Count
 $blockedPreviewCount = [int]@($sendDryRunOutput -split "`r?`n" | Where-Object { $_ -like "Blocked send command for *" }).Count
 
-$externalBundleOutsideRepo = -not $externalResponseBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
+$externalBundleOutsideRepo = -not (Test-PathWithinRoot $externalResponseBundlePath $repoRoot)
 $externalBundleComplete = (Test-Path $responseRosterPath) -and
     (Test-Path $responseManifestPath) -and
     [int]$responseBundleManifest.ownerContactCount -eq $ownerContactCount -and

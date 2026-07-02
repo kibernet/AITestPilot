@@ -38,6 +38,26 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -45,7 +65,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -59,7 +79,7 @@ function Assert-PathUnderTemp {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $tempRoot)) {
         throw "$Label must stay under system temp for this probe: $fullPath"
     }
 
@@ -70,7 +90,7 @@ function Convert-ToEvidenceRelativePath {
     param([string]$Path)
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $evidenceBundlePath)) {
         throw "Generated file must stay under evidence bundle: $fullPath"
     }
 
@@ -352,8 +372,8 @@ $ownerResponseBundleManifest = $ownerResponseBundleRun.manifest
 $ownerResponseBundleZipManifest = $ownerResponseBundleZipRun.manifest
 $semanticBadOwnerResponseBundleManifest = $semanticBadOwnerResponseBundleRun.manifest
 $unsafeOwnerResponseBundleZipManifest = $unsafeOwnerResponseBundleZipRun.manifest
-$externalBundleUnderRepo = $externalEvidencePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
-$ownerResponseBundleUnderRepo = $ownerResponseBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
+$externalBundleUnderRepo = Test-PathWithinRoot $externalEvidencePath $repoRoot
+$ownerResponseBundleUnderRepo = Test-PathWithinRoot $ownerResponseBundlePath $repoRoot
 $externalFileCount = @(
     Get-ChildItem -LiteralPath $externalEvidencePath -Recurse -File |
         Where-Object { $_.Name -notin @("README.md", "required-files.json") }

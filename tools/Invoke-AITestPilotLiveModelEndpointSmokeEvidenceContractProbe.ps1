@@ -33,6 +33,26 @@ function Resolve-FullPath {
     return [System.IO.Path]::GetFullPath($Path)
 }
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $fullRoot = Resolve-FullPath $Root
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
@@ -40,7 +60,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -54,7 +74,7 @@ function Assert-PathUnderTemp {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $tempRoot)) {
         throw "$Label must stay under system temp for this probe: $fullPath"
     }
 
@@ -223,7 +243,7 @@ if (Test-Path $rejectedIntakeManifestPath) {
     $rejectedIntake = $null
 }
 
-$externalBundleUnderRepo = $externalBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
+$externalBundleUnderRepo = Test-PathWithinRoot $externalBundlePath $repoRoot
 $acceptedFixtureGenerated = (Test-Path $sourceSmokeManifestPath) -and (Test-Path $sourceTracePath)
 $acceptedFixtureTraceContractPassed = $acceptedTrace.status -eq "PASS" -and
     $acceptedTrace.runId -eq "LIVE-MODEL-ENDPOINT-SMOKE" -and
