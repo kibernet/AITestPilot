@@ -2581,6 +2581,20 @@ if ($null -ne $productionHandoffOwnerInputRequestPackManifest) {
             [int]$productionHandoffOwnerInputRequestPackManifest.readySendCount -eq [int]$productionHandoffSendReadinessManifest.readySendCount -and
             $productionHandoffOwnerInputRequestPackManifest.sendReadinessStatus -eq "BLOCKED_MISSING_OWNER_EMAILS" -and
             $productionHandoffOwnerInputRequestPackManifest.mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleRouteCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleAreaPathCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleRequiredFilesPathCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipSemanticPreflightCommandCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipAutoAcceptanceCommandCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleExportHelperCommandCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleRoutesValidated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleContentValidated -and
+            [bool]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleSemanticPreflightBeforeAutoAcceptanceDocumented -and
+            $productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipSemanticPreflightCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+            $productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipSemanticPreflightCommand.Contains("-OwnerResponseBundleZipPath") -and
+            $productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipAutoAcceptanceCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
+            $productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
+            $productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             -not [bool]$productionHandoffOwnerInputRequestPackManifest.automaticEmailSendReady -and
             -not [bool]$productionHandoffOwnerInputRequestPackManifest.mailAuthorizationCheckedByPipeline -and
             [bool]$productionHandoffOwnerInputRequestPackManifest.handoffExportZipAvailable -and
@@ -2590,7 +2604,7 @@ if ($null -ne $productionHandoffOwnerInputRequestPackManifest) {
             -not [bool]$productionHandoffOwnerInputRequestPackManifest.externalEvidenceAccepted -and
             -not [bool]$productionHandoffOwnerInputRequestPackManifest.fixtureEvidencePromoted -and
             $productionHandoffOwnerInputRequestPackManifest.productionOutputBoundary -eq "host_project_owner_input_request_pack_only" -and
-            [int]$productionHandoffOwnerInputRequestPackManifest.checkCount -eq 8 -and
+            [int]$productionHandoffOwnerInputRequestPackManifest.checkCount -eq 9 -and
             [int]$productionHandoffOwnerInputRequestPackManifest.failedCheckCount -eq 0) `
         "Production handoff owner input request pack must route contacts, dispatches, returned evidence, and operator recipient details while preserving send and evidence boundaries."
 

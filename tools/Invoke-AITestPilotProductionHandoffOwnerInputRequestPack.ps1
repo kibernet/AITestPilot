@@ -238,6 +238,22 @@ $handoffExportZipAvailable = Convert-ToBool (Get-JsonValue $ownerUnblockManifest
 $externalEvidenceCollectionComplete = Convert-ToBool (Get-JsonValue $ownerUnblockManifest "externalEvidenceCollectionComplete" $false)
 $realHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $ownerUnblockManifest "realHostProjectEvidenceAccepted" $false)
 $externalEvidenceAccepted = Convert-ToBool (Get-JsonValue $ownerUnblockManifest "externalEvidenceAccepted" $false)
+$ownerResponseBundleTemplatePath = "production-handoff-owner-response-bundle-kit/owner-response-bundle-template"
+$ownerResponseBundleAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`" -RequireAllEvidence"
+$ownerResponseBundleZipAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`" -RequireAllEvidence"
+$ownerResponseBundleSemanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`""
+$ownerResponseBundleZipSemanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`""
+$ownerResponseBundleZipEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+$directoryByArea = @{
+    production_driver_binding = "production-driver-evidence"
+    production_lua_patch_evidence = "production-lua-evidence"
+    live_model_endpoint_smoke = "live-smoke-evidence"
+}
+$exportHelperCommandByArea = @{
+    production_driver_binding = ".\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 -EvidenceBundleDir `"path\to\release-evidence`""
+    production_lua_patch_evidence = ".\production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1 -EvidenceBundleDir `"path\to\release-evidence`" -ProductionLuaEvidenceDir `"path\to\production-lua-evidence`""
+    live_model_endpoint_smoke = ".\live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 -EvidenceBundleDir `"path\to\release-evidence`" -LiveModelEndpointSmokeEvidenceDir `"path\to\live-smoke-evidence`""
+}
 
 $summaryPath = Join-Path $requestPath "owner-input-summary.json"
 $contactRosterTemplatePath = Join-Path $requestPath "owner-contact-roster-template.json"
@@ -248,12 +264,37 @@ $readmePath = Join-Path $requestPath "README.md"
 
 $ownerInputItems = @()
 foreach ($action in $ownerActions) {
+    $area = [string](Get-JsonValue $action "area" "")
+    $inboxDirectory = [string](Get-JsonValue $action "inboxDirectory" "")
+    if ([string]::IsNullOrWhiteSpace($inboxDirectory) -and $directoryByArea.ContainsKey($area)) {
+        $inboxDirectory = [string]$directoryByArea[$area]
+    }
+
+    $ownerResponseBundleAreaPath = if ([string]::IsNullOrWhiteSpace($inboxDirectory)) {
+        ""
+    }
+    else {
+        "$ownerResponseBundleTemplatePath/$inboxDirectory"
+    }
+    $ownerResponseBundleRequiredFilesPath = if ([string]::IsNullOrWhiteSpace($ownerResponseBundleAreaPath)) {
+        ""
+    }
+    else {
+        "$ownerResponseBundleAreaPath/required-files.json"
+    }
+    $exportHelperCommand = if ($exportHelperCommandByArea.ContainsKey($area)) {
+        [string]$exportHelperCommandByArea[$area]
+    }
+    else {
+        ""
+    }
+
     $missingFiles = @(Convert-ToArray (Get-JsonValue $action "missingFiles" @()) | ForEach-Object { [string]$_ })
     $requiredEvidenceFiles = @(Convert-ToArray (Get-JsonValue $action "requiredEvidenceFiles" @()) | ForEach-Object { [string]$_ })
     $remainingBlockingReasons = @(Convert-ToArray (Get-JsonValue $action "remainingBlockingReasons" @()) | ForEach-Object { [string]$_ })
     $ownerInputItems += [ordered]@{
         owner = [string](Get-JsonValue $action "owner" "")
-        area = [string](Get-JsonValue $action "area" "")
+        area = $area
         ownerStatus = [string](Get-JsonValue $action "ownerStatus" "")
         contactStatus = [string](Get-JsonValue $action "contactStatus" "")
         sendStatus = [string](Get-JsonValue $action "sendStatus" "")
@@ -265,14 +306,33 @@ foreach ($action in $ownerActions) {
         requiredEvidenceFiles = @($requiredEvidenceFiles)
         remainingBlockingReasonCount = Convert-ToInt (Get-JsonValue $action "remainingBlockingReasonCount" 0)
         remainingBlockingReasons = @($remainingBlockingReasons)
-        inboxDirectory = [string](Get-JsonValue $action "inboxDirectory" "")
+        inboxDirectory = $inboxDirectory
         ownerPacketPath = [string](Get-JsonValue $action "ownerPacketPath" "")
         dispatchDraftPath = [string](Get-JsonValue $action "dispatchDraftPath" "")
         preflightCommand = [string](Get-JsonValue $action "preflightCommand" "")
         acceptanceWrapperCommand = [string](Get-JsonValue $action "acceptanceWrapperCommand" "")
         hardValidationCommand = [string](Get-JsonValue $action "hardValidationCommand" "")
+        ownerResponseBundleTemplatePath = $ownerResponseBundleTemplatePath
+        ownerResponseBundleAreaPath = $ownerResponseBundleAreaPath
+        ownerResponseBundleRequiredFilesPath = $ownerResponseBundleRequiredFilesPath
+        ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
+        ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
+        ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
+        ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
+        ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
+        exportHelperCommand = $exportHelperCommand
     }
 }
+
+$ownerResponseBundleRouteCount = @($ownerInputItems | Where-Object {
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")) -and
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" ""))
+    }).Count
+$ownerResponseBundleAreaPathCount = @($ownerInputItems | Where-Object { -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")) }).Count
+$ownerResponseBundleRequiredFilesPathCount = @($ownerInputItems | Where-Object { -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" "")) }).Count
+$ownerResponseBundleZipSemanticPreflightCommandCount = @($ownerInputItems | Where-Object { ([string](Get-JsonValue $_ "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") }).Count
+$ownerResponseBundleZipAutoAcceptanceCommandCount = @($ownerInputItems | Where-Object { ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") }).Count
+$ownerResponseBundleExportHelperCommandCount = @($ownerInputItems | Where-Object { -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "exportHelperCommand" "")) }).Count
 
 $contactRosterTemplate = [ordered]@{
     schemaVersion = "aitestpilot.production_handoff_owner_contact_roster_request.v1"
@@ -319,6 +379,17 @@ $summary = [ordered]@{
     sourceContactRosterPath = $contactRosterPath
     authCheckScriptPath = $authCheckScriptPath
     inboxAcceptanceCommand = $inboxAcceptanceCommand
+    ownerResponseBundleRouteCount = [int]$ownerResponseBundleRouteCount
+    ownerResponseBundleAreaPathCount = [int]$ownerResponseBundleAreaPathCount
+    ownerResponseBundleRequiredFilesPathCount = [int]$ownerResponseBundleRequiredFilesPathCount
+    ownerResponseBundleZipSemanticPreflightCommandCount = [int]$ownerResponseBundleZipSemanticPreflightCommandCount
+    ownerResponseBundleZipAutoAcceptanceCommandCount = [int]$ownerResponseBundleZipAutoAcceptanceCommandCount
+    ownerResponseBundleExportHelperCommandCount = [int]$ownerResponseBundleExportHelperCommandCount
+    ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
+    ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
+    ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
+    ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
+    ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
     ownerInputs = @($ownerInputItems)
 }
 $summary | ConvertTo-Json -Depth 12 | Set-Content -Path $summaryPath -Encoding UTF8
@@ -326,8 +397,8 @@ $summary | ConvertTo-Json -Depth 12 | Set-Content -Path $summaryPath -Encoding U
 $ownerInputChecklistLines = @(
     "# AI TestPilot Owner Input Checklist",
     "",
-    "| Owner | Area | Contact needed | Dispatch | Owner packet | Missing files | Blockers | Hard validation |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |"
+    "| Owner | Area | Contact needed | Dispatch | Owner packet | Response bundle area | Zip preflight | Zip auto acceptance | Missing files | Blockers | Hard validation |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
 )
 foreach ($item in $ownerInputItems) {
     $contactNeeded = if (Convert-ToBool (Get-JsonValue $item "emailConfigured" $false)) {
@@ -337,12 +408,15 @@ foreach ($item in $ownerInputItems) {
         "Fill production-handoff-contact-roster.json"
     }
 
-    $ownerInputChecklistLines += ("| {0} | {1} | {2} | {3} | {4} | {5} | {6} | {7} |" -f `
+    $ownerInputChecklistLines += ("| {0} | {1} | {2} | {3} | {4} | {5} | {6} | {7} | {8} | {9} | {10} |" -f `
             (Format-MarkdownCell (Get-JsonValue $item "owner" "")),
         (Format-MarkdownCell (Get-JsonValue $item "area" "")),
         (Format-MarkdownCell $contactNeeded),
         (Format-MarkdownCell (Get-JsonValue $item "dispatchStatus" "")),
         (Format-MarkdownCell (Get-JsonValue $item "ownerPacketPath" "")),
+        (Format-MarkdownCell (Get-JsonValue $item "ownerResponseBundleAreaPath" "")),
+        (Format-MarkdownCell (Get-JsonValue $item "ownerResponseBundleZipSemanticPreflightCommand" "")),
+        (Format-MarkdownCell (Get-JsonValue $item "ownerResponseBundleZipAutoAcceptanceCommand" "")),
         (Format-MarkdownCell (Join-TextList (Convert-ToArray (Get-JsonValue $item "missingFiles" @())))),
         (Format-MarkdownCell (Join-TextList (Convert-ToArray (Get-JsonValue $item "remainingBlockingReasons" @())))),
         (Format-MarkdownCell (Get-JsonValue $item "hardValidationCommand" "")))
@@ -354,6 +428,8 @@ $ownerInputChecklistLines += @(
     "- Fill ``production-handoff-contact-roster.json`` with the real owner email addresses.",
     "- Run ``agently-cli auth status`` and ``production-handoff-mail-auth\check-agently-mail-auth.ps1`` locally before preparing sends.",
     "- Run ``production-handoff-send\send-owner-packets.ps1 -PrepareConfirmation`` only after contacts and local mail authorization are ready.",
+    "- Put returned files into the owner response bundle area shown above and inspect its ``required-files.json``.",
+    "- Run each owner response bundle zip semantic preflight before auto acceptance before hard validation.",
     "- Run each owner hard validation command only after returned evidence has been accepted."
 )
 $ownerInputChecklistLines | Set-Content -Path $ownerInputChecklistPath -Encoding UTF8
@@ -361,20 +437,26 @@ $ownerInputChecklistLines | Set-Content -Path $ownerInputChecklistPath -Encoding
 $externalEvidenceChecklistLines = @(
     "# AI TestPilot External Evidence Return Checklist",
     "",
-    "| Owner | Area | Inbox | Required evidence | Missing now | Acceptance command | Preflight command |",
-    "| --- | --- | --- | --- | --- | --- | --- |"
+    "| Owner | Area | Bundle area | Required-files | Required evidence | Missing now | Export helper | Zip semantic preflight | Zip auto acceptance | Hard validation |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
 )
 foreach ($item in $ownerInputItems) {
-    $externalEvidenceChecklistLines += ("| {0} | {1} | {2} | {3} | {4} | {5} | {6} |" -f `
+    $externalEvidenceChecklistLines += ("| {0} | {1} | {2} | {3} | {4} | {5} | {6} | {7} | {8} | {9} |" -f `
             (Format-MarkdownCell (Get-JsonValue $item "owner" "")),
         (Format-MarkdownCell (Get-JsonValue $item "area" "")),
-        (Format-MarkdownCell (Get-JsonValue $item "inboxDirectory" "")),
+        (Format-MarkdownCell (Get-JsonValue $item "ownerResponseBundleAreaPath" "")),
+        (Format-MarkdownCell (Get-JsonValue $item "ownerResponseBundleRequiredFilesPath" "")),
         (Format-MarkdownCell (Join-TextList (Convert-ToArray (Get-JsonValue $item "requiredEvidenceFiles" @())))),
         (Format-MarkdownCell (Join-TextList (Convert-ToArray (Get-JsonValue $item "missingFiles" @())))),
-        (Format-MarkdownCell (Get-JsonValue $item "acceptanceWrapperCommand" "")),
-        (Format-MarkdownCell (Get-JsonValue $item "preflightCommand" "")))
+        (Format-MarkdownCell (Get-JsonValue $item "exportHelperCommand" "")),
+        (Format-MarkdownCell (Get-JsonValue $item "ownerResponseBundleZipSemanticPreflightCommand" "")),
+        (Format-MarkdownCell (Get-JsonValue $item "ownerResponseBundleZipAutoAcceptanceCommand" "")),
+        (Format-MarkdownCell (Get-JsonValue $item "hardValidationCommand" "")))
 }
 $externalEvidenceChecklistLines += @(
+    "",
+    "Run semantic preflight before auto acceptance before hard validation for every returned owner response bundle zip.",
+    "Zip path can also be supplied with ``$ownerResponseBundleZipEnvironmentVariable``.",
     "",
     "After returned files are placed in ``production-external-evidence-inbox``, run ``production-external-evidence-inbox\accept-returned-evidence.ps1`` or the source acceptance command recorded in the inbox manifest.",
     "",
@@ -412,6 +494,8 @@ $operatorRequestEmailDraftLines = @(
     "- ``production-handoff-owner-input-request-pack\owner-contact-roster-template.json``",
     "- ``production-handoff-owner-input-request-pack\owner-input-checklist.md``",
     "- ``production-handoff-owner-input-request-pack\external-evidence-return-checklist.md``",
+    "- Owner response bundle zip semantic preflight command: ``$ownerResponseBundleZipSemanticPreflightCommand``.",
+    "- Owner response bundle zip auto acceptance command: ``$ownerResponseBundleZipAutoAcceptanceCommand``.",
     "",
     "Boundary:",
     "",
@@ -432,10 +516,11 @@ $readmeLines = @(
     "- ``owner-input-summary.json``: machine-readable owner input status and counts.",
     "- ``owner-contact-roster-template.json``: fill-in template for real owner email addresses.",
     "- ``owner-input-checklist.md``: owner packet, contact, dispatch, and validation checklist.",
-    "- ``external-evidence-return-checklist.md``: required returned evidence files and acceptance commands.",
+    "- ``external-evidence-return-checklist.md``: required returned evidence files, owner response bundle routes, semantic preflight, auto acceptance, export helpers, and hard validation commands.",
     "- ``operator-request-email-draft.md``: progress-recipient request draft.",
     "",
     "Use the template to update ``production-handoff-contact-roster.json``. Then run ``agently-cli auth status`` and ``production-handoff-mail-auth\check-agently-mail-auth.ps1`` locally before preparing owner packet sends.",
+    "For returned evidence, use each owner response bundle route and run semantic preflight before auto acceptance before hard validation.",
     "",
     "This pack does not send email, run OAuth login, accept real host-project evidence, or promote fixture evidence."
 )
@@ -491,7 +576,8 @@ $reportLines += @(
     "1. Fill ``production-handoff-contact-roster.json`` from ``owner-contact-roster-template.json``.",
     "2. Run ``agently-cli auth status`` and ``production-handoff-mail-auth\check-agently-mail-auth.ps1`` locally.",
     "3. Use ``production-handoff-send\send-owner-packets.ps1 -PrepareConfirmation`` only after contacts and auth are ready.",
-    "4. Place returned evidence in ``production-external-evidence-inbox`` and run ``accept-returned-evidence.ps1``.",
+    "4. Place returned evidence in each owner response bundle area and run semantic preflight before auto acceptance before hard validation.",
+    "5. The returned-evidence inbox wrapper remains available as ``production-external-evidence-inbox\accept-returned-evidence.ps1`` after semantic preflight succeeds.",
     "",
     "## Boundary",
     "",
@@ -510,6 +596,25 @@ $emailDraftContent = Get-Content -Path $operatorRequestEmailDraftPath -Encoding 
 $readmeContent = Get-Content -Path $readmePath -Encoding UTF8 -Raw
 $reportContent = Get-Content -Path $reportFullPath -Encoding UTF8 -Raw
 
+$ownerResponseBundleRoutesValidated = (
+    $ownerResponseBundleRouteCount -eq $ownerActionCount -and
+    $ownerResponseBundleAreaPathCount -eq $ownerActionCount -and
+    $ownerResponseBundleRequiredFilesPathCount -eq $ownerActionCount -and
+    $ownerResponseBundleZipSemanticPreflightCommandCount -eq $ownerActionCount -and
+    $ownerResponseBundleZipAutoAcceptanceCommandCount -eq $ownerActionCount -and
+    $ownerResponseBundleExportHelperCommandCount -eq $ownerActionCount
+)
+$ownerResponseBundleContentValidated = (
+    $summaryContent.Contains("ownerResponseBundleRouteCount") -and
+    $ownerChecklistContent.Contains("owner response bundle zip semantic preflight before auto acceptance before hard validation") -and
+    $externalEvidenceChecklistContent.Contains("Run semantic preflight before auto acceptance before hard validation") -and
+    $externalEvidenceChecklistContent.Contains($ownerResponseBundleZipEnvironmentVariable) -and
+    $externalEvidenceChecklistContent.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
+    $externalEvidenceChecklistContent.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
+    $externalEvidenceChecklistContent.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+    $reportContent.Contains("owner response bundle area") -and
+    $readmeContent.Contains("owner response bundle routes")
+)
 $ownerNamesPresent = $reportContent.Contains("host_project_gameplay_qa") -and
     $reportContent.Contains("host_project_lua_owner") -and
     $reportContent.Contains("host_project_ai_platform")
@@ -525,6 +630,7 @@ $summaryContentValidated = $summaryContent.Contains("production_handoff_owner_in
     $summaryContent.Contains($ownerInputRequestStatus) -and
     $summaryContent.Contains($ProgressRecipient) -and
     $summaryContent.Contains("production-handoff-contact-roster.json") -and
+    $summaryContent.Contains("ownerResponseBundleZipSemanticPreflightCommand") -and
     $noObjectLeakage
 $rosterTemplateContentValidated = $rosterContent.Contains("production_handoff_owner_contact_roster_request.v1") -and
     $rosterContent.Contains("host_project_gameplay_qa") -and
@@ -535,10 +641,12 @@ $rosterTemplateContentValidated = $rosterContent.Contains("production_handoff_ow
 $ownerInputChecklistContentValidated = $ownerChecklistContent.Contains("production-handoff-contact-roster.json") -and
     $ownerChecklistContent.Contains("agently-cli auth status") -and
     $ownerChecklistContent.Contains("send-owner-packets.ps1") -and
+    $ownerChecklistContent.Contains("owner response bundle") -and
     $ownerChecklistContent.Contains("host_project_gameplay_qa") -and
     $noObjectLeakage
 $externalEvidenceReturnChecklistContentValidated = $externalEvidenceChecklistContent.Contains("accept-returned-evidence.ps1") -and
     $externalEvidenceChecklistContent.Contains("production-external-evidence-inbox") -and
+    $externalEvidenceChecklistContent.Contains("Zip semantic preflight") -and
     $externalEvidenceChecklistContent.Contains("real host-project evidence accepted = false") -and
     $externalEvidenceChecklistContent.Contains("host_project_lua_owner") -and
     $noObjectLeakage
@@ -549,6 +657,7 @@ $requestEmailDraftContentValidated = $emailDraftContent.Contains($ProgressRecipi
     $noObjectLeakage
 $readmeContentValidated = $readmeContent.Contains("owner-facing request layer") -and
     $readmeContent.Contains("agently-cli auth status") -and
+    $readmeContent.Contains("semantic preflight before auto acceptance before hard validation") -and
     $readmeContent.Contains("does not send email") -and
     $noObjectLeakage
 $reportContentValidated = $reportContent.Contains("Production Handoff Owner Input Request Pack") -and
@@ -580,6 +689,9 @@ Add-RequestCheck "owner_input_request_files_generated" `
 Add-RequestCheck "owner_input_request_content_validated" `
     ($summaryContentValidated -and $rosterTemplateContentValidated -and $ownerInputChecklistContentValidated -and $externalEvidenceReturnChecklistContentValidated -and $requestEmailDraftContentValidated -and $readmeContentValidated -and $reportContentValidated) `
     "Generated owner input request files must include concrete owners, missing files, commands, recipient, and boundary text without object leakage."
+Add-RequestCheck "owner_input_request_owner_response_bundle_routes" `
+    ($ownerResponseBundleRoutesValidated -and $ownerResponseBundleContentValidated) `
+    "Owner input request pack must expose one owner response bundle route, required-files path, zip semantic-preflight command, zip auto-acceptance command, and export helper per owner before hard validation."
 Add-RequestCheck "owner_input_request_mail_boundary_preserved" `
     ($mailAuthReadinessStatus -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
         -not (Convert-ToBool (Get-JsonValue $ownerUnblockManifest "automaticEmailSendReady" $true)) -and
@@ -667,6 +779,20 @@ $manifest = [ordered]@{
     readySendCount = [int]$readySendCount
     sendReadinessStatus = $sendReadinessStatus
     mailAuthReadinessStatus = $mailAuthReadinessStatus
+    ownerResponseBundleRouteCount = [int]$ownerResponseBundleRouteCount
+    ownerResponseBundleAreaPathCount = [int]$ownerResponseBundleAreaPathCount
+    ownerResponseBundleRequiredFilesPathCount = [int]$ownerResponseBundleRequiredFilesPathCount
+    ownerResponseBundleZipSemanticPreflightCommandCount = [int]$ownerResponseBundleZipSemanticPreflightCommandCount
+    ownerResponseBundleZipAutoAcceptanceCommandCount = [int]$ownerResponseBundleZipAutoAcceptanceCommandCount
+    ownerResponseBundleExportHelperCommandCount = [int]$ownerResponseBundleExportHelperCommandCount
+    ownerResponseBundleRoutesValidated = [bool]$ownerResponseBundleRoutesValidated
+    ownerResponseBundleContentValidated = [bool]$ownerResponseBundleContentValidated
+    ownerResponseBundleSemanticPreflightBeforeAutoAcceptanceDocumented = [bool]$ownerResponseBundleContentValidated
+    ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
+    ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
+    ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
+    ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
+    ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
     automaticEmailSendReady = $false
     mailAuthorizationCheckedByPipeline = $false
     handoffExportZipAvailable = [bool]$handoffExportZipAvailable

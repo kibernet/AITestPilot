@@ -337,6 +337,14 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "selfContainedSemanticPreflightAcceptanceRun" "bool-eq" $false "self-contained semantic preflight does not accept evidence"
     $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "ownerResponseBundleZipEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" "owner kit documents zip environment variable"
 
+    $checks += New-FieldCoverageCheck "production-handoff-owner-input-request-pack-manifest.json" "ownerResponseBundleRouteCount" "int-eq" 3 "owner input request pack exposes one owner response bundle route per owner"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-input-request-pack-manifest.json" "ownerResponseBundleRequiredFilesPathCount" "int-eq" 3 "owner input request pack exposes required-files path per owner"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-input-request-pack-manifest.json" "ownerResponseBundleZipSemanticPreflightCommandCount" "int-eq" 3 "owner input request pack exposes zip semantic preflight per owner"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-input-request-pack-manifest.json" "ownerResponseBundleZipAutoAcceptanceCommandCount" "int-eq" 3 "owner input request pack exposes zip auto acceptance per owner"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-input-request-pack-manifest.json" "ownerResponseBundleExportHelperCommandCount" "int-eq" 3 "owner input request pack exposes export helper per owner"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-input-request-pack-manifest.json" "ownerResponseBundleSemanticPreflightBeforeAutoAcceptanceDocumented" "bool-eq" $true "owner input request pack documents semantic preflight before auto acceptance"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-input-request-pack-manifest.json" "ownerResponseBundleZipEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" "owner input request pack preserves zip environment variable"
+
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "pendingQueueItemSemanticPreflightCommandCount" "int-eq" 3 "pending action queue includes semantic preflight per owner area"
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "postDispatchQueueItemAutoAcceptanceCommandCount" "int-eq" 3 "post-dispatch action queue includes auto acceptance per owner area"
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "postDispatchQueueDriverExportHelperItemCount" "int-eq" 1 "action queue keeps driver export helper"

@@ -1487,6 +1487,26 @@ $productionHandoffOwnerInputRequestPackAccepted = (
         (Convert-ToInt (Get-JsonValue $productionHandoffSendReadinessManifest "readySendCount" -2)) -and
     (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "sendReadinessStatus" "") -eq "BLOCKED_MISSING_OWNER_EMAILS" -and
     (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "mailAuthReadinessStatus" "") -eq "BLOCKED_NOT_CHECKED_BY_RELEASE_PIPELINE" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleRouteCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleAreaPathCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleRequiredFilesPathCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipSemanticPreflightCommandCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipAutoAcceptanceCommandCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleExportHelperCommandCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleRoutesValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleContentValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleSemanticPreflightBeforeAutoAcceptanceDocumented" $false)) -and
+    ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
+    ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+    (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "automaticEmailSendReady" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "mailAuthorizationCheckedByPipeline" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "handoffExportZipAvailable" $false)) -and
@@ -1496,7 +1516,7 @@ $productionHandoffOwnerInputRequestPackAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "productionOutputBoundary" "") -eq "host_project_owner_input_request_pack_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "checkCount" 0)) -eq 8 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "checkCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -3063,6 +3083,12 @@ $manifest = [ordered]@{
     productionHandoffOwnerInputRequestPackAccepted = [bool]$productionHandoffOwnerInputRequestPackAccepted
     productionHandoffOwnerInputRequestStatus = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerInputRequestStatus" "")
     productionHandoffOwnerInputRequestRecipient = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "operatorProgressRecipient" "")
+    productionHandoffOwnerInputRequestOwnerResponseBundleRouteCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleRouteCount" 0))
+    productionHandoffOwnerInputRequestOwnerResponseBundleZipSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipSemanticPreflightCommandCount" 0))
+    productionHandoffOwnerInputRequestOwnerResponseBundleZipAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipAutoAcceptanceCommandCount" 0))
+    productionHandoffOwnerInputRequestOwnerResponseBundleExportHelperCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleExportHelperCommandCount" 0))
+    productionHandoffOwnerInputRequestOwnerResponseBundleZipEnvironmentVariable = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipEnvironmentVariable" "")
+    productionHandoffOwnerInputRequestSemanticPreflightBeforeAutoAcceptanceDocumented = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleSemanticPreflightBeforeAutoAcceptanceDocumented" $false)
     productionHandoffOwnerContactExternalIntakeProbeAccepted = [bool]$productionHandoffOwnerContactExternalIntakeProbeAccepted
     productionHandoffOwnerContactExternalSendReady = (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "externalSendReadyForConfirmation" $false)
     productionHandoffSendDryRunProbeAccepted = [bool]$productionHandoffSendDryRunProbeAccepted
@@ -3390,6 +3416,12 @@ $reportLines = @(
     "- Production handoff owner input request pack accepted: $($manifest.productionHandoffOwnerInputRequestPackAccepted)",
     "- Production handoff owner input request status: $($manifest.productionHandoffOwnerInputRequestStatus)",
     "- Production handoff owner input request recipient: $($manifest.productionHandoffOwnerInputRequestRecipient)",
+    "- Production handoff owner input request bundle routes: $($manifest.productionHandoffOwnerInputRequestOwnerResponseBundleRouteCount)",
+    "- Production handoff owner input request zip semantic preflight commands: $($manifest.productionHandoffOwnerInputRequestOwnerResponseBundleZipSemanticPreflightCommandCount)",
+    "- Production handoff owner input request zip auto acceptance commands: $($manifest.productionHandoffOwnerInputRequestOwnerResponseBundleZipAutoAcceptanceCommandCount)",
+    "- Production handoff owner input request export helper commands: $($manifest.productionHandoffOwnerInputRequestOwnerResponseBundleExportHelperCommandCount)",
+    "- Production handoff owner input request zip variable: $($manifest.productionHandoffOwnerInputRequestOwnerResponseBundleZipEnvironmentVariable)",
+    "- Production handoff owner input request semantic preflight before auto acceptance: $($manifest.productionHandoffOwnerInputRequestSemanticPreflightBeforeAutoAcceptanceDocumented)",
     "- Production handoff owner contact external intake accepted: $($manifest.productionHandoffOwnerContactExternalIntakeProbeAccepted)",
     "- Production handoff owner contact external send ready: $($manifest.productionHandoffOwnerContactExternalSendReady)",
     "- Production handoff send dry-run probe accepted: $($manifest.productionHandoffSendDryRunProbeAccepted)",
