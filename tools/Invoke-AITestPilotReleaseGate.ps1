@@ -124,6 +124,12 @@ function Read-OptionalManifest {
     }
 }
 
+function Test-EvidenceFileExists {
+    param([string]$FileName)
+
+    return Test-Path (Join-Path $EvidenceBundleDir $FileName)
+}
+
 function Get-JsonValue {
     param(
         [object]$Object,
@@ -3884,6 +3890,8 @@ if ($null -ne $releaseRiskPolicyManifest) {
     Test-ListedFiles $releaseRiskPolicyManifest "release_risk_policy"
 }
 
+$expectedIndexedSourceManifests = @()
+
 if ($null -ne $releaseEvidenceIndexManifest) {
     $requiredIndexedManifests = @(
         "manifest.json",
@@ -3975,21 +3983,23 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "release-risk-policy-manifest.json"
     )
 
-    if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
+    if (Test-EvidenceFileExists "repair-agent-cursor-agent-external-output-manifest.json") {
         $requiredIndexedManifests += "repair-agent-cursor-agent-external-output-manifest.json"
     }
 
-    if ($null -ne $repairAgentCursorAgentExternalOutputBindingProbeManifest) {
+    if (Test-EvidenceFileExists "repair-agent-cursor-agent-external-output-binding-probe-manifest.json") {
         $requiredIndexedManifests += "repair-agent-cursor-agent-external-output-binding-probe-manifest.json"
     }
 
-    if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
+    if (-not [bool]$RequireProductionReplayDriverBound) {
         $requiredIndexedManifests += "production-replay-driver-bound-failure-probe-manifest.json"
     }
 
-    if ($null -ne $productionLuaPatchBoundFailureProbeManifest) {
+    if (-not [bool]$RequireProductionLuaPatched) {
         $requiredIndexedManifests += "production-lua-patch-bound-failure-probe-manifest.json"
     }
+
+    $expectedIndexedSourceManifests = @($requiredIndexedManifests)
 
     Add-ReleaseCheck "release_evidence_index" `
         ($releaseEvidenceIndexManifest.status -eq "PASS" -and
@@ -4149,21 +4159,23 @@ $sourceManifests = @(
     "release-evidence-index-field-coverage-probe-manifest.json"
 )
 
-if ($null -ne $repairAgentCursorAgentExternalOutputManifest) {
+if (Test-EvidenceFileExists "repair-agent-cursor-agent-external-output-manifest.json") {
     $sourceManifests += "repair-agent-cursor-agent-external-output-manifest.json"
 }
 
-if ($null -ne $repairAgentCursorAgentExternalOutputBindingProbeManifest) {
+if (Test-EvidenceFileExists "repair-agent-cursor-agent-external-output-binding-probe-manifest.json") {
     $sourceManifests += "repair-agent-cursor-agent-external-output-binding-probe-manifest.json"
 }
 
-if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
+if (-not [bool]$RequireProductionReplayDriverBound) {
     $sourceManifests += "production-replay-driver-bound-failure-probe-manifest.json"
 }
 
-if ($null -ne $productionLuaPatchBoundFailureProbeManifest) {
+if (-not [bool]$RequireProductionLuaPatched) {
     $sourceManifests += "production-lua-patch-bound-failure-probe-manifest.json"
 }
+
+$gateEvidenceManifests = @($sourceManifests)
 
 $manifest = [ordered]@{
     status = $gateStatus
@@ -4177,7 +4189,9 @@ $manifest = [ordered]@{
     requireLiveModelEndpointSmoke = [bool]$RequireLiveModelEndpointSmoke
     contractFixtureMode = [bool]$ContractFixtureMode
     checks = @($checks)
-    sourceManifests = @($sourceManifests)
+    sourceManifests = @($gateEvidenceManifests)
+    indexedSourceManifests = @($expectedIndexedSourceManifests)
+    gateEvidenceManifests = @($gateEvidenceManifests)
 }
 
 New-Item -ItemType Directory -Force (Split-Path $ReleaseGateManifestPath -Parent) | Out-Null

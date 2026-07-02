@@ -71,7 +71,8 @@ function Invoke-MissingEvidenceScenario {
     param(
         [string]$Name,
         [string[]]$RelativePaths,
-        [string[]]$ExpectedFailedReasonSubstrings
+        [string[]]$ExpectedFailedReasonSubstrings,
+        [string[]]$RemoveIndexSourceManifestNames = @()
     )
 
     $scenarioDir = Join-Path $ProbeBundleDir $Name
@@ -85,6 +86,15 @@ function Invoke-MissingEvidenceScenario {
             Remove-Item -LiteralPath $fullPath -Force
             $removedFiles += $relativePath
         }
+    }
+
+    if ($RemoveIndexSourceManifestNames.Count -gt 0) {
+        $indexManifestPath = Join-Path $scenarioDir "release-evidence-index-manifest.json"
+        $indexManifest = Get-Content -Path $indexManifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        $indexManifest.sourceManifestNames = @($indexManifest.sourceManifestNames | Where-Object {
+                $RemoveIndexSourceManifestNames -notcontains [string]$_
+            })
+        $indexManifest | ConvertTo-Json -Depth 12 | Set-Content -Path $indexManifestPath -Encoding UTF8
     }
 
     $scenarioGateManifestPath = Join-Path $scenarioDir "release-gate-manifest.json"
@@ -167,6 +177,28 @@ $scenarioResults = @(
     )),
     (Invoke-ExtraSourceManifestScenario "extra-release-evidence-index-source-manifest")
 )
+
+if (-not [bool]$RequireProductionReplayDriverBound) {
+    $scenarioResults += Invoke-MissingEvidenceScenario `
+        "missing-production-replay-bound-failure-source-manifest" `
+        @("production-replay-driver-bound-failure-probe-manifest.json") `
+        @(
+            "file:production-replay-driver-bound-failure-probe-manifest.json",
+            "release_evidence_index_primary_manifest_coverage"
+        ) `
+        @("production-replay-driver-bound-failure-probe-manifest.json")
+}
+
+if (-not [bool]$RequireProductionLuaPatched) {
+    $scenarioResults += Invoke-MissingEvidenceScenario `
+        "missing-production-lua-bound-failure-source-manifest" `
+        @("production-lua-patch-bound-failure-probe-manifest.json") `
+        @(
+            "file:production-lua-patch-bound-failure-probe-manifest.json",
+            "release_evidence_index_primary_manifest_coverage"
+        ) `
+        @("production-lua-patch-bound-failure-probe-manifest.json")
+}
 
 $failedScenarios = @($scenarioResults | Where-Object { -not [bool]$_["blockedAsExpected"] })
 $manifestPath = Join-Path $ProbeBundleDir "release-gate-failure-probe-manifest.json"
