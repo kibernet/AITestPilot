@@ -10,7 +10,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -20,14 +20,44 @@ if ([string]::IsNullOrWhiteSpace($ProbeBundleDir)) {
     $ProbeBundleDir = Join-Path $repoRoot "Temp\release-evidence\release-gate-failure-probe"
 }
 
-$resolvedRepoRoot = (Resolve-Path $repoRoot).Path
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-PathUnderRepo {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
+        throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+$EvidenceBundleDir = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
+$ProbeBundleDir = Assert-PathUnderRepo $ProbeBundleDir "ProbeBundleDir"
+
 $resolvedProbeParent = Split-Path $ProbeBundleDir -Parent
 New-Item -ItemType Directory -Force $resolvedProbeParent | Out-Null
 $resolvedProbeParent = (Resolve-Path $resolvedProbeParent).Path
-$fullProbePath = [System.IO.Path]::GetFullPath($ProbeBundleDir)
-if (-not $fullProbePath.StartsWith($resolvedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "Probe bundle path must stay under repo root: $fullProbePath"
-}
 
 if (Test-Path $ProbeBundleDir) {
     Remove-Item -LiteralPath $ProbeBundleDir -Recurse -Force

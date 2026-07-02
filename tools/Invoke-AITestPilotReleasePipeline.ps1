@@ -45,14 +45,32 @@ if ([string]::IsNullOrWhiteSpace($CursorAgentOutputDir)) {
 $steps = @()
 $pipelineStartedAtUtc = (Get-Date).ToUniversalTime()
 
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
         [string]$Label
     )
 
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    if (-not $fullPath.StartsWith($script:repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $script:repoRoot)) {
         throw "$Label must stay under repo root. Path: $fullPath"
     }
 
@@ -125,6 +143,7 @@ function Export-PipelineArtifacts {
         [bool]$PipelinePassed
     )
 
+    $bundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
     $artifactPath = Assert-PathUnderRepo $ArtifactDir "ArtifactDir"
     $artifactParent = Split-Path $artifactPath -Parent
     New-Item -ItemType Directory -Force $artifactParent | Out-Null
@@ -135,8 +154,8 @@ function Export-PipelineArtifacts {
 
     New-Item -ItemType Directory -Force $artifactPath | Out-Null
 
-    if (Test-Path $EvidenceBundleDir) {
-        Copy-Item -Path (Join-Path $EvidenceBundleDir "*") -Destination $artifactPath -Recurse -Force
+    if (Test-Path $bundlePath) {
+        Copy-Item -Path (Join-Path $bundlePath "*") -Destination $artifactPath -Recurse -Force
     }
 
     $pipelineFinishedAtUtc = (Get-Date).ToUniversalTime()
@@ -155,7 +174,7 @@ function Export-PipelineArtifacts {
         startedAtUtc = $pipelineStartedAtUtc.ToString("O")
         finishedAtUtc = $pipelineFinishedAtUtc.ToString("O")
         durationSeconds = [Math]::Round(($pipelineFinishedAtUtc - $pipelineStartedAtUtc).TotalSeconds, 3)
-        evidenceBundleDir = $EvidenceBundleDir
+        evidenceBundleDir = $bundlePath
         artifactDir = $artifactPath
         gameReplayDriverType = $GameReplayDriverType
         productionLuaEvidenceDir = $ProductionLuaEvidenceDir
@@ -192,6 +211,11 @@ function Export-PipelineArtifacts {
 }
 
 $pipelinePassed = $false
+
+$EvidenceBundleDir = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
+$ArtifactDir = Assert-PathUnderRepo $ArtifactDir "ArtifactDir"
+$ReleaseGateFailureProbeDir = Assert-PathUnderRepo $ReleaseGateFailureProbeDir "ReleaseGateFailureProbeDir"
+$CursorAgentOutputDir = Assert-PathUnderRepo $CursorAgentOutputDir "CursorAgentOutputDir"
 
 try {
     Push-Location $repoRoot

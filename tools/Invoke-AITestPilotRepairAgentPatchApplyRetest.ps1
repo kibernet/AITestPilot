@@ -25,14 +25,32 @@ if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
     $ManifestPath = Join-Path $EvidenceBundleDir "repair-agent-patch-apply-retest-manifest.json"
 }
 
+function Resolve-FullPath {
+    param([string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = Resolve-FullPath $Path
+    $rootPath = (Resolve-FullPath $Root).TrimEnd([char[]]@("\", "/"))
+    return $fullPath.Equals($rootPath, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "\", [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.StartsWith($rootPath + "/", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Assert-PathUnderRepo {
     param(
         [string]$Path,
         [string]$Label
     )
 
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $fullPath = Resolve-FullPath $Path
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -111,7 +129,7 @@ if (-not (Test-Path $summaryPath)) {
 
 $sandboxRelativePath = "repair-agent-patch-apply-sandbox"
 $sandboxPath = Assert-PathUnderRepo (Join-Path $evidenceBundlePath $sandboxRelativePath) "SandboxPath"
-if (-not $sandboxPath.StartsWith($evidenceBundlePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+if (-not (Test-PathWithinRoot $sandboxPath $evidenceBundlePath)) {
     throw "Sandbox path must stay under the evidence bundle: $sandboxPath"
 }
 
