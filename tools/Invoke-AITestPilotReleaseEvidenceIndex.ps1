@@ -165,6 +165,53 @@ function Convert-FieldValueForReport {
     return [string]$Value
 }
 
+function Convert-FieldValueForDefinitionLine {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return "<null>"
+    }
+
+    $typeName = if ($Value -is [bool]) {
+        "bool"
+    }
+    elseif ($Value -is [int] -or $Value -is [long] -or $Value -is [double]) {
+        "number"
+    }
+    else {
+        "string"
+    }
+
+    $text = [string](Convert-FieldValueForReport $Value)
+    $escaped = $text.Replace("\", "\\").Replace("`t", "\t").Replace("`r", "\r").Replace("`n", "\n")
+    return "${typeName}:$escaped"
+}
+
+function Get-StringSha256 {
+    param([string]$Text)
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+        $hash = $sha.ComputeHash($bytes)
+        return -join ($hash | ForEach-Object { $_.ToString("x2") })
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
+function Get-ReleaseEvidenceIndexScriptSha256 {
+    $scriptPath = if (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
+        $PSCommandPath
+    }
+    else {
+        $MyInvocation.MyCommand.Path
+    }
+
+    return (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash
+}
+
 function Get-ManifestObject {
     param([string]$FileName)
 
@@ -716,6 +763,19 @@ $fieldCoverageMissingManifestChecks = @($fieldCoverageChecks | Where-Object { [s
 $fieldCoverageMissingFieldChecks = @($fieldCoverageChecks | Where-Object { [string]$_["failureKind"] -eq "field_missing" })
 $fieldCoverageValueMismatchChecks = @($fieldCoverageChecks | Where-Object { [string]$_["failureKind"] -eq "value_mismatch" })
 $fieldCoverageManifestNames = @($fieldCoverageChecks | ForEach-Object { [string]$_["manifestName"] } | Sort-Object -Unique)
+$fieldCoverageDefinitionLines = @($fieldCoverageChecks | ForEach-Object {
+        @(
+            [string]$_["manifestName"],
+            [string]$_["fieldName"],
+            [string]$_["operator"],
+            (Convert-FieldValueForDefinitionLine $_["expectedValue"]),
+            [string]$_["label"]
+        ) -join "`t"
+    } | Sort-Object)
+$fieldCoverageDefinitionText = (@($fieldCoverageDefinitionLines) -join "`n") + "`n"
+$fieldCoverageDefinitionSha256 = Get-StringSha256 $fieldCoverageDefinitionText
+$releaseEvidenceIndexScriptRelativePath = "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1"
+$releaseEvidenceIndexScriptSha256 = Get-ReleaseEvidenceIndexScriptSha256
 $fieldLevelCoverageStatus = if ($fieldCoverageFailedChecks.Count -eq 0) { "PASS" } else { "BLOCKED" }
 
 $blockingReasons = @()
@@ -781,6 +841,13 @@ $manifest = [ordered]@{
     liveModelEndpointSmokeContractFixtureAccepted = [bool]$liveModelEndpointSmokeContractFixtureAccepted
     fieldLevelCoverageStatus = $fieldLevelCoverageStatus
     fieldLevelCoverageSchemaVersion = "aitestpilot.release_evidence_field_level_coverage.v1"
+    fieldLevelCoverageDefinitionSchemaVersion = "aitestpilot.release_evidence_field_level_coverage_definition.v1"
+    fieldLevelCoverageDefinitionHashAlgorithm = "SHA256"
+    fieldLevelCoverageDefinitionSha256 = $fieldCoverageDefinitionSha256
+    fieldLevelCoverageDefinitionCount = [int]$fieldCoverageDefinitionLines.Count
+    fieldLevelCoverageDefinitionLines = @($fieldCoverageDefinitionLines)
+    fieldLevelCoverageSourceScriptPath = $releaseEvidenceIndexScriptRelativePath
+    fieldLevelCoverageSourceScriptSha256 = $releaseEvidenceIndexScriptSha256
     fieldLevelRequiredManifestCount = [int]$fieldCoverageManifestNames.Count
     fieldLevelRequiredFieldCount = [int]$fieldCoverageChecks.Count
     fieldLevelCoveredFieldCount = [int]($fieldCoverageChecks.Count - $fieldCoverageMissingFieldChecks.Count)
@@ -830,6 +897,13 @@ $index = [ordered]@{
     fieldLevelCoverage = [ordered]@{
         schemaVersion = "aitestpilot.release_evidence_field_level_coverage.v1"
         status = $fieldLevelCoverageStatus
+        definitionSchemaVersion = "aitestpilot.release_evidence_field_level_coverage_definition.v1"
+        definitionHashAlgorithm = "SHA256"
+        definitionSha256 = $fieldCoverageDefinitionSha256
+        definitionCount = [int]$fieldCoverageDefinitionLines.Count
+        definitionLines = @($fieldCoverageDefinitionLines)
+        sourceScriptPath = $releaseEvidenceIndexScriptRelativePath
+        sourceScriptSha256 = $releaseEvidenceIndexScriptSha256
         requiredManifestCount = [int]$fieldCoverageManifestNames.Count
         requiredFieldCount = [int]$fieldCoverageChecks.Count
         coveredFieldCount = [int]($fieldCoverageChecks.Count - $fieldCoverageMissingFieldChecks.Count)
@@ -858,6 +932,8 @@ $reportLines = @(
     "- Skipped source manifests: $($manifest.skippedSourceManifestCount)",
     "- Missing listed files: $($manifest.missingListedFileCount)",
     "- Field-level coverage status: $($manifest.fieldLevelCoverageStatus)",
+    "- Field-level definition SHA256: $($manifest.fieldLevelCoverageDefinitionSha256)",
+    "- Field-level source script SHA256: $($manifest.fieldLevelCoverageSourceScriptSha256)",
     "- Field-level required manifests: $($manifest.fieldLevelRequiredManifestCount)",
     "- Field-level required fields: $($manifest.fieldLevelRequiredFieldCount)",
     "- Semantic field checks passed: $($manifest.semanticFieldCheckPassedCount) / $($manifest.semanticFieldCheckCount)",

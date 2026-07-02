@@ -358,9 +358,25 @@ $fieldLevelMissingFieldCount = Convert-ToInt (Get-JsonValue $indexManifest "fiel
 $fieldLevelValueMismatchCount = Convert-ToInt (Get-JsonValue $indexManifest "fieldLevelValueMismatchCount" 1)
 $fieldLevelCoverageSchemaVersion = [string](Get-JsonValue $indexManifest "fieldLevelCoverageSchemaVersion" "")
 $fieldLevelCoverageStatus = [string](Get-JsonValue $indexManifest "fieldLevelCoverageStatus" "")
+$fieldLevelCoverageDefinitionSchemaVersion = [string](Get-JsonValue $indexManifest "fieldLevelCoverageDefinitionSchemaVersion" "")
+$fieldLevelCoverageDefinitionHashAlgorithm = [string](Get-JsonValue $indexManifest "fieldLevelCoverageDefinitionHashAlgorithm" "")
+$fieldLevelCoverageDefinitionSha256 = [string](Get-JsonValue $indexManifest "fieldLevelCoverageDefinitionSha256" "")
+$fieldLevelCoverageDefinitionCount = Convert-ToInt (Get-JsonValue $indexManifest "fieldLevelCoverageDefinitionCount" 0)
+$fieldLevelCoverageDefinitionLines = @(Convert-ToArray (Get-JsonValue $indexManifest "fieldLevelCoverageDefinitionLines" @()))
+$fieldLevelCoverageSourceScriptPath = [string](Get-JsonValue $indexManifest "fieldLevelCoverageSourceScriptPath" "")
+$fieldLevelCoverageSourceScriptSha256 = [string](Get-JsonValue $indexManifest "fieldLevelCoverageSourceScriptSha256" "")
+$releaseEvidenceIndexCurrentScriptSha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") -Algorithm SHA256).Hash
 
 $evidenceIndexFieldLevelCoveragePassedAsExpected = $fieldLevelCoverageSchemaVersion -eq "aitestpilot.release_evidence_field_level_coverage.v1" -and
     $fieldLevelCoverageStatus -eq "PASS" -and
+    $fieldLevelCoverageDefinitionSchemaVersion -eq "aitestpilot.release_evidence_field_level_coverage_definition.v1" -and
+    $fieldLevelCoverageDefinitionHashAlgorithm -eq "SHA256" -and
+    -not [string]::IsNullOrWhiteSpace($fieldLevelCoverageDefinitionSha256) -and
+    $fieldLevelCoverageDefinitionSha256.Length -eq 64 -and
+    $fieldLevelCoverageDefinitionCount -eq $fieldLevelRequiredFieldCount -and
+    $fieldLevelCoverageDefinitionLines.Count -eq $fieldLevelCoverageDefinitionCount -and
+    $fieldLevelCoverageSourceScriptPath -eq "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1" -and
+    $fieldLevelCoverageSourceScriptSha256 -eq $releaseEvidenceIndexCurrentScriptSha256 -and
     $fieldLevelRequiredManifestCount -ge 14 -and
     $fieldLevelRequiredFieldCount -ge 74 -and
     $semanticFieldCheckCount -eq $fieldLevelRequiredFieldCount -and
@@ -458,6 +474,8 @@ $reportLines = @(
     "| Hard-mode risk policy status | $($riskManifest.status) |",
     "| Hard-mode evidence index status | $($indexManifest.status) |",
     "| Hard-mode evidence index field coverage | $fieldLevelCoverageStatus |",
+    "| Hard-mode evidence index field coverage definition SHA256 | $fieldLevelCoverageDefinitionSha256 |",
+    "| Hard-mode evidence index source script SHA256 | $fieldLevelCoverageSourceScriptSha256 |",
     "| Hard-mode semantic field checks | $semanticFieldCheckPassedCount / $semanticFieldCheckCount |",
     "| Hard-mode field coverage probe status | $($fieldCoverageProbeManifest.status) |",
     "| Hard-mode release gate status | $($gateManifest.status) |",
@@ -532,6 +550,10 @@ $manifest = [ordered]@{
     evidenceIndexPassedAsExpected = [bool]$evidenceIndexPassedAsExpected
     evidenceIndexFieldLevelCoverageStatus = $fieldLevelCoverageStatus
     evidenceIndexFieldLevelCoveragePassedAsExpected = [bool]$evidenceIndexFieldLevelCoveragePassedAsExpected
+    evidenceIndexFieldLevelCoverageDefinitionSha256 = $fieldLevelCoverageDefinitionSha256
+    evidenceIndexFieldLevelCoverageDefinitionCount = [int]$fieldLevelCoverageDefinitionCount
+    evidenceIndexFieldLevelCoverageSourceScriptSha256 = $fieldLevelCoverageSourceScriptSha256
+    evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent = [bool]($fieldLevelCoverageSourceScriptSha256 -eq $releaseEvidenceIndexCurrentScriptSha256)
     evidenceIndexFieldCoverageProbeStatus = $fieldCoverageProbeManifest.status
     evidenceIndexFieldCoverageProbePassedAsExpected = [bool]$fieldCoverageProbePassedAsExpected
     evidenceIndexFieldLevelRequiredManifestCount = [int]$fieldLevelRequiredManifestCount

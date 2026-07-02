@@ -2621,6 +2621,16 @@ Add-PolicyCheck "production_hard_mode_failure_policy" $productionHardModeFailure
     "Release evidence must prove combined production driver, production Lua, and live-model hard-mode switches block the current sample or missing-evidence state." `
     "production_hard_mode_failure_probe_not_accepted"
 
+$productionHardModeSuccessContractSelfReference = (
+    (Get-JsonValue $productionHardModeSuccessContractProbeManifest "placeholderFor" "") -eq "production_hard_mode_success_contract_probe_self_reference"
+)
+$productionHardModeSuccessContractEvidenceIndexBindingAccepted = (
+    $productionHardModeSuccessContractSelfReference -or
+    ((-not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" ""))) -and
+        ([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" "")).Length -eq 64 -and
+        (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent" $false)))
+)
+
 $productionHardModeSuccessContractAccepted = (
     $null -ne $productionHardModeSuccessContractProbeManifest -and
     $productionHardModeSuccessContractProbeManifest.status -eq "PASS" -and
@@ -2640,6 +2650,7 @@ $productionHardModeSuccessContractAccepted = (
     (Get-JsonValue $productionHardModeSuccessContractProbeManifest "driverEvidenceStatus" "") -eq "PRODUCTION_BOUND_ACCEPTED" -and
     (Get-JsonValue $productionHardModeSuccessContractProbeManifest "productionLuaEvidenceStatus" "") -eq "PRODUCTION_LUA_PATCH_ACCEPTED" -and
     (Get-JsonValue $productionHardModeSuccessContractProbeManifest "liveModelPolicyStatus" "") -eq "LIVE_MODEL_SMOKE_CONTRACT_FIXTURE_ACCEPTED" -and
+    $productionHardModeSuccessContractEvidenceIndexBindingAccepted -and
     -not (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "liveModelProductionEvidenceAccepted" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "liveModelContractFixtureEvidenceAccepted" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHardModeSuccessContractProbeManifest "releasePipelineUsesFixture" $true)) -and
@@ -3111,6 +3122,10 @@ $manifest = [ordered]@{
     productionHardModeFailureAccepted = [bool]$productionHardModeFailureAccepted
     productionHardModeSuccessContractAccepted = [bool]$productionHardModeSuccessContractAccepted
     productionHardModeSuccessContractStatus = (Get-JsonValue $productionHardModeSuccessContractProbeManifest "releaseGateStatus" "")
+    productionHardModeSuccessContractSelfReference = [bool]$productionHardModeSuccessContractSelfReference
+    productionHardModeSuccessContractEvidenceIndexBindingAccepted = [bool]$productionHardModeSuccessContractEvidenceIndexBindingAccepted
+    productionHardModeSuccessContractEvidenceIndexDefinitionSha256 = (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" "")
+    productionHardModeSuccessContractEvidenceIndexSourceScriptHashMatchesCurrent = (Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent" $false)
     riskPolicyCheckCount = [int]$riskPolicyChecks.Count
     passedRiskPolicyCheckCount = [int]$passedRiskPolicyCheckCount
     failedRiskPolicyCheckCount = [int]$failedRiskPolicyCheckCount
@@ -3366,6 +3381,8 @@ $reportLines = @(
     "- Production hard-mode failure probe accepted: $($manifest.productionHardModeFailureAccepted)",
     "- Production hard-mode success contract accepted: $($manifest.productionHardModeSuccessContractAccepted)",
     "- Production hard-mode success contract status: $($manifest.productionHardModeSuccessContractStatus)",
+    "- Production hard-mode success contract evidence index definition SHA256: $($manifest.productionHardModeSuccessContractEvidenceIndexDefinitionSha256)",
+    "- Production hard-mode success contract evidence index source script hash matches current: $($manifest.productionHardModeSuccessContractEvidenceIndexSourceScriptHashMatchesCurrent)",
     "- Policy checks passed: $($manifest.passedRiskPolicyCheckCount) / $($manifest.riskPolicyCheckCount)",
     "",
     "## Boundary Summary",

@@ -11,6 +11,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$releaseEvidenceIndexScriptPath = Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1"
+$releaseEvidenceIndexCurrentScriptSha256 = if (Test-Path $releaseEvidenceIndexScriptPath) {
+    (Get-FileHash -LiteralPath $releaseEvidenceIndexScriptPath -Algorithm SHA256).Hash
+}
+else {
+    ""
+}
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -265,14 +272,27 @@ function Invoke-IndexScenario {
         }
     }
     $failedFieldMatched = [string]::IsNullOrWhiteSpace($ExpectedFailedFieldName) -or ($failedFieldNames -contains $ExpectedFailedFieldName)
+    $fieldDefinitionSha256 = if ($null -ne $indexManifest) { [string]$indexManifest.fieldLevelCoverageDefinitionSha256 } else { "" }
+    $fieldDefinitionCount = if ($null -ne $indexManifest) { [int]$indexManifest.fieldLevelCoverageDefinitionCount } else { 0 }
+    $fieldDefinitionLineCount = if ($null -ne $indexManifest) { @($indexManifest.fieldLevelCoverageDefinitionLines).Count } else { 0 }
+    $fieldRequiredCount = if ($null -ne $indexManifest) { [int]$indexManifest.fieldLevelRequiredFieldCount } else { 0 }
+    $fieldDefinitionHashValid = (-not [string]::IsNullOrWhiteSpace($fieldDefinitionSha256)) -and $fieldDefinitionSha256.Length -eq 64
+    $fieldDefinitionCountMatchesRequired = $fieldDefinitionCount -eq $fieldRequiredCount -and $fieldDefinitionLineCount -eq $fieldDefinitionCount
+    $sourceScriptSha256 = if ($null -ne $indexManifest) { [string]$indexManifest.fieldLevelCoverageSourceScriptSha256 } else { "" }
+    $sourceScriptHashMatchesCurrent = (-not [string]::IsNullOrWhiteSpace($sourceScriptSha256)) -and
+        $sourceScriptSha256 -eq $releaseEvidenceIndexCurrentScriptSha256
 
     $passed = if ($ExpectPass) {
-        (-not $indexThrew -and $null -ne $indexManifest -and $indexManifest.status -eq "PASS" -and $indexManifest.fieldLevelCoverageStatus -eq "PASS")
+        (-not $indexThrew -and $null -ne $indexManifest -and $indexManifest.status -eq "PASS" -and $indexManifest.fieldLevelCoverageStatus -eq "PASS" -and
+            $fieldDefinitionHashValid -and $fieldDefinitionCountMatchesRequired -and $sourceScriptHashMatchesCurrent)
     }
     else {
         ($null -ne $indexManifest -and $indexManifest.status -eq "BLOCKED" -and
             $blockingReasonsMatchedExactly -and
-            $failedFieldMatched)
+            $failedFieldMatched -and
+            $fieldDefinitionHashValid -and
+            $fieldDefinitionCountMatchesRequired -and
+            $sourceScriptHashMatchesCurrent)
     }
 
     $result = [ordered]@{
@@ -285,6 +305,13 @@ function Invoke-IndexScenario {
         indexExists = [bool]$indexExists
         indexStatus = if ($null -ne $indexManifest) { [string]$indexManifest.status } else { "MISSING" }
         fieldLevelCoverageStatus = if ($null -ne $indexManifest) { [string]$indexManifest.fieldLevelCoverageStatus } else { "MISSING" }
+        fieldLevelCoverageDefinitionSha256 = $fieldDefinitionSha256
+        fieldLevelCoverageDefinitionCount = [int]$fieldDefinitionCount
+        fieldLevelCoverageDefinitionLineCount = [int]$fieldDefinitionLineCount
+        fieldLevelCoverageDefinitionHashValid = [bool]$fieldDefinitionHashValid
+        fieldLevelCoverageDefinitionCountMatchesRequired = [bool]$fieldDefinitionCountMatchesRequired
+        fieldLevelCoverageSourceScriptSha256 = $sourceScriptSha256
+        fieldLevelCoverageSourceScriptHashMatchesCurrent = [bool]$sourceScriptHashMatchesCurrent
         blockingReasonsMatchedExactly = [bool]$blockingReasonsMatchedExactly
         expectedBlockingReasons = @($ExpectedBlockingReasons)
         blockingReasons = @($blockingReasons)
@@ -393,7 +420,12 @@ $scenarioResults += Invoke-IndexScenario `
 $afterSnapshot = Get-Snapshot $evidenceBundlePath -ExcludedRelativePaths $snapshotExcludedRelativePaths
 $latestSnapshotUnchanged = Test-SnapshotUnchanged $beforeSnapshot $afterSnapshot
 $failedScenarios = @($scenarioResults | Where-Object { -not [bool]$_["passed"] })
-$status = if ($failedScenarios.Count -eq 0 -and $latestSnapshotUnchanged) { "PASS" } else { "FAIL" }
+$definitionHashes = @($scenarioResults | ForEach-Object { [string]$_["fieldLevelCoverageDefinitionSha256"] } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+$uniqueDefinitionHashes = @($definitionHashes | Sort-Object -Unique)
+$definitionHashStableAcrossScenarios = $definitionHashes.Count -eq $scenarioResults.Count -and $uniqueDefinitionHashes.Count -eq 1
+$definitionCountsMatchRequired = @($scenarioResults | Where-Object { -not [bool]$_["fieldLevelCoverageDefinitionCountMatchesRequired"] }).Count -eq 0
+$sourceScriptHashesMatchCurrent = @($scenarioResults | Where-Object { -not [bool]$_["fieldLevelCoverageSourceScriptHashMatchesCurrent"] }).Count -eq 0
+$status = if ($failedScenarios.Count -eq 0 -and $latestSnapshotUnchanged -and $definitionHashStableAcrossScenarios -and $definitionCountsMatchRequired -and $sourceScriptHashesMatchCurrent) { "PASS" } else { "FAIL" }
 
 $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $manifestFullPath),
@@ -417,6 +449,10 @@ $reportLines = @(
     "- Scenario count: $($scenarioResults.Count)",
     "- Failed scenario count: $($failedScenarios.Count)",
     "- Latest snapshot unchanged: $latestSnapshotUnchanged",
+    "- Field definition SHA256 stable: $definitionHashStableAcrossScenarios",
+    "- Field definition SHA256: $(if ($uniqueDefinitionHashes.Count -eq 1) { $uniqueDefinitionHashes[0] } else { '(mixed)' })",
+    "- Field definition counts match required fields: $definitionCountsMatchRequired",
+    "- Field coverage source script hashes match current: $sourceScriptHashesMatchCurrent",
     "",
     "## Scenarios",
     "",
@@ -437,6 +473,12 @@ $manifest = [ordered]@{
     scenarioCount = [int]$scenarioResults.Count
     failedScenarioCount = [int]$failedScenarios.Count
     latestSnapshotUnchanged = [bool]$latestSnapshotUnchanged
+    fieldLevelCoverageDefinitionHashStableAcrossScenarios = [bool]$definitionHashStableAcrossScenarios
+    fieldLevelCoverageDefinitionSha256 = if ($uniqueDefinitionHashes.Count -eq 1) { [string]$uniqueDefinitionHashes[0] } else { "" }
+    fieldLevelCoverageDefinitionHashCount = [int]$uniqueDefinitionHashes.Count
+    fieldLevelCoverageDefinitionCountsMatchRequired = [bool]$definitionCountsMatchRequired
+    fieldLevelCoverageSourceScriptSha256 = [string]$releaseEvidenceIndexCurrentScriptSha256
+    fieldLevelCoverageSourceScriptHashesMatchCurrent = [bool]$sourceScriptHashesMatchCurrent
     beforeManifestFileCount = [int]$beforeSnapshot.manifestFileCount
     afterManifestFileCount = [int]$afterSnapshot.manifestFileCount
     scenarios = @($scenarioResults)

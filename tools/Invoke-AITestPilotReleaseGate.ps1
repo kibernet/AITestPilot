@@ -30,6 +30,14 @@ $requiredHandlerKeys = @(
     "game.play_fishing"
 )
 
+$releaseEvidenceIndexScriptPath = Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1"
+$releaseEvidenceIndexCurrentScriptSha256 = if (Test-Path $releaseEvidenceIndexScriptPath) {
+    (Get-FileHash -LiteralPath $releaseEvidenceIndexScriptPath -Algorithm SHA256).Hash
+}
+else {
+    ""
+}
+
 $checks = @()
 $failedReasons = @()
 
@@ -3619,6 +3627,16 @@ if ($null -ne $productionHardModeFailureProbeManifest) {
 }
 
 if ($null -ne $productionHardModeSuccessContractProbeManifest) {
+    $productionHardModeSuccessContractSelfReference = (
+        (Get-JsonValue $productionHardModeSuccessContractProbeManifest "placeholderFor" "") -eq "production_hard_mode_success_contract_probe_self_reference"
+    )
+    $productionHardModeSuccessContractEvidenceIndexBindingAccepted = (
+        $productionHardModeSuccessContractSelfReference -or
+        ((-not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" ""))) -and
+            ([string](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageDefinitionSha256" "")).Length -eq 64 -and
+            [bool](Get-JsonValue $productionHardModeSuccessContractProbeManifest "evidenceIndexFieldLevelCoverageSourceScriptHashMatchesCurrent" $false))
+    )
+
     Add-ReleaseCheck "production_hard_mode_success_contract_probe" `
         ($productionHardModeSuccessContractProbeManifest.status -eq "PASS" -and
             $productionHardModeSuccessContractProbeManifest.schemaVersion -eq "aitestpilot.production_hard_mode_success_contract_probe.v1" -and
@@ -3637,6 +3655,7 @@ if ($null -ne $productionHardModeSuccessContractProbeManifest) {
             $productionHardModeSuccessContractProbeManifest.driverEvidenceStatus -eq "PRODUCTION_BOUND_ACCEPTED" -and
             $productionHardModeSuccessContractProbeManifest.productionLuaEvidenceStatus -eq "PRODUCTION_LUA_PATCH_ACCEPTED" -and
             $productionHardModeSuccessContractProbeManifest.liveModelPolicyStatus -eq "LIVE_MODEL_SMOKE_CONTRACT_FIXTURE_ACCEPTED" -and
+            $productionHardModeSuccessContractEvidenceIndexBindingAccepted -and
             -not [bool]$productionHardModeSuccessContractProbeManifest.liveModelProductionEvidenceAccepted -and
             [bool]$productionHardModeSuccessContractProbeManifest.liveModelContractFixtureEvidenceAccepted -and
             -not [bool]$productionHardModeSuccessContractProbeManifest.releasePipelineUsesFixture -and
@@ -3664,6 +3683,13 @@ if ($null -ne $releaseRiskPolicyManifest) {
     $liveModelRiskEvidenceAccepted = -not [bool]$RequireLiveModelEndpointSmoke -or
         $releaseRiskPolicyLiveModelProductionEvidenceAccepted -or
         ([bool]$ContractFixtureMode -and $releaseRiskPolicyLiveModelContractFixtureEvidenceAccepted)
+    $releaseRiskPolicyHardModeSuccessSelfReference = [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractSelfReference" $false)
+    $releaseRiskPolicyHardModeSuccessEvidenceIndexBindingAccepted = (
+        $releaseRiskPolicyHardModeSuccessSelfReference -or
+        ((-not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexDefinitionSha256" ""))) -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexDefinitionSha256" "")).Length -eq 64 -and
+            [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractEvidenceIndexSourceScriptHashMatchesCurrent" $false))
+    )
 
     Add-ReleaseCheck "release_risk_policy" `
         ($releaseRiskPolicyManifest.status -eq "PASS" -and
@@ -3901,6 +3927,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             ([string]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchLiveModelSmokeExportHelperCommand).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
             [bool]$releaseRiskPolicyManifest.productionHardModeFailureAccepted -and
             [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHardModeSuccessContractAccepted" $false) -and
+            $releaseRiskPolicyHardModeSuccessEvidenceIndexBindingAccepted -and
             [int]$releaseRiskPolicyManifest.riskPolicyCheckCount -eq [int]$releaseRiskPolicyManifest.passedRiskPolicyCheckCount -and
             [int]$releaseRiskPolicyManifest.failedRiskPolicyCheckCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.missingOrInvalidSourceFileCount -eq 0) `
@@ -4029,6 +4056,15 @@ if ($null -ne $releaseEvidenceIndexManifest) {
             [bool]$releaseEvidenceIndexManifest.pipelineManifestExpected -and
             $releaseEvidenceIndexManifest.fieldLevelCoverageStatus -eq "PASS" -and
             $releaseEvidenceIndexManifest.fieldLevelCoverageSchemaVersion -eq "aitestpilot.release_evidence_field_level_coverage.v1" -and
+            $releaseEvidenceIndexManifest.fieldLevelCoverageDefinitionSchemaVersion -eq "aitestpilot.release_evidence_field_level_coverage_definition.v1" -and
+            $releaseEvidenceIndexManifest.fieldLevelCoverageDefinitionHashAlgorithm -eq "SHA256" -and
+            -not [string]::IsNullOrWhiteSpace([string]$releaseEvidenceIndexManifest.fieldLevelCoverageDefinitionSha256) -and
+            ([string]$releaseEvidenceIndexManifest.fieldLevelCoverageDefinitionSha256).Length -eq 64 -and
+            [int]$releaseEvidenceIndexManifest.fieldLevelCoverageDefinitionCount -eq [int]$releaseEvidenceIndexManifest.fieldLevelRequiredFieldCount -and
+            @($releaseEvidenceIndexManifest.fieldLevelCoverageDefinitionLines).Count -eq [int]$releaseEvidenceIndexManifest.fieldLevelCoverageDefinitionCount -and
+            $releaseEvidenceIndexManifest.fieldLevelCoverageSourceScriptPath -eq "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1" -and
+            -not [string]::IsNullOrWhiteSpace([string]$releaseEvidenceIndexManifest.fieldLevelCoverageSourceScriptSha256) -and
+            $releaseEvidenceIndexManifest.fieldLevelCoverageSourceScriptSha256 -eq $releaseEvidenceIndexCurrentScriptSha256 -and
             [int]$releaseEvidenceIndexManifest.fieldLevelRequiredManifestCount -ge 14 -and
             [int]$releaseEvidenceIndexManifest.fieldLevelRequiredFieldCount -ge 74 -and
             [int]$releaseEvidenceIndexManifest.semanticFieldCheckCount -eq [int]$releaseEvidenceIndexManifest.semanticFieldCheckPassedCount -and
@@ -4071,6 +4107,13 @@ if ($null -ne $releaseEvidenceIndexFieldCoverageProbeManifest) {
             [int]$releaseEvidenceIndexFieldCoverageProbeManifest.failedScenarioCount -eq 0 -and
             $releaseEvidenceIndexFieldCoverageProbeScenariosPassed -and
             [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.latestSnapshotUnchanged -and
+            [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageDefinitionHashStableAcrossScenarios -and
+            -not [string]::IsNullOrWhiteSpace([string]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageDefinitionSha256) -and
+            ([string]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageDefinitionSha256).Length -eq 64 -and
+            [int]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageDefinitionHashCount -eq 1 -and
+            [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageDefinitionCountsMatchRequired -and
+            [string]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageSourceScriptSha256 -eq $releaseEvidenceIndexCurrentScriptSha256 -and
+            [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.fieldLevelCoverageSourceScriptHashesMatchCurrent -and
             -not [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.releasePipelineSendsEmail -and
             -not [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$releaseEvidenceIndexFieldCoverageProbeManifest.fixtureEvidencePromoted -and

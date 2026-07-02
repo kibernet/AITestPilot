@@ -245,7 +245,7 @@ To export a machine-readable release evidence index:
 .\tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1
 ```
 
-That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. It also records release evidence index field coverage with 74 semantic field checks across the primary handoff, handoff export, external evidence, semantic preflight, progress notification, and risk policy manifests. The full release pipeline runs it before the release gate, then refreshes the final artifact index after writing `pipeline-manifest.json` so CI and portal handoff can consume one stable evidence summary that includes the pipeline manifest.
+That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. It also records release evidence index field coverage with 74 semantic field checks across the primary handoff, handoff export, external evidence, semantic preflight, progress notification, and risk policy manifests, plus a field-level definition SHA256 and source script SHA256 so stale index artifacts cannot satisfy a newer release gate. The full release pipeline runs it before the release gate, then refreshes the final artifact index after writing `pipeline-manifest.json` so CI and portal handoff can consume one stable evidence summary that includes the pipeline manifest.
 
 To prove the release evidence index field coverage contract:
 
