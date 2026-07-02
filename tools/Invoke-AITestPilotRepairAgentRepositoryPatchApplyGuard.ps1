@@ -167,6 +167,20 @@ function Write-Utf8NoBomFile {
     [System.IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
+function Write-WorktreeStatusSnapshot {
+    param(
+        [string]$Path,
+        [string[]]$Lines
+    )
+
+    $content = ""
+    if ($Lines.Count -gt 0) {
+        $content = ($Lines -join [Environment]::NewLine) + [Environment]::NewLine
+    }
+
+    Write-Utf8NoBomFile $Path $content
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $repoRoot = Assert-RepositoryRootUnderWorkspace $repoRoot
 $patchPath = Assert-PathUnderRepo $PatchPath "PatchPath"
@@ -199,7 +213,7 @@ $worktreeBeforePath = Join-Path $evidenceBundlePath "repair-agent-repository-wor
 $worktreeAfterPath = Join-Path $evidenceBundlePath "repair-agent-repository-worktree-after.txt"
 
 New-Item -ItemType Directory -Force $evidenceBundlePath | Out-Null
-$worktreeStatusBefore | Set-Content -Path $worktreeBeforePath -Encoding UTF8
+Write-WorktreeStatusSnapshot $worktreeBeforePath $worktreeStatusBefore
 
 $blockReasons = @()
 if (-not [bool]$ApplyToRepository) {
@@ -262,7 +276,7 @@ $worktreeStatusAfter = @(Get-RepoStatusLines)
 $sourceStatusAfter = @(Select-SourceStatusLines $worktreeStatusAfter)
 $sourceStatusUnchanged = Test-StringArrayEqual $sourceStatusBefore $sourceStatusAfter
 $repositoryChangedByScript = -not $sourceStatusUnchanged
-$worktreeStatusAfter | Set-Content -Path $worktreeAfterPath -Encoding UTF8
+Write-WorktreeStatusSnapshot $worktreeAfterPath $worktreeStatusAfter
 
 if ([bool]$repositoryPatchApplied) {
     $rollbackText = @(

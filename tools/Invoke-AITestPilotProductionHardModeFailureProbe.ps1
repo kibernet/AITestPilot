@@ -174,81 +174,12 @@ $successContractPlaceholder = [ordered]@{
 }
 $successContractPlaceholder | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $probeBundlePath "production-hard-mode-success-contract-probe-manifest.json") -Encoding UTF8
 
-$riskManifestPath = Join-Path $probeBundlePath "release-risk-policy-hard-mode-manifest.json"
-$riskReportPath = Join-Path $probeBundlePath "release-risk-policy-hard-mode.md"
-$indexManifestPath = Join-Path $probeBundlePath "release-evidence-index-hard-mode-manifest.json"
-$indexJsonPath = Join-Path $probeBundlePath "release-evidence-index-hard-mode.json"
-$indexReportPath = Join-Path $probeBundlePath "release-evidence-index-hard-mode.md"
+$riskManifestPath = Join-Path $probeBundlePath "release-risk-policy-manifest.json"
+$riskReportPath = Join-Path $probeBundlePath "release-risk-policy.md"
+$indexManifestPath = Join-Path $probeBundlePath "release-evidence-index-manifest.json"
+$indexJsonPath = Join-Path $probeBundlePath "release-evidence-index.json"
+$indexReportPath = Join-Path $probeBundlePath "release-evidence-index.md"
 $gateManifestPath = Join-Path $probeBundlePath "release-gate-hard-mode-manifest.json"
-$hardModeSourceManifestNames = @(
-    "manifest.json",
-    "repair-agent-patch-output-manifest.json",
-    "repair-agent-external-completion-failure-probe-manifest.json",
-    "repair-agent-generic-patch-import-probe-manifest.json",
-    "repair-agent-source-snapshot-apply-validate-manifest.json",
-    "repair-agent-main-worktree-apply-readiness-manifest.json",
-    "repair-agent-main-worktree-apply-retest-rollback-manifest.json",
-    "repair-agent-external-task-output-acceptance-manifest.json",
-    "repair-agent-patch-result-analysis-manifest.json",
-    "repair-agent-patch-result-history-manifest.json",
-    "repair-agent-external-patch-preflight-manifest.json",
-    "repair-agent-external-patch-preflight-failure-probe-manifest.json",
-    "repair-agent-repository-patch-apply-guard-manifest.json",
-    "repair-agent-repository-patch-apply-clean-probe-manifest.json",
-    "repair-agent-repository-patch-apply-clean-retest-manifest.json",
-    "repair-agent-patch-apply-retest-manifest.json",
-    "repair-retest-manifest.json",
-    "repair-driver-failure-manifest.json",
-    "replay-profile-import-manifest.json",
-    "production-replay-integration-contract-probe-manifest.json",
-    "production-driver-binding-kit-manifest.json",
-    "production-driver-evidence-contract-probe-manifest.json",
-    "production-replay-driver-readiness-manifest.json",
-    "production-driver-evidence-intake-manifest.json",
-    "production-driver-external-bundle-intake-probe-manifest.json",
-    "model-endpoint-trace-manifest.json",
-    "model-endpoint-provider-diagnostics-manifest.json",
-    "model-endpoint-provider-retry-policy-manifest.json",
-    "live-model-endpoint-config-kit-probe-manifest.json",
-    "lua-static-analysis-manifest.json",
-    "lua-auto-patch-sandbox-manifest.json",
-    "production-lua-patch-readiness-manifest.json",
-    "production-lua-patch-evidence-kit-probe-manifest.json",
-    "production-lua-patch-external-bundle-intake-probe-manifest.json",
-    "live-model-endpoint-failure-probe-manifest.json",
-    "live-model-endpoint-smoke-manifest.json",
-    "live-model-endpoint-external-smoke-intake-probe-manifest.json",
-    "live-model-endpoint-smoke-evidence-contract-probe-manifest.json",
-    "github-actions-release-workflow-probe-manifest.json",
-    "azure-pipelines-release-workflow-probe-manifest.json",
-    "provider-ci-quality-probe-manifest.json",
-    "production-handoff-package-manifest.json",
-    "production-handoff-external-evidence-preflight-probe-manifest.json",
-    "production-handoff-export-manifest.json",
-    "production-handoff-export-zip-index-manifest.json",
-    "production-handoff-send-local-workflow-probe-manifest.json",
-    "production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json",
-    "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json",
-    "release-progress-notification-outbox-manifest.json",
-    "release-progress-notification-remaining-work-snapshot-probe-manifest.json",
-    "production-handoff-mail-helper-auth-status-probe-manifest.json",
-    "release-progress-notification-confirmation-probe-manifest.json",
-    "release-progress-notification-receipt-probe-manifest.json",
-    "release-progress-notification-dispatch-receipt-intake-probe-manifest.json",
-    "release-progress-notification-local-send-workflow-probe-manifest.json",
-    "release-progress-notification-real-receipt-guard-probe-manifest.json",
-    "release-progress-notification-post-dispatch-snapshot-probe-manifest.json",
-    "production-external-evidence-action-queue-manifest.json",
-    "production-external-evidence-action-queue-probe-manifest.json",
-    "production-external-evidence-gap-analysis-manifest.json",
-    "production-external-evidence-partial-matrix-probe-manifest.json",
-    "production-external-evidence-semantic-preflight-probe-manifest.json",
-    "production-external-evidence-auto-acceptance-probe-manifest.json",
-    "release-docs-freshness-manifest.json",
-    "production-external-evidence-acceptance-contract-probe-manifest.json",
-    "production-external-evidence-acceptance-failure-probe-manifest.json",
-    "release-risk-policy-hard-mode-manifest.json"
-)
 
 $riskCommandFailed = $false
 $riskCommandError = ""
@@ -274,7 +205,6 @@ try {
         -ManifestPath $indexManifestPath `
         -IndexPath $indexJsonPath `
         -ReportPath $indexReportPath `
-        -SourceManifestNames $hardModeSourceManifestNames `
         -RequireProductionReplayDriverBound `
         -RequireProductionLuaPatched `
         -RequireLiveModelEndpointSmoke
