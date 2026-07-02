@@ -335,8 +335,11 @@ Add-DocsCheck "required_doc_strings_present" `
 $sourceManifestScripts = @(
     "tools/Invoke-AITestPilotReleaseRiskPolicy.ps1",
     "tools/Invoke-AITestPilotReleaseEvidenceIndex.ps1",
-    "tools/Invoke-AITestPilotReleaseGate.ps1",
-    "tools/Invoke-AITestPilotProductionHardModeFailureProbe.ps1"
+    "tools/Invoke-AITestPilotReleaseGate.ps1"
+)
+$hardModeDefaultSourceProbeScripts = @(
+    "tools/Invoke-AITestPilotProductionHardModeFailureProbe.ps1",
+    "tools/Invoke-AITestPilotProductionHardModeSuccessContractProbe.ps1"
 )
 $requiredSourceManifestNames = @(
     "production-handoff-export-zip-index-manifest.json",
@@ -369,7 +372,34 @@ $sourceManifestListAligned = $missingSourceManifestReferences.Count -eq 0
 
 Add-DocsCheck "source_manifest_lists_aligned" `
     $sourceManifestListAligned `
-    "Risk policy, evidence index, release gate, and hard-mode copied-bundle source manifest lists must reference current pre-risk manifests."
+    "Risk policy, evidence index, and release gate source manifest lists must reference current pre-risk manifests."
+
+$hardModeDefaultSourceProbeCoverage = @()
+$hardModeDefaultSourceProbeFailures = @()
+foreach ($scriptRelativePath in $hardModeDefaultSourceProbeScripts) {
+    $scriptText = Read-TextFile $scriptRelativePath
+    $usesEvidenceIndex = $scriptText.Contains("Invoke-AITestPilotReleaseEvidenceIndex.ps1")
+    $usesCanonicalIndexManifest = $scriptText.Contains("release-evidence-index-manifest.json")
+    $usesCanonicalRiskManifest = $scriptText.Contains("release-risk-policy-manifest.json")
+    $usesCustomSourceManifestNames = $scriptText.Contains("-SourceManifestNames")
+    $passed = $usesEvidenceIndex -and $usesCanonicalIndexManifest -and $usesCanonicalRiskManifest -and -not $usesCustomSourceManifestNames
+    $entry = [ordered]@{
+        script = $scriptRelativePath
+        usesEvidenceIndex = [bool]$usesEvidenceIndex
+        usesCanonicalIndexManifest = [bool]$usesCanonicalIndexManifest
+        usesCanonicalRiskManifest = [bool]$usesCanonicalRiskManifest
+        usesCustomSourceManifestNames = [bool]$usesCustomSourceManifestNames
+        passed = [bool]$passed
+    }
+    $hardModeDefaultSourceProbeCoverage += $entry
+    if (-not $passed) {
+        $hardModeDefaultSourceProbeFailures += $entry
+    }
+}
+
+Add-DocsCheck "hard_mode_probes_use_default_source_manifests" `
+    ($hardModeDefaultSourceProbeFailures.Count -eq 0) `
+    "Hard-mode copied-bundle probes must delegate source manifest selection to the release evidence index default canonical list."
 
 $previousArtifactPipelineManifestPath = Join-Path $repoRoot "artifacts\ai-testpilot-release\latest\pipeline-manifest.json"
 $previousArtifactPipelineManifest = Read-JsonFile $previousArtifactPipelineManifestPath
@@ -419,6 +449,7 @@ $reportLines = @(
     "| Missing required artifact docs | $($missingRequiredArtifactDocs.Count) |",
     "| Missing required doc strings | $($missingRequiredDocStrings.Count) |",
     "| Missing source manifest references | $($missingSourceManifestReferences.Count) |",
+    "| Hard-mode default source probe failures | $($hardModeDefaultSourceProbeFailures.Count) |",
     "| Previous artifact pipeline status | $(Format-MarkdownCell $previousArtifactPipelineStatus) |",
     "| Previous artifact pipeline step count | $previousArtifactPipelineStepCount |",
     "",
@@ -477,7 +508,8 @@ $documentedFiles = @(
     "tools/Invoke-AITestPilotReleaseRiskPolicy.ps1",
     "tools/Invoke-AITestPilotReleaseEvidenceIndex.ps1",
     "tools/Invoke-AITestPilotReleaseGate.ps1",
-    "tools/Invoke-AITestPilotProductionHardModeFailureProbe.ps1"
+    "tools/Invoke-AITestPilotProductionHardModeFailureProbe.ps1",
+    "tools/Invoke-AITestPilotProductionHardModeSuccessContractProbe.ps1"
 )
 
 $manifest = [ordered]@{
@@ -508,6 +540,9 @@ $manifest = [ordered]@{
     sourceManifestScripts = @($sourceManifestScripts)
     missingSourceManifestReferenceCount = [int]$missingSourceManifestReferences.Count
     missingSourceManifestReferences = @($missingSourceManifestReferences)
+    hardModeDefaultSourceProbeScripts = @($hardModeDefaultSourceProbeScripts)
+    hardModeDefaultSourceProbeFailureCount = [int]$hardModeDefaultSourceProbeFailures.Count
+    hardModeDefaultSourceProbeCoverage = @($hardModeDefaultSourceProbeCoverage)
     previousArtifactPipelineManifestPresent = [bool]$previousArtifactPipelineManifestPresent
     previousArtifactPipelineManifestPath = (Convert-ToRepoRelativePath $previousArtifactPipelineManifestPath)
     previousArtifactPipelineStatus = $previousArtifactPipelineStatus
