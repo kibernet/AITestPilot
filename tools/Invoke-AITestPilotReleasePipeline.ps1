@@ -870,6 +870,11 @@ try {
             -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
     }
 
+    Invoke-PipelineStep "repair_agent_cursor_agent_external_output_binding_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotCursorAgentExternalOutputBindingProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "release_evidence_index" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir `
@@ -880,11 +885,6 @@ try {
 
     Invoke-PipelineStep "release_evidence_index_field_coverage_probe" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndexFieldCoverageProbe.ps1") `
-            -EvidenceBundleDir $EvidenceBundleDir
-    }
-
-    Invoke-PipelineStep "repair_agent_cursor_agent_external_output_binding_probe" {
-        & (Join-Path $repoRoot "tools\Invoke-AITestPilotCursorAgentExternalOutputBindingProbe.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir
     }
 

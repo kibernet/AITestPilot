@@ -107,9 +107,9 @@ Use the release pipeline wrapper when CI needs one command with stable artifacts
 | 93 | `production_hard_mode_failure_probe` |
 | 94 | `production_hard_mode_success_contract_probe` |
 | 95 | `release_risk_policy` |
-| 96 | `release_evidence_index` |
-| 97 | `release_evidence_index_field_coverage_probe` |
-| 98 | `repair_agent_cursor_agent_external_output_binding_probe` |
+| 96 | `repair_agent_cursor_agent_external_output_binding_probe` |
+| 97 | `release_evidence_index` |
+| 98 | `release_evidence_index_field_coverage_probe` |
 | 99 | `release_gate` |
 | 100 | `release_gate_failure_probe` |
 
