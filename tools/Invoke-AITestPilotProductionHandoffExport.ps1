@@ -324,6 +324,99 @@ if ($operatorActionQueueAvailable) {
     foreach ($fileSpec in $operatorActionQueueFiles) {
         Copy-ExportFile $fileSpec["source"] $fileSpec["destination"]
     }
+
+    $operatorActionNextStepsPath = Join-Path $exportPath "operator-actions\NEXT-STEPS.md"
+    $operatorActionNextStepsLines = @(
+        "# AI TestPilot Operator Next Steps",
+        "",
+        "Use this short checklist before the full action queue. It does not send email, accept evidence, or promote fixtures.",
+        "",
+        "## Current State",
+        "",
+        "- External owner areas: $($operatorActionQueueManifest.externalRemainingWorkItemCount)",
+        "- Missing files: $($operatorActionQueueManifest.externalRemainingMissingFileCount)",
+        "- Blocking reasons: $($operatorActionQueueManifest.externalRemainingBlockingReasonCount)",
+        "- Local progress-mail action still pending: $($operatorActionQueueManifest.localProgressMailRemainingActionCount)",
+        "",
+        "## Command Order",
+        "",
+        "1. Send the owner packet and collect a filled owner response bundle.",
+        "2. Run semantic preflight against the returned bundle directory or zip.",
+        "3. Run auto acceptance only after semantic preflight reports a ready candidate with zero semantic failures.",
+        "4. Run the owner area's hard validation command.",
+        "",
+        "## Routes",
+        ""
+    )
+
+    foreach ($item in @(Get-ObjectProperty $operatorActionQueueManifest "actionQueue" @())) {
+        $owner = [string](Get-ObjectProperty $item "owner" "")
+        $area = [string](Get-ObjectProperty $item "area" "")
+        $itemStatus = [string](Get-ObjectProperty $item "status" "")
+        $contactStatus = [string](Get-ObjectProperty $item "contactStatus" "")
+        $sendStatus = [string](Get-ObjectProperty $item "sendStatus" "")
+        $ownerPacketPath = [string](Get-ObjectProperty $item "ownerPacketPath" "")
+        $ownerResponseBundleAreaPath = [string](Get-ObjectProperty $item "ownerResponseBundleAreaPath" "")
+        $missingFiles = @((Get-ObjectProperty $item "missingFiles" @()) | ForEach-Object { [string]$_ })
+        $blockingReasons = @((Get-ObjectProperty $item "remainingBlockingReasons" @()) | ForEach-Object { [string]$_ })
+        $semanticPreflightCommand = [string](Get-ObjectProperty $item "ownerResponseBundleZipSemanticPreflightCommand" "")
+        $autoAcceptanceCommand = [string](Get-ObjectProperty $item "ownerResponseBundleZipAutoAcceptanceCommand" "")
+        $hardValidationCommand = [string](Get-ObjectProperty $item "hardValidationCommand" "")
+        $operatorActionNextStepsLines += @(
+            "### $owner / $area",
+            "",
+            "- Status: $itemStatus",
+            "- Contact: $contactStatus",
+            "- Send: $sendStatus",
+            "- Missing files: $([string]::Join(", ", $missingFiles))",
+            "- Blocking reasons: $([string]::Join(", ", $blockingReasons))",
+            "- Owner packet: $ownerPacketPath",
+            "- Bundle area: $ownerResponseBundleAreaPath",
+            "",
+            "Semantic preflight:",
+            "",
+            '```powershell',
+            $semanticPreflightCommand,
+            '```',
+            "",
+            "Auto acceptance after preflight:",
+            "",
+            '```powershell',
+            $autoAcceptanceCommand,
+            '```',
+            "",
+            "Hard validation:",
+            "",
+            '```powershell',
+            $hardValidationCommand,
+            '```',
+            ""
+        )
+
+        foreach ($helperName in @("productionDriverEvidenceExportHelperCommand", "productionLuaEvidenceExportHelperCommand", "liveModelSmokeEvidenceExportHelperCommand")) {
+            $helperCommand = [string](Get-ObjectProperty $item $helperName "")
+            if (-not [string]::IsNullOrWhiteSpace($helperCommand)) {
+                $operatorActionNextStepsLines += @(
+                    "Owner export helper:",
+                    "",
+                    '```powershell',
+                    $helperCommand,
+                    '```',
+                    ""
+                )
+            }
+        }
+    }
+
+    $operatorActionNextStepsLines += @(
+        "## Boundary",
+        "",
+        "- Release pipeline does not send email.",
+        "- Real host-project evidence remains unaccepted until returned evidence passes semantic preflight, acceptance, and hard validation.",
+        "- Fixture evidence remains unpromoted."
+    )
+
+    $operatorActionNextStepsLines | Set-Content -Path $operatorActionNextStepsPath -Encoding UTF8
 }
 
 $semanticPreflightHelperRelativePath = "run-semantic-preflight.ps1"
@@ -428,44 +521,44 @@ $exportReadmeLines = @(
     "",
     "## Start Here",
     "",
-    "1. Open `production-handoff-package\\owner-packets\\owner-packet-index.json`.",
-    "2. Send each `production-handoff-package\\owner-packets\\*.md` packet to the listed owner.",
-    "3. Production driver owners can run `production-driver-binding-kit\\Export-ProductionDriverEvidenceBundle.ps1` after production-bound readiness passes; it creates `production-driver-evidence-export\\production-driver-evidence` and `production-driver-evidence-export\\production-driver-evidence.zip`.",
-    "4. Production Lua owners can run `production-lua-patch-evidence-kit\\Export-ProductionLuaPatchEvidenceBundle.ps1` after real Lua patch readiness passes; it creates `production-lua-evidence-export\\production-lua-evidence` and `production-lua-evidence-export\\production-lua-evidence.zip`.",
-    "5. Live model owners can run `live-model-endpoint-config-kit\\Export-LiveModelEndpointSmokeEvidenceBundle.ps1` after direct live provider smoke passes; it creates `live-model-endpoint-smoke-evidence-export\\live-smoke-evidence` and `live-model-endpoint-smoke-evidence-export\\live-smoke-evidence.zip`.",
-    "6. Owners copy returned evidence into `production-external-evidence-inbox\\production-driver-evidence`, `production-external-evidence-inbox\\production-lua-evidence`, and `production-external-evidence-inbox\\live-smoke-evidence`.",
-    "7. Run the bundled self-contained semantic preflight helper: $semanticPreflightSelfContainedFolderCommand or $semanticPreflightSelfContainedZipCommand before auto acceptance. It invokes `semantic-preflight\\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1`; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0. Zip inputs are checked for unsafe, duplicate, absolute, or traversal entries before extraction.",
-    "8. Run `production-external-evidence-inbox\\accept-returned-evidence.ps1` to generate the Markdown acceptance report.",
-    "9. Run the hard validation command from the owner packet or `production-handoff-package\\ci-commands.ps1`."
+    '1. Open production-handoff-package\owner-packets\owner-packet-index.json.',
+    '2. Send each production-handoff-package\owner-packets\*.md packet to the listed owner.',
+    '3. Production driver owners can run production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 after production-bound readiness passes; it creates production-driver-evidence-export\production-driver-evidence and production-driver-evidence-export\production-driver-evidence.zip.',
+    '4. Production Lua owners can run production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1 after real Lua patch readiness passes; it creates production-lua-evidence-export\production-lua-evidence and production-lua-evidence-export\production-lua-evidence.zip.',
+    '5. Live model owners can run live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 after direct live provider smoke passes; it creates live-model-endpoint-smoke-evidence-export\live-smoke-evidence and live-model-endpoint-smoke-evidence-export\live-smoke-evidence.zip.',
+    '6. Owners copy returned evidence into production-external-evidence-inbox\production-driver-evidence, production-external-evidence-inbox\production-lua-evidence, and production-external-evidence-inbox\live-smoke-evidence.',
+    "7. Run the bundled self-contained semantic preflight helper: $semanticPreflightSelfContainedFolderCommand or $semanticPreflightSelfContainedZipCommand before auto acceptance. It invokes semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0. Zip inputs are checked for unsafe, duplicate, absolute, or traversal entries before extraction.",
+    '8. Run production-external-evidence-inbox\accept-returned-evidence.ps1 to generate the Markdown acceptance report.',
+    '9. Run the hard validation command from the owner packet or production-handoff-package\ci-commands.ps1.'
 )
 if ($operatorActionQueueAvailable) {
-    $exportReadmeLines += "10. Use `operator-actions\\production-external-evidence-action-queue.md` as the canonical operator checklist for returned folder/zip semantic preflight and auto acceptance. In CI it still includes the pending local progress-mail action; only a real accepted dispatch receipt may clear that local action."
+    $exportReadmeLines += '10. Start with operator-actions\NEXT-STEPS.md, then use operator-actions\production-external-evidence-action-queue.md as the canonical detailed operator checklist for returned folder/zip semantic preflight and auto acceptance. In CI it still includes the pending local progress-mail action; only a real accepted dispatch receipt may clear that local action.'
 }
 $exportReadmeLines += @(
     "",
     "## Contents",
     "",
-    "- `production-handoff-package/`: owner packets, preflight script, acceptance wrapper, CI commands, and blocker maps.",
-    "- `production-handoff-package/verify-external-evidence.ps1`: optional preflight for explicit evidence directories.",
-    "- `production-handoff-package/accept-external-evidence.ps1`: optional wrapper for explicit evidence directories.",
-    "- `production-external-evidence-inbox/`: returned-evidence directory layout and wrapper for accepting owner evidence.",
-    "- `run-semantic-preflight.ps1`: self-contained returned folder/zip semantic preflight wrapper bundled with `semantic-preflight/Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1`.",
-    "- `production-driver-binding-kit/`: host-project production replay driver binding kit, including `Export-ProductionDriverEvidenceBundle.ps1` for production-bound driver evidence folder/zip export.",
-    "- `production-lua-patch-evidence-kit/`: host-project production Lua evidence template kit, including `Export-ProductionLuaPatchEvidenceBundle.ps1` for real Lua evidence folder/zip export.",
-    "- `live-model-endpoint-config-kit/`: host-project live endpoint smoke configuration kit, including `Export-LiveModelEndpointSmokeEvidenceBundle.ps1` for direct live provider smoke evidence folder/zip export."
+    '- production-handoff-package/: owner packets, preflight script, acceptance wrapper, CI commands, and blocker maps.',
+    '- production-handoff-package/verify-external-evidence.ps1: optional preflight for explicit evidence directories.',
+    '- production-handoff-package/accept-external-evidence.ps1: optional wrapper for explicit evidence directories.',
+    '- production-external-evidence-inbox/: returned-evidence directory layout and wrapper for accepting owner evidence.',
+    '- run-semantic-preflight.ps1: self-contained returned folder/zip semantic preflight wrapper bundled with semantic-preflight/Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1.',
+    '- production-driver-binding-kit/: host-project production replay driver binding kit, including Export-ProductionDriverEvidenceBundle.ps1 for production-bound driver evidence folder/zip export.',
+    '- production-lua-patch-evidence-kit/: host-project production Lua evidence template kit, including Export-ProductionLuaPatchEvidenceBundle.ps1 for real Lua evidence folder/zip export.',
+    '- live-model-endpoint-config-kit/: host-project live endpoint smoke configuration kit, including Export-LiveModelEndpointSmokeEvidenceBundle.ps1 for direct live provider smoke evidence folder/zip export.'
 )
 if ($ownerResponseBundleKitAvailable) {
-    $exportReadmeLines += "- `production-handoff-owner-response-bundle-kit/`: fillable owner response bundle template with verifier, import helper, semantic preflight, and returned folder/zip auto-acceptance commands."
+    $exportReadmeLines += '- production-handoff-owner-response-bundle-kit/: fillable owner response bundle template with verifier, import helper, semantic preflight, and returned folder/zip auto-acceptance commands.'
 }
 if ($operatorActionQueueAvailable) {
-    $exportReadmeLines += "- `operator-actions/`: canonical action queue, remaining-work source snapshot, and action-queue probe proof for the remaining external evidence work."
+    $exportReadmeLines += '- operator-actions/: short next-steps checklist, canonical action queue, remaining-work source snapshot, and action-queue probe proof for the remaining external evidence work.'
 }
 if ($semanticPreflightProbeAvailable) {
-    $exportReadmeLines += "- `contract-evidence/production-external-evidence-semantic-preflight-probe.md`: read-only semantic preflight probe for returned owner bundle directories and zips before auto acceptance."
+    $exportReadmeLines += '- contract-evidence/production-external-evidence-semantic-preflight-probe.md: read-only semantic preflight probe for returned owner bundle directories and zips before auto acceptance.'
 }
 $exportReadmeLines += @(
-    "- `contract-evidence/`: accepted-fixture and rejection reports proving the intake path without claiming real production evidence.",
-    "- `contract-evidence/production-external-evidence-inbox-acceptance.md`: accepted returned-evidence inbox wrapper contract report.",
+    '- contract-evidence/: accepted-fixture and rejection reports proving the intake path without claiming real production evidence.',
+    '- contract-evidence/production-external-evidence-inbox-acceptance.md: accepted returned-evidence inbox wrapper contract report.',
     "",
     "## Current External Work",
     "",
@@ -505,6 +598,7 @@ $requiredExportSnippets = @(
     "Export-LiveModelEndpointSmokeEvidenceBundle.ps1",
     "live-smoke-evidence.zip",
     "run-semantic-preflight.ps1",
+    "run-semantic-preflight.ps1: self-contained returned folder/zip semantic preflight wrapper",
     "semantic-preflight",
     "production-external-evidence-inbox",
     "accept-returned-evidence.ps1",
@@ -532,8 +626,10 @@ if ($ownerResponseBundleKitAvailable) {
 if ($operatorActionQueueAvailable) {
     $requiredExportSnippets += @(
         "operator-actions",
+        "NEXT-STEPS.md",
         "production-external-evidence-action-queue.md",
-        "canonical operator checklist",
+        "short next-steps checklist",
+        "canonical detailed operator checklist",
         "remaining-work source snapshot",
         "semantic preflight"
     )
@@ -584,6 +680,7 @@ if ($ownerResponseBundleKitAvailable) {
 }
 if ($operatorActionQueueAvailable) {
     $requiredExportPaths += @($operatorActionQueueFiles | ForEach-Object { "production-handoff-export\" + $_["destination"] })
+    $requiredExportPaths += "production-handoff-export\operator-actions\NEXT-STEPS.md"
 }
 $missingExportPathCount = @($requiredExportPaths | Where-Object { $exportFiles -notcontains $_ }).Count
 $productionDriverEvidenceExportHelperRelativePath = "production-handoff-export\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1"
@@ -603,11 +700,13 @@ $semanticPreflightSelfContainedCoreText = if (Test-Path $semanticPreflightCorePa
 
 $operatorActionQueueManifestRelativePath = "production-handoff-export\operator-actions\production-external-evidence-action-queue-manifest.json"
 $operatorActionQueueReportRelativePath = "production-handoff-export\operator-actions\production-external-evidence-action-queue.md"
+$operatorActionNextStepsRelativePath = "production-handoff-export\operator-actions\NEXT-STEPS.md"
 $operatorActionQueueProbeManifestRelativePath = "production-handoff-export\operator-actions\production-external-evidence-action-queue-probe-manifest.json"
 $operatorActionQueueRemainingWorkSnapshotRelativePath = "production-handoff-export\operator-actions\release-progress-notification-remaining-work-snapshot.json"
 $operatorActionQueuePostDispatchSnapshotRelativePath = "production-handoff-export\operator-actions\release-progress-notification-post-dispatch-snapshot-manifest.json"
 $operatorActionQueueManifestIncluded = $exportFiles -contains $operatorActionQueueManifestRelativePath
 $operatorActionQueueReportIncluded = $exportFiles -contains $operatorActionQueueReportRelativePath
+$operatorActionNextStepsIncluded = $exportFiles -contains $operatorActionNextStepsRelativePath
 $operatorActionQueueProbeManifestIncluded = $exportFiles -contains $operatorActionQueueProbeManifestRelativePath
 $operatorActionQueueRemainingWorkSnapshotIncluded = $exportFiles -contains $operatorActionQueueRemainingWorkSnapshotRelativePath
 $operatorActionQueuePostDispatchSnapshotIncluded = $exportFiles -contains $operatorActionQueuePostDispatchSnapshotRelativePath
@@ -660,12 +759,17 @@ $ownerResponseBundleKitExportContentValidated = (
     $ownerResponseBundleKitExportContentText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1")
 )
 $operatorActionQueueReportText = ""
+$operatorActionNextStepsText = ""
 $operatorActionQueueItemBundleCommandCount = 0
 $operatorActionQueueItemSemanticPreflightCommandCount = 0
 if ($operatorActionQueueAvailable) {
     $operatorActionQueueReportPath = Join-Path $exportPath "operator-actions\production-external-evidence-action-queue.md"
     if (Test-Path $operatorActionQueueReportPath) {
         $operatorActionQueueReportText = Get-Content -Path $operatorActionQueueReportPath -Encoding UTF8 -Raw
+    }
+    $operatorActionNextStepsPath = Join-Path $exportPath "operator-actions\NEXT-STEPS.md"
+    if (Test-Path $operatorActionNextStepsPath) {
+        $operatorActionNextStepsText = Get-Content -Path $operatorActionNextStepsPath -Encoding UTF8 -Raw
     }
     $operatorActionQueueItems = @(Get-ObjectProperty $operatorActionQueueManifest "actionQueue" @())
     $operatorActionQueueItemBundleCommandCount = @($operatorActionQueueItems | Where-Object {
@@ -683,6 +787,25 @@ if ($operatorActionQueueAvailable) {
             ([string](Get-ObjectProperty $_ "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath")
         }).Count
 }
+$operatorActionNextStepsContentValidated = (
+    $operatorActionQueueAvailable -and
+    $operatorActionNextStepsIncluded -and
+    $operatorActionNextStepsText.Contains("AI TestPilot Operator Next Steps") -and
+    $operatorActionNextStepsText.Contains("External owner areas: 3") -and
+    $operatorActionNextStepsText.Contains("Missing files: 9") -and
+    $operatorActionNextStepsText.Contains("Blocking reasons: 11") -and
+    $operatorActionNextStepsText.Contains("Local progress-mail action still pending: 1") -and
+    $operatorActionNextStepsText.Contains("host_project_gameplay_qa") -and
+    $operatorActionNextStepsText.Contains("host_project_lua_owner") -and
+    $operatorActionNextStepsText.Contains("host_project_ai_platform") -and
+    $operatorActionNextStepsText.Contains("-OwnerResponseBundleZipPath") -and
+    $operatorActionNextStepsText.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    $operatorActionNextStepsText.Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
+    $operatorActionNextStepsText.Contains("Invoke-AITestPilotReleasePipeline.ps1") -and
+    $operatorActionNextStepsText.Contains("Fixture evidence remains unpromoted") -and
+    -not $operatorActionNextStepsText.Contains("System.Collections") -and
+    -not $operatorActionNextStepsText.Contains("@{")
+)
 $productionDriverEvidenceExportHelperDocumented = (
     $productionDriverEvidenceExportHelperIncluded -and
     $exportReadmeText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
@@ -724,6 +847,7 @@ $operatorActionQueueExportContentValidated = (
     $operatorActionQueueItemSemanticPreflightCommandCount -eq 3 -and
     $operatorActionQueueManifestIncluded -and
     $operatorActionQueueReportIncluded -and
+    $operatorActionNextStepsIncluded -and
     $operatorActionQueueProbeManifestIncluded -and
     $operatorActionQueueSourceSnapshotIncluded -and
     $operatorActionQueueManifestHashMatchesCanonical -and
@@ -752,7 +876,8 @@ $operatorActionQueueExportContentValidated = (
     $operatorActionQueueReportText.Contains("Owner response bundle zip auto acceptance") -and
     $operatorActionQueueReportText.Contains("Bundle Area") -and
     $operatorActionQueueReportText.Contains("Bundle Semantic Preflight") -and
-    $operatorActionQueueReportText.Contains("Bundle Acceptance")
+    $operatorActionQueueReportText.Contains("Bundle Acceptance") -and
+    $operatorActionNextStepsContentValidated
 )
 $exportReadmeSemanticPreflightIndex = $exportReadmeText.IndexOf("run-semantic-preflight.ps1", [System.StringComparison]::OrdinalIgnoreCase)
 $exportReadmeAutoAcceptanceIndex = $exportReadmeText.IndexOf("before auto acceptance", [System.StringComparison]::OrdinalIgnoreCase)
@@ -866,6 +991,11 @@ $checks = @(
         message = "Final export must include the canonical operator action queue, matching root manifest hash, source snapshot, probe proof, and returned folder/zip semantic preflight plus auto-acceptance commands once the action queue is available."
     },
     [ordered]@{
+        name = "operator_action_next_steps_export"
+        passed = ((-not $operatorActionQueueAvailable) -or $operatorActionNextStepsContentValidated)
+        message = "Final export must include a short operator NEXT-STEPS checklist covering all three owner routes, semantic preflight, auto acceptance, hard validation, and evidence boundaries."
+    },
+    [ordered]@{
         name = "semantic_preflight_before_auto_acceptance_documented"
         passed = $semanticPreflightBeforeAutoAcceptanceCheckPassed
         message = "Final export must document read-only semantic preflight before returned bundle auto acceptance and include the semantic preflight probe evidence."
@@ -934,6 +1064,9 @@ $manifest = [ordered]@{
     operatorActionQueueManifestSourceKind = $(if ($operatorActionQueueAvailable) { [string](Get-ObjectProperty $operatorActionQueueManifest "sourceKind" "") } else { "" })
     operatorActionQueueManifestIncluded = [bool]$operatorActionQueueManifestIncluded
     operatorActionQueueReportIncluded = [bool]$operatorActionQueueReportIncluded
+    operatorActionNextStepsIncluded = [bool]$operatorActionNextStepsIncluded
+    operatorActionNextStepsContentValidated = [bool]$operatorActionNextStepsContentValidated
+    operatorActionNextStepsPath = $operatorActionNextStepsRelativePath
     operatorActionQueueProbeIncluded = [bool]$operatorActionQueueAvailable
     operatorActionQueueProbeManifestIncluded = [bool]$operatorActionQueueProbeManifestIncluded
     operatorActionQueueSourceSnapshotIncluded = [bool]$operatorActionQueueSourceSnapshotIncluded

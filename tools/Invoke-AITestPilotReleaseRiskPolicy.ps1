@@ -935,6 +935,8 @@ $productionHandoffExportAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueProbeManifestIncluded" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSourceSnapshotIncluded" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueRemainingWorkSnapshotIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionNextStepsIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionNextStepsContentValidated" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueuePostDispatchSnapshotIncluded" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueManifestHashMatchesCanonical" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueContentValidated" $false)) -and
@@ -962,7 +964,7 @@ $productionHandoffExportAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffExportManifest "productionOutputBoundary" "") -eq "host_project_external_handoff_export_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 13 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 14 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2827,6 +2829,9 @@ $manifest = [ordered]@{
     productionHandoffExportOperatorActionQueueSourceSnapshotIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSourceSnapshotIncluded" $false)
     productionHandoffExportOperatorActionQueueRemainingWorkSnapshotIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueRemainingWorkSnapshotIncluded" $false)
     productionHandoffExportOperatorActionQueuePostDispatchSnapshotIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueuePostDispatchSnapshotIncluded" $false)
+    productionHandoffExportOperatorActionNextStepsIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionNextStepsIncluded" $false)
+    productionHandoffExportOperatorActionNextStepsContentValidated = (Get-JsonValue $productionHandoffExportManifest "operatorActionNextStepsContentValidated" $false)
+    productionHandoffExportOperatorActionNextStepsPath = (Get-JsonValue $productionHandoffExportManifest "operatorActionNextStepsPath" "")
     productionHandoffExportOperatorActionQueueManifestHashMatchesCanonical = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueManifestHashMatchesCanonical" $false)
     productionHandoffExportOperatorActionQueueContentValidated = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueContentValidated" $false)
     productionHandoffExportOperatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented" $false)

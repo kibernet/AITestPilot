@@ -2046,6 +2046,9 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.operatorActionQueueProbeManifestIncluded -and
             [bool]$productionHandoffExportManifest.operatorActionQueueSourceSnapshotIncluded -and
             [bool]$productionHandoffExportManifest.operatorActionQueueRemainingWorkSnapshotIncluded -and
+            [bool]$productionHandoffExportManifest.operatorActionNextStepsIncluded -and
+            [bool]$productionHandoffExportManifest.operatorActionNextStepsContentValidated -and
+            ([string]$productionHandoffExportManifest.operatorActionNextStepsPath).Contains("NEXT-STEPS.md") -and
             -not [bool]$productionHandoffExportManifest.operatorActionQueuePostDispatchSnapshotIncluded -and
             [bool]$productionHandoffExportManifest.operatorActionQueueManifestHashMatchesCanonical -and
             [bool]$productionHandoffExportManifest.operatorActionQueueContentValidated -and
@@ -2073,7 +2076,7 @@ if ($null -ne $productionHandoffExportManifest) {
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 13 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 14 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 
@@ -3703,6 +3706,9 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueProbeManifestIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueSourceSnapshotIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueRemainingWorkSnapshotIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionNextStepsIncluded -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionNextStepsContentValidated -and
+            ([string]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionNextStepsPath).Contains("NEXT-STEPS.md") -and
             -not [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueuePostDispatchSnapshotIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueManifestHashMatchesCanonical -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueContentValidated -and

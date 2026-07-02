@@ -339,6 +339,7 @@ $requiredZipEntries = @(
     "production-handoff-owner-response-bundle-kit\run-semantic-preflight.ps1",
     "production-handoff-owner-response-bundle-kit\semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
     "operator-actions\production-external-evidence-action-queue-manifest.json",
+    "operator-actions\NEXT-STEPS.md",
     "operator-actions\production-external-evidence-action-queue.md",
     "operator-actions\production-external-evidence-action-queue-probe-manifest.json",
     "operator-actions\production-external-evidence-action-queue-probe.md",
@@ -473,6 +474,7 @@ $reportContentValidated = $reportText.Contains("Zip SHA256") -and
     $reportText.Contains("run-semantic-preflight.ps1") -and
     $reportText.Contains("semantic-preflight") -and
     $reportText.Contains("operator-actions") -and
+    $reportText.Contains("NEXT-STEPS.md") -and
     $reportText.Contains("production-external-evidence-action-queue-manifest.json") -and
     $reportText.Contains("remaining-work-snapshot") -and
     $reportText.Contains("production-external-evidence-inbox") -and
