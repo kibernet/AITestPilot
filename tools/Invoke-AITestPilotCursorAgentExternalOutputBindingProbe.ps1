@@ -307,6 +307,9 @@ function Invoke-BindingScenario {
     & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
         -EvidenceBundleDir $scenarioDir | Out-Null
 
+    & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndexFieldCoverageProbe.ps1") `
+        -EvidenceBundleDir $scenarioDir | Out-Null
+
     $gateManifestPath = Join-Path $scenarioDir "release-gate-manifest.json"
     $gateThrew = $false
     $gateError = ""
