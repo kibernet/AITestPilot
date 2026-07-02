@@ -268,6 +268,7 @@ $requiredDocStrings = @(
     [ordered]@{ file = "README.md"; pattern = "production-handoff-owner-packet-real-receipt-guard-probe-manifest.json"; label = "owner packet real receipt guard probe artifact" },
     [ordered]@{ file = "README.md"; pattern = "Invoke-AITestPilotProductionHandoffOwnerRouteMap.ps1"; label = "owner route map command" },
     [ordered]@{ file = "README.md"; pattern = 'operator-actions\NEXT-STEPS.md'; label = "operator next steps export artifact" },
+    [ordered]@{ file = "README.md"; pattern = "source-to-export SHA256 proof for every kit file"; label = "owner response bundle kit source hash proof" },
     [ordered]@{ file = "README.md"; pattern = "production-handoff-owner-route-map-manifest.json"; label = "owner route map artifact" },
     [ordered]@{ file = "README.md"; pattern = "Invoke-AITestPilotProductionHandoffOwnerRouteMapProbe.ps1"; label = "owner route map probe command" },
     [ordered]@{ file = "README.md"; pattern = "production-handoff-owner-route-map-probe-manifest.json"; label = "owner route map probe artifact" },
@@ -294,6 +295,7 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production_handoff_owner_route_map_probe"; label = "owner route map probe pipeline step" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production-handoff-owner-route-map-manifest.json"; label = "owner route map pipeline artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = 'operator-actions\NEXT-STEPS.md'; label = "operator next steps pipeline artifact" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "source-to-export SHA256 proof for every kit file"; label = "owner response bundle kit pipeline source hash proof" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "production-handoff-owner-route-map-probe-manifest.json"; label = "owner route map probe pipeline artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release-docs-freshness-manifest.json"; label = "docs freshness artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "required release artifact names, source files, and source-manifest coverage"; label = "docs freshness pipeline source files reference" },
@@ -316,6 +318,7 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/architecture.md"; pattern = "production handoff owner route map"; label = "owner route map architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "production-handoff-owner-route-map-manifest.json"; label = "owner route map architecture artifact" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "operator-actions/NEXT-STEPS.md"; label = "operator next steps architecture artifact" },
+    [ordered]@{ file = "docs/architecture.md"; pattern = "source-to-export SHA256 proof for every kit file"; label = "owner response bundle kit architecture source hash proof" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "production-handoff-owner-route-map-probe-manifest.json"; label = "owner route map probe architecture artifact" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "OwnerResponseBundleZipPath"; label = "owner response bundle zip architecture reference" },
     [ordered]@{ file = "docs/architecture.md"; pattern = "unsafe/duplicate/absolute/traversal zip rejection"; label = "owner response bundle zip safety architecture reference" },
@@ -330,6 +333,7 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/roadmap.md"; pattern = "owner packet real receipt guard proof"; label = "roadmap owner packet real receipt guard proof" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "production handoff owner route map"; label = "roadmap owner route map reference" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = 'operator-actions\NEXT-STEPS.md'; label = "roadmap operator next steps artifact" },
+    [ordered]@{ file = "docs/roadmap.md"; pattern = "source-to-export SHA256 proof for every kit file"; label = "roadmap owner response bundle kit source hash proof" },
     [ordered]@{ file = "docs/roadmap.md"; pattern = "production handoff owner route map and probe"; label = "roadmap owner route map probe reference" }
 )
 $missingRequiredDocStrings = @()

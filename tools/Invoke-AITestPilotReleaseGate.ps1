@@ -2008,6 +2008,12 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitAutoAcceptanceCommandsDocumented -and
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitSemanticPreflightCommandsDocumented -and
             [bool]$productionHandoffExportManifest.ownerResponseBundleKitVerifyHelperSemanticNextStepDocumented -and
+            [bool]$productionHandoffExportManifest.ownerResponseBundleKitHashesMatchSource -and
+            [int]$productionHandoffExportManifest.ownerResponseBundleKitSourceFileCount -gt 0 -and
+            [int]$productionHandoffExportManifest.ownerResponseBundleKitExportedFileCount -eq [int]$productionHandoffExportManifest.ownerResponseBundleKitSourceFileCount -and
+            [int]$productionHandoffExportManifest.ownerResponseBundleKitHashMismatchCount -eq 0 -and
+            [int]$productionHandoffExportManifest.ownerResponseBundleKitMissingExportFileCount -eq 0 -and
+            [int]$productionHandoffExportManifest.ownerResponseBundleKitExtraExportFileCount -eq 0 -and
             $productionHandoffExportManifest.ownerResponseBundleKitSemanticPreflightCandidateField -eq "readyForAcceptanceCandidate" -and
             $productionHandoffExportManifest.ownerResponseBundleKitSemanticPreflightStatusField -eq "semanticPreflightStatus" -and
             $productionHandoffExportManifest.ownerResponseBundleKitSemanticPreflightFailCountField -eq "semanticFailCount" -and
@@ -2076,7 +2082,7 @@ if ($null -ne $productionHandoffExportManifest) {
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 14 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 15 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 

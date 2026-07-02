@@ -897,6 +897,13 @@ $productionHandoffExportAccepted = (
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitAutoAcceptanceCommandsDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitSemanticPreflightCommandsDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitVerifyHelperSemanticNextStepDocumented" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitHashesMatchSource" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitSourceFileCount" 0)) -gt 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitExportedFileCount" 0)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitSourceFileCount" -1)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitHashMismatchCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitMissingExportFileCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitExtraExportFileCount" 1)) -eq 0 -and
     (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitSemanticPreflightCandidateField" "") -eq "readyForAcceptanceCandidate" -and
     (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitSemanticPreflightStatusField" "") -eq "semanticPreflightStatus" -and
     (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitSemanticPreflightFailCountField" "") -eq "semanticFailCount" -and
@@ -964,7 +971,7 @@ $productionHandoffExportAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffExportManifest "productionOutputBoundary" "") -eq "host_project_external_handoff_export_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 14 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 15 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2807,6 +2814,10 @@ $manifest = [ordered]@{
     productionHandoffExportOwnerResponseBundleKitAutoAcceptanceDocumented = (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitAutoAcceptanceCommandsDocumented" $false)
     productionHandoffExportOwnerResponseBundleKitSemanticPreflightDocumented = (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitSemanticPreflightCommandsDocumented" $false)
     productionHandoffExportOwnerResponseBundleKitVerifyHelperSemanticNextStepDocumented = (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitVerifyHelperSemanticNextStepDocumented" $false)
+    productionHandoffExportOwnerResponseBundleKitHashesMatchSource = (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitHashesMatchSource" $false)
+    productionHandoffExportOwnerResponseBundleKitSourceFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitSourceFileCount" 0))
+    productionHandoffExportOwnerResponseBundleKitExportedFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitExportedFileCount" 0))
+    productionHandoffExportOwnerResponseBundleKitHashMismatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerResponseBundleKitHashMismatchCount" 0))
     productionHandoffExportSemanticPreflightProbeIncluded = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeIncluded" $false)
     productionHandoffExportSemanticPreflightProbeReadOnly = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeReadOnly" $false)
     productionHandoffExportSemanticPreflightProbeAcceptanceRun = (Get-JsonValue $productionHandoffExportManifest "semanticPreflightProbeAcceptanceRun" $true)

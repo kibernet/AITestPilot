@@ -170,6 +170,23 @@ function Convert-ToRelativePath {
     return [System.Uri]::UnescapeDataString($rootUri.MakeRelativeUri($pathUri).ToString()).Replace("/", "\")
 }
 
+function Get-DirectoryHashMap {
+    param([string]$Root)
+
+    $hashes = [ordered]@{}
+    if ([string]::IsNullOrWhiteSpace($Root) -or -not (Test-Path $Root)) {
+        return $hashes
+    }
+
+    $rootPath = Resolve-FullPath $Root
+    foreach ($file in @(Get-ChildItem -LiteralPath $rootPath -Recurse -File | Sort-Object FullName)) {
+        $relativePath = Convert-ToRelativePath $rootPath $file.FullName
+        $hashes[$relativePath] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+
+    return $hashes
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $exportPath = Assert-PathUnderEvidenceBundle $ExportDir "ExportDir"
 $manifestFullPath = Assert-PathUnderEvidenceBundle $ManifestPath "ManifestPath"
@@ -683,6 +700,61 @@ if ($operatorActionQueueAvailable) {
     $requiredExportPaths += "production-handoff-export\operator-actions\NEXT-STEPS.md"
 }
 $missingExportPathCount = @($requiredExportPaths | Where-Object { $exportFiles -notcontains $_ }).Count
+$ownerResponseBundleKitSourceFileCount = 0
+$ownerResponseBundleKitExportedFileCount = 0
+$ownerResponseBundleKitMissingExportFileCount = 0
+$ownerResponseBundleKitExtraExportFileCount = 0
+$ownerResponseBundleKitHashMismatchCount = 0
+$ownerResponseBundleKitHashMatchCount = 0
+$ownerResponseBundleKitHashesMatchSource = $false
+$ownerResponseBundleKitMissingExportFiles = @()
+$ownerResponseBundleKitExtraExportFiles = @()
+$ownerResponseBundleKitHashMismatchFiles = @()
+$ownerResponseBundleKitFileHashes = @()
+if ($ownerResponseBundleKitAvailable) {
+    $ownerResponseBundleKitExportDirPath = Join-Path $exportPath "production-handoff-owner-response-bundle-kit"
+    $ownerResponseBundleKitSourceHashes = Get-DirectoryHashMap $ownerResponseBundleKitDirPath
+    $ownerResponseBundleKitExportHashes = Get-DirectoryHashMap $ownerResponseBundleKitExportDirPath
+    $ownerResponseBundleKitSourceFiles = @($ownerResponseBundleKitSourceHashes.Keys | ForEach-Object { [string]$_ } | Sort-Object)
+    $ownerResponseBundleKitExportedFiles = @($ownerResponseBundleKitExportHashes.Keys | ForEach-Object { [string]$_ } | Sort-Object)
+    $ownerResponseBundleKitSourceFileCount = [int]$ownerResponseBundleKitSourceFiles.Count
+    $ownerResponseBundleKitExportedFileCount = [int]$ownerResponseBundleKitExportedFiles.Count
+    $ownerResponseBundleKitMissingExportFiles = @($ownerResponseBundleKitSourceFiles | Where-Object { $ownerResponseBundleKitExportedFiles -notcontains $_ })
+    $ownerResponseBundleKitExtraExportFiles = @($ownerResponseBundleKitExportedFiles | Where-Object { $ownerResponseBundleKitSourceFiles -notcontains $_ })
+    $ownerResponseBundleKitHashMismatchFiles = @($ownerResponseBundleKitSourceFiles | Where-Object {
+            $ownerResponseBundleKitExportedFiles -contains $_ -and
+            [string]$ownerResponseBundleKitSourceHashes[$_] -ne [string]$ownerResponseBundleKitExportHashes[$_]
+        })
+    $ownerResponseBundleKitHashFileSet = @($ownerResponseBundleKitSourceFiles + $ownerResponseBundleKitExportedFiles | Sort-Object -Unique)
+    $ownerResponseBundleKitFileHashes = @($ownerResponseBundleKitHashFileSet | ForEach-Object {
+            $relativePath = [string]$_
+            $sourceExists = $ownerResponseBundleKitSourceFiles -contains $relativePath
+            $exportExists = $ownerResponseBundleKitExportedFiles -contains $relativePath
+            $sourceSha256 = if ($sourceExists) { [string]$ownerResponseBundleKitSourceHashes[$relativePath] } else { "" }
+            $exportSha256 = if ($exportExists) { [string]$ownerResponseBundleKitExportHashes[$relativePath] } else { "" }
+            [ordered]@{
+                relativePath = $relativePath
+                sourceRelativePath = "production-handoff-owner-response-bundle-kit\$relativePath"
+                exportRelativePath = "production-handoff-export\production-handoff-owner-response-bundle-kit\$relativePath"
+                sourceExists = [bool]$sourceExists
+                exportExists = [bool]$exportExists
+                sourceSha256 = $sourceSha256
+                exportSha256 = $exportSha256
+                hashMatches = [bool]($sourceExists -and $exportExists -and $sourceSha256 -eq $exportSha256)
+            }
+        })
+    $ownerResponseBundleKitMissingExportFileCount = [int]$ownerResponseBundleKitMissingExportFiles.Count
+    $ownerResponseBundleKitExtraExportFileCount = [int]$ownerResponseBundleKitExtraExportFiles.Count
+    $ownerResponseBundleKitHashMismatchCount = [int]$ownerResponseBundleKitHashMismatchFiles.Count
+    $ownerResponseBundleKitHashMatchCount = [int]($ownerResponseBundleKitSourceFileCount - $ownerResponseBundleKitMissingExportFileCount - $ownerResponseBundleKitHashMismatchCount)
+    $ownerResponseBundleKitHashesMatchSource = (
+        $ownerResponseBundleKitSourceFileCount -gt 0 -and
+        $ownerResponseBundleKitSourceFileCount -eq $ownerResponseBundleKitExportedFileCount -and
+        $ownerResponseBundleKitMissingExportFileCount -eq 0 -and
+        $ownerResponseBundleKitExtraExportFileCount -eq 0 -and
+        $ownerResponseBundleKitHashMismatchCount -eq 0
+    )
+}
 $productionDriverEvidenceExportHelperRelativePath = "production-handoff-export\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1"
 $productionDriverEvidenceExportHelperIncluded = $exportFiles -contains $productionDriverEvidenceExportHelperRelativePath
 $productionLuaEvidenceExportHelperRelativePath = "production-handoff-export\production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1"
@@ -986,6 +1058,11 @@ $checks = @(
         message = "Final export must include the owner response bundle kit and its returned folder/zip semantic preflight plus auto-acceptance handoff text once the kit is available."
     },
     [ordered]@{
+        name = "owner_response_bundle_kit_export_hashes"
+        passed = ((-not $ownerResponseBundleKitAvailable) -or $ownerResponseBundleKitHashesMatchSource)
+        message = "Final export must prove the copied owner response bundle kit exactly matches the source kit file set and SHA256 hashes."
+    },
+    [ordered]@{
         name = "operator_action_queue_export"
         passed = ((-not $operatorActionQueueAvailable) -or ($operatorActionQueueManifestIncluded -and $operatorActionQueueReportIncluded -and $operatorActionQueueProbeManifestIncluded -and $operatorActionQueueSourceSnapshotIncluded -and $operatorActionQueueManifestHashMatchesCanonical -and $operatorActionQueueExportContentValidated))
         message = "Final export must include the canonical operator action queue, matching root manifest hash, source snapshot, probe proof, and returned folder/zip semantic preflight plus auto-acceptance commands once the action queue is available."
@@ -1028,6 +1105,17 @@ $manifest = [ordered]@{
     ownerResponseBundleKitAutoAcceptanceCommandsDocumented = [bool]$ownerResponseBundleKitAutoAcceptanceCommandsDocumented
     ownerResponseBundleKitSemanticPreflightCommandsDocumented = [bool]$ownerResponseBundleKitSemanticPreflightCommandsDocumented
     ownerResponseBundleKitVerifyHelperSemanticNextStepDocumented = [bool](($ownerResponseBundleKitAvailable) -and (Get-ObjectProperty $ownerResponseBundleKitWorkflowProbeManifest "verifyHelperSemanticNextStepDocumented" $false))
+    ownerResponseBundleKitHashesMatchSource = [bool]$ownerResponseBundleKitHashesMatchSource
+    ownerResponseBundleKitSourceFileCount = [int]$ownerResponseBundleKitSourceFileCount
+    ownerResponseBundleKitExportedFileCount = [int]$ownerResponseBundleKitExportedFileCount
+    ownerResponseBundleKitHashMatchCount = [int]$ownerResponseBundleKitHashMatchCount
+    ownerResponseBundleKitMissingExportFileCount = [int]$ownerResponseBundleKitMissingExportFileCount
+    ownerResponseBundleKitExtraExportFileCount = [int]$ownerResponseBundleKitExtraExportFileCount
+    ownerResponseBundleKitHashMismatchCount = [int]$ownerResponseBundleKitHashMismatchCount
+    ownerResponseBundleKitMissingExportFiles = @($ownerResponseBundleKitMissingExportFiles)
+    ownerResponseBundleKitExtraExportFiles = @($ownerResponseBundleKitExtraExportFiles)
+    ownerResponseBundleKitHashMismatchFiles = @($ownerResponseBundleKitHashMismatchFiles)
+    ownerResponseBundleKitFileHashes = @($ownerResponseBundleKitFileHashes)
     ownerResponseBundleKitSemanticPreflightCandidateField = $(if ($ownerResponseBundleKitAvailable) { [string](Get-ObjectProperty $ownerResponseBundleKitManifest "semanticPreflightCandidateField" "") } else { "" })
     ownerResponseBundleKitSemanticPreflightStatusField = $(if ($ownerResponseBundleKitAvailable) { [string](Get-ObjectProperty $ownerResponseBundleKitManifest "semanticPreflightStatusField" "") } else { "" })
     ownerResponseBundleKitSemanticPreflightFailCountField = $(if ($ownerResponseBundleKitAvailable) { [string](Get-ObjectProperty $ownerResponseBundleKitManifest "semanticPreflightFailCountField" "") } else { "" })
