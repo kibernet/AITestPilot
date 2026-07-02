@@ -117,6 +117,42 @@ function Invoke-MissingEvidenceScenario {
     }
 }
 
+function Invoke-ExtraSourceManifestScenario {
+    param([string]$Name)
+
+    $scenarioDir = Join-Path $ProbeBundleDir $Name
+    New-Item -ItemType Directory -Force $scenarioDir | Out-Null
+    Copy-Item -Path (Join-Path $EvidenceBundleDir "*") -Destination $scenarioDir -Recurse -Force
+
+    $indexManifestPath = Join-Path $scenarioDir "release-evidence-index-manifest.json"
+    $indexManifest = Get-Content -Path $indexManifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+    $indexManifest.sourceManifestNames = @($indexManifest.sourceManifestNames) + "stale-extra-source-manifest.json"
+    $indexManifest | ConvertTo-Json -Depth 12 | Set-Content -Path $indexManifestPath -Encoding UTF8
+
+    $scenarioGateManifestPath = Join-Path $scenarioDir "release-gate-manifest.json"
+    $releaseGateOutput = & $releaseGateScript `
+        -EvidenceBundleDir $scenarioDir `
+        -ReleaseGateManifestPath $scenarioGateManifestPath `
+        -ExpectBlocked `
+        -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+        -RequireProductionLuaPatched:$RequireProductionLuaPatched `
+        -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke
+
+    $scenarioGateManifest = Get-Content -Path $scenarioGateManifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+    $failedReasons = @($scenarioGateManifest.failedReasons | ForEach-Object { [string]$_ })
+    $coverageReasonMatched = @($failedReasons | Where-Object { $_.Contains("release_evidence_index_primary_manifest_coverage") }).Count -gt 0
+    return [ordered]@{
+        name = $Name
+        addedSourceManifestName = "stale-extra-source-manifest.json"
+        releaseGateManifestPath = $scenarioGateManifestPath
+        releaseGateStatus = [string]$scenarioGateManifest.status
+        failedReasonCount = [int]$scenarioGateManifest.failedReasonCount
+        failedReasons = @($failedReasons)
+        releaseGateOutput = @($releaseGateOutput | ForEach-Object { [string]$_ })
+        blockedAsExpected = ([string]$scenarioGateManifest.status -eq "BLOCKED" -and [int]$scenarioGateManifest.failedReasonCount -gt 0 -and $coverageReasonMatched)
+    }
+}
+
 $scenarioResults = @(
     (Invoke-MissingEvidenceScenario "missing-repair-driver-failure" @(
         "repair-driver-failure-manifest.json",
@@ -128,7 +164,8 @@ $scenarioResults = @(
         "production-external-evidence-action-queue-manifest.json"
     ) @(
         "file:production-external-evidence-action-queue-manifest.json"
-    ))
+    )),
+    (Invoke-ExtraSourceManifestScenario "extra-release-evidence-index-source-manifest")
 )
 
 $failedScenarios = @($scenarioResults | Where-Object { -not [bool]$_["blockedAsExpected"] })

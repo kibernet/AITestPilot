@@ -3979,6 +3979,10 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         $requiredIndexedManifests += "repair-agent-cursor-agent-external-output-manifest.json"
     }
 
+    if ($null -ne $repairAgentCursorAgentExternalOutputBindingProbeManifest) {
+        $requiredIndexedManifests += "repair-agent-cursor-agent-external-output-binding-probe-manifest.json"
+    }
+
     if ($null -ne $productionReplayDriverBoundFailureProbeManifest) {
         $requiredIndexedManifests += "production-replay-driver-bound-failure-probe-manifest.json"
     }
@@ -4015,8 +4019,8 @@ if ($null -ne $releaseEvidenceIndexManifest) {
         "Release evidence index must summarize all source manifests as machine-readable, portal-ready evidence with no missing, unparseable, failed, blocked, unaccepted, or missing-file entries."
 
     Add-ReleaseCheck "release_evidence_index_primary_manifest_coverage" `
-        (Test-ContainsAll -Actual @($releaseEvidenceIndexManifest.sourceManifestNames) -Required $requiredIndexedManifests) `
-        "Release evidence index must include all primary release-gate source manifests."
+        (Test-StringSetEquals -Actual @($releaseEvidenceIndexManifest.sourceManifestNames) -Expected $requiredIndexedManifests) `
+        "Release evidence index source manifests must exactly match the primary release-gate source manifest set."
 
     Test-ListedFiles $releaseEvidenceIndexManifest "release_evidence_index"
 }
