@@ -290,6 +290,8 @@ $riskReportPath = Join-Path $probeBundlePath "release-risk-policy.md"
 $indexManifestPath = Join-Path $probeBundlePath "release-evidence-index-manifest.json"
 $indexJsonPath = Join-Path $probeBundlePath "release-evidence-index.json"
 $indexReportPath = Join-Path $probeBundlePath "release-evidence-index.md"
+$fieldCoverageProbeManifestPath = Join-Path $probeBundlePath "release-evidence-index-field-coverage-probe-manifest.json"
+$fieldCoverageProbeReportPath = Join-Path $probeBundlePath "release-evidence-index-field-coverage-probe.md"
 $gateManifestPath = Join-Path $probeBundlePath "release-gate-manifest.json"
 
 & (Join-Path $PSScriptRoot "Invoke-AITestPilotReleaseRiskPolicy.ps1") `
@@ -311,6 +313,11 @@ $gateManifestPath = Join-Path $probeBundlePath "release-gate-manifest.json"
     -RequireLiveModelEndpointSmoke `
     -ContractFixtureMode
 
+& (Join-Path $PSScriptRoot "Invoke-AITestPilotReleaseEvidenceIndexFieldCoverageProbe.ps1") `
+    -EvidenceBundleDir $probeBundlePath `
+    -ManifestPath $fieldCoverageProbeManifestPath `
+    -ReportPath $fieldCoverageProbeReportPath
+
 & (Join-Path $PSScriptRoot "Invoke-AITestPilotReleaseGate.ps1") `
     -EvidenceBundleDir $probeBundlePath `
     -ReleaseGateManifestPath $gateManifestPath `
@@ -321,6 +328,7 @@ $gateManifestPath = Join-Path $probeBundlePath "release-gate-manifest.json"
 
 $riskManifest = Read-JsonFile $riskManifestPath "Hard-mode success risk policy manifest"
 $indexManifest = Read-JsonFile $indexManifestPath "Hard-mode success release evidence index manifest"
+$fieldCoverageProbeManifest = Read-JsonFile $fieldCoverageProbeManifestPath "Hard-mode success release evidence index field coverage probe manifest"
 $gateManifest = Read-JsonFile $gateManifestPath "Hard-mode success release gate manifest"
 
 $riskPolicyPassedAsExpected = $riskManifest.status -eq "PASS" -and
@@ -379,6 +387,12 @@ $evidenceIndexPassedAsExpected = $indexManifest.status -eq "PASS" -and
     (Convert-ToInt (Get-JsonValue $indexManifest "blockingReasonCount" 1)) -eq 0 -and
     $evidenceIndexFieldLevelCoveragePassedAsExpected
 
+$fieldCoverageProbePassedAsExpected = $fieldCoverageProbeManifest.status -eq "PASS" -and
+    (Get-JsonValue $fieldCoverageProbeManifest "schemaVersion" "") -eq "aitestpilot.release_evidence_index_field_coverage_probe.v1" -and
+    (Convert-ToInt (Get-JsonValue $fieldCoverageProbeManifest "scenarioCount" 0)) -ge 3 -and
+    (Convert-ToInt (Get-JsonValue $fieldCoverageProbeManifest "failedScenarioCount" 1)) -eq 0 -and
+    (Get-JsonValue $fieldCoverageProbeManifest "productionOutputBoundary" "") -eq "release_evidence_index_field_coverage_probe_isolated_copies_only"
+
 $releaseGatePassedAsExpected = $gateManifest.status -eq "PASS" -and
     (Convert-ToBool (Get-JsonValue $gateManifest "allowRelease" $false)) -and
     (Convert-ToBool (Get-JsonValue $gateManifest "requireProductionReplayDriverBound" $false)) -and
@@ -404,6 +418,7 @@ Add-ProbeCheck "accepted_fixture_sources_copied" $acceptedFixtureSourcesCopied "
 Add-ProbeCheck "hard_mode_risk_policy_passed" $riskPolicyPassedAsExpected "Risk policy must pass when production driver, Lua, and live smoke accepted fixtures are canonical inside the isolated bundle."
 Add-ProbeCheck "hard_mode_evidence_index_passed" $evidenceIndexPassedAsExpected "Evidence index must stay complete and accepted under combined hard-mode switches."
 Add-ProbeCheck "hard_mode_evidence_index_field_coverage_passed" $evidenceIndexFieldLevelCoveragePassedAsExpected "Evidence index must report field-level coverage PASS with all semantic field checks passing in the hard-mode success bundle."
+Add-ProbeCheck "hard_mode_evidence_index_field_coverage_probe_passed" $fieldCoverageProbePassedAsExpected "Evidence index field coverage probe must pass inside the hard-mode success bundle before release gate."
 Add-ProbeCheck "hard_mode_release_gate_passed" $releaseGatePassedAsExpected "Release gate must pass the isolated hard-mode accepted-fixture bundle."
 Add-ProbeCheck "source_canonical_evidence_preserved" $sourceCanonicalEvidencePreserved "Default release evidence canonical production manifests must not be replaced by the success contract probe."
 
@@ -415,6 +430,8 @@ $copiedRiskReport = "production-hard-mode-success-risk-policy.md"
 $copiedIndexManifest = "production-hard-mode-success-index-manifest.json"
 $copiedIndexJson = "production-hard-mode-success-index.json"
 $copiedIndexReport = "production-hard-mode-success-index.md"
+$copiedFieldCoverageProbeManifest = "production-hard-mode-success-field-coverage-probe-manifest.json"
+$copiedFieldCoverageProbeReport = "production-hard-mode-success-field-coverage-probe.md"
 $copiedGateManifest = "production-hard-mode-success-gate-manifest.json"
 
 Copy-Item -LiteralPath $riskManifestPath -Destination (Join-Path $evidenceBundlePath $copiedRiskManifest) -Force
@@ -422,6 +439,8 @@ Copy-Item -LiteralPath $riskReportPath -Destination (Join-Path $evidenceBundlePa
 Copy-Item -LiteralPath $indexManifestPath -Destination (Join-Path $evidenceBundlePath $copiedIndexManifest) -Force
 Copy-Item -LiteralPath $indexJsonPath -Destination (Join-Path $evidenceBundlePath $copiedIndexJson) -Force
 Copy-Item -LiteralPath $indexReportPath -Destination (Join-Path $evidenceBundlePath $copiedIndexReport) -Force
+Copy-Item -LiteralPath $fieldCoverageProbeManifestPath -Destination (Join-Path $evidenceBundlePath $copiedFieldCoverageProbeManifest) -Force
+Copy-Item -LiteralPath $fieldCoverageProbeReportPath -Destination (Join-Path $evidenceBundlePath $copiedFieldCoverageProbeReport) -Force
 Copy-Item -LiteralPath $gateManifestPath -Destination (Join-Path $evidenceBundlePath $copiedGateManifest) -Force
 
 $reportLines = @(
@@ -440,6 +459,7 @@ $reportLines = @(
     "| Hard-mode evidence index status | $($indexManifest.status) |",
     "| Hard-mode evidence index field coverage | $fieldLevelCoverageStatus |",
     "| Hard-mode semantic field checks | $semanticFieldCheckPassedCount / $semanticFieldCheckCount |",
+    "| Hard-mode field coverage probe status | $($fieldCoverageProbeManifest.status) |",
     "| Hard-mode release gate status | $($gateManifest.status) |",
     "| Source canonical evidence preserved | $sourceCanonicalEvidencePreserved |",
     "| Release pipeline uses fixture | False |",
@@ -479,6 +499,8 @@ $files = @(
     $copiedIndexManifest,
     $copiedIndexJson,
     $copiedIndexReport,
+    $copiedFieldCoverageProbeManifest,
+    $copiedFieldCoverageProbeReport,
     $copiedGateManifest
 )
 
@@ -510,6 +532,8 @@ $manifest = [ordered]@{
     evidenceIndexPassedAsExpected = [bool]$evidenceIndexPassedAsExpected
     evidenceIndexFieldLevelCoverageStatus = $fieldLevelCoverageStatus
     evidenceIndexFieldLevelCoveragePassedAsExpected = [bool]$evidenceIndexFieldLevelCoveragePassedAsExpected
+    evidenceIndexFieldCoverageProbeStatus = $fieldCoverageProbeManifest.status
+    evidenceIndexFieldCoverageProbePassedAsExpected = [bool]$fieldCoverageProbePassedAsExpected
     evidenceIndexFieldLevelRequiredManifestCount = [int]$fieldLevelRequiredManifestCount
     evidenceIndexFieldLevelRequiredFieldCount = [int]$fieldLevelRequiredFieldCount
     evidenceIndexSemanticFieldCheckCount = [int]$semanticFieldCheckCount

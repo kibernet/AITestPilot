@@ -2120,6 +2120,7 @@ if ($null -ne $releaseDocsFreshnessManifest) {
             [int]$releaseDocsFreshnessManifest.missingRequiredDocStringCount -eq 0 -and
             [bool]$releaseDocsFreshnessManifest.sourceManifestListAligned -and
             [int]$releaseDocsFreshnessManifest.missingSourceManifestReferenceCount -eq 0 -and
+            [int]$releaseDocsFreshnessManifest.hardModeDefaultSourceProbeFailureCount -eq 0 -and
             [bool]$releaseDocsFreshnessManifest.reportGenerated -and
             [bool]$releaseDocsFreshnessManifest.reportContentValidated -and
             -not [bool]$releaseDocsFreshnessManifest.releasePipelineSendsEmail -and
@@ -2127,7 +2128,7 @@ if ($null -ne $releaseDocsFreshnessManifest) {
             -not [bool]$releaseDocsFreshnessManifest.externalEvidenceAccepted -and
             -not [bool]$releaseDocsFreshnessManifest.fixtureEvidencePromoted -and
             $releaseDocsFreshnessManifest.productionOutputBoundary -eq "release_docs_freshness_only" -and
-            [int]$releaseDocsFreshnessManifest.checkCount -eq 9 -and
+            [int]$releaseDocsFreshnessManifest.checkCount -eq 10 -and
             [int]$releaseDocsFreshnessManifest.failedCheckCount -eq 0) `
         "Release docs freshness must prove README, CI release docs, architecture, roadmap, pipeline step index, core artifact names, and source-manifest lists align with the current release pipeline before hard-mode copied-bundle probes."
 
@@ -3726,6 +3727,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.releaseDocsFreshnessMissingRequiredArtifactDocCount -eq 0 -and
             [int]$releaseRiskPolicyManifest.releaseDocsFreshnessMissingRequiredDocStringCount -eq 0 -and
             [bool]$releaseRiskPolicyManifest.releaseDocsFreshnessSourceManifestListAligned -and
+            [int]$releaseRiskPolicyManifest.releaseDocsFreshnessHardModeDefaultSourceProbeFailureCount -eq 0 -and
             [bool]$releaseRiskPolicyManifest.productionHandoffDispatchPlanAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessAccepted -and
             [bool]$releaseRiskPolicyManifest.productionHandoffContactReadinessContractAccepted -and

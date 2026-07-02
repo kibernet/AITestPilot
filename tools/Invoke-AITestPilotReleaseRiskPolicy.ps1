@@ -1020,6 +1020,7 @@ $releaseDocsFreshnessAccepted = (
     (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingRequiredDocStringCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "sourceManifestListAligned" $false)) -and
     (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingSourceManifestReferenceCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "hardModeDefaultSourceProbeFailureCount" 1)) -eq 0 -and
     (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "reportGenerated" $false)) -and
     (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "reportContentValidated" $false)) -and
     -not (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "releasePipelineSendsEmail" $true)) -and
@@ -1027,7 +1028,7 @@ $releaseDocsFreshnessAccepted = (
     -not (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $releaseDocsFreshnessManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $releaseDocsFreshnessManifest "productionOutputBoundary" "") -eq "release_docs_freshness_only" -and
-    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "checkCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "checkCount" 0)) -eq 10 -and
     (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -2858,6 +2859,7 @@ $manifest = [ordered]@{
     releaseDocsFreshnessMissingRequiredArtifactDocCount = (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingRequiredArtifactDocCount" 0))
     releaseDocsFreshnessMissingRequiredDocStringCount = (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "missingRequiredDocStringCount" 0))
     releaseDocsFreshnessSourceManifestListAligned = (Get-JsonValue $releaseDocsFreshnessManifest "sourceManifestListAligned" $false)
+    releaseDocsFreshnessHardModeDefaultSourceProbeFailureCount = (Convert-ToInt (Get-JsonValue $releaseDocsFreshnessManifest "hardModeDefaultSourceProbeFailureCount" 0))
     productionHandoffStatusAccepted = [bool]$productionHandoffStatusAccepted
     productionHandoffDispatchPlanAccepted = [bool]$productionHandoffDispatchPlanAccepted
     productionHandoffPendingDispatchCount = (Convert-ToInt (Get-JsonValue $productionHandoffDispatchPlanManifest "pendingDispatchCount" 0))
@@ -3157,6 +3159,7 @@ $reportLines = @(
     "- Release docs freshness step coverage: $($manifest.releaseDocsFreshnessDocumentedPipelineStepCount) / $($manifest.releaseDocsFreshnessPipelineStepCount)",
     "- Release docs freshness missing step docs: $($manifest.releaseDocsFreshnessMissingPipelineStepDocCount)",
     "- Release docs freshness source manifests aligned: $($manifest.releaseDocsFreshnessSourceManifestListAligned)",
+    "- Release docs freshness hard-mode default source failures: $($manifest.releaseDocsFreshnessHardModeDefaultSourceProbeFailureCount)",
     "- Production handoff status accepted: $($manifest.productionHandoffStatusAccepted)",
     "- Production handoff dispatch plan accepted: $($manifest.productionHandoffDispatchPlanAccepted)",
     "- Production handoff pending dispatches: $($manifest.productionHandoffPendingDispatchCount)",
