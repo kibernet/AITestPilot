@@ -295,6 +295,10 @@ $driverHandoffReady = $driverKit.status -eq "PASS" -and
     [bool](Get-JsonValue $driverKit "exportHelperGenerated" $false) -and
     [bool](Get-JsonValue $driverKit "exportHelperRequiresProductionBoundReadiness" $false) -and
     [bool](Get-JsonValue $driverKit "exportHelperRejectedSampleUnboundEvidence" $false) -and
+    [bool](Get-JsonValue $driverKit "pathBoundaryRejected" $false) -and
+    (Get-JsonValue $driverKit "productionOutputBoundary" "") -eq "production_driver_binding_kit_probe_only" -and
+    [int](Get-JsonValue $driverKit "checkCount" 0) -eq 1 -and
+    [int](Get-JsonValue $driverKit "failedCheckCount" 1) -eq 0 -and
     [bool](Get-JsonValue $driverKit "generatedKitOnly" $false) -and
     -not [bool](Get-JsonValue $driverKit "productionEvidenceAccepted" $true) -and
     $driverContract.status -eq "PASS" -and
@@ -313,6 +317,10 @@ $luaHandoffReady = $luaKit.status -eq "PASS" -and
     [bool](Get-JsonValue $luaKit "exportHelperRequiresRealHostProjectEvidence" $false) -and
     [bool](Get-JsonValue $luaKit "exportHelperRejectedTemplateEvidence" $false) -and
     [bool](Get-JsonValue $luaKit "exportHelperRejectedFixtureEvidence" $false) -and
+    [bool](Get-JsonValue $luaKit "pathBoundaryRejected" $false) -and
+    (Get-JsonValue $luaKit "productionOutputBoundary" "") -eq "production_lua_patch_evidence_kit_probe_only" -and
+    [int](Get-JsonValue $luaKit "checkCount" 0) -eq 6 -and
+    [int](Get-JsonValue $luaKit "failedCheckCount" 1) -eq 0 -and
     [bool](Get-JsonValue $luaKit "acceptedFixtureProbePassed" $false) -and
     -not [bool](Get-JsonValue $luaKit "releasePipelineUsesFixture" $true) -and
     -not [bool](Get-JsonValue $luaKit "realProductionLuaPatchEvidenceAccepted" $true) -and
@@ -331,10 +339,13 @@ $liveModelHandoffReady = $liveConfigKit.status -eq "PASS" -and
     [bool](Get-JsonValue $liveConfigKit "exportHelperRejectedMissingEvidence" $false) -and
     [bool](Get-JsonValue $liveConfigKit "exportHelperRejectedContractFixtureEvidence" $false) -and
     [bool](Get-JsonValue $liveConfigKit "exportHelperRequiresDirectLiveHttpProvenance" $false) -and
+    [bool](Get-JsonValue $liveConfigKit "pathBoundaryRejected" $false) -and
+    (Get-JsonValue $liveConfigKit "productionOutputBoundary" "") -eq "live_model_endpoint_config_kit_probe_only" -and
     -not [bool](Get-JsonValue $liveConfigKit "productionLiveEndpointAccessProven" $true) -and
     -not [bool](Get-JsonValue $liveConfigKit "secretsSerialized" $true) -and
     [int](Get-JsonValue $liveConfigKit "generatedFileCount" 0) -ge 7 -and
-    [int](Get-JsonValue $liveConfigKit "checkCount" 0) -eq 4 -and
+    [int](Get-JsonValue $liveConfigKit "checkCount" 0) -eq 5 -and
+    [int](Get-JsonValue $liveConfigKit "failedCheckCount" 1) -eq 0 -and
     $liveExternalSmoke.status -eq "PASS" -and
     -not [bool](Get-JsonValue $liveExternalSmoke "externalBundleUnderRepo" $true) -and
     [bool](Get-JsonValue $liveExternalSmoke "expectedBlockedPassed" $false) -and
