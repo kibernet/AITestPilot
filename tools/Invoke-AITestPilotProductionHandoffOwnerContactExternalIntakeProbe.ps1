@@ -11,6 +11,26 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
+function Test-PathWithinRoot {
+    param(
+        [string]$Path,
+        [string]$Root
+    )
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $fullRoot = [System.IO.Path]::GetFullPath($Root)
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($fullPath.Equals($fullRoot, $comparison)) {
+        return $true
+    }
+
+    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $fullPath.StartsWith($fullRoot, $comparison)
+}
+
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
 }
@@ -39,7 +59,7 @@ function Assert-PathUnderRepo {
     )
 
     $fullPath = Resolve-FullPath $Path
-    if (-not $fullPath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    if (-not (Test-PathWithinRoot $fullPath $repoRoot)) {
         throw "$Label must stay under repo root: $fullPath"
     }
 
@@ -243,7 +263,7 @@ $acceptedContactReadiness = Read-JsonFile (Join-Path $intakeBundlePath "producti
 $acceptedSendReadiness = Read-JsonFile (Join-Path $intakeBundlePath "production-handoff-send-readiness-manifest.json") "Accepted external contact send readiness manifest"
 
 $ownerContactCount = Convert-ToInt (Get-JsonValue $defaultContactReadiness "ownerContactCount" 0)
-$externalRosterOutsideRepo = -not (Resolve-FullPath $externalRosterPath).StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
+$externalRosterOutsideRepo = -not (Test-PathWithinRoot (Resolve-FullPath $externalRosterPath) $repoRoot)
 $defaultContactBoundaryPreserved = $defaultContactReadiness.status -eq "PASS" -and
     (Convert-ToInt (Get-JsonValue $defaultContactReadiness "missingOwnerContactCount" -1)) -eq $ownerContactCount -and
     (Convert-ToInt (Get-JsonValue $defaultContactReadiness "configuredOwnerContactCount" -1)) -eq 0 -and

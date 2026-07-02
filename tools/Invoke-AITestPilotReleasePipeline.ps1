@@ -25,6 +25,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$repoTempRoot = Join-Path $repoRoot "Temp"
+$repoArtifactRoot = Join-Path $repoRoot "artifacts"
 
 if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
@@ -77,10 +79,115 @@ function Assert-PathUnderRepo {
     return $fullPath
 }
 
+function Assert-ManagedOutputDir {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    $fullPath = Assert-PathUnderRepo $Path $Label
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    $pathRoot = [System.IO.Path]::GetPathRoot($fullPath)
+    $blockedRoots = @(
+        $pathRoot,
+        $repoRoot,
+        $repoTempRoot,
+        $repoArtifactRoot
+    )
+
+    foreach ($blockedRoot in $blockedRoots) {
+        if ([string]::IsNullOrWhiteSpace($blockedRoot)) {
+            continue
+        }
+
+        $blockedFullPath = Resolve-FullPath $blockedRoot
+        if ($fullPath.Equals($blockedFullPath, $comparison)) {
+            throw "$Label must target a managed child output directory, not a root directory. Path: $fullPath"
+        }
+    }
+
+    return $fullPath
+}
+
+function Initialize-PipelineEvidenceBundle {
+    param([string]$BundleDir)
+
+    $bundlePath = Assert-ManagedOutputDir $BundleDir "EvidenceBundleDir"
+    if (Test-Path $bundlePath) {
+        Remove-Item -LiteralPath $bundlePath -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Force $bundlePath | Out-Null
+    return $bundlePath
+}
+
+function Remove-FinalReleaseStatusArtifacts {
+    param([string]$ArtifactPath)
+
+    $finalReleaseFiles = @(
+        "release-gate-manifest.json",
+        "release-gate.md",
+        "release-risk-policy-manifest.json",
+        "release-risk-policy.md",
+        "release-evidence-index-manifest.json",
+        "release-evidence-index.json",
+        "release-evidence-index.md",
+        "release-evidence-index-field-coverage-probe-manifest.json",
+        "release-evidence-index-field-coverage-probe.md",
+        "release-docs-freshness-manifest.json",
+        "release-docs-freshness.md"
+    )
+
+    $removed = @()
+    foreach ($fileName in $finalReleaseFiles) {
+        $path = Join-Path $ArtifactPath $fileName
+        if (Test-Path $path) {
+            Remove-Item -LiteralPath $path -Force
+            $removed += $fileName
+        }
+    }
+
+    return @($removed)
+}
+
+function Write-FailedPipelineArtifactInvalidation {
+    param(
+        [string]$ArtifactPath,
+        [string[]]$InvalidatedFiles,
+        [datetime]$GeneratedAtUtc
+    )
+
+    $manifestPath = Join-Path $ArtifactPath "release-artifact-invalidated-manifest.json"
+    $manifest = [ordered]@{
+        schemaVersion = "aitestpilot.release_artifact_invalidation.v1"
+        status = "FAIL"
+        generatedAtUtc = $GeneratedAtUtc.ToString("O")
+        pipelineStatus = "FAIL"
+        reason = "pipeline_failed_before_final_release_artifact_refresh"
+        staleFinalReleaseArtifactsInvalidated = $true
+        invalidatedFileCount = [int]$InvalidatedFiles.Count
+        invalidatedFiles = @($InvalidatedFiles)
+        releaseGateUsable = $false
+        releaseRiskPolicyUsable = $false
+        releaseEvidenceIndexUsable = $false
+        generatedFiles = @(
+            "pipeline-manifest.json",
+            "release-artifact-invalidated-manifest.json"
+        )
+        files = @(
+            "pipeline-manifest.json",
+            "release-artifact-invalidated-manifest.json"
+        )
+    }
+
+    $manifest | ConvertTo-Json -Depth 8 | Set-Content -Path $manifestPath -Encoding UTF8
+    return $manifestPath
+}
+
 function Remove-CursorAgentOptionalEvidence {
     param([string]$BundleDir)
 
-    $bundlePath = Assert-PathUnderRepo $BundleDir "EvidenceBundleDir"
+    $bundlePath = Assert-ManagedOutputDir $BundleDir "EvidenceBundleDir"
 
     if (-not (Test-Path $bundlePath)) {
         return
@@ -143,8 +250,8 @@ function Export-PipelineArtifacts {
         [bool]$PipelinePassed
     )
 
-    $bundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
-    $artifactPath = Assert-PathUnderRepo $ArtifactDir "ArtifactDir"
+    $bundlePath = Assert-ManagedOutputDir $EvidenceBundleDir "EvidenceBundleDir"
+    $artifactPath = Assert-ManagedOutputDir $ArtifactDir "ArtifactDir"
     $artifactParent = Split-Path $artifactPath -Parent
     New-Item -ItemType Directory -Force $artifactParent | Out-Null
 
@@ -159,6 +266,7 @@ function Export-PipelineArtifacts {
     }
 
     $pipelineFinishedAtUtc = (Get-Date).ToUniversalTime()
+    $invalidatedFinalReleaseArtifacts = @()
     if ($PipelinePassed) {
         $pipelineStatus = "PASS"
         $ciExitCode = 0
@@ -166,6 +274,7 @@ function Export-PipelineArtifacts {
     else {
         $pipelineStatus = "FAIL"
         $ciExitCode = 1
+        $invalidatedFinalReleaseArtifacts = @(Remove-FinalReleaseStatusArtifacts $artifactPath)
     }
 
     $manifest = [ordered]@{
@@ -179,14 +288,24 @@ function Export-PipelineArtifacts {
         gameReplayDriverType = $GameReplayDriverType
         productionLuaEvidenceDir = $ProductionLuaEvidenceDir
         stepCount = $steps.Count
+        executedStepCount = $steps.Count
         steps = @($steps)
         ciExitCode = $ciExitCode
+        finalReleaseArtifactsInvalidated = (-not $PipelinePassed)
+        invalidatedFinalReleaseArtifactCount = [int]$invalidatedFinalReleaseArtifacts.Count
+        invalidatedFinalReleaseArtifacts = @($invalidatedFinalReleaseArtifacts)
     }
 
     $manifestPath = Join-Path $artifactPath "pipeline-manifest.json"
     $manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $manifestPath -Encoding UTF8
 
-    if ($PipelinePassed) {
+    if (-not $PipelinePassed) {
+        Write-FailedPipelineArtifactInvalidation `
+            -ArtifactPath $artifactPath `
+            -InvalidatedFiles $invalidatedFinalReleaseArtifacts `
+            -GeneratedAtUtc $pipelineFinishedAtUtc | Out-Null
+    }
+    else {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
             -EvidenceBundleDir $artifactPath `
             -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
@@ -212,10 +331,10 @@ function Export-PipelineArtifacts {
 
 $pipelinePassed = $false
 
-$EvidenceBundleDir = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
-$ArtifactDir = Assert-PathUnderRepo $ArtifactDir "ArtifactDir"
-$ReleaseGateFailureProbeDir = Assert-PathUnderRepo $ReleaseGateFailureProbeDir "ReleaseGateFailureProbeDir"
-$CursorAgentOutputDir = Assert-PathUnderRepo $CursorAgentOutputDir "CursorAgentOutputDir"
+$EvidenceBundleDir = Initialize-PipelineEvidenceBundle $EvidenceBundleDir
+$ArtifactDir = Assert-ManagedOutputDir $ArtifactDir "ArtifactDir"
+$ReleaseGateFailureProbeDir = Assert-ManagedOutputDir $ReleaseGateFailureProbeDir "ReleaseGateFailureProbeDir"
+$CursorAgentOutputDir = Assert-ManagedOutputDir $CursorAgentOutputDir "CursorAgentOutputDir"
 
 try {
     Push-Location $repoRoot

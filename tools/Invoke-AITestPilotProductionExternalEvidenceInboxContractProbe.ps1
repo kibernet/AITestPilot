@@ -368,8 +368,8 @@ Copy-Item -LiteralPath $ownerResponseBundleZipWrapperManifestPath -Destination (
 Copy-Item -LiteralPath $ownerResponseBundleZipAcceptanceManifestPath -Destination (Join-Path $evidenceBundlePath $ownerResponseBundleZipAcceptanceManifestName) -Force
 Copy-Item -LiteralPath $ownerResponseBundleZipAcceptanceReportPath -Destination (Join-Path $evidenceBundlePath $ownerResponseBundleZipAcceptanceReportName) -Force
 
-$externalBundleUnderRepo = $externalBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
-$ownerResponseBundleUnderRepo = $ownerResponseBundlePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase)
+$externalBundleUnderRepo = Test-PathWithinRoot $externalBundlePath $repoRoot
+$ownerResponseBundleUnderRepo = Test-PathWithinRoot $ownerResponseBundlePath $repoRoot
 $filledInboxComplete = $filledInboxManifest.status -eq "PASS" -and
     [int]$filledInboxManifest.evidenceAreaCount -eq 3 -and
     [int]$filledInboxManifest.completeAreaCount -eq 3 -and

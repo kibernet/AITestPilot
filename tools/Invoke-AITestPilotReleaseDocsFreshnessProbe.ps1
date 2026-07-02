@@ -371,15 +371,15 @@ Add-DocsCheck "source_manifest_lists_aligned" `
     $sourceManifestListAligned `
     "Risk policy, evidence index, release gate, and hard-mode copied-bundle source manifest lists must reference current pre-risk manifests."
 
-$latestPipelineManifestPath = Join-Path $repoRoot "artifacts\ai-testpilot-release\latest\pipeline-manifest.json"
-$latestPipelineManifest = Read-JsonFile $latestPipelineManifestPath
-$artifactPipelineStatus = [string](Get-JsonValue $latestPipelineManifest "status" "")
-$artifactPipelineStepCount = [int](Get-JsonValue $latestPipelineManifest "stepCount" 0)
-$artifactPipelineManifestPresent = $null -ne $latestPipelineManifest
+$previousArtifactPipelineManifestPath = Join-Path $repoRoot "artifacts\ai-testpilot-release\latest\pipeline-manifest.json"
+$previousArtifactPipelineManifest = Read-JsonFile $previousArtifactPipelineManifestPath
+$previousArtifactPipelineStatus = [string](Get-JsonValue $previousArtifactPipelineManifest "status" "")
+$previousArtifactPipelineStepCount = [int](Get-JsonValue $previousArtifactPipelineManifest "stepCount" 0)
+$previousArtifactPipelineManifestPresent = $null -ne $previousArtifactPipelineManifest
 
-Add-DocsCheck "latest_pipeline_manifest_readable_when_present" `
-    ((-not $artifactPipelineManifestPresent) -or ($artifactPipelineStatus.Length -gt 0 -and $artifactPipelineStepCount -gt 0)) `
-    "Latest copied artifact pipeline manifest is optional for the probe, but must be readable when present."
+Add-DocsCheck "previous_artifact_pipeline_manifest_readable_when_present" `
+    ((-not $previousArtifactPipelineManifestPresent) -or ($previousArtifactPipelineStatus.Length -gt 0 -and $previousArtifactPipelineStepCount -gt 0)) `
+    "Previous copied artifact pipeline manifest is optional for the probe, but must be readable when present."
 
 $reportPreviewLines = @(
     "# Release Docs Freshness",
@@ -419,8 +419,8 @@ $reportLines = @(
     "| Missing required artifact docs | $($missingRequiredArtifactDocs.Count) |",
     "| Missing required doc strings | $($missingRequiredDocStrings.Count) |",
     "| Missing source manifest references | $($missingSourceManifestReferences.Count) |",
-    "| Latest artifact pipeline status | $(Format-MarkdownCell $artifactPipelineStatus) |",
-    "| Latest artifact pipeline step count | $artifactPipelineStepCount |",
+    "| Previous artifact pipeline status | $(Format-MarkdownCell $previousArtifactPipelineStatus) |",
+    "| Previous artifact pipeline step count | $previousArtifactPipelineStepCount |",
     "",
     "## Checks",
     "",
@@ -508,10 +508,10 @@ $manifest = [ordered]@{
     sourceManifestScripts = @($sourceManifestScripts)
     missingSourceManifestReferenceCount = [int]$missingSourceManifestReferences.Count
     missingSourceManifestReferences = @($missingSourceManifestReferences)
-    latestPipelineManifestPresent = [bool]$artifactPipelineManifestPresent
-    latestPipelineManifestPath = (Convert-ToRepoRelativePath $latestPipelineManifestPath)
-    latestPipelineStatus = $artifactPipelineStatus
-    latestPipelineStepCount = [int]$artifactPipelineStepCount
+    previousArtifactPipelineManifestPresent = [bool]$previousArtifactPipelineManifestPresent
+    previousArtifactPipelineManifestPath = (Convert-ToRepoRelativePath $previousArtifactPipelineManifestPath)
+    previousArtifactPipelineStatus = $previousArtifactPipelineStatus
+    previousArtifactPipelineStepCount = [int]$previousArtifactPipelineStepCount
     reportGenerated = (Test-Path $reportFullPath)
     reportContentValidated = [bool]$reportContentValidated
     releasePipelineSendsEmail = $false
