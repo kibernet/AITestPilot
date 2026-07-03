@@ -162,6 +162,7 @@ $handoffExportManifest = Read-JsonFile (Join-Path $artifactPath "production-hand
 $handoffZipIndexManifest = Read-JsonFile (Join-Path $artifactPath "production-handoff-export-zip-index-manifest.json") "Production handoff export zip index manifest"
 $actionQueueManifest = Read-JsonFile (Join-Path $artifactPath "production-external-evidence-action-queue-manifest.json") "Production external evidence action queue manifest"
 $ownerReturnStatusManifest = Read-JsonFile (Join-Path $artifactPath "production-external-evidence-owner-return-bundle-status-manifest.json") "Owner return bundle status manifest"
+$ownerResponseBundleKitManifest = Read-JsonFile (Join-Path $artifactPath "production-handoff-owner-response-bundle-kit-manifest.json") "Owner response bundle kit manifest"
 
 $handoffZipPath = Join-Path $artifactPath "production-handoff-export.zip"
 $handoffZipExists = Test-Path $handoffZipPath
@@ -186,6 +187,11 @@ $testEntryPaths = @(
     "production-handoff-export\operator-actions\production-external-evidence-action-queue.md",
     "production-handoff-export\production-handoff-owner-response-bundle-kit\README.md",
     "production-handoff-export\production-handoff-owner-response-bundle-kit\verify-owner-response-bundle.ps1",
+    "production-handoff-export\production-handoff-owner-response-bundle-kit\merge-owner-mini-kits.ps1",
+    "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-mini-kits\README.md",
+    "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-mini-kits\host_project_gameplay_qa.zip",
+    "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-mini-kits\host_project_lua_owner.zip",
+    "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-mini-kits\host_project_ai_platform.zip",
     "production-handoff-export\run-semantic-preflight.ps1",
     "production-handoff-export\production-external-evidence-inbox\accept-returned-evidence.ps1"
 )
@@ -261,7 +267,19 @@ Add-ProbeCheck "operator_test_entrypoints_present" `
 Add-ProbeCheck "operator_test_entrypoints_zip_indexed" `
     ((Get-JsonValue $handoffZipIndexManifest "status" "") -eq "PASS" -and
         $missingZipTestEntryPaths.Count -eq 0) `
-    "First-testable handoff zip index must include the operator entry points, FIRST-TESTABLE.md, and self-contained returned-bundle status/preflight helpers."
+    "First-testable handoff zip index must include the operator entry points, FIRST-TESTABLE.md, owner mini kit zips, and self-contained returned-bundle status/preflight helpers."
+
+Add-ProbeCheck "owner_mini_kits_first_testable_included" `
+    ((Get-JsonValue $ownerResponseBundleKitManifest "status" "") -eq "PASS" -and
+        (Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitsGenerated" $false)) -and
+        (Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitsContentValidated" $false)) -and
+        (Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitMergeScriptGenerated" $false)) -and
+        (Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitMergeScriptContentValidated" $false)) -and
+        (Convert-ToInt (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitCount" 0)) -eq 3 -and
+        (Convert-ToInt (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitZipCount" 0)) -eq 3 -and
+        (Convert-ToInt (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitRequiredFilesJsonCount" 0)) -eq 3 -and
+        (Convert-ToInt (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitReturnInstructionsCount" 0)) -eq 3) `
+    "First-testable artifact must carry three per-owner mini kit zips plus the merge helper as required owner-facing test entry points."
 
 Add-ProbeCheck "handoff_first_testable_summary_and_status_helper" `
     ((Convert-ToBool (Get-JsonValue $handoffExportManifest "firstTestableSummaryContentValidated" $false)) -and
@@ -321,6 +339,10 @@ $manifest = [ordered]@{
     ownerReturnStatusContentValidated = Convert-ToBool (Get-JsonValue $handoffExportManifest "ownerReturnBundleStatusContentValidated" $false)
     ownerReturnReadinessStatus = [string](Get-JsonValue $ownerReturnStatusManifest "ownerReturnReadinessStatus" "")
     nextRequiredAction = [string](Get-JsonValue $ownerReturnStatusManifest "nextRequiredAction" "")
+    ownerMiniKitsGenerated = Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitsGenerated" $false)
+    ownerMiniKitCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitCount" 0)
+    ownerMiniKitZipCount = Convert-ToInt (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitZipCount" 0)
+    ownerMiniKitMergeScriptGenerated = Convert-ToBool (Get-JsonValue $ownerResponseBundleKitManifest "ownerMiniKitMergeScriptGenerated" $false)
     externalOwnerAreaCount = Convert-ToInt (Get-JsonValue $actionQueueManifest "externalRemainingWorkItemCount" 0)
     externalMissingFileCount = Convert-ToInt (Get-JsonValue $actionQueueManifest "externalRemainingMissingFileCount" 0)
     externalBlockingReasonCount = Convert-ToInt (Get-JsonValue $actionQueueManifest "externalRemainingBlockingReasonCount" 0)
@@ -363,6 +385,8 @@ $reportLines = @(
     "- Handoff export zip SHA256: $handoffZipSha256",
     "- Owner return readiness: $($manifest.ownerReturnReadinessStatus)",
     "- Next required action: $($manifest.nextRequiredAction)",
+    "- Owner mini kits: $($manifest.ownerMiniKitZipCount) / $($manifest.ownerMiniKitCount)",
+    "- Owner mini kit merge helper: $($manifest.ownerMiniKitMergeScriptGenerated)",
     "- External owner areas: $($manifest.externalOwnerAreaCount)",
     "- Missing files: $($manifest.externalMissingFileCount)",
     "- Blocking reasons: $($manifest.externalBlockingReasonCount)",
