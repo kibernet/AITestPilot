@@ -2171,6 +2171,20 @@ if ($null -ne $productionHandoffExportManifest) {
             [bool]$productionHandoffExportManifest.semanticPreflightSelfContainedHelperContentValidated -and
             ([string]$productionHandoffExportManifest.semanticPreflightSelfContainedHelperPath).Contains("run-semantic-preflight.ps1") -and
             ([string]$productionHandoffExportManifest.semanticPreflightSelfContainedCorePath).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusIncluded" $false) -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusContentValidated" $false) -and
+            ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusPath" "")).Contains("operator-actions\production-external-evidence-owner-return-bundle-status.md") -and
+            (Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusReadinessStatus" "") -eq "PENDING_EXTERNAL_EVIDENCE" -and
+            (Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusNextRequiredAction" "") -eq "collect_owner_response_bundle_zip" -and
+            -not [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusSemanticPreflightRun" $true) -and
+            -not [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusReadyForAcceptanceCandidate" $true) -and
+            [int](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusPendingOwnerPacketCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusRemainingMissingFileCount" 0) -eq 9 -and
+            [int](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusRemainingBlockingReasonCount" 0) -eq 11 -and
+            -not [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusAcceptanceRun" $true) -and
+            -not [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusRealHostProjectEvidenceAccepted" $true) -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusManifestHashMatchesCanonical" $false) -and
+            [int](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusProbeCaseCount" 0) -eq 5 -and
             [bool]$productionHandoffExportManifest.operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented -and
             [bool]$productionHandoffExportManifest.semanticPreflightDocumentedBeforeAutoAcceptance -and
             [bool]$productionHandoffExportManifest.autoAcceptanceRequiresSemanticPreflightCandidate -and
@@ -2205,6 +2219,7 @@ if ($null -ne $productionHandoffExportManifest) {
             [int]$productionHandoffExportManifest.operatorActionFileCount -ge 6 -and
             [int]$productionHandoffExportManifest.operatorActionQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueItemSemanticPreflightCommandCount -eq 3 -and
+            [int](Get-JsonValue $productionHandoffExportManifest "operatorActionQueueItemStatusCommandCount" 0) -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueTrackedRemainingWorkItemCount -eq 4 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingWorkItemCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingMissingFileCount -eq 9 -and
@@ -2217,7 +2232,7 @@ if ($null -ne $productionHandoffExportManifest) {
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 15 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 16 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 
@@ -3318,6 +3333,13 @@ if ($null -ne $productionExternalEvidenceActionQueueManifest) {
         [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "trackedRemainingWorkItemCount" 0) -eq 3 -and
         [string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionOutputBoundary" "") -eq "production_external_evidence_action_queue_after_progress_mail"
     )
+    $productionExternalEvidenceActionQueueItems = Convert-ToArray (Get-JsonValue $productionExternalEvidenceActionQueueManifest "actionQueue" @())
+    $productionExternalEvidenceActionQueueItemStatusCommandCount = @($productionExternalEvidenceActionQueueItems | Where-Object {
+            ([string](Get-JsonValue $_ "ownerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $_ "ownerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-JsonValue $_ "ownerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $_ "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath")
+        }).Count
 
     Add-ReleaseCheck "production_external_evidence_action_queue" `
         ($productionExternalEvidenceActionQueueManifest.status -eq "PASS" -and
@@ -3331,7 +3353,13 @@ if ($null -ne $productionExternalEvidenceActionQueueManifest) {
             ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
             ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -and
             ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
             ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "ownerResponseBundleDirEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
+            $productionExternalEvidenceActionQueueItemStatusCommandCount -eq 3 -and
             [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionDriverEvidenceExportHelperItemCount" 0) -eq 1 -and
             ([string](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionDriverEvidenceExportHelperCommand" "")).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
             [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "productionLuaEvidenceExportHelperItemCount" 0) -eq 1 -and
@@ -3342,7 +3370,7 @@ if ($null -ne $productionExternalEvidenceActionQueueManifest) {
             -not ([bool](Get-JsonValue $productionExternalEvidenceActionQueueManifest "realHostProjectEvidenceAccepted" $true)) -and
             -not ([bool](Get-JsonValue $productionExternalEvidenceActionQueueManifest "externalEvidenceAccepted" $true)) -and
             -not ([bool](Get-JsonValue $productionExternalEvidenceActionQueueManifest "fixtureEvidencePromoted" $true)) -and
-            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "checkCount" 0) -eq 9 -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "checkCount" 0) -eq 10 -and
             [int](Get-JsonValue $productionExternalEvidenceActionQueueManifest "failedCheckCount" 1) -eq 0) `
         "Production external evidence action queue must refresh the canonical operator queue, keep pending-mail and post-dispatch states distinct, expose semantic-preflight-before-auto-acceptance commands, and preserve external evidence blockers."
 
@@ -3366,14 +3394,24 @@ if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
             $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
             $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleSemanticPreflightCommand.Contains("-OwnerResponseBundleDir") -and
             $productionExternalEvidenceActionQueueProbeManifest.pendingQueueOwnerResponseBundleZipSemanticPreflightCommand.Contains("-OwnerResponseBundleZipPath") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueOwnerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueOwnerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueOwnerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueOwnerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
             $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleAutoAcceptanceCommand.Contains("-OwnerResponseBundleDir") -and
             $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand.Contains("-OwnerResponseBundleZipPath") -and
             $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleSemanticPreflightCommand.Contains("-OwnerResponseBundleDir") -and
             $productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueOwnerResponseBundleZipSemanticPreflightCommand.Contains("-OwnerResponseBundleZipPath") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueOwnerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueItemSemanticPreflightCommandCount -eq 3 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueItemSemanticPreflightCommandCount -eq 3 -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "pendingQueueItemStatusCommandCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "postDispatchQueueItemStatusCommandCount" 0) -eq 3 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.pendingQueueDriverExportHelperItemCount -eq 1 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueDriverExportHelperItemCount -eq 1 -and
             ([string]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueProductionDriverEvidenceExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
@@ -3384,12 +3422,13 @@ if ($null -ne $productionExternalEvidenceActionQueueProbeManifest) {
             [int]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueLiveSmokeExportHelperItemCount -eq 1 -and
             ([string]$productionExternalEvidenceActionQueueProbeManifest.postDispatchQueueLiveModelSmokeEvidenceExportHelperCommand).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
             $productionExternalEvidenceActionQueueProbeManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+            (Get-JsonValue $productionExternalEvidenceActionQueueProbeManifest "ownerResponseBundleDirEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
             [bool]$productionExternalEvidenceActionQueueProbeManifest.missingPostDispatchRejected -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.releasePipelineSendsEmail -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.externalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceActionQueueProbeManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceActionQueueProbeManifest.productionOutputBoundary -eq "production_external_evidence_action_queue_probe_only" -and
-            [int]$productionExternalEvidenceActionQueueProbeManifest.checkCount -eq 9 -and
+            [int]$productionExternalEvidenceActionQueueProbeManifest.checkCount -eq 10 -and
             [int]$productionExternalEvidenceActionQueueProbeManifest.failedCheckCount -eq 0) `
         "Production external evidence action queue probe must keep pending-mail and post-dispatch queues distinct while exposing owner response bundle directory/zip semantic preflight and auto-acceptance commands at queue and item level and preserving external evidence blockers."
 
@@ -4016,6 +4055,20 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [int]$releaseRiskPolicyManifest.productionHandoffExportSemanticPreflightProbePayloadShapeRejectedCaseCount -eq 2 -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitIncluded -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOwnerResponseBundleKitAutoAcceptanceDocumented -and
+            [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusIncluded" $false) -and
+            [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusContentValidated" $false) -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusPath" "")).Contains("operator-actions\production-external-evidence-owner-return-bundle-status.md") -and
+            (Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusReadinessStatus" "") -eq "PENDING_EXTERNAL_EVIDENCE" -and
+            (Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusNextRequiredAction" "") -eq "collect_owner_response_bundle_zip" -and
+            -not [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusSemanticPreflightRun" $true) -and
+            -not [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusReadyForAcceptanceCandidate" $true) -and
+            [int](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusPendingOwnerPacketCount" 0) -eq 3 -and
+            [int](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusRemainingMissingFileCount" 0) -eq 9 -and
+            [int](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusRemainingBlockingReasonCount" 0) -eq 11 -and
+            -not [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusAcceptanceRun" $true) -and
+            -not [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusRealHostProjectEvidenceAccepted" $true) -and
+            [bool](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusManifestHashMatchesCanonical" $false) -and
+            [int](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOwnerReturnBundleStatusProbeCaseCount" 0) -eq 5 -and
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueIncluded -and
             [string]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueSourceKind -eq "canonical_action_queue" -and
             [string]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueManifestSourceKind -eq "remaining_work_snapshot" -and
@@ -4033,6 +4086,7 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueContentValidated -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueItemSemanticPreflightCommandCount -eq 3 -and
+            [int](Get-JsonValue $releaseRiskPolicyManifest "productionHandoffExportOperatorActionQueueItemStatusCommandCount" 0) -eq 3 -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueTrackedRemainingWorkItemCount -eq 4 -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueExternalRemainingWorkItemCount -eq 3 -and
             [int]$releaseRiskPolicyManifest.productionHandoffExportOperatorActionQueueExternalRemainingMissingFileCount -eq 9 -and
@@ -4167,7 +4221,14 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAcceptanceFailureAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceInboxContractAccepted -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueueAccepted -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueueOwnerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueueOwnerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueueOwnerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueueOwnerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+            (Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueueOwnerResponseBundleDirEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
+            [int](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueueItemStatusCommandCount" 0) -eq 3 -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueueProbeAccepted -and
+            (Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueueProbeOwnerResponseBundleDirEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisAccepted -and
             [string]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisActionQueueSourceKind -eq "canonical_action_queue" -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceGapAnalysisGapItemCount -eq 3 -and
@@ -4232,6 +4293,16 @@ if ($null -ne $releaseRiskPolicyManifest) {
             -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceAutoAcceptanceExtraPayloadOwnerResponseBundleAcceptanceRun -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceAutoAcceptanceExtraPayloadOwnerResponseBundlePayloadShapeViolationCount -gt 0 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchItemAutoAcceptanceCommandCount -eq 3 -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePendingOwnerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePendingOwnerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePendingOwnerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePendingOwnerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePostDispatchOwnerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePostDispatchOwnerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePostDispatchOwnerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePostDispatchOwnerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+            [int](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePendingItemStatusCommandCount" 0) -eq 3 -and
+            [int](Get-JsonValue $releaseRiskPolicyManifest "productionExternalEvidenceActionQueuePostDispatchItemStatusCommandCount" 0) -eq 3 -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperItemCount -eq 1 -and
             ([string]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchDriverExportHelperCommand).Contains("Export-ProductionDriverEvidenceBundle.ps1") -and
             [int]$releaseRiskPolicyManifest.productionExternalEvidenceActionQueuePostDispatchLuaExportHelperItemCount -eq 1 -and

@@ -351,11 +351,23 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "postDispatchQueueLuaExportHelperItemCount" "int-eq" 1 "action queue keeps Lua export helper"
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "postDispatchQueueLiveSmokeExportHelperItemCount" "int-eq" 1 "action queue keeps live smoke export helper"
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "ownerResponseBundleZipEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" "action queue preserves owner response bundle zip variable"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "ownerResponseBundleDirEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" "action queue probe preserves owner response bundle dir variable"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "pendingQueueItemStatusCommandCount" "int-eq" 3 "pending action queue includes owner-return status per owner area"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "postDispatchQueueItemStatusCommandCount" "int-eq" 3 "post-dispatch action queue includes owner-return status per owner area"
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-probe-manifest.json" "releasePipelineSendsEmail" "bool-eq" $false "action queue probe keeps mail boundary"
+
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-manifest.json" "ownerResponseBundleZipStatusCommand" "contains" "Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1" "action queue exposes zip owner-return status command"
+    $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-manifest.json" "ownerResponseBundleDirEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" "action queue preserves owner response bundle dir variable"
 
     $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionNextStepsIncluded" "bool-eq" $true "handoff export includes operator next-steps checklist"
     $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionNextStepsContentValidated" "bool-eq" $true "handoff export validates operator next-steps content"
     $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionNextStepsPath" "contains" "operator-actions\NEXT-STEPS.md" "handoff export exposes the operator next-steps path"
+    $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "ownerReturnBundleStatusIncluded" "bool-eq" $true "handoff export includes owner-return status"
+    $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "ownerReturnBundleStatusContentValidated" "bool-eq" $true "handoff export validates owner-return status content"
+    $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "ownerReturnBundleStatusPath" "contains" "operator-actions\production-external-evidence-owner-return-bundle-status.md" "handoff export exposes owner-return status report path"
+    $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "ownerReturnBundleStatusReadinessStatus" "string-eq" "PENDING_EXTERNAL_EVIDENCE" "handoff export preserves owner-return pending status"
+    $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "ownerReturnBundleStatusManifestHashMatchesCanonical" "bool-eq" $true "handoff export hash-matches owner-return status manifest"
+    $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionQueueItemStatusCommandCount" "int-eq" 3 "handoff export validates item-level owner-return status commands"
 
     $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "externalRemainingWorkItemCount" "int-eq" 3 "gap analysis preserves three external owner work items"
     $checks += New-FieldCoverageCheck "production-external-evidence-gap-analysis-manifest.json" "externalRemainingMissingFileCount" "int-eq" 9 "gap analysis preserves nine missing evidence files"

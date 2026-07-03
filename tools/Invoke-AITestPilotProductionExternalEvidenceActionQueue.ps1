@@ -243,7 +243,10 @@ $ownerResponseBundleAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductio
 $ownerResponseBundleZipAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`" -RequireAllEvidence"
 $ownerResponseBundleSemanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`""
 $ownerResponseBundleZipSemanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`""
+$ownerResponseBundleStatusCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`""
+$ownerResponseBundleZipStatusCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`""
 $ownerResponseBundleZipEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+$ownerResponseBundleDirEnvironmentVariable = "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR"
 $productionDriverEvidenceExportHelperPath = "production-driver-binding-kit/Export-ProductionDriverEvidenceBundle.ps1"
 $productionDriverEvidenceExportHelperCommand = ".\production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 -EvidenceBundleDir `"path\to\release-evidence`""
 $productionDriverEvidenceExportZipPath = "production-driver-evidence-export/production-driver-evidence.zip"
@@ -316,7 +319,10 @@ foreach ($item in $externalItems) {
         ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
         ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
         ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
+        ownerResponseBundleStatusCommand = $ownerResponseBundleStatusCommand
+        ownerResponseBundleZipStatusCommand = $ownerResponseBundleZipStatusCommand
         ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
+        ownerResponseBundleDirEnvironmentVariable = $ownerResponseBundleDirEnvironmentVariable
         productionDriverEvidenceExportHelperPath = $driverExportHelperPath
         productionDriverEvidenceExportHelperCommand = $driverExportHelperCommand
         productionDriverEvidenceExportZipPath = $driverExportZipPath
@@ -389,6 +395,14 @@ Add-QueueCheck "external_evidence_action_queue_semantic_preflight_commands" `
         $ownerResponseBundleZipSemanticPreflightCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
         $ownerResponseBundleZipSemanticPreflightCommand.Contains("-OwnerResponseBundleZipPath")) `
     "Action queue must expose read-only semantic preflight paths for filled owner response bundle directories and zip files before auto-acceptance."
+Add-QueueCheck "external_evidence_action_queue_owner_return_status_commands" `
+    ($ownerResponseBundleStatusCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        $ownerResponseBundleStatusCommand.Contains("-OwnerResponseBundleDir") -and
+        $ownerResponseBundleZipStatusCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        $ownerResponseBundleZipStatusCommand.Contains("-OwnerResponseBundleZipPath") -and
+        $ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
+        $ownerResponseBundleDirEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR") `
+    "Action queue must expose read-only owner-return status paths before semantic preflight and auto-acceptance."
 Add-QueueCheck "external_evidence_action_queue_item_bundle_commands" `
     ((@($queueItems | Where-Object {
             [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")) -or
@@ -399,9 +413,12 @@ Add-QueueCheck "external_evidence_action_queue_item_bundle_commands" `
             -not ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -or
             -not ([string](Get-JsonValue $_ "ownerResponseBundleSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -or
             -not ([string](Get-JsonValue $_ "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -or
-            ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -ne $ownerResponseBundleZipEnvironmentVariable
+            -not ([string](Get-JsonValue $_ "ownerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -or
+            -not ([string](Get-JsonValue $_ "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -or
+            ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -ne $ownerResponseBundleZipEnvironmentVariable -or
+            ([string](Get-JsonValue $_ "ownerResponseBundleDirEnvironmentVariable" "")) -ne $ownerResponseBundleDirEnvironmentVariable
         }).Count -eq 0) -and $productionDriverEvidenceExportHelperItemCount -eq 1 -and $productionLuaEvidenceExportHelperItemCount -eq 1 -and $liveModelSmokeEvidenceExportHelperItemCount -eq 1) `
-    "Every external evidence queue item must carry owner response bundle area paths plus directory/zip semantic preflight and auto-acceptance commands, and driver/Lua/live-smoke items must expose evidence export helpers."
+    "Every external evidence queue item must carry owner response bundle area paths plus directory/zip owner-return status, semantic preflight, and auto-acceptance commands, and driver/Lua/live-smoke items must expose evidence export helpers."
 Add-QueueCheck "external_evidence_action_queue_current_bundle_paths" `
     ((-not [string]::IsNullOrWhiteSpace($responseKitZipPath)) -and
         (Test-PathWithinRoot $responseKitZipPath $evidenceBundlePath) -and
@@ -463,7 +480,10 @@ $manifest = [ordered]@{
     ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
     ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
     ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
+    ownerResponseBundleStatusCommand = $ownerResponseBundleStatusCommand
+    ownerResponseBundleZipStatusCommand = $ownerResponseBundleZipStatusCommand
     ownerResponseBundleZipEnvironmentVariable = $ownerResponseBundleZipEnvironmentVariable
+    ownerResponseBundleDirEnvironmentVariable = $ownerResponseBundleDirEnvironmentVariable
     productionDriverEvidenceExportHelperPath = $productionDriverEvidenceExportHelperPath
     productionDriverEvidenceExportHelperCommand = $productionDriverEvidenceExportHelperCommand
     productionDriverEvidenceExportZipPath = $productionDriverEvidenceExportZipPath
@@ -513,6 +533,8 @@ $reportLines = @(
     "| External blockers | $totalBlockers |",
     "| External missing files | $totalMissing |",
     "| Response bundle kit zip | $(Format-MarkdownCell $responseKitZipPath) |",
+    "| Owner response bundle status | $(Format-MarkdownCell $ownerResponseBundleStatusCommand) |",
+    "| Owner response bundle zip status | $(Format-MarkdownCell $ownerResponseBundleZipStatusCommand) |",
     "| Owner response bundle semantic preflight | $(Format-MarkdownCell $ownerResponseBundleSemanticPreflightCommand) |",
     "| Owner response bundle zip semantic preflight | $(Format-MarkdownCell $ownerResponseBundleZipSemanticPreflightCommand) |",
     "| Owner response bundle auto acceptance | $(Format-MarkdownCell $ownerResponseBundleAutoAcceptanceCommand) |",
@@ -523,8 +545,8 @@ $reportLines = @(
     "",
     "## Queue",
     "",
-    "| Area | Owner | Missing Files | Blockers | Preflight | Inbox Acceptance | Bundle Area | Bundle Semantic Preflight | Bundle Acceptance | Driver Export | Lua Export | Live Smoke Export | Hard Validation |",
-    "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+    "| Area | Owner | Missing Files | Blockers | Preflight | Inbox Acceptance | Bundle Area | Bundle Status | Bundle Semantic Preflight | Bundle Acceptance | Driver Export | Lua Export | Live Smoke Export | Hard Validation |",
+    "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
 )
 foreach ($item in $queueItems) {
     $area = Get-JsonValue $item "area" ""
@@ -534,13 +556,14 @@ foreach ($item in $queueItems) {
     $preflightCommand = Get-JsonValue $item "preflightCommand" ""
     $acceptanceWrapperCommand = Get-JsonValue $item "acceptanceWrapperCommand" ""
     $bundleAreaPath = Get-JsonValue $item "ownerResponseBundleAreaPath" ""
+    $bundleStatusCommand = Get-JsonValue $item "ownerResponseBundleZipStatusCommand" ""
     $bundleSemanticPreflightCommand = Get-JsonValue $item "ownerResponseBundleZipSemanticPreflightCommand" ""
     $bundleAcceptanceCommand = Get-JsonValue $item "ownerResponseBundleZipAutoAcceptanceCommand" ""
     $driverExportCommand = Get-JsonValue $item "productionDriverEvidenceExportHelperCommand" ""
     $luaExportCommand = Get-JsonValue $item "productionLuaEvidenceExportHelperCommand" ""
     $liveSmokeExportCommand = Get-JsonValue $item "liveModelSmokeEvidenceExportHelperCommand" ""
     $hardValidationCommand = Get-JsonValue $item "hardValidationCommand" ""
-    $reportLines += "| $(Format-MarkdownCell $area) | $(Format-MarkdownCell $owner) | $missingFileCount | $blockingReasonCount | $(Format-MarkdownCell $preflightCommand) | $(Format-MarkdownCell $acceptanceWrapperCommand) | $(Format-MarkdownCell $bundleAreaPath) | $(Format-MarkdownCell $bundleSemanticPreflightCommand) | $(Format-MarkdownCell $bundleAcceptanceCommand) | $(Format-MarkdownCell $driverExportCommand) | $(Format-MarkdownCell $luaExportCommand) | $(Format-MarkdownCell $liveSmokeExportCommand) | $(Format-MarkdownCell $hardValidationCommand) |"
+    $reportLines += "| $(Format-MarkdownCell $area) | $(Format-MarkdownCell $owner) | $missingFileCount | $blockingReasonCount | $(Format-MarkdownCell $preflightCommand) | $(Format-MarkdownCell $acceptanceWrapperCommand) | $(Format-MarkdownCell $bundleAreaPath) | $(Format-MarkdownCell $bundleStatusCommand) | $(Format-MarkdownCell $bundleSemanticPreflightCommand) | $(Format-MarkdownCell $bundleAcceptanceCommand) | $(Format-MarkdownCell $driverExportCommand) | $(Format-MarkdownCell $luaExportCommand) | $(Format-MarkdownCell $liveSmokeExportCommand) | $(Format-MarkdownCell $hardValidationCommand) |"
 }
 $reportLines += @(
     "",

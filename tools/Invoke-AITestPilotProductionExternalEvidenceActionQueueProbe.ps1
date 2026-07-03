@@ -320,6 +320,22 @@ $postDispatchQueueItemAutoAcceptanceCommandCount = @($postDispatchQueueItems | W
         ([string](Get-JsonValue $_ "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
         ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
     }).Count
+$pendingQueueItemStatusCommandCount = @($pendingQueueItems | Where-Object {
+        ([string](Get-JsonValue $_ "ownerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleDirEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+    }).Count
+$postDispatchQueueItemStatusCommandCount = @($postDispatchQueueItems | Where-Object {
+        ([string](Get-JsonValue $_ "ownerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleDirEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipEnvironmentVariable" "")) -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH"
+    }).Count
 $pendingQueueItemSemanticPreflightCommandCount = @($pendingQueueItems | Where-Object {
         ([string](Get-JsonValue $_ "ownerResponseBundleSemanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
         ([string](Get-JsonValue $_ "ownerResponseBundleSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir") -and
@@ -416,9 +432,21 @@ Add-ProbeCheck "action_queue_exposes_owner_response_bundle_semantic_preflight" `
         ([string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
         ([string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath")) `
     "Pending and post-dispatch action queues must expose one-command read-only owner response bundle directory and zip semantic preflight paths before auto-acceptance."
+Add-ProbeCheck "action_queue_exposes_owner_response_bundle_status" `
+    (([string](Get-JsonValue $pendingManifest "ownerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        ([string](Get-JsonValue $pendingManifest "ownerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir") -and
+        ([string](Get-JsonValue $pendingManifest "ownerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        ([string](Get-JsonValue $pendingManifest "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+        (Get-JsonValue $pendingManifest "ownerResponseBundleDirEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" -and
+        ([string](Get-JsonValue $postDispatchManifest "ownerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        ([string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+        (Get-JsonValue $postDispatchManifest "ownerResponseBundleDirEnvironmentVariable" "") -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR") `
+    "Pending and post-dispatch action queues must expose one-command read-only owner response bundle status paths before semantic preflight."
 Add-ProbeCheck "action_queue_items_expose_bundle_auto_acceptance" `
     ($pendingQueueItemAutoAcceptanceCommandCount -eq 3 -and
         $postDispatchQueueItemAutoAcceptanceCommandCount -eq 3 -and
+        $pendingQueueItemStatusCommandCount -eq 3 -and
+        $postDispatchQueueItemStatusCommandCount -eq 3 -and
         $pendingQueueItemSemanticPreflightCommandCount -eq 3 -and
         $postDispatchQueueItemSemanticPreflightCommandCount -eq 3 -and
         $pendingQueueDriverExportHelperItemCount -eq 1 -and
@@ -479,14 +507,20 @@ $manifest = [ordered]@{
     externalRemainingBlockingReasonCount = Convert-ToInt (Get-JsonValue $postDispatchManifest "externalRemainingBlockingReasonCount" 0)
     pendingQueueOwnerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $pendingManifest "ownerResponseBundleAutoAcceptanceCommand" "")
     pendingQueueOwnerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $pendingManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
+    pendingQueueOwnerResponseBundleStatusCommand = [string](Get-JsonValue $pendingManifest "ownerResponseBundleStatusCommand" "")
+    pendingQueueOwnerResponseBundleZipStatusCommand = [string](Get-JsonValue $pendingManifest "ownerResponseBundleZipStatusCommand" "")
     pendingQueueOwnerResponseBundleSemanticPreflightCommand = [string](Get-JsonValue $pendingManifest "ownerResponseBundleSemanticPreflightCommand" "")
     pendingQueueOwnerResponseBundleZipSemanticPreflightCommand = [string](Get-JsonValue $pendingManifest "ownerResponseBundleZipSemanticPreflightCommand" "")
     postDispatchQueueOwnerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleAutoAcceptanceCommand" "")
     postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
+    postDispatchQueueOwnerResponseBundleStatusCommand = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleStatusCommand" "")
+    postDispatchQueueOwnerResponseBundleZipStatusCommand = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipStatusCommand" "")
     postDispatchQueueOwnerResponseBundleSemanticPreflightCommand = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleSemanticPreflightCommand" "")
     postDispatchQueueOwnerResponseBundleZipSemanticPreflightCommand = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipSemanticPreflightCommand" "")
     pendingQueueItemAutoAcceptanceCommandCount = [int]$pendingQueueItemAutoAcceptanceCommandCount
     postDispatchQueueItemAutoAcceptanceCommandCount = [int]$postDispatchQueueItemAutoAcceptanceCommandCount
+    pendingQueueItemStatusCommandCount = [int]$pendingQueueItemStatusCommandCount
+    postDispatchQueueItemStatusCommandCount = [int]$postDispatchQueueItemStatusCommandCount
     pendingQueueItemSemanticPreflightCommandCount = [int]$pendingQueueItemSemanticPreflightCommandCount
     postDispatchQueueItemSemanticPreflightCommandCount = [int]$postDispatchQueueItemSemanticPreflightCommandCount
     pendingQueueDriverExportHelperItemCount = [int]$pendingQueueDriverExportHelperItemCount
@@ -499,6 +533,7 @@ $manifest = [ordered]@{
     postDispatchQueueLiveSmokeExportHelperItemCount = [int]$postDispatchQueueLiveSmokeExportHelperItemCount
     postDispatchQueueLiveModelSmokeEvidenceExportHelperCommand = [string](Get-JsonValue ($postDispatchQueueItems | Where-Object { [string](Get-JsonValue $_ "area" "") -eq "live_model_endpoint_smoke" } | Select-Object -First 1) "liveModelSmokeEvidenceExportHelperCommand" "")
     ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleZipEnvironmentVariable" "")
+    ownerResponseBundleDirEnvironmentVariable = [string](Get-JsonValue $postDispatchManifest "ownerResponseBundleDirEnvironmentVariable" "")
     missingPostDispatchRejected = [bool]($missingPostDispatchResult.exitCode -ne 0)
     releasePipelineSendsEmail = $false
     externalEvidenceAccepted = $false
@@ -519,8 +554,10 @@ $reportLines = @(
     "- Pending queue local mail remaining actions: $($manifest.pendingQueueLocalMailRemainingActionCount)",
     "- Post-dispatch queue local mail remaining actions: $($manifest.postDispatchQueueLocalMailRemainingActionCount)",
     "- External missing files: $($manifest.externalRemainingMissingFileCount)",
+    "- Owner response bundle zip status: $($manifest.postDispatchQueueOwnerResponseBundleZipStatusCommand)",
     "- Owner response bundle zip semantic preflight: $($manifest.postDispatchQueueOwnerResponseBundleZipSemanticPreflightCommand)",
     "- Owner response bundle zip auto acceptance: $($manifest.postDispatchQueueOwnerResponseBundleZipAutoAcceptanceCommand)",
+    "- Queue item status command coverage: $($manifest.postDispatchQueueItemStatusCommandCount) / $($manifest.externalRemainingWorkItemCount)",
     "- Queue item semantic preflight command coverage: $($manifest.postDispatchQueueItemSemanticPreflightCommandCount) / $($manifest.externalRemainingWorkItemCount)",
     "- Queue item auto-acceptance command coverage: $($manifest.postDispatchQueueItemAutoAcceptanceCommandCount) / $($manifest.externalRemainingWorkItemCount)",
     "- Production driver evidence export helper: $($manifest.postDispatchQueueProductionDriverEvidenceExportHelperCommand)",
