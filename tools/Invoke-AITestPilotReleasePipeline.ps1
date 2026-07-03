@@ -323,6 +323,22 @@ function Export-PipelineArtifacts {
             -not [bool]$indexManifest.pipelineManifestIncluded) {
             throw "Final artifact release evidence index must include pipeline-manifest.json after pipeline export."
         }
+
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotFirstTestableReleaseProbe.ps1") `
+            -ArtifactDir $artifactPath | Out-Null
+
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
+            -EvidenceBundleDir $artifactPath `
+            -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
+            -RequireProductionLuaPatched:$RequireProductionLuaPatched `
+            -RequireLiveModelEndpointSmoke:$RequireLiveModelEndpointSmoke | Out-Null
+
+        $indexManifest = Get-Content -Path $indexManifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+        if ($indexManifest.status -ne "PASS" -or
+            -not [bool]$indexManifest.pipelineManifestExpected -or
+            -not [bool]$indexManifest.pipelineManifestIncluded) {
+            throw "Final artifact release evidence index must stay PASS after first-testable release probe."
+        }
     }
 
     Write-Output "Pipeline artifacts: $artifactPath"

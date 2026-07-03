@@ -570,9 +570,9 @@ For CI, run the full pipeline wrapper:
 .\tools\Invoke-AITestPilotReleasePipeline.ps1
 ```
 
-It runs the full chain and exports stable artifacts to `artifacts\ai-testpilot-release\latest`. A failed run initializes a fresh evidence bundle, removes final release-status artifacts from the copied `latest` output, and writes `release-artifact-invalidated-manifest.json` beside `pipeline-manifest.json` so stale PASS gate/index files are not presented as the current release. See `docs\ci-release-pipeline.md`.
+It runs the full chain and exports stable artifacts to `artifacts\ai-testpilot-release\latest`. A failed run initializes a fresh evidence bundle, removes final release-status artifacts from the copied `latest` output, and writes `release-artifact-invalidated-manifest.json` beside `pipeline-manifest.json` so stale PASS gate/index files are not presented as the current release. On a passing run, the artifact export also runs `Invoke-AITestPilotFirstTestableReleaseProbe.ps1`, writes `first-testable-release-manifest.json` / `first-testable-release.md`, then refreshes the final release evidence index so downstream consumers see the copied artifact plus its testable-release report. See `docs\ci-release-pipeline.md`.
 The pipeline also writes `release-docs-freshness-manifest.json` before hard-mode probes and release policy checks. That manifest proves the release pipeline step index, README, CI release docs, architecture summary, roadmap, core artifact names, source files, and source-manifest lists are still aligned with the current `Invoke-AITestPilotReleasePipeline.ps1` chain.
-To quickly verify that the copied `latest` artifact is the first operator-testable package, run:
+To rerun the quick first-testable artifact check manually:
 
 ```powershell
 .\tools\Invoke-AITestPilotFirstTestableReleaseProbe.ps1
