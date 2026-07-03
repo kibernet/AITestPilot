@@ -163,6 +163,7 @@ try {
         "tools\Invoke-AITestPilotReleaseGate.ps1",
         "tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1",
         "tools\Invoke-AITestPilotReleasePipeline.ps1",
+        "tools\Invoke-AITestPilotFirstTestableReleaseProbe.ps1",
         "tools\Invoke-AITestPilotRepairAgentPatchOutputImport.ps1",
         "tools\Invoke-AITestPilotRepairAgentExternalCompletionFailureProbe.ps1",
         "tools\Invoke-AITestPilotRepairAgentGenericPatchImportProbe.ps1",
