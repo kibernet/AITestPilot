@@ -967,9 +967,14 @@ if ($ownerResponseBundleKitAvailable) {
         "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-bundle-request-draft.md",
         "production-handoff-export\production-handoff-owner-response-bundle-kit\verify-owner-response-bundle.ps1",
         "production-handoff-export\production-handoff-owner-response-bundle-kit\import-owner-response-bundle.ps1",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\merge-owner-mini-kits.ps1",
         "production-handoff-export\production-handoff-owner-response-bundle-kit\run-semantic-preflight.ps1",
         "production-handoff-export\production-handoff-owner-response-bundle-kit\semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
         "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-bundle-template\README.md",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-mini-kits\README.md",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-mini-kits\host_project_gameplay_qa.zip",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-mini-kits\host_project_lua_owner.zip",
+        "production-handoff-export\production-handoff-owner-response-bundle-kit\owner-response-mini-kits\host_project_ai_platform.zip",
         "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit-manifest.json",
         "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit.md",
         "production-handoff-export\contract-evidence\production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json",
@@ -1207,9 +1212,11 @@ $ownerResponseBundleKitExportContentText = ""
 if ($ownerResponseBundleKitAvailable) {
     $ownerResponseBundleKitReadmePath = Join-Path $exportPath "production-handoff-owner-response-bundle-kit\README.md"
     $ownerResponseBundleKitRequestDraftPath = Join-Path $exportPath "production-handoff-owner-response-bundle-kit\owner-response-bundle-request-draft.md"
+    $ownerResponseBundleKitMiniKitReadmePath = Join-Path $exportPath "production-handoff-owner-response-bundle-kit\owner-response-mini-kits\README.md"
     $ownerResponseBundleKitExportContentText = [string]::Join([Environment]::NewLine, @(
             if (Test-Path $ownerResponseBundleKitReadmePath) { Get-Content -Path $ownerResponseBundleKitReadmePath -Encoding UTF8 -Raw }
             if (Test-Path $ownerResponseBundleKitRequestDraftPath) { Get-Content -Path $ownerResponseBundleKitRequestDraftPath -Encoding UTF8 -Raw }
+            if (Test-Path $ownerResponseBundleKitMiniKitReadmePath) { Get-Content -Path $ownerResponseBundleKitMiniKitReadmePath -Encoding UTF8 -Raw }
         ))
 }
 $ownerResponseBundleKitAutoAcceptanceCommandsDocumented = (
@@ -1238,6 +1245,8 @@ $ownerResponseBundleKitSemanticPreflightCommandsDocumented = (
 $ownerResponseBundleKitExportContentValidated = (
     $ownerResponseBundleKitAutoAcceptanceCommandsDocumented -and
     $ownerResponseBundleKitSemanticPreflightCommandsDocumented -and
+    $ownerResponseBundleKitExportContentText.Contains("owner-response-mini-kits") -and
+    $ownerResponseBundleKitExportContentText.Contains("merge-owner-mini-kits.ps1") -and
     $ownerResponseBundleKitExportContentText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1")
 )
 $operatorActionQueueReportText = ""

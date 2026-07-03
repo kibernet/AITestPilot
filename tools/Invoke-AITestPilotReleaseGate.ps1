@@ -2893,6 +2893,15 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             ([string]$productionHandoffOwnerResponseBundleKitManifest.productionLuaEvidenceExportHelperCommand).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
             [bool]$productionHandoffOwnerResponseBundleKitManifest.liveModelSmokeEvidenceExportHelperDocumented -and
             ([string]$productionHandoffOwnerResponseBundleKitManifest.liveModelSmokeEvidenceExportHelperCommand).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.ownerMiniKitsGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.ownerMiniKitsContentValidated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.ownerMiniKitMergeScriptGenerated -and
+            [bool]$productionHandoffOwnerResponseBundleKitManifest.ownerMiniKitMergeScriptContentValidated -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.ownerMiniKitCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.ownerMiniKitDirectoryCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.ownerMiniKitZipCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.ownerMiniKitRequiredFilesJsonCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.ownerMiniKitReturnInstructionsCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.ownerContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.requiredEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.templateDirectoryCount -eq 3 -and
@@ -2908,7 +2917,7 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitManifest) {
             -not [bool]$productionHandoffOwnerResponseBundleKitManifest.releasePipelineUsesFixture -and
             -not [bool]$productionHandoffOwnerResponseBundleKitManifest.fixtureEvidencePromoted -and
             $productionHandoffOwnerResponseBundleKitManifest.productionOutputBoundary -eq "owner_response_bundle_template_kit_only" -and
-            [int]$productionHandoffOwnerResponseBundleKitManifest.checkCount -eq 9 -and
+            [int]$productionHandoffOwnerResponseBundleKitManifest.checkCount -eq 10 -and
             [int]$productionHandoffOwnerResponseBundleKitManifest.failedCheckCount -eq 0) `
         "Production handoff owner response bundle kit must package fillable owner evidence directories, roster, scripts, request draft, and zip without sending email or accepting real evidence."
 

@@ -391,7 +391,7 @@ That probe writes `production-handoff-owner-response-bundle-probe-manifest.json`
 .\tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKit.ps1
 ```
 
-That script writes `production-handoff-owner-response-bundle-kit-manifest.json`, a Markdown report, `production-handoff-owner-response-bundle-kit\`, and `production-handoff-owner-response-bundle-kit.zip`. The kit is the fillable owner-return package: a contact roster template, driver/Lua/live-smoke evidence directories, required-file manifests, a local verifier, an import helper, and a request draft that keeps semantic preflight ahead of auto acceptance. It does not send email, run OAuth, accept production evidence, or include fixture evidence.
+That script writes `production-handoff-owner-response-bundle-kit-manifest.json`, a Markdown report, `production-handoff-owner-response-bundle-kit\`, and `production-handoff-owner-response-bundle-kit.zip`. The kit is the fillable owner-return package: a contact roster template, driver/Lua/live-smoke evidence directories, required-file manifests, per-owner mini kits under `owner-response-mini-kits\`, a local verifier, a mini-kit merge helper, an import helper, and a request draft that keeps semantic preflight ahead of auto acceptance. It does not send email, run OAuth, accept production evidence, or include fixture evidence.
 
 ```powershell
 .\tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKitWorkflowProbe.ps1

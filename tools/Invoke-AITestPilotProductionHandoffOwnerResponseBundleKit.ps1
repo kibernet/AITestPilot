@@ -224,6 +224,7 @@ $requiredEvidenceFileCount = Convert-ToInt (Get-JsonValue $externalEvidenceInbox
 $missingRequiredFileCount = Convert-ToInt (Get-JsonValue $ownerInputRequest "missingRequiredFileCount" 0)
 
 $templatePath = Join-Path $kitPath "owner-response-bundle-template"
+$ownerMiniKitRootPath = Join-Path $kitPath "owner-response-mini-kits"
 $driverDir = Join-Path $templatePath "production-driver-evidence"
 $luaDir = Join-Path $templatePath "production-lua-evidence"
 $liveDir = Join-Path $templatePath "live-smoke-evidence"
@@ -503,6 +504,131 @@ Write-Output "Imported owner response bundle into $evidencePath"
 '@
 $importScript | Set-Content -Path $importScriptPath -Encoding UTF8
 
+$miniKitMergeScriptPath = Join-Path $kitPath "merge-owner-mini-kits.ps1"
+$miniKitMergeScript = @'
+[CmdletBinding()]
+param(
+    [string[]]$MiniKitDir,
+    [string]$FullBundleDir = (Join-Path $PSScriptRoot "owner-response-bundle-template"),
+    [string]$OutputPath
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Read-JsonFile {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) { throw "Missing file: $Path" }
+    return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
+}
+
+function Convert-ToArray {
+    param([object]$Value)
+    if ($null -eq $Value) { return @() }
+    return @($Value)
+}
+
+function Get-JsonValue {
+    param([object]$Object, [string]$Name, [object]$DefaultValue = $null)
+    if ($null -eq $Object) { return $DefaultValue }
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $DefaultValue }
+    return $property.Value
+}
+
+if ($null -eq $MiniKitDir -or $MiniKitDir.Count -eq 0) {
+    throw "-MiniKitDir is required. Pass one or more returned owner mini kit directories."
+}
+
+$fullPath = [System.IO.Path]::GetFullPath($FullBundleDir)
+if (-not (Test-Path $fullPath)) {
+    throw "FullBundleDir is missing: $fullPath"
+}
+
+if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+    $OutputPath = Join-Path $fullPath "owner-mini-kit-merge-manifest.json"
+}
+
+$fullRosterPath = Join-Path $fullPath "owner-contact-roster.json"
+$fullRoster = Read-JsonFile $fullRosterPath
+$fullEntries = @(Convert-ToArray (Get-JsonValue $fullRoster "entries" @()))
+$mergedOwners = @()
+$copiedFiles = @()
+
+foreach ($miniKitDirValue in $MiniKitDir) {
+    $miniPath = [System.IO.Path]::GetFullPath($miniKitDirValue)
+    if (-not (Test-Path $miniPath)) {
+        throw "Mini kit directory is missing: $miniPath"
+    }
+
+    $miniRoster = Read-JsonFile (Join-Path $miniPath "owner-contact-roster.json")
+    foreach ($miniEntry in @(Convert-ToArray (Get-JsonValue $miniRoster "entries" @()))) {
+        $owner = [string](Get-JsonValue $miniEntry "owner" "")
+        $area = [string](Get-JsonValue $miniEntry "area" "")
+        for ($i = 0; $i -lt $fullEntries.Count; $i += 1) {
+            if ([string](Get-JsonValue $fullEntries[$i] "owner" "") -eq $owner -and
+                [string](Get-JsonValue $fullEntries[$i] "area" "") -eq $area) {
+                $fullEntries[$i] = $miniEntry
+            }
+        }
+    }
+
+    foreach ($requiredFileSpec in @(Get-ChildItem -LiteralPath $miniPath -Recurse -Filter required-files.json)) {
+        $spec = Read-JsonFile $requiredFileSpec.FullName
+        $directory = [string](Get-JsonValue $spec "directory" "")
+        if ([string]::IsNullOrWhiteSpace($directory)) {
+            throw "Required files manifest is missing directory: $($requiredFileSpec.FullName)"
+        }
+
+        $sourceDir = Split-Path $requiredFileSpec.FullName -Parent
+        $destinationDir = Join-Path $fullPath $directory
+        if (-not (Test-Path $destinationDir)) {
+            throw "Full bundle directory is missing for mini kit area: $destinationDir"
+        }
+
+        Get-ChildItem -LiteralPath $sourceDir -File |
+            Where-Object { $_.Name -ne "README.md" -and $_.Name -ne "required-files.json" } |
+            ForEach-Object {
+                Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $destinationDir $_.Name) -Force
+                $copiedFiles += [ordered]@{
+                    owner = [string](Get-JsonValue $spec "owner" "")
+                    area = [string](Get-JsonValue $spec "area" "")
+                    directory = $directory
+                    fileName = $_.Name
+                }
+            }
+
+        $mergedOwners += [ordered]@{
+            owner = [string](Get-JsonValue $spec "owner" "")
+            area = [string](Get-JsonValue $spec "area" "")
+            directory = $directory
+        }
+    }
+}
+
+$fullRoster.entries = @($fullEntries)
+$fullRoster | ConvertTo-Json -Depth 12 | Set-Content -Path $fullRosterPath -Encoding UTF8
+
+$result = [ordered]@{
+    schemaVersion = "aitestpilot.production_handoff_owner_response_bundle_mini_kit_merge.v1"
+    status = "MERGED_OWNER_MINI_KITS"
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    fullBundleDir = $fullPath
+    miniKitDirCount = [int]$MiniKitDir.Count
+    mergedOwnerCount = [int]$mergedOwners.Count
+    copiedFileCount = [int]$copiedFiles.Count
+    mergedOwners = @($mergedOwners)
+    copiedFiles = @($copiedFiles)
+    nextVerificationCommand = '.\verify-owner-response-bundle.ps1 -BundleDir "path\to\owner-response-bundle-template"'
+    semanticPreflightRecommendedBeforeAutoAcceptance = $true
+}
+
+$result | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath -Encoding UTF8
+Write-Output "Merged owner mini kits into $fullPath"
+Write-Output "Owner mini kit merge manifest: $OutputPath"
+'@
+$miniKitMergeScript | Set-Content -Path $miniKitMergeScriptPath -Encoding UTF8
+
 $selfContainedSemanticPreflightHelperPath = "run-semantic-preflight.ps1"
 $selfContainedSemanticPreflightCorePath = "semantic-preflight/Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
 $selfContainedOwnerResponseBundleSemanticPreflightCommand = '.\run-semantic-preflight.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
@@ -607,6 +733,157 @@ $liveModelSmokeEvidenceExportHelperPath = "live-model-endpoint-config-kit/Export
 $liveModelSmokeEvidenceExportHelperCommand = '.\live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 -EvidenceBundleDir "path\to\release-evidence" -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence"'
 $liveModelSmokeEvidenceExportZipPath = "live-model-endpoint-smoke-evidence-export/live-smoke-evidence.zip"
 
+New-Item -ItemType Directory -Force $ownerMiniKitRootPath | Out-Null
+$ownerMiniKitRootReadmePath = Join-Path $ownerMiniKitRootPath "README.md"
+$ownerMiniKitEntries = @()
+foreach ($areaSpec in $areaSpecs) {
+    $owner = [string]$areaSpec["owner"]
+    $area = [string]$areaSpec["area"]
+    $directory = [string]$areaSpec["directory"]
+    $ownerMiniKitPath = Join-Path $ownerMiniKitRootPath $owner
+    $ownerMiniKitEvidenceDir = Join-Path $ownerMiniKitPath $directory
+    $ownerMiniKitZipPath = Join-Path $ownerMiniKitRootPath "$owner.zip"
+
+    if (Test-Path $ownerMiniKitPath) {
+        Remove-Item -LiteralPath $ownerMiniKitPath -Recurse -Force
+    }
+    if (Test-Path $ownerMiniKitZipPath) {
+        Remove-Item -LiteralPath $ownerMiniKitZipPath -Force
+    }
+
+    New-Item -ItemType Directory -Force $ownerMiniKitEvidenceDir | Out-Null
+
+    ([ordered]@{
+        schemaVersion = "aitestpilot.production_handoff_contact_roster.v1"
+        status = "PENDING_OWNER_EMAIL"
+        generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+        ownerContactCount = 1
+        configuredContactCount = 0
+        fixtureOnly = $false
+        entries = @([ordered]@{
+                owner = $owner
+                area = $area
+                contactSlug = $owner
+                emailAddress = ""
+                configured = $false
+                notes = "Fill with the real owner mailbox before returning this mini kit."
+            })
+    }) | ConvertTo-Json -Depth 12 | Set-Content -Path (Join-Path $ownerMiniKitPath "owner-contact-roster.json") -Encoding UTF8
+
+    ([ordered]@{
+        schemaVersion = "aitestpilot.production_handoff_owner_response_bundle.v1"
+        status = "PENDING_OWNER_RESPONSE"
+        generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+        ownerContactCount = 1
+        configuredContactCount = 0
+        requiredEvidenceFileCount = [int]$areaSpec["requiredFileCount"]
+        presentEvidenceFileCount = 0
+        fixtureOnly = $false
+        productionOutputBoundary = "owner_response_mini_kit_template_only"
+        directories = @($directory)
+    }) | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $ownerMiniKitPath "owner-response-bundle-manifest.json") -Encoding UTF8
+
+    ([ordered]@{
+        schemaVersion = "aitestpilot.production_handoff_owner_response_bundle_required_files.v1"
+        owner = $owner
+        area = $area
+        directory = $directory
+        requiredEvidenceFiles = @($areaSpec["requiredEvidenceFiles"])
+        requiredFileCount = [int]$areaSpec["requiredFileCount"]
+        hardValidationCommand = [string]$areaSpec["hardValidationCommand"]
+    }) | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $ownerMiniKitEvidenceDir "required-files.json") -Encoding UTF8
+
+    $miniEvidenceReadmeLines = @(
+        "# Owner Mini Kit Evidence Directory",
+        "",
+        "Owner: $owner",
+        "Area: $area",
+        "",
+        "Copy only these required files into this directory:",
+        ""
+    )
+    foreach ($fileName in @($areaSpec["requiredEvidenceFiles"])) {
+        $miniEvidenceReadmeLines += "- $fileName"
+    }
+    $miniEvidenceReadmeLines += @(
+        "",
+        "Do not include fixture evidence in a production response."
+    )
+    $miniEvidenceReadmeLines | Set-Content -Path (Join-Path $ownerMiniKitEvidenceDir "README.md") -Encoding UTF8
+
+    $miniReturnInstructionsLines = @(
+        "# Owner Mini Kit Return Instructions",
+        "",
+        "Owner: $owner",
+        "Area: $area",
+        "",
+        "1. Fill owner-contact-roster.json with the real owner mailbox.",
+        "2. Copy the required files into $directory.",
+        "3. From the full kit root, run:",
+        "",
+        '```powershell',
+        ('.\verify-owner-response-bundle.ps1 -BundleDir ".\owner-response-mini-kits\{0}"' -f $owner),
+        '```',
+        "",
+        "4. Return this folder or $owner.zip to the operator.",
+        "",
+        "Operator merge after return:",
+        "",
+        '```powershell',
+        ('.\merge-owner-mini-kits.ps1 -MiniKitDir ".\owner-response-mini-kits\{0}" -FullBundleDir ".\owner-response-bundle-template"' -f $owner),
+        '.\verify-owner-response-bundle.ps1 -BundleDir ".\owner-response-bundle-template"',
+        '```',
+        "",
+        "Semantic preflight must still run on the merged full owner response bundle before auto acceptance."
+    )
+    $miniReturnInstructionsLines | Set-Content -Path (Join-Path $ownerMiniKitPath "RETURN-INSTRUCTIONS.md") -Encoding UTF8
+
+    Compress-Archive -Path (Join-Path $ownerMiniKitPath "*") -DestinationPath $ownerMiniKitZipPath -Force
+    if (-not (Test-Path $ownerMiniKitZipPath)) {
+        throw "Owner mini kit zip was not produced: $ownerMiniKitZipPath"
+    }
+
+    $ownerMiniKitEntries += [ordered]@{
+        owner = $owner
+        area = $area
+        directory = $directory
+        miniKitRelativePath = "owner-response-mini-kits/$owner"
+        miniKitZipRelativePath = "owner-response-mini-kits/$owner.zip"
+        requiredFileCount = [int]$areaSpec["requiredFileCount"]
+        requiredEvidenceFiles = @($areaSpec["requiredEvidenceFiles"])
+    }
+}
+
+$ownerMiniKitRootReadmeLines = @(
+    "# Owner Response Mini Kits",
+    "",
+    "These per-owner mini kits split the combined owner-response-bundle-template into one return folder per external owner.",
+    "",
+    "Use them when owners should receive only their own required files. After returns arrive, merge them back into owner-response-bundle-template before semantic preflight and auto acceptance.",
+    "",
+    "Merge command:",
+    "",
+    '```powershell',
+    '.\merge-owner-mini-kits.ps1 -MiniKitDir ".\owner-response-mini-kits\host_project_gameplay_qa", ".\owner-response-mini-kits\host_project_lua_owner", ".\owner-response-mini-kits\host_project_ai_platform" -FullBundleDir ".\owner-response-bundle-template"',
+    '```',
+    "",
+    "| Owner | Area | Mini kit | Zip | Required files |",
+    "| --- | --- | --- | --- | ---: |"
+)
+foreach ($entry in $ownerMiniKitEntries) {
+    $ownerMiniKitRootReadmeLines += ("| {0} | {1} | {2} | {3} | {4} |" -f `
+            (Format-MarkdownCell $entry["owner"]),
+        (Format-MarkdownCell $entry["area"]),
+        (Format-MarkdownCell $entry["miniKitRelativePath"]),
+        (Format-MarkdownCell $entry["miniKitZipRelativePath"]),
+        $entry["requiredFileCount"])
+}
+$ownerMiniKitRootReadmeLines += @(
+    "",
+    "Mini kits do not accept production evidence and do not send email. They only reduce the return packet each owner needs to fill."
+)
+$ownerMiniKitRootReadmeLines | Set-Content -Path $ownerMiniKitRootReadmePath -Encoding UTF8
+
 $kitReadmePath = Join-Path $kitPath "README.md"
 $kitReadmeLines = @(
     "# AI TestPilot Owner Response Bundle Kit",
@@ -629,7 +906,8 @@ $kitReadmeLines = @(
     "12. Run import-owner-response-bundle.ps1 -ResponseBundleDir path\\to\\filled-bundle -RunReadiness if operator inbox import is required.",
     "13. Operator-side auto acceptance from a returned folder: $ownerResponseBundleAutoAcceptanceCommand",
     "14. Operator-side auto acceptance from a returned zip: $ownerResponseBundleZipAutoAcceptanceCommand",
-    "15. Zip path can also be provided with $ownerResponseBundleZipEnvironmentVariable.",
+    "15. Optional per-owner mini kits live under owner-response-mini-kits/; use merge-owner-mini-kits.ps1 to merge returned mini kits back into owner-response-bundle-template before semantic preflight.",
+    "16. Zip path can also be provided with $ownerResponseBundleZipEnvironmentVariable.",
     "",
     "Boundary:",
     "",
@@ -674,6 +952,8 @@ $requestDraftLines = @(
     "- Production driver evidence export helper: $productionDriverEvidenceExportHelperCommand",
     "- Production Lua evidence export helper: $productionLuaEvidenceExportHelperCommand",
     "- Live model smoke evidence export helper: $liveModelSmokeEvidenceExportHelperCommand",
+    "- Per-owner mini kits are available under owner-response-mini-kits/ if you want to route each owner only their own files.",
+    "- Merge returned mini kits with merge-owner-mini-kits.ps1 before semantic preflight and auto acceptance.",
     "",
     "Use verify-owner-response-bundle.ps1 before returning the filled bundle.",
     "Return either the filled folder or a zip of that folder.",
@@ -716,6 +996,8 @@ $reportLines = @(
     "| Owner response bundle auto acceptance | $(Format-MarkdownCell $ownerResponseBundleAutoAcceptanceCommand) |",
     "| Owner response bundle zip auto acceptance | $(Format-MarkdownCell $ownerResponseBundleZipAutoAcceptanceCommand) |",
     "| Owner response bundle zip environment variable | $ownerResponseBundleZipEnvironmentVariable |",
+    "| Owner mini kits | $($ownerMiniKitEntries.Count) |",
+    "| Owner mini kit merge helper | merge-owner-mini-kits.ps1 |",
     "| Production driver evidence export helper | $(Format-MarkdownCell $productionDriverEvidenceExportHelperCommand) |",
     "| Production Lua evidence export helper | $(Format-MarkdownCell $productionLuaEvidenceExportHelperCommand) |",
     "| Live model smoke evidence export helper | $(Format-MarkdownCell $liveModelSmokeEvidenceExportHelperCommand) |",
@@ -745,6 +1027,7 @@ $reportLines | Set-Content -Path $reportFullPath -Encoding UTF8
 $contentFiles = @(
     $kitReadmePath,
     $templateReadmePath,
+    $ownerMiniKitRootReadmePath,
     $contactRosterPath,
     $responseManifestPath,
     $requestDraftPath,
@@ -753,6 +1036,7 @@ $contentFiles = @(
 $contentText = [string]::Join([Environment]::NewLine, @($contentFiles | ForEach-Object { Get-Content -Path $_ -Encoding UTF8 -Raw }))
 $selfContainedSemanticPreflightHelperText = if (Test-Path $selfContainedSemanticPreflightHelperFullPath) { Get-Content -Path $selfContainedSemanticPreflightHelperFullPath -Encoding UTF8 -Raw } else { "" }
 $selfContainedSemanticPreflightCoreText = if (Test-Path $selfContainedSemanticPreflightCoreFullPath) { Get-Content -Path $selfContainedSemanticPreflightCoreFullPath -Encoding UTF8 -Raw } else { "" }
+$miniKitMergeScriptText = if (Test-Path $miniKitMergeScriptPath) { Get-Content -Path $miniKitMergeScriptPath -Encoding UTF8 -Raw } else { "" }
 $noObjectLeakage = -not $contentText.Contains("System.Collections") -and -not $contentText.Contains("@{")
 $autoAcceptanceCommandsContentValidated = (
     $contentText.Contains($ownerResponseBundleAutoAcceptanceCommand) -and
@@ -791,6 +1075,31 @@ $selfContainedSemanticPreflightHelperContentValidated = (
     $selfContainedSemanticPreflightHelperText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH") -and
     $selfContainedSemanticPreflightCoreText.Contains("aitestpilot.production_external_evidence_semantic_preflight.v1")
 )
+$ownerMiniKitDirectoryCount = @(Get-ChildItem -LiteralPath $ownerMiniKitRootPath -Directory | Where-Object { $_.Name -like "host_project_*" }).Count
+$ownerMiniKitZipCount = @(Get-ChildItem -LiteralPath $ownerMiniKitRootPath -File -Filter "host_project_*.zip").Count
+$ownerMiniKitRequiredFilesJsonCount = @(Get-ChildItem -LiteralPath $ownerMiniKitRootPath -Recurse -Filter required-files.json).Count
+$ownerMiniKitReturnInstructionsCount = @(Get-ChildItem -LiteralPath $ownerMiniKitRootPath -Recurse -Filter RETURN-INSTRUCTIONS.md).Count
+$ownerMiniKitsGenerated = (
+    (Test-Path $ownerMiniKitRootPath) -and
+    (Test-Path $ownerMiniKitRootReadmePath) -and
+    (Test-Path $miniKitMergeScriptPath) -and
+    $ownerMiniKitDirectoryCount -eq $ownerInputs.Count -and
+    $ownerMiniKitZipCount -eq $ownerInputs.Count -and
+    $ownerMiniKitRequiredFilesJsonCount -eq $ownerInputs.Count -and
+    $ownerMiniKitReturnInstructionsCount -eq $ownerInputs.Count
+)
+$ownerMiniKitsContentValidated = (
+    $contentText.Contains("Owner Response Mini Kits") -and
+    $contentText.Contains("owner-response-mini-kits") -and
+    $contentText.Contains("merge-owner-mini-kits.ps1") -and
+    $contentText.Contains("host_project_gameplay_qa") -and
+    $contentText.Contains("host_project_lua_owner") -and
+    $contentText.Contains("host_project_ai_platform") -and
+    $miniKitMergeScriptText.Contains("owner-mini-kit-merge-manifest.json") -and
+    $miniKitMergeScriptText.Contains("owner-contact-roster.json") -and
+    $miniKitMergeScriptText.Contains("required-files.json") -and
+    $miniKitMergeScriptText.Contains("verify-owner-response-bundle.ps1")
+)
 
 $kitFiles = @(
     Get-ChildItem -LiteralPath $kitPath -Recurse -File |
@@ -827,6 +1136,9 @@ Add-KitCheck "owner_response_bundle_semantic_preflight_commands_documented" `
 Add-KitCheck "owner_response_bundle_self_contained_semantic_preflight_helper" `
     $selfContainedSemanticPreflightHelperContentValidated `
     "Owner response bundle kit must include a self-contained semantic preflight helper and bundled core script."
+Add-KitCheck "owner_response_bundle_owner_mini_kits_generated" `
+    ($ownerMiniKitsGenerated -and $ownerMiniKitsContentValidated) `
+    "Owner response bundle kit must include per-owner mini kits, per-owner zips, and a merge helper for returned mini kits."
 Add-KitCheck "owner_response_bundle_boundary_preserved" `
     (-not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "emailSent" $true)) -and -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "realHostProjectEvidenceAccepted" $true)) -and -not (Convert-ToBool (Get-JsonValue $ownerResponseBundleProbe "fixtureEvidencePromoted" $true))) `
     "Owner response bundle kit must preserve not-sent, no-real-evidence, and no-fixture-promotion boundaries."
@@ -864,6 +1176,16 @@ $manifest = [ordered]@{
     selfContainedSemanticPreflightHelperPath = $selfContainedSemanticPreflightHelperPath
     selfContainedSemanticPreflightCorePath = $selfContainedSemanticPreflightCorePath
     selfContainedSemanticPreflightHelperContentValidated = [bool]$selfContainedSemanticPreflightHelperContentValidated
+    ownerMiniKitsGenerated = [bool]$ownerMiniKitsGenerated
+    ownerMiniKitCount = [int]$ownerMiniKitEntries.Count
+    ownerMiniKitDirectoryCount = [int]$ownerMiniKitDirectoryCount
+    ownerMiniKitZipCount = [int]$ownerMiniKitZipCount
+    ownerMiniKitRequiredFilesJsonCount = [int]$ownerMiniKitRequiredFilesJsonCount
+    ownerMiniKitReturnInstructionsCount = [int]$ownerMiniKitReturnInstructionsCount
+    ownerMiniKitsContentValidated = [bool]$ownerMiniKitsContentValidated
+    ownerMiniKitMergeScriptGenerated = (Test-Path $miniKitMergeScriptPath)
+    ownerMiniKitMergeScriptContentValidated = [bool]$ownerMiniKitsContentValidated
+    ownerMiniKits = @($ownerMiniKitEntries)
     selfContainedOwnerResponseBundleSemanticPreflightCommand = $selfContainedOwnerResponseBundleSemanticPreflightCommand
     selfContainedOwnerResponseBundleZipSemanticPreflightCommand = $selfContainedOwnerResponseBundleZipSemanticPreflightCommand
     requestDraftGenerated = (Test-Path $requestDraftPath)

@@ -1844,6 +1844,20 @@ $productionHandoffOwnerResponseBundleKitAccepted = (
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionLuaEvidenceExportHelperCommand" "")).Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "liveModelSmokeEvidenceExportHelperDocumented" $false)) -and
     ([string](Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "liveModelSmokeEvidenceExportHelperCommand" "")).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitsGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitsContentValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitMergeScriptGenerated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitMergeScriptContentValidated" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitDirectoryCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitZipCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitRequiredFilesJsonCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitReturnInstructionsCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerContactCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "requiredEvidenceFileCount" -1)) -eq
@@ -1861,7 +1875,7 @@ $productionHandoffOwnerResponseBundleKitAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "productionOutputBoundary" "") -eq "owner_response_bundle_template_kit_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "checkCount" 0)) -eq 9 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "checkCount" 0)) -eq 10 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -3283,6 +3297,10 @@ $manifest = [ordered]@{
     productionHandoffOwnerResponseBundleKitAccepted = [bool]$productionHandoffOwnerResponseBundleKitAccepted
     productionHandoffOwnerResponseBundleKitZipGenerated = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "zipGenerated" $false)
     productionHandoffOwnerResponseBundleKitRequiredFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "requiredEvidenceFileCount" 0))
+    productionHandoffOwnerResponseBundleKitMiniKitsGenerated = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitsGenerated" $false)
+    productionHandoffOwnerResponseBundleKitMiniKitCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitCount" 0))
+    productionHandoffOwnerResponseBundleKitMiniKitZipCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitZipCount" 0))
+    productionHandoffOwnerResponseBundleKitMiniKitMergeScriptGenerated = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerMiniKitMergeScriptGenerated" $false)
     productionHandoffOwnerResponseBundleKitAutoAcceptanceCommandsDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "autoAcceptanceCommandsContentValidated" $false)
     productionHandoffOwnerResponseBundleKitAutoAcceptanceCommand = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleAutoAcceptanceCommand" "")
     productionHandoffOwnerResponseBundleKitZipAutoAcceptanceCommand = (Get-JsonValue $productionHandoffOwnerResponseBundleKitManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
@@ -3646,6 +3664,9 @@ $reportLines = @(
     "- Production handoff owner response bundle kit accepted: $($manifest.productionHandoffOwnerResponseBundleKitAccepted)",
     "- Production handoff owner response bundle kit zip generated: $($manifest.productionHandoffOwnerResponseBundleKitZipGenerated)",
     "- Production handoff owner response bundle kit required files: $($manifest.productionHandoffOwnerResponseBundleKitRequiredFileCount)",
+    "- Production handoff owner response bundle mini kits generated: $($manifest.productionHandoffOwnerResponseBundleKitMiniKitsGenerated)",
+    "- Production handoff owner response bundle mini kit zips: $($manifest.productionHandoffOwnerResponseBundleKitMiniKitZipCount) / $($manifest.productionHandoffOwnerResponseBundleKitMiniKitCount)",
+    "- Production handoff owner response bundle mini kit merge helper: $($manifest.productionHandoffOwnerResponseBundleKitMiniKitMergeScriptGenerated)",
     "- Production handoff owner response bundle kit auto acceptance documented: $($manifest.productionHandoffOwnerResponseBundleKitAutoAcceptanceCommandsDocumented)",
     "- Production handoff owner response bundle kit live smoke helper documented: $($manifest.productionHandoffOwnerResponseBundleKitLiveModelSmokeEvidenceExportHelperDocumented)",
     "- Production handoff owner response bundle kit workflow accepted: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted)",
