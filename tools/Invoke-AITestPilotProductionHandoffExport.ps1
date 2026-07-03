@@ -251,6 +251,14 @@ $ownerReturnBundleStatusFileMap = @(
     [ordered]@{ source = "production-external-evidence-owner-return-bundle-status-probe-manifest.json"; destination = "operator-actions\production-external-evidence-owner-return-bundle-status-probe-manifest.json" },
     [ordered]@{ source = "production-external-evidence-owner-return-bundle-status-probe.md"; destination = "operator-actions\production-external-evidence-owner-return-bundle-status-probe.md" }
 )
+$ownerReturnStatusSourceFileMap = @(
+    [ordered]@{ source = "production-handoff-status-manifest.json"; destination = "owner-return-status-source\production-handoff-status-manifest.json" },
+    [ordered]@{ source = "production-external-evidence-inbox-manifest.json"; destination = "owner-return-status-source\production-external-evidence-inbox-manifest.json" },
+    [ordered]@{ source = "production-handoff-owner-input-request-pack-manifest.json"; destination = "owner-return-status-source\production-handoff-owner-input-request-pack-manifest.json" },
+    [ordered]@{ source = "production-handoff-owner-unblock-pack-manifest.json"; destination = "owner-return-status-source\production-handoff-owner-unblock-pack-manifest.json" },
+    [ordered]@{ source = "production-handoff-owner-response-bundle-kit-manifest.json"; destination = "owner-return-status-source\production-handoff-owner-response-bundle-kit-manifest.json" },
+    [ordered]@{ source = "production-external-evidence-action-queue-manifest.json"; destination = "owner-return-status-source\production-external-evidence-action-queue-manifest.json" }
+)
 $canonicalOperatorActionQueueAvailable = (@($canonicalOperatorActionQueueFileMap | Where-Object { -not (Test-Path (Join-Path $evidenceBundlePath $_["source"])) }).Count -eq 0)
 $operatorActionQueueFiles = @()
 $operatorActionQueueSourceKind = ""
@@ -371,7 +379,21 @@ if ($ownerReturnBundleStatusAvailable) {
     foreach ($fileSpec in $ownerReturnBundleStatusFiles) {
         Copy-ExportFile $fileSpec["source"] $fileSpec["destination"]
     }
+
+    foreach ($fileSpec in $ownerReturnStatusSourceFileMap) {
+        Copy-ExportFile $fileSpec["source"] $fileSpec["destination"]
+    }
 }
+
+$semanticPreflightSelfContainedFolderCommand = '.\run-semantic-preflight.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
+$semanticPreflightSelfContainedZipCommand = '.\run-semantic-preflight.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
+$ownerReturnStatusHelperRelativePath = "run-owner-return-status.ps1"
+$ownerReturnStatusCoreRelativePath = "owner-return-status\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1"
+$ownerReturnStatusSemanticPreflightCoreRelativePath = "owner-return-status\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
+$ownerReturnStatusSourceRelativePath = "owner-return-status-source"
+$ownerReturnStatusSelfContainedFolderCommand = '.\run-owner-return-status.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
+$ownerReturnStatusSelfContainedZipCommand = '.\run-owner-return-status.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
+$ownerResponseBundleZipAutoAcceptanceExportCommand = '.\production-external-evidence-inbox\accept-returned-evidence.ps1 -RepoRoot "path\to\AITestPilot" -EvidenceBundleDir "path\to\AITestPilot\artifacts\ai-testpilot-release\latest" -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
 
 if ($operatorActionQueueAvailable) {
     $operatorActionNextStepsPath = Join-Path $exportPath "operator-actions\NEXT-STEPS.md"
@@ -409,9 +431,9 @@ if ($operatorActionQueueAvailable) {
         $ownerResponseBundleAreaPath = [string](Get-ObjectProperty $item "ownerResponseBundleAreaPath" "")
         $missingFiles = @((Get-ObjectProperty $item "missingFiles" @()) | ForEach-Object { [string]$_ })
         $blockingReasons = @((Get-ObjectProperty $item "remainingBlockingReasons" @()) | ForEach-Object { [string]$_ })
-        $ownerReturnStatusCommand = [string](Get-ObjectProperty $item "ownerResponseBundleZipStatusCommand" "")
-        $semanticPreflightCommand = [string](Get-ObjectProperty $item "ownerResponseBundleZipSemanticPreflightCommand" "")
-        $autoAcceptanceCommand = [string](Get-ObjectProperty $item "ownerResponseBundleZipAutoAcceptanceCommand" "")
+        $ownerReturnStatusCommand = $ownerReturnStatusSelfContainedZipCommand
+        $semanticPreflightCommand = $semanticPreflightSelfContainedZipCommand
+        $autoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceExportCommand
         $hardValidationCommand = [string](Get-ObjectProperty $item "hardValidationCommand" "")
         $operatorActionNextStepsLines += @(
             "### $owner / $area",
@@ -566,6 +588,129 @@ Write-Output "PASS AI TestPilot self-contained semantic preflight helper"
 '@
 $semanticPreflightHelperScript | Set-Content -Path $semanticPreflightHelperPath -Encoding UTF8
 
+$ownerReturnStatusSourcePath = Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1"
+$ownerReturnStatusCorePath = Join-Path $exportPath $ownerReturnStatusCoreRelativePath
+$ownerReturnStatusSemanticPreflightCorePath = Join-Path $exportPath $ownerReturnStatusSemanticPreflightCoreRelativePath
+$ownerReturnStatusHelperPath = Join-Path $exportPath $ownerReturnStatusHelperRelativePath
+
+if (-not (Test-Path $ownerReturnStatusSourcePath)) {
+    throw "Owner-return status source script is missing: $ownerReturnStatusSourcePath"
+}
+New-Item -ItemType Directory -Force (Split-Path $ownerReturnStatusCorePath -Parent) | Out-Null
+Copy-Item -LiteralPath $ownerReturnStatusSourcePath -Destination $ownerReturnStatusCorePath -Force
+Copy-Item -LiteralPath $semanticPreflightSourcePath -Destination $ownerReturnStatusSemanticPreflightCorePath -Force
+
+$ownerReturnStatusHelperScript = @'
+[CmdletBinding()]
+param(
+    [string]$OwnerResponseBundleDir,
+    [string]$OwnerResponseBundleZipPath,
+    [string]$OutputDir = (Join-Path $PSScriptRoot "owner-return-status-output"),
+    [switch]$ContractFixtureMode
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    -not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    throw "Provide only one of -OwnerResponseBundleDir or -OwnerResponseBundleZipPath."
+}
+
+if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath) -and
+    -not [string]::IsNullOrWhiteSpace($env:AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH)) {
+    $OwnerResponseBundleZipPath = $env:AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH
+}
+
+if ([string]::IsNullOrWhiteSpace($OwnerResponseBundleDir) -and
+    [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath) -and
+    -not [string]::IsNullOrWhiteSpace($env:AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR)) {
+    $OwnerResponseBundleDir = $env:AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR
+}
+
+function Copy-StatusSourceFile {
+    param(
+        [string]$FileName,
+        [string]$SourceRoot,
+        [string]$DestinationRoot
+    )
+
+    $sourcePath = Join-Path $SourceRoot $FileName
+    if (-not (Test-Path $sourcePath)) {
+        throw "Owner-return status source file is missing: $sourcePath"
+    }
+
+    $destinationPath = Join-Path $DestinationRoot $FileName
+    New-Item -ItemType Directory -Force (Split-Path $destinationPath -Parent) | Out-Null
+    Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
+}
+
+$statusScript = Join-Path $PSScriptRoot "owner-return-status\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1"
+if (-not (Test-Path $statusScript)) {
+    throw "Bundled owner-return status script is missing: $statusScript"
+}
+
+$sourceRoot = Join-Path $PSScriptRoot "owner-return-status-source"
+if (-not (Test-Path $sourceRoot)) {
+    throw "Bundled owner-return status source directory is missing: $sourceRoot"
+}
+
+$outputPath = [System.IO.Path]::GetFullPath($OutputDir)
+New-Item -ItemType Directory -Force $outputPath | Out-Null
+
+$requiredSourceFiles = @(
+    "production-handoff-status-manifest.json",
+    "production-external-evidence-inbox-manifest.json",
+    "production-handoff-owner-input-request-pack-manifest.json",
+    "production-handoff-owner-unblock-pack-manifest.json",
+    "production-handoff-owner-response-bundle-kit-manifest.json",
+    "production-external-evidence-action-queue-manifest.json"
+)
+foreach ($fileName in $requiredSourceFiles) {
+    Copy-StatusSourceFile $fileName $sourceRoot $outputPath
+}
+
+$manifestPath = Join-Path $outputPath "production-external-evidence-owner-return-bundle-status-manifest.json"
+$reportPath = Join-Path $outputPath "production-external-evidence-owner-return-bundle-status.md"
+$statusParams = @{
+    EvidenceBundleDir = $outputPath
+    ManifestPath = $manifestPath
+    ReportPath = $reportPath
+}
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleDir)) {
+    $statusParams["OwnerResponseBundleDir"] = $OwnerResponseBundleDir
+}
+if (-not [string]::IsNullOrWhiteSpace($OwnerResponseBundleZipPath)) {
+    $statusParams["OwnerResponseBundleZipPath"] = $OwnerResponseBundleZipPath
+}
+if ([bool]$ContractFixtureMode) {
+    $statusParams["ContractFixtureMode"] = $true
+}
+
+& $statusScript @statusParams | Out-Null
+
+if (-not (Test-Path $manifestPath)) {
+    throw "Owner-return status manifest was not produced: $manifestPath"
+}
+
+$manifest = Get-Content -Path $manifestPath -Encoding UTF8 -Raw | ConvertFrom-Json
+Write-Output "Owner-return status manifest: $manifestPath"
+Write-Output "Owner-return status report: $reportPath"
+Write-Output "Owner-return readiness: $($manifest.ownerReturnReadinessStatus)"
+Write-Output "Next required action: $($manifest.nextRequiredAction)"
+Write-Output "Semantic preflight status: $($manifest.semanticPreflightStatus)"
+Write-Output "Ready for acceptance candidate: $($manifest.readyForAcceptanceCandidate)"
+Write-Output "Semantic FAIL count: $($manifest.semanticFailCount)"
+
+if ($manifest.status -ne "PASS") {
+    throw "Owner-return status failed. Review $reportPath."
+}
+
+Write-Output "PASS AI TestPilot self-contained owner-return status helper"
+'@
+$ownerReturnStatusHelperScript | Set-Content -Path $ownerReturnStatusHelperPath -Encoding UTF8
+
 $ownerPacketCount = [int]$handoffManifest.ownerPacketCount
 $ownerPacketBlockingReasonCount = [int]$handoffManifest.ownerPacketBlockingReasonCount
 $hostProjectActionItemCount = [int]$handoffManifest.hostProjectActionItemCount
@@ -584,7 +729,7 @@ $exportReadmeLines = @(
     '4. Production Lua owners can run production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1 after real Lua patch readiness passes; it creates production-lua-evidence-export\production-lua-evidence and production-lua-evidence-export\production-lua-evidence.zip.',
     '5. Live model owners can run live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 after direct live provider smoke passes; it creates live-model-endpoint-smoke-evidence-export\live-smoke-evidence and live-model-endpoint-smoke-evidence-export\live-smoke-evidence.zip.',
     '6. Owners copy returned evidence into production-external-evidence-inbox\production-driver-evidence, production-external-evidence-inbox\production-lua-evidence, and production-external-evidence-inbox\live-smoke-evidence.',
-    '7. When operator-actions\production-external-evidence-owner-return-bundle-status.md is present, run it as the first returned-bundle status check; its manifest exposes ownerReturnReadinessStatus and nextRequiredAction, and NEEDS_OWNER_REPAIR means return the generated semantic preflight report to the owner.',
+    "7. Run the bundled self-contained owner-return status helper: $ownerReturnStatusSelfContainedFolderCommand or $ownerReturnStatusSelfContainedZipCommand as the first returned-bundle status check. Its manifest exposes ownerReturnReadinessStatus and nextRequiredAction, and NEEDS_OWNER_REPAIR means return the generated semantic preflight report to the owner.",
     "8. Run the bundled self-contained semantic preflight helper: $semanticPreflightSelfContainedFolderCommand or $semanticPreflightSelfContainedZipCommand before auto acceptance. It invokes semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0. Zip inputs are checked for unsafe, duplicate, absolute, or traversal entries before extraction.",
     '9. Run production-external-evidence-inbox\accept-returned-evidence.ps1 to generate the Markdown acceptance report.',
     '10. Run the hard validation command from the owner packet or production-handoff-package\ci-commands.ps1.'
@@ -600,6 +745,7 @@ $exportReadmeLines += @(
     '- production-handoff-package/verify-external-evidence.ps1: optional preflight for explicit evidence directories.',
     '- production-handoff-package/accept-external-evidence.ps1: optional wrapper for explicit evidence directories.',
     '- production-external-evidence-inbox/: returned-evidence directory layout and wrapper for accepting owner evidence.',
+    '- run-owner-return-status.ps1: self-contained returned folder/zip owner-return status wrapper bundled with owner-return-status/Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1 and owner-return-status-source/.',
     '- run-semantic-preflight.ps1: self-contained returned folder/zip semantic preflight wrapper bundled with semantic-preflight/Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1.',
     '- production-driver-binding-kit/: host-project production replay driver binding kit, including Export-ProductionDriverEvidenceBundle.ps1 for production-bound driver evidence folder/zip export.',
     '- production-lua-patch-evidence-kit/: host-project production Lua evidence template kit, including Export-ProductionLuaPatchEvidenceBundle.ps1 for real Lua evidence folder/zip export.',
@@ -611,6 +757,7 @@ if ($ownerResponseBundleKitAvailable) {
 if ($operatorActionQueueAvailable) {
     $exportReadmeLines += '- operator-actions/: short next-steps checklist, canonical owner-return status, action queue, remaining-work source snapshot, and probe proof for the remaining external evidence work.'
 }
+$exportReadmeLines += '- FIRST-TESTABLE.md: one-page operator-facing summary for the first testable handoff zip, including remaining external-owner work and the safe test command order.'
 if ($semanticPreflightProbeAvailable) {
     $exportReadmeLines += '- contract-evidence/production-external-evidence-semantic-preflight-probe.md: read-only semantic preflight probe for returned owner bundle directories and zips before auto acceptance.'
 }
@@ -631,6 +778,81 @@ $exportReadmeLines += @(
 )
 $exportReadmePath = Join-Path $exportPath "README.md"
 $exportReadmeLines | Set-Content -Path $exportReadmePath -Encoding UTF8
+
+$firstTestableSummaryRelativePath = "FIRST-TESTABLE.md"
+$firstTestableSummaryPath = Join-Path $exportPath $firstTestableSummaryRelativePath
+$firstTestableOwnerAreaCount = if ($operatorActionQueueAvailable) { [int](Get-ObjectProperty $operatorActionQueueManifest "externalRemainingWorkItemCount" 0) } else { [int]$hostProjectActionItemCount }
+$firstTestableMissingFileCount = if ($operatorActionQueueAvailable) { [int](Get-ObjectProperty $operatorActionQueueManifest "externalRemainingMissingFileCount" 0) } else { 0 }
+$firstTestableBlockingReasonCount = if ($operatorActionQueueAvailable) { [int](Get-ObjectProperty $operatorActionQueueManifest "externalRemainingBlockingReasonCount" 0) } else { [int]$hostProjectBlockingReasonCount }
+$firstTestableLocalMailActionCount = if ($operatorActionQueueAvailable) { [int](Get-ObjectProperty $operatorActionQueueManifest "localProgressMailRemainingActionCount" 0) } else { 0 }
+$firstTestableOwnerReturnReadiness = if ($ownerReturnBundleStatusAvailable) { [string](Get-ObjectProperty $ownerReturnBundleStatusManifest "ownerReturnReadinessStatus" "") } else { "PENDING_EXTERNAL_EVIDENCE" }
+$firstTestableNextRequiredAction = if ($ownerReturnBundleStatusAvailable) { [string](Get-ObjectProperty $ownerReturnBundleStatusManifest "nextRequiredAction" "") } else { "collect_owner_response_bundle_zip" }
+$firstTestableSummaryLines = @(
+    "# AI TestPilot First Testable Handoff Summary",
+    "",
+    "This file is inside the handoff zip so an operator can identify the first testable package without relying on artifact-root reports.",
+    "",
+    "## Status",
+    "",
+    "- Ready for operator testing: True",
+    "- Ready for commercial completion: False",
+    "- Owner return readiness: $firstTestableOwnerReturnReadiness",
+    "- Next required action: $firstTestableNextRequiredAction",
+    "- External owner areas: $firstTestableOwnerAreaCount",
+    "- Missing files: $firstTestableMissingFileCount",
+    "- Blocking reasons: $firstTestableBlockingReasonCount",
+    "- Local progress-mail action: $firstTestableLocalMailActionCount",
+    "",
+    "## Start Here",
+    "",
+    "1. Read operator-actions\NEXT-STEPS.md.",
+    "2. Send the owner packets under production-handoff-package\owner-packets\.",
+    "3. Collect a filled owner response bundle directory or zip.",
+    "4. Run owner-return status, then semantic preflight.",
+    "5. Run auto acceptance only after the returned bundle is a ready candidate with zero semantic failures.",
+    "6. Run the matching hard validation command for the owner area.",
+    "",
+    "## Key Entry Points",
+    "",
+    "| Path | Purpose |",
+    "| --- | --- |",
+    "| README.md | Handoff package overview and boundaries. |",
+    "| operator-actions\NEXT-STEPS.md | Short operator command order for all owner areas. |",
+    "| operator-actions\production-external-evidence-owner-return-bundle-status.md | Read-only returned-bundle status before acceptance. |",
+    "| operator-actions\production-external-evidence-action-queue.md | Canonical remaining external work and owner routes. |",
+    "| production-handoff-owner-response-bundle-kit\README.md | Fillable owner response bundle workflow. |",
+    "| run-owner-return-status.ps1 | Self-contained returned folder/zip owner-return status. |",
+    "| run-semantic-preflight.ps1 | Self-contained returned folder/zip semantic preflight. |",
+    "| production-external-evidence-inbox\accept-returned-evidence.ps1 | Acceptance wrapper after preflight passes. |",
+    "",
+    "## Boundary",
+    "",
+    "- This handoff zip does not send email.",
+    "- It does not accept real host-project evidence by itself.",
+    "- It does not promote fixture evidence.",
+    "- Commercial completion still requires real external owner evidence and hard validation."
+)
+
+if ($operatorActionQueueAvailable) {
+    $firstTestableSummaryLines += @(
+        "",
+        "## Owner Areas",
+        "",
+        "| Owner | Area | Status | Missing Files | Blockers |",
+        "| --- | --- | --- | ---: | ---: |"
+    )
+
+    foreach ($item in @(Get-ObjectProperty $operatorActionQueueManifest "actionQueue" @())) {
+        $owner = [string](Get-ObjectProperty $item "owner" "")
+        $area = [string](Get-ObjectProperty $item "area" "")
+        $itemStatus = [string](Get-ObjectProperty $item "status" "")
+        $missingFileCount = [int](Get-ObjectProperty $item "missingFileCount" 0)
+        $remainingBlockingReasonCount = [int](Get-ObjectProperty $item "remainingBlockingReasonCount" 0)
+        $firstTestableSummaryLines += "| $owner | $area | $itemStatus | $missingFileCount | $remainingBlockingReasonCount |"
+    }
+}
+
+$firstTestableSummaryLines | Set-Content -Path $firstTestableSummaryPath -Encoding UTF8
 
 $manifestFileName = Split-Path $manifestFullPath -Leaf
 $zipFileName = Split-Path $zipFullPath -Leaf
@@ -655,6 +877,9 @@ $requiredExportSnippets = @(
     "live-model-endpoint-config-kit",
     "Export-LiveModelEndpointSmokeEvidenceBundle.ps1",
     "live-smoke-evidence.zip",
+    "run-owner-return-status.ps1",
+    "run-owner-return-status.ps1: self-contained returned folder/zip owner-return status wrapper",
+    "owner-return-status-source",
     "run-semantic-preflight.ps1",
     "run-semantic-preflight.ps1: self-contained returned folder/zip semantic preflight wrapper",
     "semantic-preflight",
@@ -696,6 +921,8 @@ if ($ownerReturnBundleStatusAvailable) {
     $requiredExportSnippets += @(
         "production-external-evidence-owner-return-bundle-status.md",
         "owner-return status",
+        "run-owner-return-status.ps1",
+        "self-contained returned folder/zip owner-return status wrapper",
         "ownerReturnReadinessStatus",
         "nextRequiredAction",
         "NEEDS_OWNER_REPAIR"
@@ -709,6 +936,10 @@ $missingExportSnippetCount = @($requiredExportSnippets | Where-Object { -not $ex
 
 $requiredExportPaths = @(
     "production-handoff-export\README.md",
+    "production-handoff-export\FIRST-TESTABLE.md",
+    "production-handoff-export\run-owner-return-status.ps1",
+    "production-handoff-export\owner-return-status\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1",
+    "production-handoff-export\owner-return-status\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
     "production-handoff-export\run-semantic-preflight.ps1",
     "production-handoff-export\semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
     "production-handoff-export\production-handoff-package\owner-packets\owner-packet-index.json",
@@ -751,6 +982,7 @@ if ($operatorActionQueueAvailable) {
 }
 if ($ownerReturnBundleStatusAvailable) {
     $requiredExportPaths += @($ownerReturnBundleStatusFiles | ForEach-Object { "production-handoff-export\" + $_["destination"] })
+    $requiredExportPaths += @($ownerReturnStatusSourceFileMap | ForEach-Object { "production-handoff-export\" + $_["destination"] })
 }
 $missingExportPathCount = @($requiredExportPaths | Where-Object { $exportFiles -notcontains $_ }).Count
 $ownerResponseBundleKitSourceFileCount = 0
@@ -822,6 +1054,61 @@ $semanticPreflightSelfContainedHelperIncluded = (
 )
 $semanticPreflightSelfContainedHelperText = if (Test-Path $semanticPreflightHelperPath) { Get-Content -Path $semanticPreflightHelperPath -Encoding UTF8 -Raw } else { "" }
 $semanticPreflightSelfContainedCoreText = if (Test-Path $semanticPreflightCorePath) { Get-Content -Path $semanticPreflightCorePath -Encoding UTF8 -Raw } else { "" }
+$ownerReturnStatusSelfContainedHelperRelativePath = "production-handoff-export\$ownerReturnStatusHelperRelativePath"
+$ownerReturnStatusSelfContainedCoreRelativePath = "production-handoff-export\$ownerReturnStatusCoreRelativePath"
+$ownerReturnStatusSelfContainedSemanticPreflightCoreRelativePath = "production-handoff-export\$ownerReturnStatusSemanticPreflightCoreRelativePath"
+$ownerReturnStatusSelfContainedSourceRelativePaths = @($ownerReturnStatusSourceFileMap | ForEach-Object { "production-handoff-export\" + $_["destination"] })
+$ownerReturnStatusSelfContainedSourceFileCount = [int]$ownerReturnStatusSelfContainedSourceRelativePaths.Count
+$ownerReturnStatusSelfContainedMissingSourceFiles = @($ownerReturnStatusSelfContainedSourceRelativePaths | Where-Object { $exportFiles -notcontains $_ })
+$ownerReturnStatusSelfContainedHelperIncluded = (
+    $exportFiles -contains $ownerReturnStatusSelfContainedHelperRelativePath -and
+    $exportFiles -contains $ownerReturnStatusSelfContainedCoreRelativePath -and
+    $exportFiles -contains $ownerReturnStatusSelfContainedSemanticPreflightCoreRelativePath -and
+    $ownerReturnStatusSelfContainedMissingSourceFiles.Count -eq 0
+)
+$ownerReturnStatusSelfContainedHelperText = if (Test-Path $ownerReturnStatusHelperPath) { Get-Content -Path $ownerReturnStatusHelperPath -Encoding UTF8 -Raw } else { "" }
+$ownerReturnStatusSelfContainedCoreText = if (Test-Path $ownerReturnStatusCorePath) { Get-Content -Path $ownerReturnStatusCorePath -Encoding UTF8 -Raw } else { "" }
+$ownerReturnStatusSelfContainedHelperDocumented = (
+    $ownerReturnStatusSelfContainedHelperIncluded -and
+    $exportReadmeText.Contains("run-owner-return-status.ps1") -and
+    $exportReadmeText.Contains("owner-return-status-source") -and
+    $exportReadmeText.Contains($ownerReturnStatusSelfContainedFolderCommand) -and
+    $exportReadmeText.Contains($ownerReturnStatusSelfContainedZipCommand)
+)
+$ownerReturnStatusSelfContainedHelperContentValidated = (
+    $ownerReturnStatusSelfContainedHelperIncluded -and
+    $ownerReturnStatusSelfContainedHelperText.Contains("owner-return-status-source") -and
+    $ownerReturnStatusSelfContainedHelperText.Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+    $ownerReturnStatusSelfContainedHelperText.Contains("production-handoff-status-manifest.json") -and
+    $ownerReturnStatusSelfContainedHelperText.Contains("production-external-evidence-action-queue-manifest.json") -and
+    $ownerReturnStatusSelfContainedHelperText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH") -and
+    $ownerReturnStatusSelfContainedHelperText.Contains("AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR") -and
+    $ownerReturnStatusSelfContainedCoreText.Contains("aitestpilot.production_external_evidence_owner_return_bundle_status.v1")
+)
+$firstTestableSummaryExportRelativePath = "production-handoff-export\$firstTestableSummaryRelativePath"
+$firstTestableSummaryIncluded = $exportFiles -contains $firstTestableSummaryExportRelativePath
+$firstTestableSummaryText = if (Test-Path $firstTestableSummaryPath) { Get-Content -Path $firstTestableSummaryPath -Encoding UTF8 -Raw } else { "" }
+$firstTestableSummaryContentValidated = (
+    $firstTestableSummaryIncluded -and
+    $firstTestableSummaryText.Contains("AI TestPilot First Testable Handoff Summary") -and
+    $firstTestableSummaryText.Contains("Ready for operator testing: True") -and
+    $firstTestableSummaryText.Contains("Ready for commercial completion: False") -and
+    $firstTestableSummaryText.Contains("run-owner-return-status.ps1") -and
+    $firstTestableSummaryText.Contains("run-semantic-preflight.ps1") -and
+    $firstTestableSummaryText.Contains("fixture evidence") -and
+    $firstTestableSummaryText.Contains("Commercial completion still requires real external owner evidence")
+)
+$firstTestableSummaryFinalBoundaryValidated = (
+    $operatorActionQueueAvailable -and
+    $firstTestableSummaryText.Contains("External owner areas: 3") -and
+    $firstTestableSummaryText.Contains("Missing files: 9") -and
+    $firstTestableSummaryText.Contains("Blocking reasons: 11") -and
+    $firstTestableSummaryText.Contains("Local progress-mail action: 1")
+)
+$firstTestableSummaryCheckPassed = (
+    $firstTestableSummaryContentValidated -and
+    ((-not $operatorActionQueueAvailable) -or $firstTestableSummaryFinalBoundaryValidated)
+)
 
 $operatorActionQueueManifestRelativePath = "production-handoff-export\operator-actions\production-external-evidence-action-queue-manifest.json"
 $operatorActionQueueReportRelativePath = "production-handoff-export\operator-actions\production-external-evidence-action-queue.md"
@@ -1003,11 +1290,11 @@ $operatorActionNextStepsContentValidated = (
     $operatorActionNextStepsText.Contains("host_project_ai_platform") -and
     $operatorActionNextStepsText.Contains("-OwnerResponseBundleZipPath") -and
     $operatorActionNextStepsText.Contains("Owner-return status") -and
-    $operatorActionNextStepsText.Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+    $operatorActionNextStepsText.Contains("run-owner-return-status.ps1") -and
     $operatorActionNextStepsText.Contains("NEEDS_OWNER_REPAIR") -and
     $operatorActionNextStepsText.Contains("owner-return status and semantic preflight") -and
-    $operatorActionNextStepsText.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
-    $operatorActionNextStepsText.Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
+    $operatorActionNextStepsText.Contains("run-semantic-preflight.ps1") -and
+    $operatorActionNextStepsText.Contains("accept-returned-evidence.ps1") -and
     $operatorActionNextStepsText.Contains("Invoke-AITestPilotReleasePipeline.ps1") -and
     $operatorActionNextStepsText.Contains("Fixture evidence remains unpromoted") -and
     -not $operatorActionNextStepsText.Contains("System.Collections") -and
@@ -1226,6 +1513,16 @@ $checks = @(
         message = "Final export must include the canonical owner-return bundle status report, probe proof, hash-matched manifest, and read-only pending external evidence boundary."
     },
     [ordered]@{
+        name = "owner_return_status_self_contained_helper"
+        passed = ((-not $ownerReturnBundleStatusAvailable) -or ($ownerReturnStatusSelfContainedHelperDocumented -and $ownerReturnStatusSelfContainedHelperContentValidated))
+        message = "Final export must include a self-contained owner-return status helper, bundled core scripts, and the source manifests needed for returned folder/zip status checks."
+    },
+    [ordered]@{
+        name = "first_testable_handoff_summary"
+        passed = $firstTestableSummaryCheckPassed
+        message = "Final export must include a zip-root FIRST-TESTABLE.md summary with operator-testing readiness and the remaining external evidence boundary."
+    },
+    [ordered]@{
         name = "semantic_preflight_before_auto_acceptance_documented"
         passed = $semanticPreflightBeforeAutoAcceptanceCheckPassed
         message = "Final export must document read-only semantic preflight before returned bundle auto acceptance and include the semantic preflight probe evidence."
@@ -1292,6 +1589,17 @@ $manifest = [ordered]@{
     ownerReturnBundleStatusCanonicalSourceSha256 = $ownerReturnBundleStatusCanonicalSourceSha256
     ownerReturnBundleStatusExportedSha256 = $ownerReturnBundleStatusExportedSha256
     ownerReturnBundleStatusProbeCaseCount = [int]$ownerReturnBundleStatusProbeCaseCount
+    ownerReturnStatusSelfContainedHelperIncluded = [bool]$ownerReturnStatusSelfContainedHelperIncluded
+    ownerReturnStatusSelfContainedHelperDocumented = [bool]$ownerReturnStatusSelfContainedHelperDocumented
+    ownerReturnStatusSelfContainedHelperContentValidated = [bool]$ownerReturnStatusSelfContainedHelperContentValidated
+    ownerReturnStatusSelfContainedHelperPath = $ownerReturnStatusSelfContainedHelperRelativePath
+    ownerReturnStatusSelfContainedCorePath = $ownerReturnStatusSelfContainedCoreRelativePath
+    ownerReturnStatusSelfContainedSemanticPreflightCorePath = $ownerReturnStatusSelfContainedSemanticPreflightCoreRelativePath
+    ownerReturnStatusSelfContainedSourceDirectory = "production-handoff-export\$ownerReturnStatusSourceRelativePath"
+    ownerReturnStatusSelfContainedSourceFileCount = [int]$ownerReturnStatusSelfContainedSourceFileCount
+    ownerReturnStatusSelfContainedMissingSourceFiles = @($ownerReturnStatusSelfContainedMissingSourceFiles)
+    ownerReturnStatusSelfContainedFolderCommand = $ownerReturnStatusSelfContainedFolderCommand
+    ownerReturnStatusSelfContainedZipCommand = $ownerReturnStatusSelfContainedZipCommand
     semanticPreflightProbeAvailable = [bool]$semanticPreflightProbeAvailable
     semanticPreflightProbeIncluded = [bool]$semanticPreflightProbeIncluded
     semanticPreflightProbeReadOnly = [bool]$semanticPreflightProbeReadOnly
@@ -1360,6 +1668,11 @@ $manifest = [ordered]@{
     operatorActionQueueExternalRemainingWorkItemCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingWorkItemCount } else { 0 })
     operatorActionQueueExternalRemainingMissingFileCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingMissingFileCount } else { 0 })
     operatorActionQueueExternalRemainingBlockingReasonCount = $(if ($operatorActionQueueAvailable) { [int]$operatorActionQueueManifest.externalRemainingBlockingReasonCount } else { 0 })
+    firstTestableSummaryIncluded = [bool]$firstTestableSummaryIncluded
+    firstTestableSummaryContentValidated = [bool]$firstTestableSummaryContentValidated
+    firstTestableSummaryFinalBoundaryValidated = [bool]$firstTestableSummaryFinalBoundaryValidated
+    firstTestableSummaryCheckPassed = [bool]$firstTestableSummaryCheckPassed
+    firstTestableSummaryPath = $firstTestableSummaryExportRelativePath
     externalEvidenceInboxIncluded = $true
     contractEvidenceFileCount = [int]$requiredFiles.Count
     exportFileCount = [int]$exportFiles.Count

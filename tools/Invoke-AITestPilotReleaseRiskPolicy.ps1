@@ -1042,6 +1042,16 @@ $productionHandoffExportAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusRealHostProjectEvidenceAccepted" $true)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusManifestHashMatchesCanonical" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusProbeCaseCount" 0)) -eq 5 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperDocumented" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperContentValidated" $false)) -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperPath" "")).Contains("run-owner-return-status.ps1") -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedCorePath" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedSemanticPreflightCorePath" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedSourceDirectory" "")).Contains("owner-return-status-source") -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedSourceFileCount" 0)) -eq 6 -and
+    @(Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedMissingSourceFiles" @()).Count -eq 0 -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedZipCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "semanticPreflightDocumentedBeforeAutoAcceptance" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "autoAcceptanceRequiresSemanticPreflightCandidate" $false)) -and
@@ -1080,6 +1090,11 @@ $productionHandoffExportAccepted = (
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingWorkItemCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingMissingFileCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingBlockingReasonCount" 0)) -eq 11 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryIncluded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryContentValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryFinalBoundaryValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryCheckPassed" $false)) -and
+    ([string](Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryPath" "")).Contains("FIRST-TESTABLE.md") -and
     (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "externalEvidenceInboxIncluded" $false)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "contractEvidenceFileCount" 0)) -ge 18 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "exportFileCount" 0)) -ge 80 -and
@@ -1088,7 +1103,7 @@ $productionHandoffExportAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "realHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffExportManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffExportManifest "productionOutputBoundary" "") -eq "host_project_external_handoff_export_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 16 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "checkCount" 0)) -eq 18 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -3162,6 +3177,11 @@ $manifest = [ordered]@{
     productionHandoffExportOwnerReturnBundleStatusCanonicalSourceSha256 = (Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusCanonicalSourceSha256" "")
     productionHandoffExportOwnerReturnBundleStatusExportedSha256 = (Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusExportedSha256" "")
     productionHandoffExportOwnerReturnBundleStatusProbeCaseCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusProbeCaseCount" 0))
+    productionHandoffExportOwnerReturnStatusSelfContainedHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperIncluded" $false)
+    productionHandoffExportOwnerReturnStatusSelfContainedHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperDocumented" $false)
+    productionHandoffExportOwnerReturnStatusSelfContainedHelperContentValidated = (Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperContentValidated" $false)
+    productionHandoffExportOwnerReturnStatusSelfContainedSourceFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedSourceFileCount" 0))
+    productionHandoffExportOwnerReturnStatusSelfContainedZipCommand = (Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedZipCommand" "")
     productionHandoffExportOperatorActionQueueIncluded = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueIncluded" $false)
     productionHandoffExportOperatorActionQueueSourceKind = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueSourceKind" "")
     productionHandoffExportOperatorActionQueueManifestSourceKind = (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueManifestSourceKind" "")
@@ -3185,6 +3205,10 @@ $manifest = [ordered]@{
     productionHandoffExportOperatorActionQueueExternalRemainingWorkItemCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingWorkItemCount" 0))
     productionHandoffExportOperatorActionQueueExternalRemainingMissingFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingMissingFileCount" 0))
     productionHandoffExportOperatorActionQueueExternalRemainingBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffExportManifest "operatorActionQueueExternalRemainingBlockingReasonCount" 0))
+    productionHandoffExportFirstTestableSummaryIncluded = (Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryIncluded" $false)
+    productionHandoffExportFirstTestableSummaryContentValidated = (Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryContentValidated" $false)
+    productionHandoffExportFirstTestableSummaryFinalBoundaryValidated = (Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryFinalBoundaryValidated" $false)
+    productionHandoffExportFirstTestableSummaryCheckPassed = (Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryCheckPassed" $false)
     productionHandoffExportDriverEvidenceExportHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperIncluded" $false)
     productionHandoffExportDriverEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffExportManifest "productionDriverEvidenceExportHelperDocumented" $false)
     productionHandoffExportLuaEvidenceExportHelperIncluded = (Get-JsonValue $productionHandoffExportManifest "productionLuaEvidenceExportHelperIncluded" $false)
@@ -3559,12 +3583,15 @@ $reportLines = @(
     "- Production handoff export semantic-bad bundle zip rejected: $($manifest.productionHandoffExportSemanticPreflightProbeSemanticBadBundleZipRejected)",
     "- Production handoff export semantic preflight documented before auto acceptance: $($manifest.productionHandoffExportSemanticPreflightBeforeAutoAcceptanceDocumented)",
     "- Production handoff export auto acceptance requires semantic preflight candidate: $($manifest.productionHandoffExportAutoAcceptanceRequiresSemanticPreflightCandidate)",
+    "- Production handoff export owner-return status self-contained helper validated: $($manifest.productionHandoffExportOwnerReturnStatusSelfContainedHelperContentValidated)",
+    "- Production handoff export owner-return status source files: $($manifest.productionHandoffExportOwnerReturnStatusSelfContainedSourceFileCount)",
     "- Production handoff export operator action queue included: $($manifest.productionHandoffExportOperatorActionQueueIncluded)",
     "- Production handoff export operator action queue source kind: $($manifest.productionHandoffExportOperatorActionQueueSourceKind)",
     "- Production handoff export operator action queue content validated: $($manifest.productionHandoffExportOperatorActionQueueContentValidated)",
     "- Production handoff export operator action queue semantic preflight before auto acceptance documented: $($manifest.productionHandoffExportOperatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented)",
     "- Production handoff export operator action queue item bundle command coverage: $($manifest.productionHandoffExportOperatorActionQueueItemAutoAcceptanceCommandCount)",
     "- Production handoff export operator action queue semantic preflight command coverage: $($manifest.productionHandoffExportOperatorActionQueueItemSemanticPreflightCommandCount)",
+    "- Production handoff export first-testable summary validated: $($manifest.productionHandoffExportFirstTestableSummaryCheckPassed)",
     "- Production handoff export live smoke helper documented: $($manifest.productionHandoffExportLiveModelSmokeEvidenceExportHelperDocumented)",
     "- Production handoff export zip index accepted: $($manifest.productionHandoffExportZipIndexAccepted)",
     "- Production handoff export zip index entries: $($manifest.productionHandoffExportZipIndexEntryCount) / $($manifest.productionHandoffExportZipIndexExpectedEntryCount)",

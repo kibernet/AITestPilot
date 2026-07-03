@@ -2185,6 +2185,16 @@ if ($null -ne $productionHandoffExportManifest) {
             -not [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusRealHostProjectEvidenceAccepted" $true) -and
             [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusManifestHashMatchesCanonical" $false) -and
             [int](Get-JsonValue $productionHandoffExportManifest "ownerReturnBundleStatusProbeCaseCount" 0) -eq 5 -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperIncluded" $false) -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperDocumented" $false) -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperContentValidated" $false) -and
+            ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedHelperPath" "")).Contains("run-owner-return-status.ps1") -and
+            ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedCorePath" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedSemanticPreflightCorePath" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+            ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedSourceDirectory" "")).Contains("owner-return-status-source") -and
+            [int](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedSourceFileCount" 0) -eq 6 -and
+            @(Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedMissingSourceFiles" @()).Count -eq 0 -and
+            ([string](Get-JsonValue $productionHandoffExportManifest "ownerReturnStatusSelfContainedZipCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
             [bool]$productionHandoffExportManifest.operatorActionQueueSemanticPreflightBeforeAutoAcceptanceDocumented -and
             [bool]$productionHandoffExportManifest.semanticPreflightDocumentedBeforeAutoAcceptance -and
             [bool]$productionHandoffExportManifest.autoAcceptanceRequiresSemanticPreflightCandidate -and
@@ -2224,6 +2234,11 @@ if ($null -ne $productionHandoffExportManifest) {
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingWorkItemCount -eq 3 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingMissingFileCount -eq 9 -and
             [int]$productionHandoffExportManifest.operatorActionQueueExternalRemainingBlockingReasonCount -eq 11 -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryIncluded" $false) -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryContentValidated" $false) -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryFinalBoundaryValidated" $false) -and
+            [bool](Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryCheckPassed" $false) -and
+            ([string](Get-JsonValue $productionHandoffExportManifest "firstTestableSummaryPath" "")).Contains("FIRST-TESTABLE.md") -and
             [bool]$productionHandoffExportManifest.externalEvidenceInboxIncluded -and
             [int]$productionHandoffExportManifest.contractEvidenceFileCount -ge 18 -and
             [int]$productionHandoffExportManifest.exportFileCount -ge 80 -and
@@ -2232,7 +2247,7 @@ if ($null -ne $productionHandoffExportManifest) {
             -not [bool]$productionHandoffExportManifest.realHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffExportManifest.fixtureEvidencePromoted -and
             $productionHandoffExportManifest.productionOutputBoundary -eq "host_project_external_handoff_export_only" -and
-            [int]$productionHandoffExportManifest.checkCount -eq 16 -and
+            [int]$productionHandoffExportManifest.checkCount -eq 18 -and
             [int]$productionHandoffExportManifest.failedCheckCount -eq 0) `
         "Production handoff export must provide a compact owner-facing export with handoff package, owner packets, kits, contract reports, and zip without promoting fixture evidence."
 

@@ -170,7 +170,17 @@ $handoffZipIndexSha256 = ([string](Get-JsonValue $handoffZipIndexManifest "zipSh
 
 $testEntryPaths = @(
     "production-handoff-export.zip",
+    "production-handoff-export\FIRST-TESTABLE.md",
     "production-handoff-export\README.md",
+    "production-handoff-export\run-owner-return-status.ps1",
+    "production-handoff-export\owner-return-status\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1",
+    "production-handoff-export\owner-return-status\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
+    "production-handoff-export\owner-return-status-source\production-handoff-status-manifest.json",
+    "production-handoff-export\owner-return-status-source\production-external-evidence-inbox-manifest.json",
+    "production-handoff-export\owner-return-status-source\production-handoff-owner-input-request-pack-manifest.json",
+    "production-handoff-export\owner-return-status-source\production-handoff-owner-unblock-pack-manifest.json",
+    "production-handoff-export\owner-return-status-source\production-handoff-owner-response-bundle-kit-manifest.json",
+    "production-handoff-export\owner-return-status-source\production-external-evidence-action-queue-manifest.json",
     "production-handoff-export\operator-actions\NEXT-STEPS.md",
     "production-handoff-export\operator-actions\production-external-evidence-owner-return-bundle-status.md",
     "production-handoff-export\operator-actions\production-external-evidence-action-queue.md",
@@ -181,6 +191,12 @@ $testEntryPaths = @(
 )
 
 $missingTestEntryPaths = @($testEntryPaths | Where-Object { -not (Test-Path (Join-Path $artifactPath $_)) })
+$zipEntryPaths = @((Get-JsonValue $handoffZipIndexManifest "zipEntries" @()) | ForEach-Object { [string](Get-JsonValue $_ "path" "") })
+$handoffExportPrefix = "production-handoff-export\"
+$testEntryZipPaths = @($testEntryPaths |
+    Where-Object { $_.StartsWith($handoffExportPrefix, [System.StringComparison]::OrdinalIgnoreCase) } |
+    ForEach-Object { $_.Substring($handoffExportPrefix.Length) })
+$missingZipTestEntryPaths = @($testEntryZipPaths | Where-Object { $zipEntryPaths -notcontains $_ })
 
 $actionQueueItems = @(Get-JsonValue $actionQueueManifest "actionQueue" @())
 $ownerAreas = @($actionQueueItems | ForEach-Object {
@@ -242,6 +258,16 @@ Add-ProbeCheck "operator_test_entrypoints_present" `
     ($missingTestEntryPaths.Count -eq 0) `
     "First-testable artifact must include README, operator next steps, owner-return status, action queue, bundle verifier, semantic preflight, and returned-evidence acceptance entry points."
 
+Add-ProbeCheck "operator_test_entrypoints_zip_indexed" `
+    ((Get-JsonValue $handoffZipIndexManifest "status" "") -eq "PASS" -and
+        $missingZipTestEntryPaths.Count -eq 0) `
+    "First-testable handoff zip index must include the operator entry points, FIRST-TESTABLE.md, and self-contained returned-bundle status/preflight helpers."
+
+Add-ProbeCheck "handoff_first_testable_summary_and_status_helper" `
+    ((Convert-ToBool (Get-JsonValue $handoffExportManifest "firstTestableSummaryContentValidated" $false)) -and
+        (Convert-ToBool (Get-JsonValue $handoffExportManifest "ownerReturnStatusSelfContainedHelperContentValidated" $false))) `
+    "Handoff export manifest must prove zip-root FIRST-TESTABLE.md and the self-contained owner-return status helper were generated and content-validated."
+
 Add-ProbeCheck "remaining_work_boundary_explicit" `
     ((Get-JsonValue $actionQueueManifest "status" "") -eq "PASS" -and
         (Convert-ToInt (Get-JsonValue $actionQueueManifest "externalRemainingWorkItemCount" 0)) -eq 3 -and
@@ -301,8 +327,12 @@ $manifest = [ordered]@{
     localProgressMailRemainingActionCount = Convert-ToInt (Get-JsonValue $actionQueueManifest "localProgressMailRemainingActionCount" 0)
     testEntryPointCount = [int]$testEntryPaths.Count
     missingTestEntryPointCount = [int]$missingTestEntryPaths.Count
+    zipTestEntryPointCount = [int]$testEntryZipPaths.Count
+    missingZipTestEntryPointCount = [int]$missingZipTestEntryPaths.Count
     testEntryPoints = @($testEntryPaths)
     missingTestEntryPoints = @($missingTestEntryPaths)
+    testEntryZipPaths = @($testEntryZipPaths)
+    missingZipTestEntryPaths = @($missingZipTestEntryPaths)
     ownerAreas = @($ownerAreas)
     readyForOperatorTesting = [bool]($status -eq "PASS")
     readyForCommercialCompletion = $false
@@ -349,6 +379,19 @@ $reportLines = @(
 foreach ($entryPath in $testEntryPaths) {
     $present = $missingTestEntryPaths -notcontains $entryPath
     $reportLines += "| $(Format-MarkdownCell $entryPath) | $present |"
+}
+
+$reportLines += @(
+    "",
+    "## Handoff Zip Entry Points",
+    "",
+    "| Zip Path | Present |",
+    "| --- | --- |"
+)
+
+foreach ($zipEntryPath in $testEntryZipPaths) {
+    $present = $missingZipTestEntryPaths -notcontains $zipEntryPath
+    $reportLines += "| $(Format-MarkdownCell $zipEntryPath) | $present |"
 }
 
 $reportLines += @(
