@@ -364,6 +364,11 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-manifest.json" "ownerResponseBundleZipStatusCommand" "contains" "Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1" "action queue exposes zip owner-return status command"
     $checks += New-FieldCoverageCheck "production-external-evidence-action-queue-manifest.json" "ownerResponseBundleDirEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR" "action queue preserves owner response bundle dir variable"
 
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "ownerReturnNextStepSequenceAligned" "bool-eq" $true "owner-return status exposes status-preflight-acceptance sequence"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "ownerReturnStatusCommandCount" "int-eq" 3 "owner-return status exposes status command per owner"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "ownerReturnZipSemanticPreflightCommandCount" "int-eq" 3 "owner-return status exposes zip semantic preflight per owner"
+    $checks += New-FieldCoverageCheck "production-external-evidence-owner-return-bundle-status-manifest.json" "ownerReturnZipAutoAcceptanceCommandCount" "int-eq" 3 "owner-return status exposes zip auto acceptance per owner"
+
     $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionNextStepsIncluded" "bool-eq" $true "handoff export includes operator next-steps checklist"
     $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionNextStepsContentValidated" "bool-eq" $true "handoff export validates operator next-steps content"
     $checks += New-FieldCoverageCheck "production-handoff-export-manifest.json" "operatorActionNextStepsPath" "contains" "operator-actions\NEXT-STEPS.md" "handoff export exposes the operator next-steps path"

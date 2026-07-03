@@ -395,12 +395,28 @@ foreach ($areaStatus in @(Convert-ToArray (Get-JsonValue $inboxManifest "areaSta
     $inboxAreaStatusByKey[$key] = $areaStatus
 }
 
+$actionQueueItemByKey = @{}
+foreach ($actionQueueItem in @(Convert-ToArray (Get-JsonValue $actionQueueManifest "actionQueue" @()))) {
+    $key = Get-OwnerAreaKey ([string](Get-JsonValue $actionQueueItem "owner" "")) ([string](Get-JsonValue $actionQueueItem "area" ""))
+    $actionQueueItemByKey[$key] = $actionQueueItem
+}
+
+$ownerReturnNextStep = "run_owner_return_status_then_semantic_preflight_then_auto_acceptance"
+$ownerReturnNextStepDescription = "Run owner-return status, then semantic preflight, then auto acceptance after semantic preflight passes."
+
 $ownerReturnStatuses = @()
 foreach ($ownerStatus in @(Convert-ToArray (Get-JsonValue $handoffStatusManifest "ownerStatuses" @()))) {
     $owner = [string](Get-JsonValue $ownerStatus "owner" "")
     $area = [string](Get-JsonValue $ownerStatus "area" "")
     $key = Get-OwnerAreaKey $owner $area
     $inboxAreaStatus = if ($inboxAreaStatusByKey.ContainsKey($key)) { $inboxAreaStatusByKey[$key] } else { $null }
+    $actionQueueItem = if ($actionQueueItemByKey.ContainsKey($key)) { $actionQueueItemByKey[$key] } else { $null }
+    $ownerResponseBundleStatusCommand = [string](Get-JsonValue $actionQueueItem "ownerResponseBundleStatusCommand" (Get-JsonValue $actionQueueManifest "ownerResponseBundleStatusCommand" ""))
+    $ownerResponseBundleZipStatusCommand = [string](Get-JsonValue $actionQueueItem "ownerResponseBundleZipStatusCommand" (Get-JsonValue $actionQueueManifest "ownerResponseBundleZipStatusCommand" ""))
+    $ownerResponseBundleSemanticPreflightCommand = [string](Get-JsonValue $actionQueueItem "ownerResponseBundleSemanticPreflightCommand" (Get-JsonValue $actionQueueManifest "ownerResponseBundleSemanticPreflightCommand" ""))
+    $ownerResponseBundleZipSemanticPreflightCommand = [string](Get-JsonValue $actionQueueItem "ownerResponseBundleZipSemanticPreflightCommand" (Get-JsonValue $actionQueueManifest "ownerResponseBundleZipSemanticPreflightCommand" ""))
+    $ownerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $actionQueueItem "ownerResponseBundleAutoAcceptanceCommand" (Get-JsonValue $actionQueueManifest "ownerResponseBundleAutoAcceptanceCommand" ""))
+    $ownerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $actionQueueItem "ownerResponseBundleZipAutoAcceptanceCommand" (Get-JsonValue $actionQueueManifest "ownerResponseBundleZipAutoAcceptanceCommand" ""))
     $ownerReturnStatuses += [ordered]@{
         owner = $owner
         area = $area
@@ -414,8 +430,58 @@ foreach ($ownerStatus in @(Convert-ToArray (Get-JsonValue $handoffStatusManifest
         preflightCommand = [string](Get-JsonValue $ownerStatus "preflightCommand" "")
         acceptanceWrapperCommand = [string](Get-JsonValue $ownerStatus "acceptanceWrapperCommand" "")
         hardValidationCommand = [string](Get-JsonValue $ownerStatus "hardValidationCommand" "")
+        nextOperatorStep = $ownerReturnNextStep
+        nextOperatorStepDescription = $ownerReturnNextStepDescription
+        ownerResponseBundleStatusCommand = $ownerResponseBundleStatusCommand
+        ownerResponseBundleZipStatusCommand = $ownerResponseBundleZipStatusCommand
+        ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
+        ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
+        ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
+        ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
+        nextOperatorCommandSequence = @($ownerResponseBundleStatusCommand, $ownerResponseBundleSemanticPreflightCommand, $ownerResponseBundleAutoAcceptanceCommand)
+        nextOperatorZipCommandSequence = @($ownerResponseBundleZipStatusCommand, $ownerResponseBundleZipSemanticPreflightCommand, $ownerResponseBundleZipAutoAcceptanceCommand)
     }
 }
+
+$ownerReturnStatusCommandCount = @($ownerReturnStatuses | Where-Object {
+        ([string](Get-JsonValue $_ "ownerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleStatusCommand" "")).Contains("-OwnerResponseBundleDir")
+    }).Count
+$ownerReturnZipStatusCommandCount = @($ownerReturnStatuses | Where-Object {
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath")
+    }).Count
+$ownerReturnSemanticPreflightCommandCount = @($ownerReturnStatuses | Where-Object {
+        ([string](Get-JsonValue $_ "ownerResponseBundleSemanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleDir")
+    }).Count
+$ownerReturnZipSemanticPreflightCommandCount = @($ownerReturnStatuses | Where-Object {
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath")
+    }).Count
+$ownerReturnAutoAcceptanceCommandCount = @($ownerReturnStatuses | Where-Object {
+        ([string](Get-JsonValue $_ "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleDir") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleAutoAcceptanceCommand" "")).Contains("-RequireAllEvidence")
+    }).Count
+$ownerReturnZipAutoAcceptanceCommandCount = @($ownerReturnStatuses | Where-Object {
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
+        ([string](Get-JsonValue $_ "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("-RequireAllEvidence")
+    }).Count
+$legacyAcceptanceWrapperCommandPreservedCount = @($ownerReturnStatuses | Where-Object {
+        -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "acceptanceWrapperCommand" ""))
+    }).Count
+$ownerReturnNextStepSequenceAligned = (
+    $ownerReturnStatuses.Count -gt 0 -and
+    $ownerReturnStatusCommandCount -eq $ownerReturnStatuses.Count -and
+    $ownerReturnZipStatusCommandCount -eq $ownerReturnStatuses.Count -and
+    $ownerReturnSemanticPreflightCommandCount -eq $ownerReturnStatuses.Count -and
+    $ownerReturnZipSemanticPreflightCommandCount -eq $ownerReturnStatuses.Count -and
+    $ownerReturnAutoAcceptanceCommandCount -eq $ownerReturnStatuses.Count -and
+    $ownerReturnZipAutoAcceptanceCommandCount -eq $ownerReturnStatuses.Count -and
+    $legacyAcceptanceWrapperCommandPreservedCount -eq $ownerReturnStatuses.Count
+)
 
 $autoAcceptanceStatus = if ($autoAcceptanceManifestUsed) { [string](Get-JsonValue $autoAcceptanceManifest "status" "") } else { "" }
 $autoAcceptanceContractFixtureMode = $autoAcceptanceManifestUsed -and (Convert-ToBool (Get-JsonValue $autoAcceptanceManifest "contractFixtureMode" $false))
@@ -467,16 +533,27 @@ Add-StatusCheck "read_only_boundary" `
         -not $realHostProjectEvidenceAccepted -and
         -not $externalEvidenceAccepted) `
     "Owner return status must not run acceptance or claim real host-project evidence."
+Add-StatusCheck "owner_return_next_step_command_sequence" `
+    ([bool]$ownerReturnNextStepSequenceAligned) `
+    "Owner return next steps must expose status, semantic preflight, then auto acceptance commands while preserving legacy wrappers as reference only."
 
 $generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
 $acceptedOwnerPacketCount = Convert-ToInt (Get-JsonValue $handoffStatusManifest "acceptedOwnerPacketCount" 0)
 $pendingOwnerPacketCount = Convert-ToInt (Get-JsonValue $handoffStatusManifest "pendingOwnerPacketCount" 0)
 $remainingMissingFileCount = Convert-ToInt (Get-JsonValue $handoffStatusManifest "remainingMissingFileCount" 0)
 $remainingBlockingReasonCount = Convert-ToInt (Get-JsonValue $handoffStatusManifest "remainingBlockingReasonCount" 0)
-$semanticPreflightCommand = Format-MarkdownCell (Get-JsonValue $actionQueueManifest "ownerResponseBundleSemanticPreflightCommand" "")
-$semanticPreflightZipCommand = Format-MarkdownCell (Get-JsonValue $actionQueueManifest "ownerResponseBundleZipSemanticPreflightCommand" "")
-$autoAcceptanceCommand = Format-MarkdownCell (Get-JsonValue $actionQueueManifest "ownerResponseBundleAutoAcceptanceCommand" "")
-$autoAcceptanceZipCommand = Format-MarkdownCell (Get-JsonValue $actionQueueManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
+$ownerResponseBundleStatusCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleStatusCommand" "")
+$ownerResponseBundleZipStatusCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleZipStatusCommand" "")
+$ownerResponseBundleSemanticPreflightCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleSemanticPreflightCommand" "")
+$ownerResponseBundleZipSemanticPreflightCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleZipSemanticPreflightCommand" "")
+$ownerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleAutoAcceptanceCommand" "")
+$ownerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
+$ownerReturnStatusCommand = Format-MarkdownCell $ownerResponseBundleStatusCommand
+$ownerReturnStatusZipCommand = Format-MarkdownCell $ownerResponseBundleZipStatusCommand
+$semanticPreflightCommand = Format-MarkdownCell $ownerResponseBundleSemanticPreflightCommand
+$semanticPreflightZipCommand = Format-MarkdownCell $ownerResponseBundleZipSemanticPreflightCommand
+$autoAcceptanceCommand = Format-MarkdownCell $ownerResponseBundleAutoAcceptanceCommand
+$autoAcceptanceZipCommand = Format-MarkdownCell $ownerResponseBundleZipAutoAcceptanceCommand
 $ownerResponseBundleZipEnvironmentVariable = Format-MarkdownCell (Get-JsonValue $actionQueueManifest "ownerResponseBundleZipEnvironmentVariable" "")
 $ownerResponseBundleDirEnvironmentVariable = Format-MarkdownCell $ownerResponseBundleDirEnvironmentVariableName
 
@@ -511,8 +588,8 @@ $reportLines = @(
     "",
     "## Owner Areas",
     "",
-    "| Owner | Area | Missing | Present | Blockers | Next command |",
-    "| --- | --- | --- | --- | --- | --- |"
+    "| Owner | Area | Missing | Present | Blockers | Next step | Owner-return status | Semantic preflight | Auto acceptance |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
 )
 foreach ($ownerReturnStatus in $ownerReturnStatuses) {
     $ownerCell = Format-MarkdownCell (Get-JsonValue $ownerReturnStatus "owner" "")
@@ -520,13 +597,18 @@ foreach ($ownerReturnStatus in $ownerReturnStatuses) {
     $missingCell = Format-MarkdownCell (Join-MarkdownList @(Get-JsonValue $ownerReturnStatus "missingFiles" @()))
     $presentCell = Format-MarkdownCell (Join-MarkdownList @(Get-JsonValue $ownerReturnStatus "presentFiles" @()))
     $blockersCell = Format-MarkdownCell (Join-MarkdownList @(Get-JsonValue $ownerReturnStatus "remainingBlockingReasons" @()))
-    $nextCommandCell = Format-MarkdownCell (Get-JsonValue $ownerReturnStatus "acceptanceWrapperCommand" "")
-    $reportLines += "| $ownerCell | $areaCell | $missingCell | $presentCell | $blockersCell | $nextCommandCell |"
+    $nextStepCell = Format-MarkdownCell (Get-JsonValue $ownerReturnStatus "nextOperatorStep" "")
+    $statusCommandCell = Format-MarkdownCell (Get-JsonValue $ownerReturnStatus "ownerResponseBundleZipStatusCommand" "")
+    $semanticPreflightCell = Format-MarkdownCell (Get-JsonValue $ownerReturnStatus "ownerResponseBundleZipSemanticPreflightCommand" "")
+    $autoAcceptanceCell = Format-MarkdownCell (Get-JsonValue $ownerReturnStatus "ownerResponseBundleZipAutoAcceptanceCommand" "")
+    $reportLines += "| $ownerCell | $areaCell | $missingCell | $presentCell | $blockersCell | $nextStepCell | $statusCommandCell | $semanticPreflightCell | $autoAcceptanceCell |"
 }
 $reportLines += @(
     "",
     "## Commands",
     "",
+    "- Owner-return status: $ownerReturnStatusCommand",
+    "- Owner-return status zip: $ownerReturnStatusZipCommand",
     "- Semantic preflight: $semanticPreflightCommand",
     "- Semantic preflight zip: $semanticPreflightZipCommand",
     "- Auto acceptance: $autoAcceptanceCommand",
@@ -543,6 +625,8 @@ $reportLines += @(
 $reportText = [string]::Join([Environment]::NewLine, $reportLines) + [Environment]::NewLine
 $reportContentValidated = $reportText.Contains("Production External Evidence Owner Return Bundle Status") -and
     $reportText.Contains("Owner return readiness") -and
+    $reportText.Contains("Owner-return status") -and
+    $reportText.Contains("Auto acceptance") -and
     $reportText.Contains("Real production completion") -and
     -not $reportText.Contains("System.Collections") -and
     -not $reportText.Contains("@{")
@@ -636,10 +720,22 @@ $manifest = [ordered]@{
     remainingMissingFileCount = [int]$remainingMissingFileCount
     remainingBlockingReasonCount = [int]$remainingBlockingReasonCount
     externalEvidenceCollectionComplete = Convert-ToBool (Get-JsonValue $handoffStatusManifest "externalEvidenceCollectionComplete" $false)
-    ownerResponseBundleSemanticPreflightCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleSemanticPreflightCommand" "")
-    ownerResponseBundleZipSemanticPreflightCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleZipSemanticPreflightCommand" "")
-    ownerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleAutoAcceptanceCommand" "")
-    ownerResponseBundleZipAutoAcceptanceCommand = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")
+    ownerReturnNextStep = $ownerReturnNextStep
+    ownerReturnNextStepDescription = $ownerReturnNextStepDescription
+    ownerReturnNextStepSequenceAligned = [bool]$ownerReturnNextStepSequenceAligned
+    ownerReturnStatusCommandCount = [int]$ownerReturnStatusCommandCount
+    ownerReturnZipStatusCommandCount = [int]$ownerReturnZipStatusCommandCount
+    ownerReturnSemanticPreflightCommandCount = [int]$ownerReturnSemanticPreflightCommandCount
+    ownerReturnZipSemanticPreflightCommandCount = [int]$ownerReturnZipSemanticPreflightCommandCount
+    ownerReturnAutoAcceptanceCommandCount = [int]$ownerReturnAutoAcceptanceCommandCount
+    ownerReturnZipAutoAcceptanceCommandCount = [int]$ownerReturnZipAutoAcceptanceCommandCount
+    legacyAcceptanceWrapperCommandPreservedCount = [int]$legacyAcceptanceWrapperCommandPreservedCount
+    ownerResponseBundleStatusCommand = $ownerResponseBundleStatusCommand
+    ownerResponseBundleZipStatusCommand = $ownerResponseBundleZipStatusCommand
+    ownerResponseBundleSemanticPreflightCommand = $ownerResponseBundleSemanticPreflightCommand
+    ownerResponseBundleZipSemanticPreflightCommand = $ownerResponseBundleZipSemanticPreflightCommand
+    ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
+    ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
     ownerResponseBundleZipEnvironmentVariable = [string](Get-JsonValue $actionQueueManifest "ownerResponseBundleZipEnvironmentVariable" "")
     ownerResponseBundleDirEnvironmentVariable = $ownerResponseBundleDirEnvironmentVariableName
     ownerReturnStatuses = @($ownerReturnStatuses)

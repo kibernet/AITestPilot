@@ -3663,6 +3663,17 @@ if ($null -ne $productionExternalEvidenceOwnerReturnBundleStatusManifest) {
             [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.remainingMissingFileCount -eq 9 -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.remainingBlockingReasonCount -eq 11 -and
             $productionExternalEvidenceOwnerReturnBundleStatusManifest.nextRequiredAction -eq "collect_owner_response_bundle_zip" -and
+            $productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnNextStep -eq "run_owner_return_status_then_semantic_preflight_then_auto_acceptance" -and
+            [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnNextStepSequenceAligned -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnStatusCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnZipStatusCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnSemanticPreflightCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnZipSemanticPreflightCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnAutoAcceptanceCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.ownerReturnZipAutoAcceptanceCommandCount -eq 3 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.legacyAcceptanceWrapperCommandPreservedCount -eq 3 -and
+            ([string](Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
             (Convert-ToArray (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnStatuses" @())).Count -eq 3 -and
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.acceptanceRun -and
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.hardValidationRun -and
@@ -3672,7 +3683,7 @@ if ($null -ne $productionExternalEvidenceOwnerReturnBundleStatusManifest) {
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.externalEvidenceAccepted -and
             -not [bool]$productionExternalEvidenceOwnerReturnBundleStatusManifest.fixtureEvidencePromoted -and
             $productionExternalEvidenceOwnerReturnBundleStatusManifest.productionOutputBoundary -eq "owner_return_bundle_status_only" -and
-            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.checkCount -eq 8 -and
+            [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.checkCount -eq 9 -and
             [int]$productionExternalEvidenceOwnerReturnBundleStatusManifest.failedCheckCount -eq 0) `
         "Production external evidence owner return bundle status must summarize current returned-bundle readiness without running acceptance, sending mail, or claiming real evidence."
 
@@ -4320,6 +4331,15 @@ if ($null -ne $releaseRiskPolicyManifest) {
             [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusAccepted -and
             $releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleReadinessStatus -eq "PENDING_EXTERNAL_EVIDENCE" -and
             $releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleNextRequiredAction -eq "collect_owner_response_bundle_zip" -and
+            $releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleNextStep -eq "run_owner_return_status_then_semantic_preflight_then_auto_acceptance" -and
+            [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleNextStepSequenceAligned -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleStatusCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleZipStatusCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleSemanticPreflightCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleZipSemanticPreflightCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleAutoAcceptanceCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleZipAutoAcceptanceCommandCount -eq 3 -and
+            [int]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleLegacyAcceptanceWrapperCommandPreservedCount -eq 3 -and
             $releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleSourceKind -eq "none" -and
             -not [bool]$releaseRiskPolicyManifest.productionExternalEvidenceOwnerReturnBundleDiscoveredFromEnvironment -and
             $releaseRiskPolicyManifest.productionExternalEvidenceOwnerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and

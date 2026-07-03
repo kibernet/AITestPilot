@@ -2648,6 +2648,17 @@ $productionExternalEvidenceOwnerReturnBundleStatusAccepted = (
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "remainingMissingFileCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "remainingBlockingReasonCount" 0)) -eq 11 -and
     (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "nextRequiredAction" "") -eq "collect_owner_response_bundle_zip" -and
+    (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnNextStep" "") -eq "run_owner_return_status_then_semantic_preflight_then_auto_acceptance" -and
+    (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnNextStepSequenceAligned" $false)) -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnStatusCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnZipStatusCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnSemanticPreflightCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnZipSemanticPreflightCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnAutoAcceptanceCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnZipAutoAcceptanceCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "legacyAcceptanceWrapperCommandPreservedCount" 0)) -eq 3 -and
+    ([string](Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerResponseBundleStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+    ([string](Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
     (Convert-ToArray (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnStatuses" @())).Count -eq 3 -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "acceptanceRun" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "hardValidationRun" $true)) -and
@@ -2657,7 +2668,7 @@ $productionExternalEvidenceOwnerReturnBundleStatusAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "externalEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "productionOutputBoundary" "") -eq "owner_return_bundle_status_only" -and
-    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "checkCount" 0)) -eq 8 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "checkCount" 0)) -eq 9 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "failedCheckCount" 1)) -eq 0
 )
 
@@ -3506,6 +3517,15 @@ $manifest = [ordered]@{
     productionExternalEvidenceOwnerReturnBundleStatusAccepted = [bool]$productionExternalEvidenceOwnerReturnBundleStatusAccepted
     productionExternalEvidenceOwnerReturnBundleReadinessStatus = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnReadinessStatus" "")
     productionExternalEvidenceOwnerReturnBundleNextRequiredAction = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "nextRequiredAction" "")
+    productionExternalEvidenceOwnerReturnBundleNextStep = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnNextStep" "")
+    productionExternalEvidenceOwnerReturnBundleNextStepSequenceAligned = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnNextStepSequenceAligned" $false)
+    productionExternalEvidenceOwnerReturnBundleStatusCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnStatusCommandCount" 0))
+    productionExternalEvidenceOwnerReturnBundleZipStatusCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnZipStatusCommandCount" 0))
+    productionExternalEvidenceOwnerReturnBundleSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnSemanticPreflightCommandCount" 0))
+    productionExternalEvidenceOwnerReturnBundleZipSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnZipSemanticPreflightCommandCount" 0))
+    productionExternalEvidenceOwnerReturnBundleAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnAutoAcceptanceCommandCount" 0))
+    productionExternalEvidenceOwnerReturnBundleZipAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnZipAutoAcceptanceCommandCount" 0))
+    productionExternalEvidenceOwnerReturnBundleLegacyAcceptanceWrapperCommandPreservedCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "legacyAcceptanceWrapperCommandPreservedCount" 0))
     productionExternalEvidenceOwnerReturnBundleSourceKind = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnBundleSourceKind" "")
     productionExternalEvidenceOwnerReturnBundleDiscoveredFromEnvironment = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerReturnBundleDiscoveredFromEnvironment" $true)
     productionExternalEvidenceOwnerResponseBundleZipEnvironmentVariable = (Get-JsonValue $productionExternalEvidenceOwnerReturnBundleStatusManifest "ownerResponseBundleZipEnvironmentVariable" "")
@@ -3828,6 +3848,11 @@ $reportLines = @(
     "- Production external evidence owner return bundle status accepted: $($manifest.productionExternalEvidenceOwnerReturnBundleStatusAccepted)",
     "- Production external evidence owner return bundle readiness: $($manifest.productionExternalEvidenceOwnerReturnBundleReadinessStatus)",
     "- Production external evidence owner return bundle next action: $($manifest.productionExternalEvidenceOwnerReturnBundleNextRequiredAction)",
+    "- Production external evidence owner return bundle next step: $($manifest.productionExternalEvidenceOwnerReturnBundleNextStep)",
+    "- Production external evidence owner return bundle command sequence aligned: $($manifest.productionExternalEvidenceOwnerReturnBundleNextStepSequenceAligned)",
+    "- Production external evidence owner return bundle status commands: $($manifest.productionExternalEvidenceOwnerReturnBundleStatusCommandCount)",
+    "- Production external evidence owner return bundle semantic preflight commands: $($manifest.productionExternalEvidenceOwnerReturnBundleSemanticPreflightCommandCount)",
+    "- Production external evidence owner return bundle auto acceptance commands: $($manifest.productionExternalEvidenceOwnerReturnBundleAutoAcceptanceCommandCount)",
     "- Production external evidence owner return bundle pending owners: $($manifest.productionExternalEvidenceOwnerReturnBundlePendingOwnerPacketCount)",
     "- Production external evidence owner return bundle missing files: $($manifest.productionExternalEvidenceOwnerReturnBundleRemainingMissingFileCount)",
     "- Production external evidence owner return bundle status probe accepted: $($manifest.productionExternalEvidenceOwnerReturnBundleStatusProbeAccepted)",
