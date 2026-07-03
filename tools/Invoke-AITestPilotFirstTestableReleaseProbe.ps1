@@ -245,7 +245,7 @@ Add-ProbeCheck "release_gate_and_policy_passed" `
 
 Add-ProbeCheck "release_evidence_index_covered" `
     ((Get-JsonValue $releaseEvidenceIndexManifest "status" "") -eq "PASS" -and
-        (Convert-ToInt (Get-JsonValue $releaseEvidenceIndexManifest "semanticFieldCheckCount" 0)) -eq 124 -and
+        (Convert-ToInt (Get-JsonValue $releaseEvidenceIndexManifest "semanticFieldCheckCount" 0)) -eq 129 -and
         (Convert-ToInt (Get-JsonValue $releaseEvidenceIndexManifest "semanticFieldCheckFailedCount" 1)) -eq 0 -and
         (Get-JsonValue $fieldCoverageProbeManifest "status" "") -eq "PASS") `
     "Release evidence index must pass all semantic field checks and the field coverage probe."

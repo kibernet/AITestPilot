@@ -1934,6 +1934,32 @@ $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "writtenEvidenceFileCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerMiniKitDirectoryCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerMiniKitConfiguredContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerMiniKitRequiredEvidenceFileCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerMiniKitWrittenEvidenceFileCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergeHelperSucceeded" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergeHelperMergedAllOwners" $false)) -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergeStatus" "") -eq "MERGED_OWNER_MINI_KITS" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergeDirCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedOwnerCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedCopiedFileCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "missingRequiredFileCount" -2)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedBundleAccepted" $false)) -and
+    (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedBundleStatus" "") -eq "READY_FOR_IMPORT" -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedBundleConfiguredContactCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedBundleMissingEvidenceFileCount" -1)) -eq 0 -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedSemanticPreflightExecuted" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedSemanticPreflightReadOnly" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedSemanticPreflightAcceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedSemanticPreflightRealHostProjectEvidenceAccepted" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "releasePipelineSendsEmail" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "emailSent" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "confirmationTokenCreated" $true)) -and
@@ -1943,12 +1969,12 @@ $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted = (
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "releasePipelineUsesFixture" $true)) -and
     -not (Convert-ToBool (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "fixtureEvidencePromoted" $true)) -and
     (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionOutputBoundary" "") -eq "owner_response_bundle_kit_workflow_probe_only" -and
-    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "checkCount" 0)) -eq 10 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "checkCount" 0)) -eq 14 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "failedCheckCount" 1)) -eq 0
 )
 
 Add-PolicyCheck "production_handoff_owner_response_bundle_kit_workflow_probe_policy" $productionHandoffOwnerResponseBundleKitWorkflowProbeAccepted `
-    "Production handoff evidence must execute the generated owner response bundle kit verify/import helpers against incomplete and complete isolated bundles without sending email or accepting evidence." `
+    "Production handoff evidence must execute the generated owner response bundle kit verify/import/mini-kit merge helpers against incomplete, complete, and merged isolated bundles without sending email or accepting evidence." `
     "production_handoff_owner_response_bundle_kit_workflow_probe_not_accepted"
 
 $releaseProgressNotificationOutboxAccepted = (
@@ -3316,6 +3342,14 @@ $manifest = [ordered]@{
     productionHandoffOwnerResponseBundleKitWorkflowCompleteTemplateAccepted = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "completeTemplateAccepted" $false)
     productionHandoffOwnerResponseBundleKitWorkflowImportCopiedBundle = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importCopiedBundle" $false)
     productionHandoffOwnerResponseBundleKitWorkflowImportedEvidenceFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "importedEvidenceFileCount" 0))
+    productionHandoffOwnerResponseBundleKitWorkflowOwnerMiniKitDirectoryCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerMiniKitDirectoryCount" 0))
+    productionHandoffOwnerResponseBundleKitWorkflowOwnerMiniKitWrittenEvidenceFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "ownerMiniKitWrittenEvidenceFileCount" 0))
+    productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergeHelperMergedAllOwners = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergeHelperMergedAllOwners" $false)
+    productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedOwnerCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedOwnerCount" 0))
+    productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedCopiedFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedCopiedFileCount" 0))
+    productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedBundleAccepted = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedBundleAccepted" $false)
+    productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedSemanticPreflightExecuted = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedSemanticPreflightExecuted" $false)
+    productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedSemanticPreflightReadOnly = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "miniKitMergedSemanticPreflightReadOnly" $false)
     productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceCommandsDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceCommandsDocumented" $false)
     productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceZipCommandDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "autoAcceptanceZipCommandDocumented" $false)
     productionHandoffOwnerResponseBundleKitWorkflowDriverEvidenceExportHelperDocumented = (Get-JsonValue $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "productionDriverEvidenceExportHelperDocumented" $false)
@@ -3673,6 +3707,12 @@ $reportLines = @(
     "- Production handoff owner response bundle kit workflow empty rejected: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowEmptyTemplateRejected)",
     "- Production handoff owner response bundle kit workflow complete accepted: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowCompleteTemplateAccepted)",
     "- Production handoff owner response bundle kit workflow imported files: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowImportedEvidenceFileCount)",
+    "- Production handoff owner response bundle kit workflow mini-kit dirs: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowOwnerMiniKitDirectoryCount)",
+    "- Production handoff owner response bundle kit workflow mini-kit files: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowOwnerMiniKitWrittenEvidenceFileCount)",
+    "- Production handoff owner response bundle kit workflow mini-kit merge all owners: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergeHelperMergedAllOwners)",
+    "- Production handoff owner response bundle kit workflow mini-kit merged files: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedCopiedFileCount)",
+    "- Production handoff owner response bundle kit workflow mini-kit merged bundle accepted: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedBundleAccepted)",
+    "- Production handoff owner response bundle kit workflow mini-kit semantic preflight: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedSemanticPreflightExecuted)",
     "- Production handoff owner response bundle kit workflow auto acceptance documented: $($manifest.productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceCommandsDocumented)",
     "- Release progress notification outbox accepted: $($manifest.releaseProgressNotificationOutboxAccepted)",
     "- Release progress notification latest big node: $($manifest.releaseProgressNotificationLatestBigNodeName)",

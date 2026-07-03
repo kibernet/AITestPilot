@@ -293,16 +293,21 @@ Copy-Item -LiteralPath $sourceKitPath -Destination $copiedKitPath -Recurse -Forc
 
 $verifyScriptPath = Join-Path $copiedKitPath "verify-owner-response-bundle.ps1"
 $importScriptPath = Join-Path $copiedKitPath "import-owner-response-bundle.ps1"
+$miniKitMergeScriptPath = Join-Path $copiedKitPath "merge-owner-mini-kits.ps1"
 $selfContainedSemanticPreflightHelperPath = Join-Path $copiedKitPath "run-semantic-preflight.ps1"
 $selfContainedSemanticPreflightCorePath = Join-Path $copiedKitPath "semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1"
 $kitReadmePath = Join-Path $copiedKitPath "README.md"
 $requestDraftPath = Join-Path $copiedKitPath "owner-response-bundle-request-draft.md"
 $templatePath = Join-Path $copiedKitPath "owner-response-bundle-template"
+$ownerMiniKitRootPath = Join-Path $copiedKitPath "owner-response-mini-kits"
 if (-not (Test-Path $verifyScriptPath)) {
     throw "Copied kit is missing verify helper: $verifyScriptPath"
 }
 if (-not (Test-Path $importScriptPath)) {
     throw "Copied kit is missing import helper: $importScriptPath"
+}
+if (-not (Test-Path $miniKitMergeScriptPath)) {
+    throw "Copied kit is missing mini-kit merge helper: $miniKitMergeScriptPath"
 }
 if (-not (Test-Path $selfContainedSemanticPreflightHelperPath)) {
     throw "Copied kit is missing self-contained semantic preflight helper: $selfContainedSemanticPreflightHelperPath"
@@ -312,6 +317,9 @@ if (-not (Test-Path $selfContainedSemanticPreflightCorePath)) {
 }
 if (-not (Test-Path $templatePath)) {
     throw "Copied kit is missing owner response template: $templatePath"
+}
+if (-not (Test-Path $ownerMiniKitRootPath)) {
+    throw "Copied kit is missing owner mini kits: $ownerMiniKitRootPath"
 }
 
 $ownerResponseBundleAutoAcceptanceCommand = [string](Get-JsonValue $kitManifest "ownerResponseBundleAutoAcceptanceCommand" "")
@@ -529,6 +537,145 @@ $selfContainedSemanticPreflightHelperExecuted = (
     -not (Convert-ToBool (Get-JsonValue $selfContainedSemanticPreflightManifest "realHostProjectEvidenceAccepted" $true))
 )
 
+$mergedMiniKitBundlePath = Join-Path $workPath "merged-owner-mini-kit-bundle"
+Copy-Item -LiteralPath $templatePath -Destination $mergedMiniKitBundlePath -Recurse -Force
+
+$ownerMiniKitDirs = @(Get-ChildItem -LiteralPath $ownerMiniKitRootPath -Directory | Where-Object { $_.Name -like "host_project_*" } | Sort-Object Name)
+$ownerMiniKitDirPaths = @($ownerMiniKitDirs | ForEach-Object { $_.FullName })
+$miniKitConfiguredContactCount = 0
+$miniKitRequiredEvidenceFileCount = 0
+$miniKitWrittenEvidenceFileCount = 0
+foreach ($ownerMiniKitDir in $ownerMiniKitDirs) {
+    $miniKitRosterPath = Join-Path $ownerMiniKitDir.FullName "owner-contact-roster.json"
+    $miniKitRoster = Read-JsonFile $miniKitRosterPath "Owner mini kit contact roster"
+    foreach ($entry in @(Convert-ToArray (Get-JsonValue $miniKitRoster "entries" @()))) {
+        $owner = [string](Get-JsonValue $entry "owner" "")
+        $slug = Convert-ToSlug $owner
+        $entry.emailAddress = ($slug + "@example.invalid")
+        $entry.configured = $true
+        $entry.notes = "Workflow probe fixture address. Replace with the real owner mailbox before live dispatch."
+        $miniKitConfiguredContactCount += 1
+    }
+    $miniKitRoster.status = "CONTACTS_CONFIGURED"
+    $miniKitRoster.configuredContactCount = @(Convert-ToArray (Get-JsonValue $miniKitRoster "entries" @())).Count
+    $miniKitRoster.fixtureOnly = $true
+    $miniKitRoster | ConvertTo-Json -Depth 12 | Set-Content -Path $miniKitRosterPath -Encoding UTF8
+
+    $miniKitResponseManifestPath = Join-Path $ownerMiniKitDir.FullName "owner-response-bundle-manifest.json"
+    $miniKitResponseManifest = Read-JsonFile $miniKitResponseManifestPath "Owner mini kit response bundle manifest"
+    $miniKitPresentEvidenceFileCount = 0
+    foreach ($requiredFileSpec in @(Get-ChildItem -Path $ownerMiniKitDir.FullName -Recurse -Filter required-files.json)) {
+        $spec = Read-JsonFile $requiredFileSpec.FullName "Owner mini kit required files manifest"
+        $areaDir = Split-Path $requiredFileSpec.FullName -Parent
+        $owner = [string](Get-JsonValue $spec "owner" "")
+        $area = [string](Get-JsonValue $spec "area" "")
+        foreach ($fileName in @(Convert-ToArray (Get-JsonValue $spec "requiredEvidenceFiles" @()))) {
+            $miniKitRequiredEvidenceFileCount += 1
+            Write-PlaceholderRequiredFile `
+                -Path (Join-Path $areaDir ([string]$fileName)) `
+                -Owner $owner `
+                -Area $area `
+                -FileName ([string]$fileName)
+            $miniKitWrittenEvidenceFileCount += 1
+            $miniKitPresentEvidenceFileCount += 1
+        }
+    }
+    $miniKitResponseManifest.status = "COMPLETE_CONTRACT_FIXTURE"
+    $miniKitResponseManifest.configuredContactCount = Convert-ToInt (Get-JsonValue $miniKitRoster "configuredContactCount" 0)
+    $miniKitResponseManifest.presentEvidenceFileCount = $miniKitPresentEvidenceFileCount
+    $miniKitResponseManifest.fixtureOnly = $true
+    $miniKitResponseManifest.productionOutputBoundary = "owner_response_mini_kit_workflow_probe_only"
+    $miniKitResponseManifest | ConvertTo-Json -Depth 10 | Set-Content -Path $miniKitResponseManifestPath -Encoding UTF8
+}
+
+$miniKitMergeManifestPath = Join-Path $probePath "owner-mini-kit-merge-manifest.json"
+$miniKitMergeTranscriptPath = Join-Path $probePath "owner-mini-kit-merge-output.txt"
+$miniKitMergeSucceeded = $false
+$miniKitMergeErrorMessage = ""
+try {
+    $miniKitMergeOutput = & $miniKitMergeScriptPath `
+        -MiniKitDir $ownerMiniKitDirPaths `
+        -FullBundleDir $mergedMiniKitBundlePath `
+        -OutputPath $miniKitMergeManifestPath 2>&1
+    $miniKitMergeSucceeded = $true
+}
+catch {
+    $miniKitMergeOutput = @($_)
+    $miniKitMergeErrorMessage = $_.Exception.Message
+}
+Set-Content -Path $miniKitMergeTranscriptPath -Value @($miniKitMergeOutput | ForEach-Object { [string]$_ }) -Encoding UTF8
+
+$miniKitMergeManifest = $null
+if (Test-Path $miniKitMergeManifestPath) {
+    $miniKitMergeManifest = Read-JsonFile $miniKitMergeManifestPath "Owner mini kit merge manifest"
+}
+
+$mergedMiniKitPreflightPath = Join-Path $probePath "merged-owner-mini-kit-bundle-preflight.json"
+$mergedMiniKitTranscriptPath = Join-Path $probePath "merged-owner-mini-kit-bundle-verify-output.txt"
+$mergedMiniKitVerify = Invoke-OwnerBundleVerify `
+    -VerifyScriptPath $verifyScriptPath `
+    -BundleDir $mergedMiniKitBundlePath `
+    -OutputPath $mergedMiniKitPreflightPath `
+    -TranscriptPath $mergedMiniKitTranscriptPath
+
+$mergedMiniKitSemanticPreflightOutputDir = Join-Path $copiedKitPath "merged-mini-kit-semantic-preflight-output"
+$mergedMiniKitSemanticPreflightEvidenceOutputDir = Join-Path $probePath "merged-mini-kit-semantic-preflight-output"
+$mergedMiniKitSemanticPreflightTranscriptPath = Join-Path $probePath "merged-mini-kit-semantic-preflight-output.txt"
+$mergedMiniKitSemanticPreflightSucceeded = $false
+$mergedMiniKitSemanticPreflightErrorMessage = ""
+try {
+    $mergedMiniKitSemanticPreflightOutput = & $selfContainedSemanticPreflightHelperPath `
+        -OwnerResponseBundleDir $mergedMiniKitBundlePath `
+        -OutputDir $mergedMiniKitSemanticPreflightOutputDir `
+        -AllowNonCandidate 2>&1
+    $mergedMiniKitSemanticPreflightSucceeded = $true
+}
+catch {
+    $mergedMiniKitSemanticPreflightOutput = @($_)
+    $mergedMiniKitSemanticPreflightErrorMessage = $_.Exception.Message
+}
+Set-Content -Path $mergedMiniKitSemanticPreflightTranscriptPath -Value @($mergedMiniKitSemanticPreflightOutput | ForEach-Object { [string]$_ }) -Encoding UTF8
+
+$mergedMiniKitSemanticPreflightManifestPath = Join-Path $mergedMiniKitSemanticPreflightOutputDir "production-external-evidence-semantic-preflight-manifest.json"
+$mergedMiniKitSemanticPreflightReportPath = Join-Path $mergedMiniKitSemanticPreflightOutputDir "production-external-evidence-semantic-preflight.md"
+$mergedMiniKitSemanticPreflightManifest = $null
+if (Test-Path $mergedMiniKitSemanticPreflightManifestPath) {
+    $mergedMiniKitSemanticPreflightManifest = Read-JsonFile $mergedMiniKitSemanticPreflightManifestPath "Merged mini kit semantic preflight manifest"
+}
+if (Test-Path $mergedMiniKitSemanticPreflightOutputDir) {
+    if (Test-Path $mergedMiniKitSemanticPreflightEvidenceOutputDir) {
+        Remove-Item -LiteralPath $mergedMiniKitSemanticPreflightEvidenceOutputDir -Recurse -Force
+    }
+    Copy-Item -LiteralPath $mergedMiniKitSemanticPreflightOutputDir -Destination $mergedMiniKitSemanticPreflightEvidenceOutputDir -Recurse -Force
+}
+
+$mergedMiniKitPreflight = $mergedMiniKitVerify.preflight
+$miniKitMergeHelperMergedAllOwners = (
+    [bool]$miniKitMergeSucceeded -and
+    (Get-JsonValue $miniKitMergeManifest "status" "") -eq "MERGED_OWNER_MINI_KITS" -and
+    (Convert-ToInt (Get-JsonValue $miniKitMergeManifest "miniKitDirCount" 0)) -eq $ownerMiniKitDirs.Count -and
+    (Convert-ToInt (Get-JsonValue $miniKitMergeManifest "mergedOwnerCount" 0)) -eq $ownerMiniKitDirs.Count -and
+    (Convert-ToInt (Get-JsonValue $miniKitMergeManifest "copiedFileCount" 0)) -eq $miniKitWrittenEvidenceFileCount
+)
+$miniKitMergedBundleAccepted = [bool]$mergedMiniKitVerify.succeeded -and
+    (Get-JsonValue $mergedMiniKitPreflight "status" "") -eq "READY_FOR_IMPORT" -and
+    (Convert-ToInt (Get-JsonValue $mergedMiniKitPreflight "ownerContactCount" 0)) -eq $ownerMiniKitDirs.Count -and
+    (Convert-ToInt (Get-JsonValue $mergedMiniKitPreflight "configuredContactCount" 0)) -eq $ownerMiniKitDirs.Count -and
+    (Convert-ToInt (Get-JsonValue $mergedMiniKitPreflight "invalidContactCount" -1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $mergedMiniKitPreflight "requiredEvidenceFileCount" 0)) -eq $miniKitWrittenEvidenceFileCount -and
+    (Convert-ToInt (Get-JsonValue $mergedMiniKitPreflight "presentEvidenceFileCount" 0)) -eq $miniKitWrittenEvidenceFileCount -and
+    (Convert-ToInt (Get-JsonValue $mergedMiniKitPreflight "missingEvidenceFileCount" -1)) -eq 0
+$miniKitMergedSemanticPreflightExecuted = (
+    [bool]$mergedMiniKitSemanticPreflightSucceeded -and
+    (Test-Path $mergedMiniKitSemanticPreflightManifestPath) -and
+    (Test-Path $mergedMiniKitSemanticPreflightReportPath) -and
+    (Get-JsonValue $mergedMiniKitSemanticPreflightManifest "schemaVersion" "") -eq "aitestpilot.production_external_evidence_semantic_preflight.v1" -and
+    (Convert-ToBool (Get-JsonValue $mergedMiniKitSemanticPreflightManifest "readOnly" $false)) -and
+    -not (Convert-ToBool (Get-JsonValue $mergedMiniKitSemanticPreflightManifest "acceptanceRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $mergedMiniKitSemanticPreflightManifest "hardValidationRun" $true)) -and
+    -not (Convert-ToBool (Get-JsonValue $mergedMiniKitSemanticPreflightManifest "realHostProjectEvidenceAccepted" $true))
+)
+
 $incompletePreflight = $incompleteVerify.preflight
 $completePreflight = $completeVerify.preflight
 $ownerContactCount = Convert-ToInt (Get-JsonValue $kitManifest "ownerContactCount" 0)
@@ -584,6 +731,13 @@ $reportLines = @(
     "| Empty template rejected | $emptyTemplateRejected |",
     "| Complete template accepted | $completeTemplateAccepted |",
     "| Import copied bundle | $importCopiedBundle |",
+    "| Owner mini kit directories | $($ownerMiniKitDirs.Count) |",
+    "| Owner mini kit written files | $miniKitWrittenEvidenceFileCount |",
+    "| Owner mini kit merge helper succeeded | $miniKitMergeHelperMergedAllOwners |",
+    "| Owner mini kit merged owners | $(Convert-ToInt (Get-JsonValue $miniKitMergeManifest "mergedOwnerCount" 0)) |",
+    "| Owner mini kit copied files | $(Convert-ToInt (Get-JsonValue $miniKitMergeManifest "copiedFileCount" 0)) |",
+    "| Merged mini kit bundle accepted | $miniKitMergedBundleAccepted |",
+    "| Merged mini kit semantic preflight executed | $miniKitMergedSemanticPreflightExecuted |",
     "| Owner contacts | $ownerContactCount |",
     "| Required evidence files | $kitRequiredEvidenceFileCount |",
     "| Imported evidence files | $(@($importedEvidenceFiles).Count) |",
@@ -601,6 +755,8 @@ $reportLines = @(
     "| Production Lua evidence export helper | $productionLuaEvidenceExportHelperCommand |",
     "| Live model smoke evidence export helper | $liveModelSmokeEvidenceExportHelperCommand |",
     "| Import error | $(Format-MarkdownCell $importErrorMessage) |",
+    "| Owner mini kit merge error | $(Format-MarkdownCell $miniKitMergeErrorMessage) |",
+    "| Merged mini kit semantic preflight error | $(Format-MarkdownCell $mergedMiniKitSemanticPreflightErrorMessage) |",
     "",
     "## Boundary",
     "",
@@ -632,6 +788,21 @@ Add-ProbeCheck "complete_template_ready_for_import" `
 Add-ProbeCheck "import_helper_copies_bundle" `
     $importCopiedBundle `
     "Generated import helper must copy the filled roster and all required evidence files into an isolated evidence bundle."
+Add-ProbeCheck "owner_mini_kits_filled" `
+    ($ownerMiniKitDirs.Count -eq (Convert-ToInt (Get-JsonValue $ownerInputRequest "ownerActionCount" 0)) -and
+        $miniKitConfiguredContactCount -eq (Convert-ToInt (Get-JsonValue $ownerInputRequest "ownerActionCount" 0)) -and
+        $miniKitRequiredEvidenceFileCount -eq (Convert-ToInt (Get-JsonValue $ownerInputRequest "missingRequiredFileCount" 0)) -and
+        $miniKitWrittenEvidenceFileCount -eq (Convert-ToInt (Get-JsonValue $ownerInputRequest "missingRequiredFileCount" 0))) `
+    "Workflow probe must fill all per-owner mini kits with configured fixture contacts and all required evidence files."
+Add-ProbeCheck "owner_mini_kit_merge_helper_merges_all_returns" `
+    $miniKitMergeHelperMergedAllOwners `
+    "Generated mini-kit merge helper must merge all three owner mini kits into the full owner response bundle and copy all nine files."
+Add-ProbeCheck "owner_mini_kit_merged_bundle_ready_for_import" `
+    $miniKitMergedBundleAccepted `
+    "Generated verify helper must accept the full owner response bundle after all owner mini kits are merged."
+Add-ProbeCheck "owner_mini_kit_merged_semantic_preflight_executed" `
+    $miniKitMergedSemanticPreflightExecuted `
+    "Generated self-contained semantic preflight helper must run against the merged mini-kit full bundle without accepting evidence."
 Add-ProbeCheck "auto_acceptance_commands_documented" `
     $autoAcceptanceCommandsDocumented `
     "Generated owner response bundle kit must document operator-side auto acceptance commands for returned folders and zip archives."
@@ -676,13 +847,23 @@ $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $completePreflightPath),
     (Convert-ToEvidenceRelativePath $completeTranscriptPath),
     (Convert-ToEvidenceRelativePath $importTranscriptPath),
-    (Convert-ToEvidenceRelativePath $selfContainedSemanticPreflightTranscriptPath)
+    (Convert-ToEvidenceRelativePath $selfContainedSemanticPreflightTranscriptPath),
+    (Convert-ToEvidenceRelativePath $miniKitMergeManifestPath),
+    (Convert-ToEvidenceRelativePath $miniKitMergeTranscriptPath),
+    (Convert-ToEvidenceRelativePath $mergedMiniKitPreflightPath),
+    (Convert-ToEvidenceRelativePath $mergedMiniKitTranscriptPath),
+    (Convert-ToEvidenceRelativePath $mergedMiniKitSemanticPreflightTranscriptPath)
 )
 foreach ($file in @(Get-ChildItem -LiteralPath $importSnapshotPath -Recurse -File)) {
     $generatedFiles += (Convert-ToEvidenceRelativePath $file.FullName)
 }
 if (Test-Path $selfContainedSemanticPreflightEvidenceOutputDir) {
     foreach ($file in @(Get-ChildItem -LiteralPath $selfContainedSemanticPreflightEvidenceOutputDir -Recurse -File)) {
+        $generatedFiles += (Convert-ToEvidenceRelativePath $file.FullName)
+    }
+}
+if (Test-Path $mergedMiniKitSemanticPreflightEvidenceOutputDir) {
+    foreach ($file in @(Get-ChildItem -LiteralPath $mergedMiniKitSemanticPreflightEvidenceOutputDir -Recurse -File)) {
         $generatedFiles += (Convert-ToEvidenceRelativePath $file.FullName)
     }
 }
@@ -693,8 +874,10 @@ $sourceFiles = @(
     "production-handoff-owner-response-bundle-kit/owner-response-bundle-request-draft.md",
     "production-handoff-owner-response-bundle-kit/verify-owner-response-bundle.ps1",
     "production-handoff-owner-response-bundle-kit/import-owner-response-bundle.ps1",
+    "production-handoff-owner-response-bundle-kit/merge-owner-mini-kits.ps1",
     "production-handoff-owner-response-bundle-kit/run-semantic-preflight.ps1",
     "production-handoff-owner-response-bundle-kit/semantic-preflight/Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
+    "production-handoff-owner-response-bundle-kit/owner-response-mini-kits/README.md",
     "production-handoff-owner-response-bundle-kit/owner-response-bundle-template/owner-contact-roster.json",
     "production-handoff-owner-response-bundle-kit/owner-response-bundle-template/owner-response-bundle-manifest.json",
     "production-handoff-owner-input-request-pack-manifest.json"
@@ -713,6 +896,28 @@ $manifest = [ordered]@{
     requiredEvidenceFileCount = [int]$kitRequiredEvidenceFileCount
     writtenEvidenceFileCount = [int]$writtenEvidenceFileCount
     importedEvidenceFileCount = [int]@($importedEvidenceFiles).Count
+    ownerMiniKitDirectoryCount = [int]$ownerMiniKitDirs.Count
+    ownerMiniKitConfiguredContactCount = [int]$miniKitConfiguredContactCount
+    ownerMiniKitRequiredEvidenceFileCount = [int]$miniKitRequiredEvidenceFileCount
+    ownerMiniKitWrittenEvidenceFileCount = [int]$miniKitWrittenEvidenceFileCount
+    miniKitMergeHelperSucceeded = [bool]$miniKitMergeSucceeded
+    miniKitMergeHelperMergedAllOwners = [bool]$miniKitMergeHelperMergedAllOwners
+    miniKitMergeStatus = [string](Get-JsonValue $miniKitMergeManifest "status" "")
+    miniKitMergeDirCount = Convert-ToInt (Get-JsonValue $miniKitMergeManifest "miniKitDirCount" 0)
+    miniKitMergedOwnerCount = Convert-ToInt (Get-JsonValue $miniKitMergeManifest "mergedOwnerCount" 0)
+    miniKitMergedCopiedFileCount = Convert-ToInt (Get-JsonValue $miniKitMergeManifest "copiedFileCount" 0)
+    miniKitMergeManifestPath = $miniKitMergeManifestPath
+    miniKitMergeErrorMessage = $miniKitMergeErrorMessage
+    miniKitMergedBundleAccepted = [bool]$miniKitMergedBundleAccepted
+    miniKitMergedBundleStatus = [string](Get-JsonValue $mergedMiniKitPreflight "status" "")
+    miniKitMergedBundleConfiguredContactCount = Convert-ToInt (Get-JsonValue $mergedMiniKitPreflight "configuredContactCount" 0)
+    miniKitMergedBundleMissingEvidenceFileCount = Convert-ToInt (Get-JsonValue $mergedMiniKitPreflight "missingEvidenceFileCount" 0)
+    miniKitMergedSemanticPreflightExecuted = [bool]$miniKitMergedSemanticPreflightExecuted
+    miniKitMergedSemanticPreflightStatus = [string](Get-JsonValue $mergedMiniKitSemanticPreflightManifest "semanticPreflightStatus" "")
+    miniKitMergedSemanticPreflightReadOnly = Convert-ToBool (Get-JsonValue $mergedMiniKitSemanticPreflightManifest "readOnly" $false)
+    miniKitMergedSemanticPreflightAcceptanceRun = Convert-ToBool (Get-JsonValue $mergedMiniKitSemanticPreflightManifest "acceptanceRun" $true)
+    miniKitMergedSemanticPreflightRealHostProjectEvidenceAccepted = Convert-ToBool (Get-JsonValue $mergedMiniKitSemanticPreflightManifest "realHostProjectEvidenceAccepted" $true)
+    miniKitMergedSemanticPreflightErrorMessage = $mergedMiniKitSemanticPreflightErrorMessage
     emptyTemplateRejected = [bool]$emptyTemplateRejected
     emptyTemplateStatus = [string](Get-JsonValue $incompletePreflight "status" "")
     emptyTemplateInvalidContactCount = Convert-ToInt (Get-JsonValue $incompletePreflight "invalidContactCount" 0)

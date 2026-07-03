@@ -208,7 +208,7 @@ The pipeline runs:
 - production hard-mode success contract probe, proving combined driver, Lua, and live-model hard switches can pass with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
 - release risk policy, aggregating AI exploration, high-risk graph, production driver, production Lua, live endpoint, and CI provider release blockers with release risk policy source script SHA256 binding.
 - Cursor Agent external output binding probe, proving stale optional headless Cursor Agent producer files cannot be treated as the current accepted external-output directory unless task context and run/patch/summary hashes match.
-- release evidence index, exporting a machine-readable source-manifest summary for CI, portal handoff, and audit consumers, including field-level coverage for 124 semantic fields across the primary release evidence manifests plus field-level definition and source script SHA256 binding plus source manifest SHA256 hash set binding.
+- release evidence index, exporting a machine-readable source-manifest summary for CI, portal handoff, and audit consumers, including field-level coverage for 129 semantic fields across the primary release evidence manifests plus field-level definition and source script SHA256 binding plus source manifest SHA256 hash set binding.
 - release evidence index field coverage probe, proving six isolated scenarios for the index field checks and latest-bundle pollution guard before the release gate runs. The probe does not send email, accept real host-project evidence, or promote fixture evidence into production evidence.
 - repo-side release gate.
 - release-gate failure probe.

@@ -336,6 +336,11 @@ function New-ReleaseEvidenceFieldCoverage {
     $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "selfContainedSemanticPreflightReadOnly" "bool-eq" $true "self-contained semantic preflight is read-only"
     $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "selfContainedSemanticPreflightAcceptanceRun" "bool-eq" $false "self-contained semantic preflight does not accept evidence"
     $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "ownerResponseBundleZipEnvironmentVariable" "string-eq" "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" "owner kit documents zip environment variable"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "miniKitMergeHelperMergedAllOwners" "bool-eq" $true "owner mini-kit merge helper merges all owner returns"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "miniKitMergedCopiedFileCount" "int-eq" 9 "owner mini-kit merge helper copies all required evidence files"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "miniKitMergedBundleAccepted" "bool-eq" $true "merged mini-kit bundle is ready for import"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "miniKitMergedSemanticPreflightExecuted" "bool-eq" $true "merged mini-kit bundle runs semantic preflight"
+    $checks += New-FieldCoverageCheck "production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json" "miniKitMergedSemanticPreflightReadOnly" "bool-eq" $true "merged mini-kit semantic preflight remains read-only"
 
     $checks += New-FieldCoverageCheck "production-handoff-owner-input-request-pack-manifest.json" "ownerResponseBundleRouteCount" "int-eq" 3 "owner input request pack exposes one owner response bundle route per owner"
     $checks += New-FieldCoverageCheck "production-handoff-owner-input-request-pack-manifest.json" "ownerResponseBundleRequiredFilesPathCount" "int-eq" 3 "owner input request pack exposes required-files path per owner"

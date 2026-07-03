@@ -2967,6 +2967,24 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerResponseBundleZipEnvironmentVariable -eq "AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH" -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.importedEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.writtenEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerMiniKitDirectoryCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerMiniKitConfiguredContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerMiniKitRequiredEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.ownerMiniKitWrittenEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergeHelperSucceeded -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergeHelperMergedAllOwners -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergeStatus -eq "MERGED_OWNER_MINI_KITS" -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergeDirCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedOwnerCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedCopiedFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedBundleAccepted -and
+            $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedBundleStatus -eq "READY_FOR_IMPORT" -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedBundleConfiguredContactCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedBundleMissingEvidenceFileCount -eq 0 -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedSemanticPreflightExecuted -and
+            [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedSemanticPreflightReadOnly -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedSemanticPreflightAcceptanceRun -and
+            -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.miniKitMergedSemanticPreflightRealHostProjectEvidenceAccepted -and
             -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.releasePipelineSendsEmail -and
             -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.emailSent -and
             -not [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.confirmationTokenCreated -and
@@ -2979,9 +2997,9 @@ if ($null -ne $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest) {
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionLuaEvidenceExportHelperDocumented -and
             [bool]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.liveModelSmokeEvidenceExportHelperDocumented -and
             $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.productionOutputBoundary -eq "owner_response_bundle_kit_workflow_probe_only" -and
-            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 10 -and
+            [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.checkCount -eq 14 -and
             [int]$productionHandoffOwnerResponseBundleKitWorkflowProbeManifest.failedCheckCount -eq 0) `
-        "Production handoff owner response bundle kit workflow probe must execute generated verify/import helpers against incomplete and complete isolated bundles without sending email or accepting production evidence."
+        "Production handoff owner response bundle kit workflow probe must execute generated verify/import/mini-kit merge helpers against incomplete, complete, and merged isolated bundles without sending email or accepting production evidence."
 
     Test-ListedFiles $productionHandoffOwnerResponseBundleKitWorkflowProbeManifest "production_handoff_owner_response_bundle_kit_workflow_probe"
 }
@@ -4187,6 +4205,14 @@ if ($null -ne $releaseRiskPolicyManifest) {
             ([string]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitLiveModelSmokeEvidenceExportHelperCommand).Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceCommandsDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowAutoAcceptanceZipCommandDocumented -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowOwnerMiniKitDirectoryCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowOwnerMiniKitWrittenEvidenceFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergeHelperMergedAllOwners -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedOwnerCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedCopiedFileCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.missingRequiredFileCount -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedBundleAccepted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedSemanticPreflightExecuted -and
+            [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowMiniKitMergedSemanticPreflightReadOnly -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowDriverEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowLuaEvidenceExportHelperDocumented -and
             [bool]$releaseRiskPolicyManifest.productionHandoffOwnerResponseBundleKitWorkflowLiveModelSmokeEvidenceExportHelperDocumented -and
