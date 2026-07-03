@@ -184,6 +184,171 @@ function Write-FailedPipelineArtifactInvalidation {
     return $manifestPath
 }
 
+function Read-PipelineJsonFile {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    if (-not (Test-Path $Path)) {
+        throw "$Label is missing: $Path"
+    }
+
+    return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
+}
+
+function Get-PipelineJsonValue {
+    param(
+        [object]$Object,
+        [string]$Name,
+        [object]$DefaultValue = $null
+    )
+
+    if ($null -eq $Object) {
+        return $DefaultValue
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+
+    return $property.Value
+}
+
+function Convert-PipelineBool {
+    param(
+        [object]$Value,
+        [bool]$DefaultValue = $false
+    )
+
+    if ($null -eq $Value) {
+        return $DefaultValue
+    }
+
+    if ($Value -is [bool]) {
+        return [bool]$Value
+    }
+
+    $text = [string]$Value
+    if ($text -ieq "true" -or $text -eq "1") {
+        return $true
+    }
+
+    if ($text -ieq "false" -or $text -eq "0") {
+        return $false
+    }
+
+    return [bool]$Value
+}
+
+function Convert-PipelineInt {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return 0
+    }
+
+    return [int]$Value
+}
+
+function Convert-PipelineUtcDateTime {
+    param(
+        [object]$Value,
+        [string]$Label
+    )
+
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        throw "$Label is missing a generatedAtUtc timestamp."
+    }
+
+    return [datetime]::Parse(
+        $text,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::RoundtripKind
+    ).ToUniversalTime()
+}
+
+function Assert-FinalArtifactReleaseEvidenceIndexFreshness {
+    param([string]$ArtifactPath)
+
+    $indexManifestPath = Join-Path $ArtifactPath "release-evidence-index-manifest.json"
+    $indexPath = Join-Path $ArtifactPath "release-evidence-index.json"
+    $firstTestableManifestPath = Join-Path $ArtifactPath "first-testable-release-manifest.json"
+    $firstTestableReportPath = Join-Path $ArtifactPath "first-testable-release.md"
+
+    $indexManifest = Read-PipelineJsonFile $indexManifestPath "Final artifact release evidence index manifest"
+    $index = Read-PipelineJsonFile $indexPath "Final artifact release evidence index"
+    $firstTestableManifest = Read-PipelineJsonFile $firstTestableManifestPath "First testable release manifest"
+
+    if (-not (Test-Path $firstTestableReportPath)) {
+        throw "First testable release report is missing before final index validation: $firstTestableReportPath"
+    }
+
+    if ((Get-PipelineJsonValue $indexManifest "status" "") -ne "PASS" -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $indexManifest "pipelineManifestExpected" $false)) -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $indexManifest "pipelineManifestIncluded" $false))) {
+        throw "Final artifact release evidence index must be PASS and include pipeline-manifest.json."
+    }
+
+    if ((Get-PipelineJsonValue $index "status" "") -ne "PASS") {
+        throw "Final artifact release evidence index JSON must be PASS."
+    }
+
+    if ((Get-PipelineJsonValue $firstTestableManifest "status" "") -ne "PASS" -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $firstTestableManifest "readyForOperatorTesting" $false))) {
+        throw "First testable release manifest must be PASS and ready for operator testing before final index validation."
+    }
+
+    $indexGeneratedAtUtc = Convert-PipelineUtcDateTime (Get-PipelineJsonValue $indexManifest "generatedAtUtc" "") "Final release evidence index manifest"
+    $firstTestableGeneratedAtUtc = Convert-PipelineUtcDateTime (Get-PipelineJsonValue $firstTestableManifest "generatedAtUtc" "") "First testable release manifest"
+    if ($indexGeneratedAtUtc -lt $firstTestableGeneratedAtUtc) {
+        throw "Final release evidence index was generated before first-testable-release-manifest.json and is stale."
+    }
+
+    $auxiliaryManifests = @(Get-PipelineJsonValue $index "auxiliaryManifests" @())
+    $firstTestableIndexEntry = $null
+    foreach ($entry in $auxiliaryManifests) {
+        if ([string](Get-PipelineJsonValue $entry "name" "") -eq "first-testable-release-manifest.json") {
+            $firstTestableIndexEntry = $entry
+            break
+        }
+    }
+
+    if ($null -eq $firstTestableIndexEntry) {
+        throw "Final release evidence index must inventory first-testable-release-manifest.json as an auxiliary manifest."
+    }
+
+    $firstTestableManifestSha256 = (Get-FileHash -LiteralPath $firstTestableManifestPath -Algorithm SHA256).Hash
+    $indexedFirstTestableManifestSha256 = [string](Get-PipelineJsonValue $firstTestableIndexEntry "sourceManifestSha256" "")
+    if ($indexedFirstTestableManifestSha256 -ne $firstTestableManifestSha256) {
+        throw "Final release evidence index has a stale SHA256 for first-testable-release-manifest.json."
+    }
+
+    $firstTestableFiles = @(Get-PipelineJsonValue $firstTestableManifest "files" @())
+    $requiredFirstTestableFiles = @(
+        "first-testable-release-manifest.json",
+        "first-testable-release.md"
+    )
+    foreach ($fileName in $requiredFirstTestableFiles) {
+        if ($firstTestableFiles -notcontains $fileName) {
+            throw "First testable release manifest must list $fileName for final index coverage."
+        }
+    }
+
+    if ((Convert-PipelineBool (Get-PipelineJsonValue $firstTestableIndexEntry "sourceManifest" $true)) -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $firstTestableIndexEntry "exists" $false)) -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $firstTestableIndexEntry "parseable" $false)) -or
+        (Get-PipelineJsonValue $firstTestableIndexEntry "status" "") -ne "PASS" -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $firstTestableIndexEntry "statusAccepted" $false)) -or
+        (Convert-PipelineInt (Get-PipelineJsonValue $firstTestableIndexEntry "listedFileCount" 0)) -ne $firstTestableFiles.Count -or
+        (Convert-PipelineInt (Get-PipelineJsonValue $firstTestableIndexEntry "listedFilePresentCount" 0)) -ne $firstTestableFiles.Count -or
+        (Convert-PipelineInt (Get-PipelineJsonValue $firstTestableIndexEntry "missingListedFileCount" 1)) -ne 0) {
+        throw "Final release evidence index must list first-testable-release-manifest.json as a covered PASS auxiliary manifest with all listed files present."
+    }
+}
+
 function Remove-CursorAgentOptionalEvidence {
     param([string]$BundleDir)
 
@@ -339,6 +504,8 @@ function Export-PipelineArtifacts {
             -not [bool]$indexManifest.pipelineManifestIncluded) {
             throw "Final artifact release evidence index must stay PASS after first-testable release probe."
         }
+
+        Assert-FinalArtifactReleaseEvidenceIndexFreshness -ArtifactPath $artifactPath
     }
 
     Write-Output "Pipeline artifacts: $artifactPath"
