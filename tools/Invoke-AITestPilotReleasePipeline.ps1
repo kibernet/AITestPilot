@@ -506,6 +506,11 @@ function Export-PipelineArtifacts {
         }
 
         Assert-FinalArtifactReleaseEvidenceIndexFreshness -ArtifactPath $artifactPath
+        $finalArtifactFreshnessProbeDir = Join-Path (Split-Path $bundlePath -Parent) "final-artifact-freshness-probe"
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotFinalArtifactFreshnessProbe.ps1") `
+            -ArtifactDir $artifactPath `
+            -ManifestPath (Join-Path $finalArtifactFreshnessProbeDir "final-artifact-freshness-probe-manifest.json") `
+            -ReportPath (Join-Path $finalArtifactFreshnessProbeDir "final-artifact-freshness-probe.md") | Out-Null
     }
 
     Write-Output "Pipeline artifacts: $artifactPath"
