@@ -2616,12 +2616,16 @@ if ($null -ne $productionHandoffOwnerInputRequestPackManifest) {
             [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleRouteCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleAreaPathCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleRequiredFilesPathCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
+            [int](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipStatusCommandCount" 0) -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipSemanticPreflightCommandCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipAutoAcceptanceCommandCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [int]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleExportHelperCommandCount -eq [int]$productionHandoffOwnerInputRequestPackManifest.ownerActionCount -and
             [bool]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleRoutesValidated -and
             [bool]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleContentValidated -and
+            [bool](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleOwnerReturnStatusBeforeSemanticPreflightBeforeAutoAcceptanceDocumented" $false) -and
             [bool]$productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleSemanticPreflightBeforeAutoAcceptanceDocumented -and
+            ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+            ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
             $productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipSemanticPreflightCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
             $productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipSemanticPreflightCommand.Contains("-OwnerResponseBundleZipPath") -and
             $productionHandoffOwnerInputRequestPackManifest.ownerResponseBundleZipAutoAcceptanceCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
@@ -3490,6 +3494,7 @@ if ($null -ne $productionExternalEvidenceGapAnalysisManifest) {
             [int]$productionExternalEvidenceGapAnalysisManifest.repoSideClosableGapCount -eq 0 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.externalEvidenceRequiredGapCount -eq 3 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.itemExportHelperCommandCount -eq 3 -and
+            [int](Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemOwnerReturnStatusCommandCount" 0) -eq 3 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.itemSemanticPreflightCommandCount -eq 3 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.itemAutoAcceptanceCommandCount -eq 3 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.itemHardValidationCommandCount -eq 3 -and
@@ -3502,7 +3507,7 @@ if ($null -ne $productionExternalEvidenceGapAnalysisManifest) {
             $productionExternalEvidenceGapAnalysisManifest.productionOutputBoundary -eq "production_external_evidence_gap_analysis_only" -and
             [int]$productionExternalEvidenceGapAnalysisManifest.checkCount -eq 6 -and
             [int]$productionExternalEvidenceGapAnalysisManifest.failedCheckCount -eq 0) `
-        "Production external evidence gap analysis must summarize the remaining three external gaps, commands, and production boundary without claiming repo-side closure."
+        "Production external evidence gap analysis must summarize the remaining three external gaps, owner-return status, semantic preflight, auto acceptance, hard validation commands, and production boundary without claiming repo-side closure."
 
     Test-ListedFiles $productionExternalEvidenceGapAnalysisManifest "production_external_evidence_gap_analysis"
 }
@@ -3522,6 +3527,7 @@ if ($null -ne $productionHandoffOwnerRouteMapManifest) {
             [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "matchedSendReadinessCount" 0) -eq 3 -and
             [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "matchedOwnerResponseBundleAreaCount" 0) -eq 3 -and
             [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "matchedRequiredFilesJsonCount" 0) -eq 3 -and
+            [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "ownerReturnStatusCommandCount" 0) -eq 3 -and
             [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "semanticPreflightCommandCount" 0) -eq 3 -and
             [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "autoAcceptanceCommandCount" 0) -eq 3 -and
             [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "hardValidationCommandCount" 0) -eq 3 -and
@@ -3538,7 +3544,7 @@ if ($null -ne $productionHandoffOwnerRouteMapManifest) {
             -not [bool](Get-JsonValue $productionHandoffOwnerRouteMapManifest "fixtureEvidencePromoted" $true) -and
             $productionHandoffOwnerRouteMapManifest.productionOutputBoundary -eq "production_handoff_owner_route_map_only" -and
             [int](Get-JsonValue $productionHandoffOwnerRouteMapManifest "failedCheckCount" 1) -eq 0) `
-        "Production handoff owner route map must tie all three external gaps to owner packets, contact/send state, response bundle areas, required-files.json, semantic preflight, auto acceptance, and hard validation without claiming repo-side closure."
+        "Production handoff owner route map must tie all three external gaps to owner packets, contact/send state, response bundle areas, required-files.json, owner-return status, semantic preflight, auto acceptance, and hard validation without claiming repo-side closure."
 
     Test-ListedFiles $productionHandoffOwnerRouteMapManifest "production_handoff_owner_route_map"
 }

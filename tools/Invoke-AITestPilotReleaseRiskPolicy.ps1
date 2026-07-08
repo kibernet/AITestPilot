@@ -1525,6 +1525,8 @@ $productionHandoffOwnerInputRequestPackAccepted = (
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleRequiredFilesPathCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipStatusCommandCount" -1)) -eq
+        (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipSemanticPreflightCommandCount" -1)) -eq
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipAutoAcceptanceCommandCount" -1)) -eq
@@ -1533,7 +1535,10 @@ $productionHandoffOwnerInputRequestPackAccepted = (
         (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerActionCount" -2)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleRoutesValidated" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleContentValidated" $false)) -and
+    (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleOwnerReturnStatusBeforeSemanticPreflightBeforeAutoAcceptanceDocumented" $false)) -and
     (Convert-ToBool (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleSemanticPreflightBeforeAutoAcceptanceDocumented" $false)) -and
+    ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+    ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipStatusCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
     ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
     ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipSemanticPreflightCommand" "")).Contains("-OwnerResponseBundleZipPath") -and
     ([string](Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipAutoAcceptanceCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
@@ -2484,6 +2489,7 @@ $productionExternalEvidenceGapAnalysisAccepted = (
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "repoSideClosableGapCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalEvidenceRequiredGapCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemExportHelperCommandCount" 0)) -eq 3 -and
+    (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemOwnerReturnStatusCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemSemanticPreflightCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemAutoAcceptanceCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemHardValidationCommandCount" 0)) -eq 3 -and
@@ -2499,7 +2505,7 @@ $productionExternalEvidenceGapAnalysisAccepted = (
 )
 
 Add-PolicyCheck "production_external_evidence_gap_analysis_policy" $productionExternalEvidenceGapAnalysisAccepted `
-    "Production evidence handoff must include a machine-readable gap analysis proving the remaining work cannot be closed repo-side and has owner/operator commands for every external area." `
+    "Production evidence handoff must include a machine-readable gap analysis proving the remaining work cannot be closed repo-side and has owner-return status, semantic preflight, auto acceptance, and hard validation commands for every external area." `
     "production_external_evidence_gap_analysis_not_accepted"
 
 $productionHandoffOwnerRouteMapAccepted = (
@@ -2512,6 +2518,7 @@ $productionHandoffOwnerRouteMapAccepted = (
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingBlockingReasonCount" 0)) -eq 11 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "repoSideClosableGapCount" 1)) -eq 0 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "routeMismatchCount" 1)) -eq 0 -and
+    (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "ownerReturnStatusCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "semanticPreflightCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "autoAcceptanceCommandCount" 0)) -eq 3 -and
     (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "hardValidationCommandCount" 0)) -eq 3 -and
@@ -2543,7 +2550,7 @@ $productionHandoffOwnerRouteMapProbeAccepted = (
 )
 
 Add-PolicyCheck "production_handoff_owner_route_map_policy" ($productionHandoffOwnerRouteMapAccepted -and $productionHandoffOwnerRouteMapProbeAccepted) `
-    "Production evidence handoff must prove each remaining external owner area has a coherent owner packet, contact/send state, response bundle path, required files, semantic preflight, auto acceptance, and hard validation route." `
+    "Production evidence handoff must prove each remaining external owner area has a coherent owner packet, contact/send state, response bundle path, required files, owner-return status, semantic preflight, auto acceptance, and hard validation route." `
     "production_handoff_owner_route_map_not_accepted"
 
 $productionExternalEvidencePartialMatrixProbeAccepted = (
@@ -3300,10 +3307,12 @@ $manifest = [ordered]@{
     productionHandoffOwnerInputRequestStatus = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerInputRequestStatus" "")
     productionHandoffOwnerInputRequestRecipient = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "operatorProgressRecipient" "")
     productionHandoffOwnerInputRequestOwnerResponseBundleRouteCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleRouteCount" 0))
+    productionHandoffOwnerInputRequestOwnerResponseBundleZipStatusCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipStatusCommandCount" 0))
     productionHandoffOwnerInputRequestOwnerResponseBundleZipSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipSemanticPreflightCommandCount" 0))
     productionHandoffOwnerInputRequestOwnerResponseBundleZipAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipAutoAcceptanceCommandCount" 0))
     productionHandoffOwnerInputRequestOwnerResponseBundleExportHelperCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleExportHelperCommandCount" 0))
     productionHandoffOwnerInputRequestOwnerResponseBundleZipEnvironmentVariable = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleZipEnvironmentVariable" "")
+    productionHandoffOwnerInputRequestOwnerReturnStatusBeforeSemanticPreflightBeforeAutoAcceptanceDocumented = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleOwnerReturnStatusBeforeSemanticPreflightBeforeAutoAcceptanceDocumented" $false)
     productionHandoffOwnerInputRequestSemanticPreflightBeforeAutoAcceptanceDocumented = (Get-JsonValue $productionHandoffOwnerInputRequestPackManifest "ownerResponseBundleSemanticPreflightBeforeAutoAcceptanceDocumented" $false)
     productionHandoffOwnerContactExternalIntakeProbeAccepted = [bool]$productionHandoffOwnerContactExternalIntakeProbeAccepted
     productionHandoffOwnerContactExternalSendReady = (Get-JsonValue $productionHandoffOwnerContactExternalIntakeProbeManifest "externalSendReadyForConfirmation" $false)
@@ -3474,6 +3483,7 @@ $manifest = [ordered]@{
     productionExternalEvidenceGapAnalysisExternalEvidenceRequiredGapCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalEvidenceRequiredGapCount" 0))
     productionExternalEvidenceGapAnalysisMissingFileCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingMissingFileCount" 0))
     productionExternalEvidenceGapAnalysisBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "externalRemainingBlockingReasonCount" 0))
+    productionExternalEvidenceGapAnalysisOwnerReturnStatusCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemOwnerReturnStatusCommandCount" 0))
     productionExternalEvidenceGapAnalysisSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionExternalEvidenceGapAnalysisManifest "itemSemanticPreflightCommandCount" 0))
     productionHandoffOwnerRouteMapAccepted = [bool]$productionHandoffOwnerRouteMapAccepted
     productionHandoffOwnerRouteMapProbeAccepted = [bool]$productionHandoffOwnerRouteMapProbeAccepted
@@ -3481,6 +3491,7 @@ $manifest = [ordered]@{
     productionHandoffOwnerRouteMapRepoSideClosableGapCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "repoSideClosableGapCount" 0))
     productionHandoffOwnerRouteMapMissingFileCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingMissingFileCount" 0))
     productionHandoffOwnerRouteMapBlockingReasonCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "externalRemainingBlockingReasonCount" 0))
+    productionHandoffOwnerRouteMapOwnerReturnStatusCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "ownerReturnStatusCommandCount" 0))
     productionHandoffOwnerRouteMapSemanticPreflightCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "semanticPreflightCommandCount" 0))
     productionHandoffOwnerRouteMapAutoAcceptanceCommandCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapManifest "autoAcceptanceCommandCount" 0))
     productionHandoffOwnerRouteMapProbeScenarioCount = (Convert-ToInt (Get-JsonValue $productionHandoffOwnerRouteMapProbeManifest "scenarioCount" 0))

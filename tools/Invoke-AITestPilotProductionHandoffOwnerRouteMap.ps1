@@ -269,6 +269,7 @@ function New-RouteMap {
             $exportHelperCommand = [string](Get-JsonValue $item "liveModelSmokeEvidenceExportHelperCommand" "")
         }
 
+        $ownerReturnStatusCommand = [string](Get-JsonValue $item "ownerResponseBundleZipStatusCommand" "")
         $semanticPreflightCommand = [string](Get-JsonValue $item "ownerResponseBundleZipSemanticPreflightCommand" "")
         $autoAcceptanceCommand = [string](Get-JsonValue $item "ownerResponseBundleZipAutoAcceptanceCommand" "")
         $hardValidationCommand = [string](Get-JsonValue $item "hardValidationCommand" "")
@@ -313,6 +314,8 @@ function New-RouteMap {
         $routeChecks += [ordered]@{
             name = "route_commands_present"
             passed = (-not [string]::IsNullOrWhiteSpace($exportHelperCommand) -and
+                $ownerReturnStatusCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+                $ownerReturnStatusCommand.Contains("-OwnerResponseBundleZipPath") -and
                 $semanticPreflightCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
                 $semanticPreflightCommand.Contains("-OwnerResponseBundleZipPath") -and
                 $autoAcceptanceCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
@@ -320,8 +323,9 @@ function New-RouteMap {
                 $hardValidationCommand.Contains("Invoke-AITestPilotReleasePipeline.ps1"))
         }
         $routeChecks += [ordered]@{
-            name = "semantic_preflight_before_auto_acceptance"
-            passed = ($semanticPreflightCommand.Contains("SemanticPreflight") -and
+            name = "owner_return_status_before_semantic_preflight_before_auto_acceptance"
+            passed = ($ownerReturnStatusCommand.Contains("OwnerReturnBundleStatus") -and
+                $semanticPreflightCommand.Contains("SemanticPreflight") -and
                 $autoAcceptanceCommand.Contains("AutoAcceptance") -and
                 -not [string]::IsNullOrWhiteSpace($hardValidationCommand))
         }
@@ -343,6 +347,7 @@ function New-RouteMap {
             blockingReasons = @($blockingReasons)
             blockingReasonCount = [int](Get-JsonValue $item "remainingBlockingReasonCount" $blockingReasons.Count)
             exportHelperCommand = $exportHelperCommand
+            ownerReturnStatusCommand = $ownerReturnStatusCommand
             semanticPreflightCommand = $semanticPreflightCommand
             autoAcceptanceCommand = $autoAcceptanceCommand
             hardValidationCommand = $hardValidationCommand
@@ -420,13 +425,14 @@ Add-RouteCheck "owner_route_area_coverage" `
         ($routeAreas -contains "live_model_endpoint_smoke")) `
     "Owner route map must cover gameplay QA, Lua owner, and AI platform external-evidence areas exactly once."
 
+$ownerReturnStatusCount = @($routes | Where-Object { ([string](Get-JsonValue $_ "ownerReturnStatusCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") }).Count
 $semanticPreflightCount = @($routes | Where-Object { ([string](Get-JsonValue $_ "semanticPreflightCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") }).Count
 $autoAcceptanceCount = @($routes | Where-Object { ([string](Get-JsonValue $_ "autoAcceptanceCommand" "")).Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") }).Count
 $hardValidationCount = @($routes | Where-Object { ([string](Get-JsonValue $_ "hardValidationCommand" "")).Contains("Invoke-AITestPilotReleasePipeline.ps1") }).Count
 $exportHelperCount = @($routes | Where-Object { -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "exportHelperCommand" "")) }).Count
 Add-RouteCheck "owner_route_command_coverage" `
-    ($semanticPreflightCount -eq 3 -and $autoAcceptanceCount -eq 3 -and $hardValidationCount -eq 3 -and $exportHelperCount -eq 3) `
-    "Every route must expose owner export helper, semantic preflight, auto acceptance, and hard validation commands."
+    ($ownerReturnStatusCount -eq 3 -and $semanticPreflightCount -eq 3 -and $autoAcceptanceCount -eq 3 -and $hardValidationCount -eq 3 -and $exportHelperCount -eq 3) `
+    "Every route must expose owner export helper, owner-return status, semantic preflight, auto acceptance, and hard validation commands."
 
 $routeMissingFileCount = [int](($routes | ForEach-Object { Convert-ToInt (Get-JsonValue $_ "missingFileCount" 0) } | Measure-Object -Sum).Sum)
 $routeBlockingReasonCount = [int](($routes | ForEach-Object { Convert-ToInt (Get-JsonValue $_ "blockingReasonCount" 0) } | Measure-Object -Sum).Sum)
@@ -459,12 +465,12 @@ $reportLines = @(
     "| Missing files | $externalMissingFileCount |",
     "| Blocking reasons | $externalBlockingReasonCount |",
     "| Repo-side closable gaps | $repoSideClosableGapCount |",
-    "| Command order | semantic preflight, auto acceptance after preflight passes, hard validation |",
+    "| Command order | owner-return status, semantic preflight, auto acceptance after preflight passes, hard validation |",
     "",
     "## Routes",
     "",
-    "| Owner | Area | Packet | Contact | Send | Missing | Blockers | Required Files | Semantic Preflight | Auto Acceptance | Hard Validation |",
-    "| --- | --- | --- | --- | --- | ---: | ---: | --- | --- | --- | --- |"
+    "| Owner | Area | Packet | Contact | Send | Missing | Blockers | Required Files | Owner-Return Status | Semantic Preflight | Auto Acceptance | Hard Validation |",
+    "| --- | --- | --- | --- | --- | ---: | ---: | --- | --- | --- | --- | --- |"
 )
 
 foreach ($route in $routes) {
@@ -476,10 +482,11 @@ foreach ($route in $routes) {
     $missingFileCount = Get-JsonValue $route "missingFileCount" 0
     $blockingReasonCount = Get-JsonValue $route "blockingReasonCount" 0
     $missingFiles = Format-MarkdownCell (Join-TextList @(Get-JsonValue $route "missingFiles" @()))
+    $ownerReturnStatusCommand = Format-MarkdownCell (Get-JsonValue $route "ownerReturnStatusCommand" "")
     $semanticPreflightCommand = Format-MarkdownCell (Get-JsonValue $route "semanticPreflightCommand" "")
     $autoAcceptanceCommand = Format-MarkdownCell (Get-JsonValue $route "autoAcceptanceCommand" "")
     $hardValidationCommand = Format-MarkdownCell (Get-JsonValue $route "hardValidationCommand" "")
-    $reportLines += "| $owner | $area | $ownerPacketPath | $contactStatus | $sendStatus | $missingFileCount | $blockingReasonCount | $missingFiles | $semanticPreflightCommand | $autoAcceptanceCommand | $hardValidationCommand |"
+    $reportLines += "| $owner | $area | $ownerPacketPath | $contactStatus | $sendStatus | $missingFileCount | $blockingReasonCount | $missingFiles | $ownerReturnStatusCommand | $semanticPreflightCommand | $autoAcceptanceCommand | $hardValidationCommand |"
 }
 
 $reportLines += @(
@@ -498,7 +505,9 @@ $reportText = $reportLines -join [Environment]::NewLine
 $reportContentValidated = $reportText.Contains("host_project_gameplay_qa") -and
     $reportText.Contains("host_project_lua_owner") -and
     $reportText.Contains("host_project_ai_platform") -and
-    $reportText.Contains("semantic preflight, auto acceptance after preflight passes, hard validation") -and
+    $reportText.Contains("owner-return status, semantic preflight, auto acceptance after preflight passes, hard validation") -and
+    $reportText.Contains("Owner-Return Status") -and
+    $reportText.Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
     $reportText.Contains("Repo-side closable gaps") -and
     -not $reportText.Contains("System.Collections") -and
     -not $reportText.Contains("@{")
@@ -547,6 +556,7 @@ $manifest = [ordered]@{
     matchedSendReadinessCount = [int]$sendEntries.Count
     matchedOwnerResponseBundleAreaCount = [int]@($routes | Where-Object { -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleAreaPath" "")) }).Count
     matchedRequiredFilesJsonCount = [int]@($routes | Where-Object { -not [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "ownerResponseBundleRequiredFilesPath" "")) }).Count
+    ownerReturnStatusCommandCount = [int]$ownerReturnStatusCount
     semanticPreflightCommandCount = [int]$semanticPreflightCount
     autoAcceptanceCommandCount = [int]$autoAcceptanceCount
     hardValidationCommandCount = [int]$hardValidationCount
@@ -555,7 +565,7 @@ $manifest = [ordered]@{
     requiredFileMismatchCount = [int]@($routes | Where-Object {
             @((Get-JsonValue $_ "checks" @()) | Where-Object { [string](Get-JsonValue $_ "name" "") -eq "required_files_json_matches_action_queue" -and -not [bool](Get-JsonValue $_ "passed" $false) }).Count -gt 0
         }).Count
-    missingCommandCount = [int](3 - [Math]::Min($semanticPreflightCount, [Math]::Min($autoAcceptanceCount, $hardValidationCount)))
+    missingCommandCount = [int](3 - [Math]::Min($ownerReturnStatusCount, [Math]::Min($semanticPreflightCount, [Math]::Min($autoAcceptanceCount, $hardValidationCount))))
     routes = @($routes)
     releasePipelineSendsEmail = $false
     automaticEmailSendReady = $false

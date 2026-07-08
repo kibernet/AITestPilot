@@ -244,6 +244,7 @@ $gapItems = @()
 $totalMissing = 0
 $totalBlockers = 0
 $areasWithExportHelpers = 0
+$areasWithOwnerReturnStatus = 0
 $areasWithSemanticPreflight = 0
 $areasWithAutoAcceptance = 0
 $areasWithHardValidation = 0
@@ -269,11 +270,16 @@ foreach ($item in $queueItems) {
         $exportHelperCommand = [string](Get-JsonValue $item "liveModelSmokeEvidenceExportHelperCommand" "")
     }
 
+    $ownerBundleZipStatusCommand = [string](Get-JsonValue $item "ownerResponseBundleZipStatusCommand" "")
     $ownerBundleZipCommand = [string](Get-JsonValue $item "ownerResponseBundleZipAutoAcceptanceCommand" "")
     $ownerBundleZipSemanticPreflightCommand = [string](Get-JsonValue $item "ownerResponseBundleZipSemanticPreflightCommand" "")
     $hardValidationCommand = [string](Get-JsonValue $item "hardValidationCommand" "")
     if (-not [string]::IsNullOrWhiteSpace($exportHelperCommand)) {
         $areasWithExportHelpers += 1
+    }
+    if ($ownerBundleZipStatusCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
+        $ownerBundleZipStatusCommand.Contains("-OwnerResponseBundleZipPath")) {
+        $areasWithOwnerReturnStatus += 1
     }
     if ($ownerBundleZipSemanticPreflightCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
         $ownerBundleZipSemanticPreflightCommand.Contains("-OwnerResponseBundleZipPath")) {
@@ -300,6 +306,7 @@ foreach ($item in $queueItems) {
             ownerResponseBundleRequiredFilesPath = [string](Get-JsonValue $item "ownerResponseBundleRequiredFilesPath" "")
             preflightCommand = [string](Get-JsonValue $item "preflightCommand" "")
             acceptanceWrapperCommand = [string](Get-JsonValue $item "acceptanceWrapperCommand" "")
+            ownerResponseBundleZipStatusCommand = $ownerBundleZipStatusCommand
             ownerResponseBundleZipSemanticPreflightCommand = $ownerBundleZipSemanticPreflightCommand
             ownerResponseBundleZipAutoAcceptanceCommand = $ownerBundleZipCommand
             evidenceExportHelperCommand = $exportHelperCommand
@@ -308,22 +315,28 @@ foreach ($item in $queueItems) {
         externalEvidenceRequired = [bool]($missingFileCount -gt 0 -or $blockingReasonCount -gt 0)
         canBeClosedRepoSide = $false
         nextOwnerCommand = if (-not [string]::IsNullOrWhiteSpace($exportHelperCommand)) { $exportHelperCommand } else { $hardValidationCommand }
+        nextOperatorOwnerReturnStatusCommand = $ownerBundleZipStatusCommand
         nextOperatorSemanticPreflightCommand = $ownerBundleZipSemanticPreflightCommand
         nextOperatorAutoAcceptanceCommand = $ownerBundleZipCommand
-        nextOperatorCommand = $ownerBundleZipSemanticPreflightCommand
+        nextOperatorCommand = $ownerBundleZipStatusCommand
         nextOperatorSteps = @(
             [ordered]@{
                 order = 1
+                name = "owner_return_status"
+                command = $ownerBundleZipStatusCommand
+            },
+            [ordered]@{
+                order = 2
                 name = "semantic_preflight"
                 command = $ownerBundleZipSemanticPreflightCommand
             },
             [ordered]@{
-                order = 2
+                order = 3
                 name = "auto_acceptance_after_preflight_passes"
                 command = $ownerBundleZipCommand
             },
             [ordered]@{
-                order = 3
+                order = 4
                 name = "hard_validation_after_acceptance"
                 command = $hardValidationCommand
             }
@@ -354,8 +367,8 @@ Add-GapCheck "gap_analysis_area_classification" `
         @($gapItems | Where-Object { [string](Get-JsonValue $_ "area" "") -eq "live_model_endpoint_smoke" }).Count -eq 1) `
     "Gap analysis must classify all three remaining production evidence areas."
 Add-GapCheck "gap_analysis_commands_covered" `
-    ($areasWithExportHelpers -eq 3 -and $areasWithSemanticPreflight -eq 3 -and $areasWithAutoAcceptance -eq 3 -and $areasWithHardValidation -eq 3) `
-    "Every gap item must expose an owner export helper, returned-bundle semantic-preflight command, auto-acceptance command, and hard-validation command."
+    ($areasWithExportHelpers -eq 3 -and $areasWithOwnerReturnStatus -eq 3 -and $areasWithSemanticPreflight -eq 3 -and $areasWithAutoAcceptance -eq 3 -and $areasWithHardValidation -eq 3) `
+    "Every gap item must expose an owner export helper, returned-bundle owner-return status command, semantic-preflight command, auto-acceptance command, and hard-validation command."
 Add-GapCheck "gap_analysis_boundary_preserved" `
     (-not (Convert-ToBool (Get-JsonValue $actionQueue "realHostProjectEvidenceAccepted" $true)) -and
         -not (Convert-ToBool (Get-JsonValue $actionQueue "externalEvidenceAccepted" $true)) -and
@@ -380,7 +393,7 @@ $reportLines = @(
     "| --- | --- |",
     "| Status | $(Format-MarkdownCell $status) |",
     "| Action queue source | $(Format-MarkdownCell $actionQueueSourceKind) |",
-    "| Next operator command order | semantic preflight, auto acceptance after preflight passes, hard validation |",
+    "| Next operator command order | owner-return status, semantic preflight, auto acceptance after preflight passes, hard validation |",
     "| External work items | $externalRemainingWorkItemCount |",
     "| External missing files | $externalRemainingMissingFileCount |",
     "| External blockers | $externalRemainingBlockingReasonCount |",
@@ -389,8 +402,8 @@ $reportLines = @(
     "",
     "## Gaps",
     "",
-    "| Area | Owner | Missing Files | Blockers | Owner Command | Operator Semantic Preflight | Operator Acceptance | Hard Validation |",
-    "| --- | --- | ---: | ---: | --- | --- | --- | --- |"
+    "| Area | Owner | Missing Files | Blockers | Owner Command | Operator Owner-Return Status | Operator Semantic Preflight | Operator Acceptance | Hard Validation |",
+    "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- |"
 )
 foreach ($gap in $gapItems) {
     $repoSide = Get-JsonValue $gap "repoSideCovered" $null
@@ -399,10 +412,11 @@ foreach ($gap in $gapItems) {
     $missingFileCount = Get-JsonValue $gap "missingFileCount" 0
     $blockingReasonCount = Get-JsonValue $gap "blockingReasonCount" 0
     $exportHelperCommand = Format-MarkdownCell (Get-JsonValue $repoSide "evidenceExportHelperCommand" "")
+    $operatorOwnerReturnStatusCommand = Format-MarkdownCell (Get-JsonValue $repoSide "ownerResponseBundleZipStatusCommand" "")
     $operatorSemanticPreflightCommand = Format-MarkdownCell (Get-JsonValue $repoSide "ownerResponseBundleZipSemanticPreflightCommand" "")
     $operatorAcceptanceCommand = Format-MarkdownCell (Get-JsonValue $repoSide "ownerResponseBundleZipAutoAcceptanceCommand" "")
     $hardValidationCommand = Format-MarkdownCell (Get-JsonValue $repoSide "hardValidationCommand" "")
-    $reportLines += "| $area | $owner | $missingFileCount | $blockingReasonCount | $exportHelperCommand | $operatorSemanticPreflightCommand | $operatorAcceptanceCommand | $hardValidationCommand |"
+    $reportLines += "| $area | $owner | $missingFileCount | $blockingReasonCount | $exportHelperCommand | $operatorOwnerReturnStatusCommand | $operatorSemanticPreflightCommand | $operatorAcceptanceCommand | $hardValidationCommand |"
 }
 $reportLines += @(
     "",
@@ -441,6 +455,8 @@ $reportContentValidated = $reportText.Contains("production_driver_binding") -and
     $reportText.Contains("production_lua_patch_evidence") -and
     $reportText.Contains("live_model_endpoint_smoke") -and
     $reportText.Contains("Can close repo-side") -and
+    $reportText.Contains("Operator Owner-Return Status") -and
+    $reportText.Contains("Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") -and
     $reportText.Contains("Operator Semantic Preflight") -and
     $reportText.Contains("Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1") -and
     -not $reportText.Contains("System.Collections") -and
@@ -488,6 +504,7 @@ $manifest = [ordered]@{
     repoSideClosableGapCount = 0
     externalEvidenceRequiredGapCount = [int]@($gapItems | Where-Object { [bool](Get-JsonValue $_ "externalEvidenceRequired" $false) }).Count
     itemExportHelperCommandCount = [int]$areasWithExportHelpers
+    itemOwnerReturnStatusCommandCount = [int]$areasWithOwnerReturnStatus
     itemSemanticPreflightCommandCount = [int]$areasWithSemanticPreflight
     itemAutoAcceptanceCommandCount = [int]$areasWithAutoAcceptance
     itemHardValidationCommandCount = [int]$areasWithHardValidation
