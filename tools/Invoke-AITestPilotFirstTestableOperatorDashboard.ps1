@@ -217,10 +217,65 @@ foreach ($item in $actionQueueItems) {
     }
 }
 
+$operatorPreflightMatrix = @()
+foreach ($route in $ownerRoutes) {
+    $owner = [string]$route.owner
+    $area = [string]$route.area
+    $contactStatus = [string]$route.contactStatus
+    $sendStatus = [string]$route.sendStatus
+    $bundleAreaPath = [string]$route.bundleAreaPath
+    $missingFileCount = [int]$route.missingFileCount
+    $missingFiles = @($route.missingFiles | ForEach-Object { [string]$_ })
+    $contactAction = if ($contactStatus -eq "MISSING_OWNER_EMAIL" -or $sendStatus -eq "BLOCKED_MISSING_OWNER_EMAIL") {
+        "Fill production-handoff-owner-input-request-pack/owner-contact-roster-template.json for $owner before sending."
+    }
+    else {
+        "Contact configured; keep two-stage send confirmation enabled."
+    }
+    $evidenceAction = if ($missingFileCount -gt 0) {
+        "Fill $bundleAreaPath with $missingFileCount required files: $(Join-TextList $missingFiles)."
+    }
+    else {
+        "No missing files reported for $area."
+    }
+
+    $operatorPreflightMatrix += [ordered]@{
+        owner = $owner
+        area = $area
+        safeNextStep = "collect_owner_response_bundle_zip"
+        contactStatus = $contactStatus
+        sendStatus = $sendStatus
+        contactNextAction = $contactAction
+        evidenceNextAction = $evidenceAction
+        ownerResponseBundleAreaPath = $bundleAreaPath
+        ownerPacketPath = [string]$route.ownerPacketPath
+        missingFileCount = $missingFileCount
+        missingFiles = @($missingFiles)
+        blockingReasonCount = [int]$route.blockingReasonCount
+        blockingReasons = @($route.blockingReasons | ForEach-Object { [string]$_ })
+        ownerReturnStatusWorkingDirectory = "artifact_root"
+        semanticPreflightWorkingDirectory = "artifact_root"
+        acceptanceWorkingDirectory = "artifact_root_after_status_and_preflight"
+        hardValidationWorkingDirectory = "repo_root"
+        ownerReturnStatusCommand = [string]$route.ownerReturnStatusCommand
+        semanticPreflightCommand = [string]$route.semanticPreflightCommand
+        acceptanceCommand = [string]$route.autoAcceptanceCommand
+        hardValidationCommand = [string]$route.hardValidationCommand
+        acceptanceGate = "Run acceptance only after owner-return status is READY_FOR_AUTO_ACCEPTANCE_CANDIDATE and semanticFailCount is 0."
+        operatorCanRunAcceptanceNow = $false
+    }
+}
+
 $routesWithStatusCommand = @($ownerRoutes | Where-Object { ([string]$_["ownerReturnStatusCommand"]).Contains("OwnerReturnBundleStatus") -and ([string]$_["ownerReturnStatusCommand"]).Contains("-OwnerResponseBundleZipPath") }).Count
 $routesWithSemanticPreflight = @($ownerRoutes | Where-Object { ([string]$_["semanticPreflightCommand"]).Contains("SemanticPreflight") -and ([string]$_["semanticPreflightCommand"]).Contains("-OwnerResponseBundleZipPath") }).Count
 $routesWithAutoAcceptance = @($ownerRoutes | Where-Object { ([string]$_["autoAcceptanceCommand"]).Contains("AutoAcceptance") -and ([string]$_["autoAcceptanceCommand"]).Contains("-RequireAllEvidence") }).Count
 $routesWithHardValidation = @($ownerRoutes | Where-Object { ([string]$_["hardValidationCommand"]).Contains("Invoke-AITestPilotReleasePipeline.ps1") }).Count
+$preflightRowsWithContactAction = @($operatorPreflightMatrix | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_["contactNextAction"]) }).Count
+$preflightRowsWithEvidenceAction = @($operatorPreflightMatrix | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_["evidenceNextAction"]) }).Count
+$preflightRowsWithAcceptanceGate = @($operatorPreflightMatrix | Where-Object {
+        ([string]$_["acceptanceGate"]).Contains("READY_FOR_AUTO_ACCEPTANCE_CANDIDATE") -and
+        -not [bool]$_["operatorCanRunAcceptanceNow"]
+    }).Count
 
 $nextZipLocalStatusCommand = '.\production-handoff-export\run-owner-return-status.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
 $nextZipLocalSemanticPreflightCommand = '.\production-handoff-export\run-semantic-preflight.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
@@ -272,6 +327,13 @@ Add-DashboardCheck "owner_routes_and_commands_exposed" `
         $routesWithAutoAcceptance -eq 3 -and
         $routesWithHardValidation -eq 3) `
     "Dashboard must expose owner-return status, semantic preflight, auto acceptance, and hard validation commands for all owner routes."
+
+Add-DashboardCheck "operator_preflight_matrix_actionable" `
+    ($operatorPreflightMatrix.Count -eq 3 -and
+        $preflightRowsWithContactAction -eq 3 -and
+        $preflightRowsWithEvidenceAction -eq 3 -and
+        $preflightRowsWithAcceptanceGate -eq 3) `
+    "Dashboard must include a per-owner operator preflight matrix with contact, evidence, and gated acceptance actions."
 
 Add-DashboardCheck "owner_contact_and_send_boundary_visible" `
     ((Get-JsonValue $sendReadinessManifest "status" "") -eq "PASS" -and
@@ -334,6 +396,10 @@ $manifest = [ordered]@{
     sendReadinessStatus = [string](Get-JsonValue $sendReadinessManifest "sendReadinessStatus" "")
     ownerInputRequestStatus = [string](Get-JsonValue $ownerInputRequestManifest "ownerInputRequestStatus" "")
     ownerRoutes = @($ownerRoutes)
+    operatorPreflightMatrixCount = [int]$operatorPreflightMatrix.Count
+    operatorAcceptanceReadyCount = 0
+    operatorBlockedBeforeAcceptanceCount = [int]$operatorPreflightMatrix.Count
+    operatorPreflightMatrix = @($operatorPreflightMatrix)
     releasePipelineSendsEmail = $false
     realHostProjectEvidenceAccepted = $false
     fixtureEvidencePromoted = $false
@@ -403,6 +469,18 @@ $reportLines = @(
 
 foreach ($route in $ownerRoutes) {
     $reportLines += "| $(Format-MarkdownCell $route.owner) | $(Format-MarkdownCell $route.area) | $(Format-MarkdownCell $route.contactStatus) | $(Format-MarkdownCell $route.sendStatus) | $($route.missingFileCount) | $($route.blockingReasonCount) | $(Format-MarkdownCell $route.bundleAreaPath) | $(Format-MarkdownCell $route.ownerReturnStatusCommand) | $(Format-MarkdownCell $route.hardValidationCommand) |"
+}
+
+$reportLines += @(
+    "",
+    "## Operator Preflight Matrix",
+    "",
+    "| Owner | Contact Action | Evidence Action | Status Dir | Acceptance Gate | Hard Validation Dir |",
+    "| --- | --- | --- | --- | --- | --- |"
+)
+
+foreach ($row in $operatorPreflightMatrix) {
+    $reportLines += "| $(Format-MarkdownCell $row.owner) | $(Format-MarkdownCell $row.contactNextAction) | $(Format-MarkdownCell $row.evidenceNextAction) | $(Format-MarkdownCell $row.ownerReturnStatusWorkingDirectory) | $(Format-MarkdownCell $row.acceptanceGate) | $(Format-MarkdownCell $row.hardValidationWorkingDirectory) |"
 }
 
 $reportLines += @(
