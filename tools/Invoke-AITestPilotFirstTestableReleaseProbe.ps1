@@ -262,7 +262,7 @@ Add-ProbeCheck "handoff_export_zip_verified" `
 
 Add-ProbeCheck "operator_test_entrypoints_present" `
     ($missingTestEntryPaths.Count -eq 0) `
-    "First-testable artifact must include README, operator next steps, owner-return status, action queue, bundle verifier, semantic preflight, and returned-evidence acceptance entry points."
+    "First-testable artifact must include README, operator next steps, owner-return status, action queue, bundle verifier, semantic preflight, and the bundled/direct returned-evidence acceptance bridge."
 
 Add-ProbeCheck "operator_test_entrypoints_zip_indexed" `
     ((Get-JsonValue $handoffZipIndexManifest "status" "") -eq "PASS" -and

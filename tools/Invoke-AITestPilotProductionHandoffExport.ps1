@@ -393,7 +393,7 @@ $ownerReturnStatusSemanticPreflightCoreRelativePath = "owner-return-status\Invok
 $ownerReturnStatusSourceRelativePath = "owner-return-status-source"
 $ownerReturnStatusSelfContainedFolderCommand = '.\run-owner-return-status.ps1 -OwnerResponseBundleDir "path\to\filled-owner-response-bundle"'
 $ownerReturnStatusSelfContainedZipCommand = '.\run-owner-return-status.ps1 -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
-$ownerResponseBundleZipAutoAcceptanceExportCommand = '.\production-external-evidence-inbox\accept-returned-evidence.ps1 -RepoRoot "path\to\AITestPilot" -EvidenceBundleDir "path\to\AITestPilot\artifacts\ai-testpilot-release\latest" -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
+$ownerResponseBundleZipBundledAutoAcceptanceBridgeCommand = '.\production-external-evidence-inbox\accept-returned-evidence.ps1 -RepoRoot "path\to\AITestPilot" -EvidenceBundleDir "path\to\AITestPilot\artifacts\ai-testpilot-release\latest" -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"'
 
 if ($operatorActionQueueAvailable) {
     $operatorActionNextStepsPath = Join-Path $exportPath "operator-actions\NEXT-STEPS.md"
@@ -414,7 +414,7 @@ if ($operatorActionQueueAvailable) {
         "1. Send the owner packet and collect a filled owner response bundle.",
         "2. Run owner-return status against the returned bundle directory or zip. If the status is NEEDS_OWNER_REPAIR, send the generated semantic preflight report back to the owner.",
         "3. Run semantic preflight against the returned bundle directory or zip.",
-        "4. Run auto acceptance only after owner-return status and semantic preflight report a ready candidate with zero semantic failures.",
+        "4. Run the bundled auto-acceptance bridge only after owner-return status and semantic preflight report a ready candidate with zero semantic failures. The bridge delegates to repo auto acceptance and is the zip-local entry point.",
         "5. Run the owner area's hard validation command.",
         "",
         "## Routes",
@@ -433,7 +433,7 @@ if ($operatorActionQueueAvailable) {
         $blockingReasons = @((Get-ObjectProperty $item "remainingBlockingReasons" @()) | ForEach-Object { [string]$_ })
         $ownerReturnStatusCommand = $ownerReturnStatusSelfContainedZipCommand
         $semanticPreflightCommand = $semanticPreflightSelfContainedZipCommand
-        $autoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceExportCommand
+        $autoAcceptanceCommand = $ownerResponseBundleZipBundledAutoAcceptanceBridgeCommand
         $hardValidationCommand = [string](Get-ObjectProperty $item "hardValidationCommand" "")
         $operatorActionNextStepsLines += @(
             "### $owner / $area",
@@ -458,7 +458,7 @@ if ($operatorActionQueueAvailable) {
             $semanticPreflightCommand,
             '```',
             "",
-            "Auto acceptance after preflight:",
+            "Bundled auto-acceptance bridge after preflight:",
             "",
             '```powershell',
             $autoAcceptanceCommand,
@@ -731,7 +731,7 @@ $exportReadmeLines = @(
     '6. Owners copy returned evidence into production-external-evidence-inbox\production-driver-evidence, production-external-evidence-inbox\production-lua-evidence, and production-external-evidence-inbox\live-smoke-evidence.',
     "7. Run the bundled self-contained owner-return status helper: $ownerReturnStatusSelfContainedFolderCommand or $ownerReturnStatusSelfContainedZipCommand as the first returned-bundle status check. Its manifest exposes ownerReturnReadinessStatus and nextRequiredAction, and NEEDS_OWNER_REPAIR means return the generated semantic preflight report to the owner.",
     "8. Run the bundled self-contained semantic preflight helper: $semanticPreflightSelfContainedFolderCommand or $semanticPreflightSelfContainedZipCommand before auto acceptance. It invokes semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0. Zip inputs are checked for unsafe, duplicate, absolute, or traversal entries before extraction.",
-    '9. Run production-external-evidence-inbox\accept-returned-evidence.ps1 to generate the Markdown acceptance report.',
+    '9. Run production-external-evidence-inbox\accept-returned-evidence.ps1 as the bundled auto-acceptance bridge after candidate-ready status and semantic preflight; it delegates to repo auto acceptance and writes the Markdown acceptance report.',
     '10. Run the hard validation command from the owner packet or production-handoff-package\ci-commands.ps1.'
 )
 if ($operatorActionQueueAvailable) {
@@ -744,7 +744,7 @@ $exportReadmeLines += @(
     '- production-handoff-package/: owner packets, preflight script, acceptance wrapper, CI commands, and blocker maps.',
     '- production-handoff-package/verify-external-evidence.ps1: optional preflight for explicit evidence directories.',
     '- production-handoff-package/accept-external-evidence.ps1: optional wrapper for explicit evidence directories.',
-    '- production-external-evidence-inbox/: returned-evidence directory layout and wrapper for accepting owner evidence.',
+    '- production-external-evidence-inbox/: returned-evidence directory layout and bundled/direct inbox auto-acceptance bridge for returned owner evidence.',
     '- run-owner-return-status.ps1: self-contained returned folder/zip owner-return status wrapper bundled with owner-return-status/Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1 and owner-return-status-source/.',
     '- run-semantic-preflight.ps1: self-contained returned folder/zip semantic preflight wrapper bundled with semantic-preflight/Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1.',
     '- production-driver-binding-kit/: host-project production replay driver binding kit, including Export-ProductionDriverEvidenceBundle.ps1 for production-bound driver evidence folder/zip export.',
@@ -823,7 +823,7 @@ $firstTestableSummaryLines = @(
     "| production-handoff-owner-response-bundle-kit\README.md | Fillable owner response bundle workflow. |",
     "| run-owner-return-status.ps1 | Self-contained returned folder/zip owner-return status. |",
     "| run-semantic-preflight.ps1 | Self-contained returned folder/zip semantic preflight. |",
-    "| production-external-evidence-inbox\accept-returned-evidence.ps1 | Acceptance wrapper after preflight passes. |",
+    "| production-external-evidence-inbox\accept-returned-evidence.ps1 | Bundled/direct inbox auto-acceptance bridge after owner-return status and semantic preflight pass. |",
     "",
     "## Boundary",
     "",
@@ -885,6 +885,7 @@ $requiredExportSnippets = @(
     "semantic-preflight",
     "production-external-evidence-inbox",
     "accept-returned-evidence.ps1",
+    "bundled/direct inbox auto-acceptance bridge",
     "Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1",
     "readyForAcceptanceCandidate=true",
     "semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE",
@@ -1304,6 +1305,7 @@ $operatorActionNextStepsContentValidated = (
     $operatorActionNextStepsText.Contains("owner-return status and semantic preflight") -and
     $operatorActionNextStepsText.Contains("run-semantic-preflight.ps1") -and
     $operatorActionNextStepsText.Contains("accept-returned-evidence.ps1") -and
+    $operatorActionNextStepsText.Contains("Bundled auto-acceptance bridge after preflight") -and
     $operatorActionNextStepsText.Contains("Invoke-AITestPilotReleasePipeline.ps1") -and
     $operatorActionNextStepsText.Contains("Fixture evidence remains unpromoted") -and
     -not $operatorActionNextStepsText.Contains("System.Collections") -and

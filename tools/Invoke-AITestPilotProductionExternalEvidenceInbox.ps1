@@ -652,17 +652,17 @@ foreach ($packet in @(Convert-ToArray $ownerPacketIndex.packets)) {
         "",
         "Continue only when the semantic preflight manifest reports ``readyForAcceptanceCandidate=true``, ``semanticFailCount=0``, ``missingRequiredFileCount=0``, and a candidate-ready ``semanticPreflightStatus``.",
         "",
-        "Then run from the inbox root:",
+        "Then run the bundled/direct inbox auto-acceptance bridge from the inbox root:",
         "",
         '```powershell',
         ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`"",
         '```',
         "",
-        'If the owners return a filled owner response bundle, run semantic preflight with `-OwnerResponseBundleDir` or `-OwnerResponseBundleZipPath` first, then pass the same bundle argument to `accept-returned-evidence.ps1` instead of copying files into this inbox first.',
+        'If the owners return a filled owner response bundle, run owner-return status first, run semantic preflight with `-OwnerResponseBundleDir` or `-OwnerResponseBundleZipPath`, then run repo auto acceptance with `-RequireAllEvidence`. `accept-returned-evidence.ps1` remains the bundled/direct inbox bridge for zip-local or direct inbox workflows.',
         "",
-        "The wrapper re-runs the semantic preflight gate and refuses acceptance when the returned evidence is missing, semantically bad, or not candidate-ready.",
+        "The bridge re-runs the semantic preflight gate and refuses acceptance when the returned evidence is missing, semantically bad, or not candidate-ready.",
         "",
-        "This directory is incomplete until every required file exists, semantic preflight is candidate-ready, and the acceptance wrapper passes."
+        "This directory is incomplete until every required file exists, semantic preflight is candidate-ready, and the bundled/direct acceptance bridge passes."
     )
     $areaReadmePath = Join-Path $areaPath "README.md"
     $areaReadmeLines | Set-Content -Path $areaReadmePath -Encoding UTF8
@@ -696,13 +696,17 @@ $missingEvidenceFileCount = if ($null -eq $missingEvidenceFileCountMeasure.Sum) 
 $externalEvidenceCollectionComplete = $areaStatuses.Count -gt 0 -and $completeAreaCount -eq $areaStatuses.Count
 
 $acceptanceCommand = ".\production-external-evidence-inbox\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`""
+$ownerResponseBundleStatusCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`""
+$ownerResponseBundleZipStatusCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`""
 $semanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -EvidenceRoot `"path\to\production-external-evidence-inbox`""
 $ownerResponseBundleSemanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`""
 $ownerResponseBundleZipSemanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`""
+$ownerResponseBundleAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`" -RequireAllEvidence"
+$ownerResponseBundleZipAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`" -RequireAllEvidence"
 $rootReadmeLines = @(
     "# AI TestPilot Returned Production Evidence Inbox",
     "",
-    "Copy host-project evidence into these directories, then run semantic preflight before the acceptance wrapper. This inbox does not promote fixture evidence as real production evidence.",
+    "Copy host-project evidence into these directories, then run semantic preflight before the bundled/direct inbox auto-acceptance bridge. Owner response bundles use owner-return status before semantic preflight and repo auto acceptance. This inbox does not promote fixture evidence as real production evidence.",
     "",
     "## Directories",
     "",
@@ -726,24 +730,35 @@ $rootReadmeLines += @(
         $semanticPreflightCommand,
         '```',
         "",
-        "For a returned owner response bundle directory or zip, run the matching semantic preflight first:",
+        "For a returned owner response bundle directory or zip, run owner-return status before the matching semantic preflight:",
         "",
         '```powershell',
+        $ownerResponseBundleStatusCommand,
+        $ownerResponseBundleZipStatusCommand,
         $ownerResponseBundleSemanticPreflightCommand,
         $ownerResponseBundleZipSemanticPreflightCommand,
         '```',
         "",
         "Continue to acceptance only when the semantic preflight manifest reports ``readyForAcceptanceCandidate=true``, ``semanticFailCount=0``, ``missingRequiredFileCount=0``, and ``semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE`` or ``WARN_READY_FOR_OPERATOR_ACCEPTANCE``.",
         "",
-        "The generated ``accept-returned-evidence.ps1`` wrapper re-runs this semantic preflight gate and refuses before invoking acceptance if the returned evidence is missing, semantically bad, unsafe, or not candidate-ready.",
+        "The generated ``accept-returned-evidence.ps1`` bridge re-runs this semantic preflight gate and refuses before invoking acceptance if the returned evidence is missing, semantically bad, unsafe, or not candidate-ready.",
     "",
-    "## Acceptance After Candidate-Ready Preflight",
+    "## Auto Acceptance After Candidate-Ready Preflight",
     "",
+        "For returned owner response bundle directories or zips, use repo auto acceptance after owner-return status and semantic preflight pass:",
+        "",
+        '```powershell',
+        $ownerResponseBundleAutoAcceptanceCommand,
+        $ownerResponseBundleZipAutoAcceptanceCommand,
+        '```',
+        "",
+        "For direct inbox fallback or zip-local handoff workflows, use the bundled/direct inbox bridge:",
+        "",
     '```powershell',
         ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`"",
         '```',
         "",
-        "For a returned owner response bundle directory or zip, use:",
+        "The bridge also accepts returned owner response bundle directories or zips when a direct bundled bridge is needed:",
         "",
         '```powershell',
         ".\accept-returned-evidence.ps1 -RepoRoot `"path\to\AITestPilot`" -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`"",
@@ -757,7 +772,7 @@ $rootReadmeLines += @(
     "",
     "- This inbox is a return structure and inspection report.",
     "- Semantic preflight is read-only and must run before acceptance.",
-    '- Real host-project evidence is accepted only after `accept-returned-evidence.ps1` produces a PASS acceptance report with `realHostProjectEvidenceAccepted=true`.',
+    '- Real host-project evidence is accepted only after repo auto acceptance or the bundled/direct inbox bridge produces a PASS acceptance report with `realHostProjectEvidenceAccepted=true`.',
     "- Fixture contract evidence must not be copied into this inbox as production evidence."
 )
 $rootReadmeLines | Set-Content -Path $rootReadmePath -Encoding UTF8
@@ -801,8 +816,8 @@ $reportLines += @(
     "",
     "- This inbox only standardizes returned evidence layout.",
     "- It is not an acceptance result and does not claim real production evidence.",
-    '- Use semantic preflight first; the generated `accept-returned-evidence.ps1` wrapper also re-runs the preflight gate and refuses non-candidate returned evidence.',
-    '- Use `accept-returned-evidence.ps1` to produce `production-external-evidence-acceptance-manifest.json` only after candidate-ready semantic preflight and before hard validation.'
+    '- Use owner-return status and semantic preflight first; the generated `accept-returned-evidence.ps1` bridge also re-runs the preflight gate and refuses non-candidate returned evidence.',
+    '- Use repo auto acceptance, or the bundled/direct `accept-returned-evidence.ps1` bridge when operating from the inbox or export zip, to produce `production-external-evidence-acceptance-manifest.json` only after candidate-ready semantic preflight and before hard validation.'
 )
 $reportText = [string]::Join([Environment]::NewLine, $reportLines) + [Environment]::NewLine
 $reportText | Set-Content -Path $reportFullPath -Encoding UTF8

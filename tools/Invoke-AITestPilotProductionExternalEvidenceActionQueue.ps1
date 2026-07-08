@@ -381,7 +381,7 @@ Add-QueueCheck "external_evidence_action_queue_commands" `
             [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "acceptanceWrapperCommand" "")) -or
             [string]::IsNullOrWhiteSpace([string](Get-JsonValue $_ "hardValidationCommand" ""))
         }).Count -eq 0) `
-    "Every external evidence queue item must include preflight, acceptance-wrapper, and hard-validation commands."
+    "Every external evidence queue item must include direct inbox preflight, a legacy/direct inbox acceptance bridge reference, and hard-validation commands."
 Add-QueueCheck "external_evidence_action_queue_auto_acceptance_commands" `
     ($ownerResponseBundleAutoAcceptanceCommand.Contains("Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1") -and
         $ownerResponseBundleAutoAcceptanceCommand.Contains("-OwnerResponseBundleDir") -and
@@ -545,7 +545,7 @@ $reportLines = @(
     "",
     "## Queue",
     "",
-    "| Area | Owner | Missing Files | Blockers | Preflight | Inbox Acceptance | Bundle Area | Bundle Status | Bundle Semantic Preflight | Bundle Acceptance | Driver Export | Lua Export | Live Smoke Export | Hard Validation |",
+    "| Area | Owner | Missing Files | Blockers | Direct Inbox Preflight | Legacy Inbox Acceptance Bridge | Bundle Area | Bundle Status | Bundle Semantic Preflight | Bundle Acceptance | Driver Export | Lua Export | Live Smoke Export | Hard Validation |",
     "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
 )
 foreach ($item in $queueItems) {
