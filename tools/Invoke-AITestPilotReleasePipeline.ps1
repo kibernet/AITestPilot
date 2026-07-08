@@ -1081,6 +1081,11 @@ try {
             -EvidenceBundleDir $EvidenceBundleDir
     }
 
+    Invoke-PipelineStep "production_external_evidence_owner_return_repair_pack_probe" {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnRepairPackProbe.ps1") `
+            -EvidenceBundleDir $EvidenceBundleDir
+    }
+
     Invoke-PipelineStep "production_external_evidence_owner_return_bundle_status" {
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1") `
             -EvidenceBundleDir $EvidenceBundleDir

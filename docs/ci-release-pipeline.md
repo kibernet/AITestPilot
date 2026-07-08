@@ -101,21 +101,22 @@ Use the release pipeline wrapper when CI needs one command with stable artifacts
 | 87 | `release_progress_notification_remaining_work_snapshot_final_probe` |
 | 88 | `production_external_evidence_partial_matrix_probe` |
 | 89 | `production_external_evidence_semantic_preflight_probe` |
-| 90 | `production_external_evidence_owner_return_bundle_status` |
-| 91 | `production_external_evidence_owner_return_bundle_status_probe` |
-| 92 | `release_progress_notification_outbox_strict_payload_shape_refresh` |
-| 93 | `release_progress_notification_remaining_work_snapshot_strict_payload_shape_probe` |
-| 94 | `production_handoff_export_final_refresh` |
-| 95 | `production_handoff_export_zip_index` |
-| 96 | `release_docs_freshness` |
-| 97 | `production_hard_mode_failure_probe` |
-| 98 | `production_hard_mode_success_contract_probe` |
-| 99 | `release_risk_policy` |
-| 100 | `repair_agent_cursor_agent_external_output_binding_probe` |
-| 101 | `release_evidence_index` |
-| 102 | `release_evidence_index_field_coverage_probe` |
-| 103 | `release_gate` |
-| 104 | `release_gate_failure_probe` |
+| 90 | `production_external_evidence_owner_return_repair_pack_probe` |
+| 91 | `production_external_evidence_owner_return_bundle_status` |
+| 92 | `production_external_evidence_owner_return_bundle_status_probe` |
+| 93 | `release_progress_notification_outbox_strict_payload_shape_refresh` |
+| 94 | `release_progress_notification_remaining_work_snapshot_strict_payload_shape_probe` |
+| 95 | `production_handoff_export_final_refresh` |
+| 96 | `production_handoff_export_zip_index` |
+| 97 | `release_docs_freshness` |
+| 98 | `production_hard_mode_failure_probe` |
+| 99 | `production_hard_mode_success_contract_probe` |
+| 100 | `release_risk_policy` |
+| 101 | `repair_agent_cursor_agent_external_output_binding_probe` |
+| 102 | `release_evidence_index` |
+| 103 | `release_evidence_index_field_coverage_probe` |
+| 104 | `release_gate` |
+| 105 | `release_gate_failure_probe` |
 
 The pipeline runs:
 
@@ -189,6 +190,7 @@ The pipeline runs:
 - production handoff owner route map probe, proving the current route map passes while owner-route mismatches, missing route endpoints, and auto acceptance without semantic preflight are blocked in isolated bundle copies.
 - production external evidence partial matrix probe, proving driver-only, Lua-only, live-smoke-only, one-file-missing, and malformed owner response bundle returns are rejected before acceptance can claim all production evidence is ready.
 - production external evidence semantic preflight probe, proving returned owner bundles are read-only checked for missing files, candidate-ready contract shape, fixture/template semantic failures, and strict payload shape before auto acceptance runs; operators inspect `readyForAcceptanceCandidate`, `semanticPreflightStatus`, and `semanticFailCount`, and the preflight does not copy returned evidence or promote fixtures. `OwnerResponseBundleZipPath` covers complete owner response bundle zip, partial zip, semantic-bad zip, arbitrary single top-level wrapper zip, and nested-payload zip cases; unsafe, duplicate, absolute, or traversal zip entries are rejected before extraction, while safe zips resolve to the bundle root. The auto-acceptance probe also re-runs that semantic gate on evidence roots plus owner response bundle directories/zips, uses `-RequireAllEvidence` for owner-return acceptance, and rejects complete semantic-bad and extra-payload bundles before acceptance with `extraPayloadOwnerResponseBundleRejected=true`.
+- production external evidence owner return repair pack probe, generating owner-facing repair packs for every rejected semantic preflight case while preserving read-only, no-send, no-acceptance, and no-fixture-promotion boundaries.
 - production handoff export final refresh, re-running the export after the canonical action queue, owner-return status, and action queue probe so `operator-actions\` carries `NEXT-STEPS.md`, the canonical owner-return status report/probe, the canonical action queue, remaining-work source snapshot, separate action-queue probe proof, and repo-root hard-validation guidance in the final owner-facing zip. The zip root also carries `FIRST-TESTABLE.md` and `run-owner-return-status.ps1`, with bundled `owner-return-status\` scripts and `owner-return-status-source\` manifests for self-contained returned-bundle status checks before semantic preflight.
 - production handoff export zip index, opening the final owner-facing zip and proving its entries and per-entry hashes match the export manifest and source folder with no unsafe or duplicate paths.
 - release docs freshness, proving the README, CI release pipeline docs, architecture doc, roadmap, pipeline step index, required release artifact names, source files, and source-manifest coverage stayed aligned before hard-mode copied-bundle probes run.
@@ -245,7 +247,7 @@ That directory includes `pipeline-manifest.json`, `release-gate-manifest.json`, 
 
 `production-external-evidence-partial-matrix-probe-manifest.json` is generated before the release risk policy. It constructs isolated returned owner-bundle variants for driver-only, Lua-only, live-smoke-only, one required driver file missing, and malformed zip cases, and the probe passes only when all five are rejected without running acceptance or claiming real host-project evidence.
 
-`production-external-evidence-semantic-preflight-probe-manifest.json` is generated before the final handoff export refresh and release risk policy. It runs the read-only semantic preflight over missing evidence, complete contract-shaped external roots, complete owner response bundle directories, complete owner response bundle zips, partial owner response bundle directories/zips, semantic-bad owner response bundle directories/zips, an arbitrary single top-level wrapper zip, unsafe zip rejection, an extra-payload owner response bundle, and a nested-payload owner response bundle zip, proving returned evidence can be diagnosed as pending, candidate-ready, or owner-repair-needed before auto acceptance runs. Operators inspect `readyForAcceptanceCandidate`, `semanticPreflightStatus`, and `semanticFailCount`; this preflight does not copy returned evidence, accept evidence, or promote fixtures. `OwnerResponseBundleZipPath` inputs are zip-safety checked so unsafe, duplicate, absolute, or traversal zip entries are rejected before extraction, and arbitrary single top-level wrapper resolution is accepted only for safe zips that contain the required bundle files. The expected manifest totals are `caseCount=12`, `completeCandidateCaseCount=4`, `rejectedCaseCount=8`, `checkCount=14`, `ownerResponseBundleZipCaseCount=6`, `ownerResponseBundleZipSafeCaseCount=5`, `ownerResponseBundleZipUnsafeCaseCount=1`, `ownerResponseBundleZipArbitraryWrapperReady=true`, and `payloadShapeRejectedCaseCount=2`. `production-external-evidence-auto-acceptance-probe-manifest.json` then proves auto acceptance reruns that semantic gate before delegating to stable acceptance for evidence roots and owner response bundle directories/zips with `-RequireAllEvidence`, and that complete semantic-bad and extra-payload bundles are rejected before acceptance with `extraPayloadOwnerResponseBundleRejected=true`.
+`production-external-evidence-semantic-preflight-probe-manifest.json` is generated before the final handoff export refresh and release risk policy. It runs the read-only semantic preflight over missing evidence, complete contract-shaped external roots, complete owner response bundle directories, complete owner response bundle zips, partial owner response bundle directories/zips, semantic-bad owner response bundle directories/zips, an arbitrary single top-level wrapper zip, unsafe zip rejection, an extra-payload owner response bundle, and a nested-payload owner response bundle zip, proving returned evidence can be diagnosed as pending, candidate-ready, or owner-repair-needed before auto acceptance runs. Operators inspect `readyForAcceptanceCandidate`, `semanticPreflightStatus`, and `semanticFailCount`; this preflight does not copy returned evidence, accept evidence, or promote fixtures. `OwnerResponseBundleZipPath` inputs are zip-safety checked so unsafe, duplicate, absolute, or traversal zip entries are rejected before extraction, and arbitrary single top-level wrapper resolution is accepted only for safe zips that contain the required bundle files. The expected manifest totals are `caseCount=12`, `completeCandidateCaseCount=4`, `rejectedCaseCount=8`, `checkCount=14`, `ownerResponseBundleZipCaseCount=6`, `ownerResponseBundleZipSafeCaseCount=5`, `ownerResponseBundleZipUnsafeCaseCount=1`, `ownerResponseBundleZipArbitraryWrapperReady=true`, and `payloadShapeRejectedCaseCount=2`. `production-external-evidence-owner-return-repair-pack-probe-manifest.json` is generated immediately after the semantic preflight probe. It calls `Invoke-AITestPilotProductionExternalEvidenceOwnerReturnRepairPack.ps1` for every rejected preflight case and proves partial, semantic-bad, unsafe zip, extra-payload, nested-payload, and default-pending returns produce owner-readable repair items without sending mail, running hard validation, accepting evidence, or promoting fixtures. `production-external-evidence-auto-acceptance-probe-manifest.json` then proves auto acceptance reruns that semantic gate before delegating to stable acceptance for evidence roots and owner response bundle directories/zips with `-RequireAllEvidence`, and that complete semantic-bad and extra-payload bundles are rejected before acceptance with `extraPayloadOwnerResponseBundleRejected=true`.
 
 `production-handoff-status-manifest.json` is generated before the release risk policy. It validates `production-handoff-status.md`, an owner-level collection tracker that records accepted and pending owner packets, remaining blocker counts, inbox-derived missing evidence files, required evidence files, and next owner-return status, semantic-preflight, and auto-acceptance commands. In the default package-release path it should report three pending owner packets, nine missing evidence files, eleven remaining blockers, `missingEvidenceSource=production_external_evidence_inbox_manifest`, and `realHostProjectEvidenceAccepted=false`.
 
