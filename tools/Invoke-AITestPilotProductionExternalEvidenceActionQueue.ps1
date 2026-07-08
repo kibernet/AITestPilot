@@ -239,6 +239,12 @@ $responseKitZipPath = if (Test-Path $currentBundleResponseKitZipPath) {
 else {
     [string](Get-JsonValue $ownerResponseBundleKit "zipPath" "")
 }
+$responseKitZipRelativePath = if (-not [string]::IsNullOrWhiteSpace($responseKitZipPath)) {
+    Convert-ToEvidenceRelativePath $responseKitZipPath
+}
+else {
+    ""
+}
 $ownerResponseBundleAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`" -RequireAllEvidence"
 $ownerResponseBundleZipAutoAcceptanceCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 -OwnerResponseBundleZipPath `"path\to\filled-owner-response-bundle.zip`" -RequireAllEvidence"
 $ownerResponseBundleSemanticPreflightCommand = ".\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 -OwnerResponseBundleDir `"path\to\filled-owner-response-bundle`""
@@ -474,7 +480,7 @@ $manifest = [ordered]@{
     externalRemainingWorkItemCount = [int]$externalItems.Count
     externalRemainingBlockingReasonCount = [int]$totalBlockers
     externalRemainingMissingFileCount = [int]$totalMissing
-    ownerResponseBundleKitZipPath = $responseKitZipPath
+    ownerResponseBundleKitZipPath = $responseKitZipRelativePath
     inboxAcceptanceCommand = [string](Get-JsonValue $externalEvidenceInbox "acceptanceCommand" "")
     ownerResponseBundleAutoAcceptanceCommand = $ownerResponseBundleAutoAcceptanceCommand
     ownerResponseBundleZipAutoAcceptanceCommand = $ownerResponseBundleZipAutoAcceptanceCommand
@@ -532,7 +538,7 @@ $reportLines = @(
     "| External work items | $($queueItems.Count) |",
     "| External blockers | $totalBlockers |",
     "| External missing files | $totalMissing |",
-    "| Response bundle kit zip | $(Format-MarkdownCell $responseKitZipPath) |",
+    "| Response bundle kit zip | $(Format-MarkdownCell $responseKitZipRelativePath) |",
     "| Owner response bundle status | $(Format-MarkdownCell $ownerResponseBundleStatusCommand) |",
     "| Owner response bundle zip status | $(Format-MarkdownCell $ownerResponseBundleZipStatusCommand) |",
     "| Owner response bundle semantic preflight | $(Format-MarkdownCell $ownerResponseBundleSemanticPreflightCommand) |",

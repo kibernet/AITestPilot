@@ -593,6 +593,7 @@ if ($blockerResolutions.Count -eq 0) {
 
 $ciCommands = @'
 # AI TestPilot hard production validation commands.
+# Run these commands from the AITestPilot repo root.
 # Replace placeholder paths/types with host-project values before running.
 
 .\tools\Invoke-AITestPilotReleasePipeline.ps1 `
@@ -1322,6 +1323,7 @@ $ciCommandsContentValid = $ciCommandsText.Contains("-RequireProductionReplayDriv
     $ciCommandsText.Contains("-RequireProductionLuaPatched") -and
     $ciCommandsText.Contains("-RequireLiveModelEndpointSmoke") -and
     $ciCommandsText.Contains("-LiveModelEndpointSmokeEvidenceDir") -and
+    $ciCommandsText.Contains("AITestPilot repo root") -and
     -not ($ciCommandsText -match "System\.Collections|OrderedDictionary")
 
 $preflightScriptContentValid = $preflightScriptText.Contains("aitestpilot.production_handoff_external_evidence_preflight.v1") -and

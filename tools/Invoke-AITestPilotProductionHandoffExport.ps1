@@ -415,7 +415,7 @@ if ($operatorActionQueueAvailable) {
         "2. Run owner-return status against the returned bundle directory or zip. If the status is NEEDS_OWNER_REPAIR, send the generated semantic preflight report back to the owner.",
         "3. Run semantic preflight against the returned bundle directory or zip.",
         "4. Run the bundled auto-acceptance bridge only after owner-return status and semantic preflight report a ready candidate with zero semantic failures. The bridge delegates to repo auto acceptance and is the zip-local entry point.",
-        "5. Run the owner area's hard validation command.",
+        "5. Run the owner area's hard validation command from the AITestPilot repo root.",
         "",
         "## Routes",
         ""
@@ -464,7 +464,7 @@ if ($operatorActionQueueAvailable) {
             $autoAcceptanceCommand,
             '```',
             "",
-            "Hard validation:",
+            "Hard validation (run from AITestPilot repo root):",
             "",
             '```powershell',
             $hardValidationCommand,
@@ -723,19 +723,20 @@ $exportReadmeLines = @(
     "",
     "## Start Here",
     "",
-    '1. Open production-handoff-package\owner-packets\owner-packet-index.json.',
-    '2. Send each production-handoff-package\owner-packets\*.md packet to the listed owner.',
-    '3. Production driver owners can run production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 after production-bound readiness passes; it creates production-driver-evidence-export\production-driver-evidence and production-driver-evidence-export\production-driver-evidence.zip.',
-    '4. Production Lua owners can run production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1 after real Lua patch readiness passes; it creates production-lua-evidence-export\production-lua-evidence and production-lua-evidence-export\production-lua-evidence.zip.',
-    '5. Live model owners can run live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 after direct live provider smoke passes; it creates live-model-endpoint-smoke-evidence-export\live-smoke-evidence and live-model-endpoint-smoke-evidence-export\live-smoke-evidence.zip.',
-    '6. Owners copy returned evidence into production-external-evidence-inbox\production-driver-evidence, production-external-evidence-inbox\production-lua-evidence, and production-external-evidence-inbox\live-smoke-evidence.',
-    "7. Run the bundled self-contained owner-return status helper: $ownerReturnStatusSelfContainedFolderCommand or $ownerReturnStatusSelfContainedZipCommand as the first returned-bundle status check. Its manifest exposes ownerReturnReadinessStatus and nextRequiredAction, and NEEDS_OWNER_REPAIR means return the generated semantic preflight report to the owner.",
-    "8. Run the bundled self-contained semantic preflight helper: $semanticPreflightSelfContainedFolderCommand or $semanticPreflightSelfContainedZipCommand before auto acceptance. It invokes semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0. Zip inputs are checked for unsafe, duplicate, absolute, or traversal entries before extraction.",
-    '9. Run production-external-evidence-inbox\accept-returned-evidence.ps1 as the bundled auto-acceptance bridge after candidate-ready status and semantic preflight; it delegates to repo auto acceptance and writes the Markdown acceptance report.',
-    '10. Run the hard validation command from the owner packet or production-handoff-package\ci-commands.ps1.'
+    '1. Start with operator-actions\NEXT-STEPS.md when it is present; it is the shortest route order for the first testable package.',
+    '2. Open production-handoff-package\owner-packets\owner-packet-index.json.',
+    '3. Send each production-handoff-package\owner-packets\*.md packet to the listed owner.',
+    '4. Production driver owners can run production-driver-binding-kit\Export-ProductionDriverEvidenceBundle.ps1 after production-bound readiness passes; it creates production-driver-evidence-export\production-driver-evidence and production-driver-evidence-export\production-driver-evidence.zip.',
+    '5. Production Lua owners can run production-lua-patch-evidence-kit\Export-ProductionLuaPatchEvidenceBundle.ps1 after real Lua patch readiness passes; it creates production-lua-evidence-export\production-lua-evidence and production-lua-evidence-export\production-lua-evidence.zip.',
+    '6. Live model owners can run live-model-endpoint-config-kit\Export-LiveModelEndpointSmokeEvidenceBundle.ps1 after direct live provider smoke passes; it creates live-model-endpoint-smoke-evidence-export\live-smoke-evidence and live-model-endpoint-smoke-evidence-export\live-smoke-evidence.zip.',
+    '7. Owners copy returned evidence into production-external-evidence-inbox\production-driver-evidence, production-external-evidence-inbox\production-lua-evidence, and production-external-evidence-inbox\live-smoke-evidence.',
+    "8. Run the bundled self-contained owner-return status helper: $ownerReturnStatusSelfContainedFolderCommand or $ownerReturnStatusSelfContainedZipCommand as the first returned-bundle status check. Its manifest exposes ownerReturnReadinessStatus and nextRequiredAction, and NEEDS_OWNER_REPAIR means return the generated semantic preflight report to the owner.",
+    "9. Run the bundled self-contained semantic preflight helper: $semanticPreflightSelfContainedFolderCommand or $semanticPreflightSelfContainedZipCommand before auto acceptance. It invokes semantic-preflight\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1; confirm readyForAcceptanceCandidate=true, semanticPreflightStatus=READY_FOR_AUTO_ACCEPTANCE_CANDIDATE or WARN_READY_FOR_OPERATOR_ACCEPTANCE, and semanticFailCount=0. Zip inputs are checked for unsafe, duplicate, absolute, or traversal entries before extraction.",
+    '10. Run production-external-evidence-inbox\accept-returned-evidence.ps1 as the bundled auto-acceptance bridge after candidate-ready status and semantic preflight; it delegates to repo auto acceptance and writes the Markdown acceptance report.',
+    '11. Run the hard validation command from the owner packet or production-handoff-package\ci-commands.ps1 from the AITestPilot repo root.'
 )
 if ($operatorActionQueueAvailable) {
-    $exportReadmeLines += '11. Start with operator-actions\NEXT-STEPS.md, then use operator-actions\production-external-evidence-owner-return-bundle-status.md and operator-actions\production-external-evidence-action-queue.md as the canonical detailed operator checklist for returned folder/zip status, semantic preflight, and auto acceptance. In CI it still includes the pending local progress-mail action; only a real accepted dispatch receipt may clear that local action.'
+    $exportReadmeLines += '12. Use operator-actions\production-external-evidence-owner-return-bundle-status.md and operator-actions\production-external-evidence-action-queue.md as the canonical detailed operator checklist for returned folder/zip status, semantic preflight, and auto acceptance. In CI it still includes the pending local progress-mail action; only a real accepted dispatch receipt may clear that local action.'
 }
 $exportReadmeLines += @(
     "",
@@ -810,7 +811,7 @@ $firstTestableSummaryLines = @(
     "3. Collect a filled owner response bundle directory or zip.",
     "4. Run owner-return status, then semantic preflight.",
     "5. Run auto acceptance only after the returned bundle is a ready candidate with zero semantic failures.",
-    "6. Run the matching hard validation command for the owner area.",
+    "6. Run the matching hard validation command for the owner area from the AITestPilot repo root.",
     "",
     "## Key Entry Points",
     "",
@@ -865,6 +866,7 @@ $exportFiles = @($exportFiles + $manifestCopyRelativePath | Sort-Object -Unique)
 
 $requiredExportSnippets = @(
     "AI TestPilot Production Handoff Export",
+    "Start with operator-actions\NEXT-STEPS.md",
     "owner-packets",
     "verify-external-evidence.ps1",
     "accept-external-evidence.ps1",
@@ -1101,6 +1103,7 @@ $firstTestableSummaryContentValidated = (
     $firstTestableSummaryText.Contains("Ready for commercial completion: False") -and
     $firstTestableSummaryText.Contains("run-owner-return-status.ps1") -and
     $firstTestableSummaryText.Contains("run-semantic-preflight.ps1") -and
+    $firstTestableSummaryText.Contains("AITestPilot repo root") -and
     $firstTestableSummaryText.Contains("fixture evidence") -and
     $firstTestableSummaryText.Contains("Commercial completion still requires real external owner evidence")
 )
@@ -1306,6 +1309,7 @@ $operatorActionNextStepsContentValidated = (
     $operatorActionNextStepsText.Contains("run-semantic-preflight.ps1") -and
     $operatorActionNextStepsText.Contains("accept-returned-evidence.ps1") -and
     $operatorActionNextStepsText.Contains("Bundled auto-acceptance bridge after preflight") -and
+    $operatorActionNextStepsText.Contains("run from AITestPilot repo root") -and
     $operatorActionNextStepsText.Contains("Invoke-AITestPilotReleasePipeline.ps1") -and
     $operatorActionNextStepsText.Contains("Fixture evidence remains unpromoted") -and
     -not $operatorActionNextStepsText.Contains("System.Collections") -and

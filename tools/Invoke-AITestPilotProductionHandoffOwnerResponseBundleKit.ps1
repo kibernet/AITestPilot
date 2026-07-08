@@ -819,15 +819,11 @@ foreach ($areaSpec in $areaSpecs) {
         "",
         "1. Fill owner-contact-roster.json with the real owner mailbox.",
         "2. Copy the required files into $directory.",
-        "3. From the full kit root, run:",
+        "3. Return this folder or $owner.zip to the operator.",
         "",
-        '```powershell',
-        ('.\verify-owner-response-bundle.ps1 -BundleDir ".\owner-response-mini-kits\{0}"' -f $owner),
-        '```',
+        "This mini kit does not include the verifier. Verification happens after the operator merges the returned mini kit into the full owner response bundle kit.",
         "",
-        "4. Return this folder or $owner.zip to the operator.",
-        "",
-        "Operator merge after return:",
+        "Operator merge after return, from the full production-handoff-export\production-handoff-owner-response-bundle-kit directory:",
         "",
         '```powershell',
         ('.\merge-owner-mini-kits.ps1 -MiniKitDir ".\owner-response-mini-kits\{0}" -FullBundleDir ".\owner-response-bundle-template"' -f $owner),
@@ -889,6 +885,7 @@ $kitReadmeLines = @(
     "# AI TestPilot Owner Response Bundle Kit",
     "",
     "This kit is the fillable owner response package for contacts and returned production evidence.",
+    "Run sibling export-helper commands from the production-handoff-export root, not from this kit subdirectory.",
     "",
     "Workflow:",
     "",
@@ -923,6 +920,7 @@ $templateReadmeLines = @(
     "# AI TestPilot Owner Response Bundle Template",
     "",
     "Fill this folder and return it as one owner response bundle.",
+    "The sibling export-helper paths below are relative to the production-handoff-export root.",
     "",
     "Required steps:",
     "",
@@ -1033,6 +1031,7 @@ $contentFiles = @(
     $requestDraftPath,
     $reportFullPath
 )
+$contentFiles += @(Get-ChildItem -LiteralPath $ownerMiniKitRootPath -Recurse -Filter RETURN-INSTRUCTIONS.md -File | ForEach-Object { $_.FullName })
 $contentText = [string]::Join([Environment]::NewLine, @($contentFiles | ForEach-Object { Get-Content -Path $_ -Encoding UTF8 -Raw }))
 $selfContainedSemanticPreflightHelperText = if (Test-Path $selfContainedSemanticPreflightHelperFullPath) { Get-Content -Path $selfContainedSemanticPreflightHelperFullPath -Encoding UTF8 -Raw } else { "" }
 $selfContainedSemanticPreflightCoreText = if (Test-Path $selfContainedSemanticPreflightCoreFullPath) { Get-Content -Path $selfContainedSemanticPreflightCoreFullPath -Encoding UTF8 -Raw } else { "" }
@@ -1092,6 +1091,7 @@ $ownerMiniKitsContentValidated = (
     $contentText.Contains("Owner Response Mini Kits") -and
     $contentText.Contains("owner-response-mini-kits") -and
     $contentText.Contains("merge-owner-mini-kits.ps1") -and
+    $contentText.Contains("This mini kit does not include the verifier") -and
     $contentText.Contains("host_project_gameplay_qa") -and
     $contentText.Contains("host_project_lua_owner") -and
     $contentText.Contains("host_project_ai_platform") -and
@@ -1125,7 +1125,7 @@ Add-KitCheck "owner_response_bundle_counts_match" `
     ($ownerContactCount -eq (Convert-ToInt (Get-JsonValue $ownerResponseBundleProbe "ownerContactCount" -1)) -and $requiredEvidenceFileCount -eq (Convert-ToInt (Get-JsonValue $ownerResponseBundleProbe "responseBundleRequiredEvidenceFileCount" -1))) `
     "Owner response bundle kit counts must match the accepted response bundle probe."
 Add-KitCheck "owner_response_bundle_content_validated" `
-    ($contentText.Contains("Owner Response Bundle Kit") -and $contentText.Contains("host_project_gameplay_qa") -and $contentText.Contains("production-driver-evidence") -and $contentText.Contains("production-lua-evidence") -and $contentText.Contains("live-smoke-evidence") -and $contentText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and $contentText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and $contentText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and $contentText.Contains("does not send email") -and $noObjectLeakage) `
+    ($contentText.Contains("Owner Response Bundle Kit") -and $contentText.Contains("host_project_gameplay_qa") -and $contentText.Contains("production-driver-evidence") -and $contentText.Contains("production-lua-evidence") -and $contentText.Contains("live-smoke-evidence") -and $contentText.Contains("Export-ProductionDriverEvidenceBundle.ps1") -and $contentText.Contains("Export-ProductionLuaPatchEvidenceBundle.ps1") -and $contentText.Contains("Export-LiveModelEndpointSmokeEvidenceBundle.ps1") -and $contentText.Contains("production-handoff-export root") -and $contentText.Contains("does not send email") -and $noObjectLeakage) `
     "Owner response bundle kit content must include concrete owners, directories, validation flow, and boundary text."
 Add-KitCheck "owner_response_bundle_auto_acceptance_commands_documented" `
     $autoAcceptanceCommandsContentValidated `

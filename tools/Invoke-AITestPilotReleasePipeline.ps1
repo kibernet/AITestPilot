@@ -471,6 +471,12 @@ function Export-PipelineArtifacts {
             -GeneratedAtUtc $pipelineFinishedAtUtc | Out-Null
     }
     else {
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffExport.ps1") `
+            -EvidenceBundleDir $artifactPath | Out-Null
+
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotProductionHandoffExportZipIndex.ps1") `
+            -EvidenceBundleDir $artifactPath | Out-Null
+
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `
             -EvidenceBundleDir $artifactPath `
             -RequireProductionReplayDriverBound:$RequireProductionReplayDriverBound `
