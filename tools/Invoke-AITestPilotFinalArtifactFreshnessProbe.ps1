@@ -211,23 +211,32 @@ $indexManifestPath = Join-Path $artifactPath "release-evidence-index-manifest.js
 $indexPath = Join-Path $artifactPath "release-evidence-index.json"
 $firstTestableManifestPath = Join-Path $artifactPath "first-testable-release-manifest.json"
 $firstTestableReportPath = Join-Path $artifactPath "first-testable-release.md"
+$operatorDashboardManifestPath = Join-Path $artifactPath "first-testable-operator-dashboard-manifest.json"
+$operatorDashboardReportPath = Join-Path $artifactPath "first-testable-operator-dashboard.md"
 $invalidatedManifestPath = Join-Path $artifactPath "release-artifact-invalidated-manifest.json"
 
 $pipelineManifest = Read-JsonFile $pipelineManifestPath "Pipeline manifest"
 $indexManifest = Read-JsonFile $indexManifestPath "Release evidence index manifest"
 $index = Read-JsonFile $indexPath "Release evidence index"
 $firstTestableManifest = Read-JsonFile $firstTestableManifestPath "First testable release manifest"
+$operatorDashboardManifest = Read-JsonFile $operatorDashboardManifestPath "First testable operator dashboard manifest"
 
 $indexGeneratedAtUtc = Convert-UtcDateTime (Get-JsonValue $indexManifest "generatedAtUtc" "") "Release evidence index manifest"
 $firstTestableGeneratedAtUtc = Convert-UtcDateTime (Get-JsonValue $firstTestableManifest "generatedAtUtc" "") "First testable release manifest"
 $indexGeneratedAfterFirstTestable = $indexGeneratedAtUtc -ge $firstTestableGeneratedAtUtc
+$operatorDashboardGeneratedAtUtc = Convert-UtcDateTime (Get-JsonValue $operatorDashboardManifest "generatedAtUtc" "") "First testable operator dashboard manifest"
+$indexGeneratedAfterOperatorDashboard = $indexGeneratedAtUtc -ge $operatorDashboardGeneratedAtUtc
 
 $auxiliaryManifests = @(Convert-ToArray (Get-JsonValue $index "auxiliaryManifests" @()))
 $firstTestableIndexEntry = $null
+$operatorDashboardIndexEntry = $null
 foreach ($entry in $auxiliaryManifests) {
-    if ([string](Get-JsonValue $entry "name" "") -eq "first-testable-release-manifest.json") {
+    $entryName = [string](Get-JsonValue $entry "name" "")
+    if ($entryName -eq "first-testable-release-manifest.json") {
         $firstTestableIndexEntry = $entry
-        break
+    }
+    elseif ($entryName -eq "first-testable-operator-dashboard-manifest.json") {
+        $operatorDashboardIndexEntry = $entry
     }
 }
 
@@ -241,6 +250,16 @@ $firstTestableFiles = @(Convert-ToArray (Get-JsonValue $firstTestableManifest "f
 $firstTestableReportListed = $firstTestableFiles -contains "first-testable-release.md"
 $firstTestableManifestListed = $firstTestableFiles -contains "first-testable-release-manifest.json"
 $firstTestableReportExists = Test-Path $firstTestableReportPath
+$operatorDashboardManifestIndexed = $null -ne $operatorDashboardIndexEntry
+$operatorDashboardManifestSha256 = (Get-FileHash -LiteralPath $operatorDashboardManifestPath -Algorithm SHA256).Hash
+$indexedOperatorDashboardManifestSha256 = if ($operatorDashboardManifestIndexed) { [string](Get-JsonValue $operatorDashboardIndexEntry "sourceManifestSha256" "") } else { "" }
+$operatorDashboardManifestSha256MatchesCurrent = $operatorDashboardManifestIndexed -and ($indexedOperatorDashboardManifestSha256 -eq $operatorDashboardManifestSha256)
+$operatorDashboardIndexListedFileCount = if ($operatorDashboardManifestIndexed) { Convert-ToInt (Get-JsonValue $operatorDashboardIndexEntry "listedFileCount" 0) } else { 0 }
+$operatorDashboardIndexMissingListedFileCount = if ($operatorDashboardManifestIndexed) { Convert-ToInt (Get-JsonValue $operatorDashboardIndexEntry "missingListedFileCount" 0) } else { 0 }
+$operatorDashboardFiles = @(Convert-ToArray (Get-JsonValue $operatorDashboardManifest "files" @()) | ForEach-Object { [string]$_ })
+$operatorDashboardReportListed = $operatorDashboardFiles -contains "first-testable-operator-dashboard.md"
+$operatorDashboardManifestListed = $operatorDashboardFiles -contains "first-testable-operator-dashboard-manifest.json"
+$operatorDashboardReportExists = Test-Path $operatorDashboardReportPath
 $artifactInvalidated = Test-Path $invalidatedManifestPath
 
 $checks = @()
@@ -259,23 +278,45 @@ Add-ProbeCheck "first_testable_release_passed" `
         (Convert-ToBool (Get-JsonValue $firstTestableManifest "readyForOperatorTesting" $false)) -and
         $firstTestableReportExists) `
     "First testable release manifest and report must be present, PASS, and ready for operator testing."
+Add-ProbeCheck "first_testable_operator_dashboard_passed" `
+    ((Get-JsonValue $operatorDashboardManifest "status" "") -eq "PASS" -and
+        (Convert-ToBool (Get-JsonValue $operatorDashboardManifest "readyForOperatorTesting" $false)) -and
+        $operatorDashboardReportExists) `
+    "First testable operator dashboard manifest and report must be present, PASS, and ready for operator testing."
 Add-ProbeCheck "final_index_generated_after_first_testable" `
     ([bool]$indexGeneratedAfterFirstTestable) `
     "Final release evidence index must be generated after first-testable-release-manifest.json."
+Add-ProbeCheck "final_index_generated_after_operator_dashboard" `
+    ([bool]$indexGeneratedAfterOperatorDashboard) `
+    "Final release evidence index must be generated after first-testable-operator-dashboard-manifest.json."
 Add-ProbeCheck "first_testable_manifest_indexed" `
     ($firstTestableManifestIndexed -and
         (Convert-ToBool (Get-JsonValue $firstTestableIndexEntry "parseable" $false)) -and
         (Convert-ToBool (Get-JsonValue $firstTestableIndexEntry "statusAccepted" $false))) `
     "Final release evidence index must inventory first-testable-release-manifest.json as an accepted auxiliary manifest."
+Add-ProbeCheck "operator_dashboard_manifest_indexed" `
+    ($operatorDashboardManifestIndexed -and
+        (Convert-ToBool (Get-JsonValue $operatorDashboardIndexEntry "parseable" $false)) -and
+        (Convert-ToBool (Get-JsonValue $operatorDashboardIndexEntry "statusAccepted" $false))) `
+    "Final release evidence index must inventory first-testable-operator-dashboard-manifest.json as an accepted auxiliary manifest."
 Add-ProbeCheck "first_testable_manifest_sha256_current" `
     ([bool]$firstTestableManifestSha256MatchesCurrent) `
     "Indexed SHA256 for first-testable-release-manifest.json must match the current artifact file."
+Add-ProbeCheck "operator_dashboard_manifest_sha256_current" `
+    ([bool]$operatorDashboardManifestSha256MatchesCurrent) `
+    "Indexed SHA256 for first-testable-operator-dashboard-manifest.json must match the current artifact file."
 Add-ProbeCheck "first_testable_listed_files_present" `
     ($firstTestableManifestListed -and
         $firstTestableReportListed -and
         $firstTestableIndexListedFileCount -ge 2 -and
         $firstTestableIndexMissingListedFileCount -eq 0) `
     "First-testable manifest must list its manifest/report files, and the index entry must have no missing listed files."
+Add-ProbeCheck "operator_dashboard_listed_files_present" `
+    ($operatorDashboardManifestListed -and
+        $operatorDashboardReportListed -and
+        $operatorDashboardIndexListedFileCount -ge 2 -and
+        $operatorDashboardIndexMissingListedFileCount -eq 0) `
+    "Operator dashboard manifest must list its manifest/report files, and the index entry must have no missing listed files."
 
 $failedChecks = @($checks | Where-Object { -not (Convert-ToBool (Get-JsonValue $_ "passed" $false)) })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -290,7 +331,9 @@ $sourceFiles = @(
     $indexManifestPath,
     $indexPath,
     $firstTestableManifestPath,
-    $firstTestableReportPath
+    $firstTestableReportPath,
+    $operatorDashboardManifestPath,
+    $operatorDashboardReportPath
 )
 
 $manifest = [ordered]@{
@@ -305,10 +348,13 @@ $manifest = [ordered]@{
     releaseEvidenceIndexStatus = [string](Get-JsonValue $indexManifest "status" "")
     releaseEvidenceIndexJsonStatus = [string](Get-JsonValue $index "status" "")
     firstTestableReleaseStatus = [string](Get-JsonValue $firstTestableManifest "status" "")
+    operatorDashboardStatus = [string](Get-JsonValue $operatorDashboardManifest "status" "")
     readyForOperatorTesting = Convert-ToBool (Get-JsonValue $firstTestableManifest "readyForOperatorTesting" $false)
     indexGeneratedAtUtc = $indexGeneratedAtUtc.ToString("O")
     firstTestableGeneratedAtUtc = $firstTestableGeneratedAtUtc.ToString("O")
+    operatorDashboardGeneratedAtUtc = $operatorDashboardGeneratedAtUtc.ToString("O")
     indexGeneratedAfterFirstTestable = [bool]$indexGeneratedAfterFirstTestable
+    indexGeneratedAfterOperatorDashboard = [bool]$indexGeneratedAfterOperatorDashboard
     firstTestableManifestIndexed = [bool]$firstTestableManifestIndexed
     firstTestableManifestSha256 = $firstTestableManifestSha256
     indexedFirstTestableManifestSha256 = $indexedFirstTestableManifestSha256
@@ -318,6 +364,15 @@ $manifest = [ordered]@{
     firstTestableManifestListed = [bool]$firstTestableManifestListed
     firstTestableReportListed = [bool]$firstTestableReportListed
     firstTestableReportExists = [bool]$firstTestableReportExists
+    operatorDashboardManifestIndexed = [bool]$operatorDashboardManifestIndexed
+    operatorDashboardManifestSha256 = $operatorDashboardManifestSha256
+    indexedOperatorDashboardManifestSha256 = $indexedOperatorDashboardManifestSha256
+    operatorDashboardManifestSha256MatchesCurrent = [bool]$operatorDashboardManifestSha256MatchesCurrent
+    operatorDashboardIndexListedFileCount = [int]$operatorDashboardIndexListedFileCount
+    operatorDashboardIndexMissingListedFileCount = [int]$operatorDashboardIndexMissingListedFileCount
+    operatorDashboardManifestListed = [bool]$operatorDashboardManifestListed
+    operatorDashboardReportListed = [bool]$operatorDashboardReportListed
+    operatorDashboardReportExists = [bool]$operatorDashboardReportExists
     productionOutputBoundary = "final_artifact_freshness_probe_read_only"
     checkCount = [int]$checks.Count
     failedCheckCount = [int]$failedChecks.Count
@@ -343,11 +398,15 @@ $reportLines = @(
     "| Pipeline status | $(Format-MarkdownCell $manifest.pipelineStatus) |",
     "| Index status | $(Format-MarkdownCell $manifest.releaseEvidenceIndexStatus) |",
     "| First testable status | $(Format-MarkdownCell $manifest.firstTestableReleaseStatus) |",
+    "| Operator dashboard status | $(Format-MarkdownCell $manifest.operatorDashboardStatus) |",
     "| Ready for operator testing | $($manifest.readyForOperatorTesting) |",
     "| Index generated at UTC | $(Format-MarkdownCell $manifest.indexGeneratedAtUtc) |",
     "| First-testable generated at UTC | $(Format-MarkdownCell $manifest.firstTestableGeneratedAtUtc) |",
+    "| Operator dashboard generated at UTC | $(Format-MarkdownCell $manifest.operatorDashboardGeneratedAtUtc) |",
     "| Index generated after first-testable | $($manifest.indexGeneratedAfterFirstTestable) |",
+    "| Index generated after operator dashboard | $($manifest.indexGeneratedAfterOperatorDashboard) |",
     "| First-testable manifest SHA matches current | $($manifest.firstTestableManifestSha256MatchesCurrent) |",
+    "| Operator dashboard manifest SHA matches current | $($manifest.operatorDashboardManifestSha256MatchesCurrent) |",
     "| Failed checks | $($manifest.failedCheckCount) |",
     "",
     "## Checks",

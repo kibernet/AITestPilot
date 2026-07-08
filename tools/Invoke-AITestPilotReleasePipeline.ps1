@@ -277,13 +277,19 @@ function Assert-FinalArtifactReleaseEvidenceIndexFreshness {
     $indexPath = Join-Path $ArtifactPath "release-evidence-index.json"
     $firstTestableManifestPath = Join-Path $ArtifactPath "first-testable-release-manifest.json"
     $firstTestableReportPath = Join-Path $ArtifactPath "first-testable-release.md"
+    $operatorDashboardManifestPath = Join-Path $ArtifactPath "first-testable-operator-dashboard-manifest.json"
+    $operatorDashboardReportPath = Join-Path $ArtifactPath "first-testable-operator-dashboard.md"
 
     $indexManifest = Read-PipelineJsonFile $indexManifestPath "Final artifact release evidence index manifest"
     $index = Read-PipelineJsonFile $indexPath "Final artifact release evidence index"
     $firstTestableManifest = Read-PipelineJsonFile $firstTestableManifestPath "First testable release manifest"
+    $operatorDashboardManifest = Read-PipelineJsonFile $operatorDashboardManifestPath "First testable operator dashboard manifest"
 
     if (-not (Test-Path $firstTestableReportPath)) {
         throw "First testable release report is missing before final index validation: $firstTestableReportPath"
+    }
+    if (-not (Test-Path $operatorDashboardReportPath)) {
+        throw "First testable operator dashboard report is missing before final index validation: $operatorDashboardReportPath"
     }
 
     if ((Get-PipelineJsonValue $indexManifest "status" "") -ne "PASS" -or
@@ -300,30 +306,50 @@ function Assert-FinalArtifactReleaseEvidenceIndexFreshness {
         -not (Convert-PipelineBool (Get-PipelineJsonValue $firstTestableManifest "readyForOperatorTesting" $false))) {
         throw "First testable release manifest must be PASS and ready for operator testing before final index validation."
     }
+    if ((Get-PipelineJsonValue $operatorDashboardManifest "status" "") -ne "PASS" -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $operatorDashboardManifest "readyForOperatorTesting" $false))) {
+        throw "First testable operator dashboard manifest must be PASS and ready for operator testing before final index validation."
+    }
 
     $indexGeneratedAtUtc = Convert-PipelineUtcDateTime (Get-PipelineJsonValue $indexManifest "generatedAtUtc" "") "Final release evidence index manifest"
     $firstTestableGeneratedAtUtc = Convert-PipelineUtcDateTime (Get-PipelineJsonValue $firstTestableManifest "generatedAtUtc" "") "First testable release manifest"
     if ($indexGeneratedAtUtc -lt $firstTestableGeneratedAtUtc) {
         throw "Final release evidence index was generated before first-testable-release-manifest.json and is stale."
     }
+    $operatorDashboardGeneratedAtUtc = Convert-PipelineUtcDateTime (Get-PipelineJsonValue $operatorDashboardManifest "generatedAtUtc" "") "First testable operator dashboard manifest"
+    if ($indexGeneratedAtUtc -lt $operatorDashboardGeneratedAtUtc) {
+        throw "Final release evidence index was generated before first-testable-operator-dashboard-manifest.json and is stale."
+    }
 
     $auxiliaryManifests = @(Get-PipelineJsonValue $index "auxiliaryManifests" @())
     $firstTestableIndexEntry = $null
+    $operatorDashboardIndexEntry = $null
     foreach ($entry in $auxiliaryManifests) {
-        if ([string](Get-PipelineJsonValue $entry "name" "") -eq "first-testable-release-manifest.json") {
+        $entryName = [string](Get-PipelineJsonValue $entry "name" "")
+        if ($entryName -eq "first-testable-release-manifest.json") {
             $firstTestableIndexEntry = $entry
-            break
+        }
+        elseif ($entryName -eq "first-testable-operator-dashboard-manifest.json") {
+            $operatorDashboardIndexEntry = $entry
         }
     }
 
     if ($null -eq $firstTestableIndexEntry) {
         throw "Final release evidence index must inventory first-testable-release-manifest.json as an auxiliary manifest."
     }
+    if ($null -eq $operatorDashboardIndexEntry) {
+        throw "Final release evidence index must inventory first-testable-operator-dashboard-manifest.json as an auxiliary manifest."
+    }
 
     $firstTestableManifestSha256 = (Get-FileHash -LiteralPath $firstTestableManifestPath -Algorithm SHA256).Hash
     $indexedFirstTestableManifestSha256 = [string](Get-PipelineJsonValue $firstTestableIndexEntry "sourceManifestSha256" "")
     if ($indexedFirstTestableManifestSha256 -ne $firstTestableManifestSha256) {
         throw "Final release evidence index has a stale SHA256 for first-testable-release-manifest.json."
+    }
+    $operatorDashboardManifestSha256 = (Get-FileHash -LiteralPath $operatorDashboardManifestPath -Algorithm SHA256).Hash
+    $indexedOperatorDashboardManifestSha256 = [string](Get-PipelineJsonValue $operatorDashboardIndexEntry "sourceManifestSha256" "")
+    if ($indexedOperatorDashboardManifestSha256 -ne $operatorDashboardManifestSha256) {
+        throw "Final release evidence index has a stale SHA256 for first-testable-operator-dashboard-manifest.json."
     }
 
     $firstTestableFiles = @(Get-PipelineJsonValue $firstTestableManifest "files" @())
@@ -336,6 +362,16 @@ function Assert-FinalArtifactReleaseEvidenceIndexFreshness {
             throw "First testable release manifest must list $fileName for final index coverage."
         }
     }
+    $operatorDashboardFiles = @(Get-PipelineJsonValue $operatorDashboardManifest "files" @())
+    $requiredOperatorDashboardFiles = @(
+        "first-testable-operator-dashboard-manifest.json",
+        "first-testable-operator-dashboard.md"
+    )
+    foreach ($fileName in $requiredOperatorDashboardFiles) {
+        if ($operatorDashboardFiles -notcontains $fileName) {
+            throw "First testable operator dashboard manifest must list $fileName for final index coverage."
+        }
+    }
 
     if ((Convert-PipelineBool (Get-PipelineJsonValue $firstTestableIndexEntry "sourceManifest" $true)) -or
         -not (Convert-PipelineBool (Get-PipelineJsonValue $firstTestableIndexEntry "exists" $false)) -or
@@ -346,6 +382,17 @@ function Assert-FinalArtifactReleaseEvidenceIndexFreshness {
         (Convert-PipelineInt (Get-PipelineJsonValue $firstTestableIndexEntry "listedFilePresentCount" 0)) -ne $firstTestableFiles.Count -or
         (Convert-PipelineInt (Get-PipelineJsonValue $firstTestableIndexEntry "missingListedFileCount" 1)) -ne 0) {
         throw "Final release evidence index must list first-testable-release-manifest.json as a covered PASS auxiliary manifest with all listed files present."
+    }
+
+    if ((Convert-PipelineBool (Get-PipelineJsonValue $operatorDashboardIndexEntry "sourceManifest" $true)) -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $operatorDashboardIndexEntry "exists" $false)) -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $operatorDashboardIndexEntry "parseable" $false)) -or
+        (Get-PipelineJsonValue $operatorDashboardIndexEntry "status" "") -ne "PASS" -or
+        -not (Convert-PipelineBool (Get-PipelineJsonValue $operatorDashboardIndexEntry "statusAccepted" $false)) -or
+        (Convert-PipelineInt (Get-PipelineJsonValue $operatorDashboardIndexEntry "listedFileCount" 0)) -ne $operatorDashboardFiles.Count -or
+        (Convert-PipelineInt (Get-PipelineJsonValue $operatorDashboardIndexEntry "listedFilePresentCount" 0)) -ne $operatorDashboardFiles.Count -or
+        (Convert-PipelineInt (Get-PipelineJsonValue $operatorDashboardIndexEntry "missingListedFileCount" 1)) -ne 0) {
+        throw "Final release evidence index must list first-testable-operator-dashboard-manifest.json as a covered PASS auxiliary manifest with all listed files present."
     }
 }
 
@@ -496,6 +543,9 @@ function Export-PipelineArtifacts {
         }
 
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotFirstTestableReleaseProbe.ps1") `
+            -ArtifactDir $artifactPath | Out-Null
+
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotFirstTestableOperatorDashboard.ps1") `
             -ArtifactDir $artifactPath | Out-Null
 
         & (Join-Path $repoRoot "tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1") `

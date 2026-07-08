@@ -237,6 +237,8 @@ $requiredArtifactNames = @(
     "production-handoff-export\run-owner-return-status.ps1",
     "first-testable-release-manifest.json",
     "first-testable-release.md",
+    "first-testable-operator-dashboard-manifest.json",
+    "first-testable-operator-dashboard.md",
     "release-docs-freshness-manifest.json"
 )
 $combinedDocsText = [string]::Join([Environment]::NewLine, @(
@@ -254,7 +256,9 @@ Add-DocsCheck "required_artifacts_documented" `
 $requiredDocStrings = @(
     [ordered]@{ file = "README.md"; pattern = "Invoke-AITestPilotReleasePipeline.ps1"; label = "release pipeline command" },
     [ordered]@{ file = "README.md"; pattern = "Invoke-AITestPilotFirstTestableReleaseProbe.ps1"; label = "first testable release probe command" },
+    [ordered]@{ file = "README.md"; pattern = "Invoke-AITestPilotFirstTestableOperatorDashboard.ps1"; label = "first testable operator dashboard command" },
     [ordered]@{ file = "README.md"; pattern = "first-testable-release-manifest.json"; label = "first testable release manifest artifact" },
+    [ordered]@{ file = "README.md"; pattern = "first-testable-operator-dashboard-manifest.json"; label = "first testable operator dashboard artifact" },
     [ordered]@{ file = "README.md"; pattern = 'production-handoff-export\FIRST-TESTABLE.md'; label = "first testable handoff summary artifact" },
     [ordered]@{ file = "README.md"; pattern = 'production-handoff-export\run-owner-return-status.ps1'; label = "self-contained owner return status helper artifact" },
     [ordered]@{ file = "README.md"; pattern = "artifacts\ai-testpilot-release\latest"; label = "stable latest artifact path" },
@@ -308,8 +312,10 @@ $requiredDocStrings = @(
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "repair_agent_cursor_agent_external_output_binding_probe"; label = "Cursor Agent external output binding pipeline step" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "release-evidence-index-field-coverage-probe-manifest.json"; label = "field coverage pipeline artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "Invoke-AITestPilotFirstTestableReleaseProbe.ps1"; label = "first testable release pipeline probe command" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "Invoke-AITestPilotFirstTestableOperatorDashboard.ps1"; label = "first testable operator dashboard pipeline command" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "Invoke-AITestPilotFinalArtifactFreshnessProbe.ps1"; label = "final artifact freshness pipeline probe command" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "first-testable-release-manifest.json"; label = "first testable release pipeline artifact" },
+    [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "first-testable-operator-dashboard-manifest.json"; label = "first testable operator dashboard pipeline artifact" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "133 semantic fields"; label = "field coverage pipeline count" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "field-level definition and source script SHA256 binding"; label = "field coverage pipeline definition hash binding" },
     [ordered]@{ file = "docs/ci-release-pipeline.md"; pattern = "source manifest SHA256 hash set binding"; label = "field coverage pipeline source manifest hash binding" },
@@ -496,6 +502,7 @@ $documentedFiles = @(
     "tools/Invoke-AITestPilotReleasePipeline.ps1",
     "tools/Invoke-AITestPilotProductionHandoffExport.ps1",
     "tools/Invoke-AITestPilotFirstTestableReleaseProbe.ps1",
+    "tools/Invoke-AITestPilotFirstTestableOperatorDashboard.ps1",
     "tools/Invoke-AITestPilotFinalArtifactFreshnessProbe.ps1",
     "tools/Invoke-AITestPilotReleaseRiskPolicy.ps1",
     "tools/Invoke-AITestPilotReleaseEvidenceIndex.ps1",
