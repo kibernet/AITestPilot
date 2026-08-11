@@ -44,6 +44,12 @@ This runs:
 - Writes `Temp\ci-gate-summary.json` (or `-SummaryPath` / `-OutputPath` destination), reads `Temp\developer-gate-manifest.json` by default (or `-ManifestPath`).
 - Fails by default when status is not PASS.
 
+Optionally include path-resolution regression checks in local validation:
+
+```powershell
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
+```
+
 ## What to include in PR description
 
 Please include:
