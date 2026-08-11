@@ -156,6 +156,12 @@ The developer gate writes:
 Temp\developer-gate-manifest.json
 ```
 
+You can also run a local path-resolution regression check (relative/absolute paths + `OutputPath` alias + whitespace-in-path cases):
+
+```powershell
+.\tools\Test-AITestPilotCiGatePathResolution.ps1
+```
+
 This command builds the .NET solution, builds the model-endpoint and Lua-analysis probes, runs the dependency-free smoke suite, and validates the Unity package structure.
 
 `Run-DevGate.ps1` also prints a machine-readable summary block that can be copied directly into the PR template, including quick start and repair-loop statuses.
