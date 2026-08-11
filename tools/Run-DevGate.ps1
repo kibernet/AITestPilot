@@ -77,12 +77,32 @@ function Build-PrChecklistMarkdown {
     $replayProfileStatus = $Summary.replay_profile_schema_check_status
     $replayProfileLine = if ($replayProfileStatus -eq "PASS") { "[x]" } else { if ($replayProfileStatus -eq "SKIPPED") { "[ ]" } else { "[!]" } }
 
+    $failedSteps = @()
+    if ($Summary.PSObject.Properties.Name -contains "failed_steps" -and $Summary.failed_steps) {
+        $failedSteps = @(@($Summary.failed_steps) | Where-Object { $_ -ne $null })
+    }
+    $failedLines = @()
+    if ($failedSteps.Count -gt 0) {
+        $failedLines += "### Failed steps"
+        foreach ($failedStep in $failedSteps) {
+            $failedLines += "- $failedStep"
+        }
+    }
+    if ($failedLines.Count -eq 0) {
+        $failedLines += "### Failed steps"
+        $failedLines += "No failed steps detected."
+    }
+
+    $failedSection = ($failedLines -join "`n")
+
 return @"
 ## Validation summary
 
 - $($quickStartLine) Quick start: $quickStartStatus
 - $($repairLoopLine) Repair loop: $repairLoopStatus
 - $($replayProfileLine) Replay profile schema check: $replayProfileStatus
+
+$($failedSection)
 
 "@
 }
