@@ -86,4 +86,30 @@ Describe "Release readiness handoff scripts" {
         ($existingContent = Get-Content -Path $out -Raw -Encoding UTF8).TrimEnd("`r", "`n") | Should Be "pre-existing"
         ($message -match "Output file already exists. Re-run without -NoOverwrite to replace") | Should Be $true
     }
+
+    It "respects custom marker names when generating handoff blocks" {
+        $startMarker = "<!-- custom-start -->"
+        $endMarker = "<!-- custom-end -->"
+        $out = Join-Path $TestDrive "custom-marker-handoff.md"
+
+        $result = & $exportScript `
+            -OutputPath $out `
+            -NoIncludeRecommendedCommands `
+            -MarkerStart $startMarker `
+            -MarkerEnd $endMarker
+        $resultText = $result | Out-String
+        ($resultText -match "Wrote handoff block to:") | Should Be $true
+
+        $content = Get-Content -Path $out -Raw
+        ($content -match [regex]::Escape($startMarker)) | Should Be $true
+        ($content -match [regex]::Escape($endMarker)) | Should Be $true
+        ($content -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $false
+        ($content -match "<!-- ai-testpilot-release-readiness:end -->") | Should Be $false
+
+        $dryRunOutput = & $setScript -DryRun -NoIncludeRecommendedCommands -MarkerStart $startMarker -MarkerEnd $endMarker
+        $dryRunText = $dryRunOutput | Out-String
+        ($dryRunText -match [regex]::Escape($startMarker)) | Should Be $true
+        ($dryRunText -match [regex]::Escape($endMarker)) | Should Be $true
+        ($dryRunText -match "<!-- ai-testpilot-readiness:start -->") | Should Be $false
+    }
 }
