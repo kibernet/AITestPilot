@@ -75,7 +75,7 @@ function Build-PrChecklistMarkdown {
     $repairLoopLine = if ($repairLoopStatus -eq "PASS") { "[x]" } else { if ($repairLoopStatus -eq "NOT_RUN" -or $repairLoopStatus -eq "UNKNOWN" -or $repairLoopStatus -eq "SKIPPED") { "[ ]" } else { "[!]" } }
 
     $replayProfileStatus = $Summary.replay_profile_schema_check_status
-    $replayProfileLine = if ($replayProfileStatus -eq "PASS") { "[x]" } else { if ($replayProfileStatus -eq "SKIPPED") { "[ ]" } else { "[!]" } }
+    $replayProfileLine = if ($replayProfileStatus -eq "PASS") { "[x]" } else { if ($replayProfileStatus -eq "SKIPPED" -or $replayProfileStatus -eq "NOT_RUN" -or $replayProfileStatus -eq "UNKNOWN") { "[ ]" } else { "[!]" } }
 
     $failedSteps = @()
     if ($Summary.PSObject.Properties.Name -contains "failed_steps" -and $Summary.failed_steps) {
@@ -109,7 +109,7 @@ $($failedSection)
 
 $developerManifest = Resolve-ManifestPath -Path $DeveloperGateManifestPath
 $defaultManifest = Join-Path $repoRoot "Temp\developer-gate-manifest.json"
-$manifestParsePath = if (Test-Path $developerManifest) { $developerManifest } else { $defaultManifest }
+$manifestParsePath = $defaultManifest
 
 $devGateParameters = @{}
 foreach ($entry in $PSBoundParameters.GetEnumerator()) {
@@ -136,6 +136,7 @@ if ($devGateParameters.ContainsKey("RepairLoopEvidenceBundleDir")) {
 }
 
 & $devGateScript @devGateParameters
+$manifestParsePath = if (Test-Path $developerManifest) { $developerManifest } else { $defaultManifest }
 
 $summary = @{
     status = "UNKNOWN"

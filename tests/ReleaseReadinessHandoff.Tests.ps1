@@ -2525,4 +2525,34 @@ Describe "Developer gate replay profile checks" {
             Remove-Item -Path $developerGateManifest -ErrorAction SilentlyContinue
         }
     }
+
+    It "Run-DevGate marks replay profile check as not run when check is not requested" {
+        $developerGateManifest = Join-Path $TestDrive "developer-gate-manifest-not-run.json"
+        $summaryPath = Join-Path $TestDrive "run-summary-not-run.json"
+        $checklistPath = Join-Path $TestDrive "pr-validation-checklist-not-run.md"
+
+        try {
+            & $runDevGateScript `
+                -SkipQuickStart `
+                -SkipRepairLoop `
+                -DeveloperGateManifestPath $developerGateManifest `
+                -SummaryPath $summaryPath `
+                -GeneratePrChecklist `
+                -PrChecklistPath $checklistPath
+        }
+        catch {
+        }
+
+        $summary = Get-Content -Raw $summaryPath | ConvertFrom-Json
+        $summary.replay_profile_schema_check_status | Should Be "SKIPPED"
+
+        Test-Path $checklistPath | Should Be $true
+        (Get-Content -Raw $checklistPath -ErrorAction SilentlyContinue -Encoding UTF8) | Should Match ([regex]::Escape("- [ ] Replay profile schema check: SKIPPED"))
+
+        Remove-Item -Path $summaryPath -ErrorAction SilentlyContinue
+        Remove-Item -Path $checklistPath -ErrorAction SilentlyContinue
+        if (Test-Path $developerGateManifest) {
+            Remove-Item -Path $developerGateManifest -ErrorAction SilentlyContinue
+        }
+    }
 }
