@@ -19,6 +19,74 @@ if (-not (Test-Path $reportScript)) {
     throw "Invoke-AITestPilotReleaseReadinessReport.ps1 not found at $reportScript"
 }
 
+function Convert-StaticPowershellAstValue {
+    param(
+        [System.Management.Automation.Language.Ast]$Node
+    )
+
+    if ($null -eq $Node) { return $null }
+
+    if ($Node -is [System.Management.Automation.Language.StringConstantExpressionAst] -or
+        $Node -is [System.Management.Automation.Language.ExpandableStringExpressionAst] ) {
+        return $Node.Value
+    }
+    if ($Node -is [System.Management.Automation.Language.ConstantExpressionAst]) {
+        return $Node.Value
+    }
+    if ($Node -is [System.Management.Automation.Language.ConvertExpressionAst]) {
+        return Convert-StaticPowershellAstValue -Node $Node.Child
+    }
+    if ($Node -is [System.Management.Automation.Language.CommandExpressionAst]) {
+        return Convert-StaticPowershellAstValue -Node $Node.Expression
+    }
+    if ($Node -is [System.Management.Automation.Language.PipelineAst]) {
+        if ($Node.PipelineElements.Count -eq 0) { return $null }
+        if ($Node.PipelineElements.Count -ne 1) {
+            throw "Unsupported static pipeline expression with multiple elements: $($Node.Extent.Text)"
+        }
+        return Convert-StaticPowershellAstValue -Node $Node.PipelineElements[0]
+    }
+    if ($Node -is [System.Management.Automation.Language.ArrayLiteralAst]) {
+        $values = @()
+        foreach ($statement in $Node.SubExpression.Statements) {
+            $value = Convert-StaticPowershellAstValue -Node $statement
+            if ($null -ne $value) {
+                $values += $value
+            }
+        }
+        return [object[]]$values
+    }
+    if ($Node -is [System.Management.Automation.Language.ArrayExpressionAst]) {
+        return Convert-StaticPowershellAstValue -Node $Node.SubExpression
+    }
+    if ($Node -is [System.Management.Automation.Language.StatementBlockAst]) {
+        $values = @()
+        foreach ($statement in $Node.Statements) {
+            $value = Convert-StaticPowershellAstValue -Node $statement
+            if ($null -ne $value) {
+                $values += $value
+            }
+        }
+        return [object[]]$values
+    }
+    if ($Node -is [System.Management.Automation.Language.ParenExpressionAst]) {
+        return Convert-StaticPowershellAstValue -Node $Node.Pipeline
+    }
+    if ($Node -is [System.Management.Automation.Language.HashtableAst]) {
+        $values = [ordered]@{}
+        foreach ($pair in $Node.KeyValuePairs) {
+            $key = $pair.Item1.Value
+            if (-not $key) {
+                $key = $pair.Item1.Extent.Text
+            }
+            $values[$key] = Convert-StaticPowershellAstValue -Node $pair.Item2
+        }
+        return $values
+    }
+
+    throw "Unsupported static AST node type for extraction: $($Node.GetType().FullName) in '$($Node.Extent.Text)'"
+}
+
 function Get-RecommendedCommandConfigFromScript {
     param(
         [string]$Path
@@ -41,8 +109,7 @@ function Get-RecommendedCommandConfigFromScript {
     }, $true)
 
     if ($null -ne $assignment -and $assignment.Count -gt 0) {
-        $rhsText = $assignment[0].Right.Extent.Text
-        $rhsValue = ([scriptblock]::Create($rhsText)).Invoke()
+        $rhsValue = Convert-StaticPowershellAstValue -Node $assignment[0].Right.Expression
         if ($rhsValue -is [System.Collections.IEnumerable]) {
             if ($rhsValue -is [System.Collections.IDictionary]) {
                 return $rhsValue
