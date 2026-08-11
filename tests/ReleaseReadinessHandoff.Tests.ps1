@@ -15,6 +15,23 @@ if (-not (Test-Path $exportScript)) {
     throw "Export-AITestPilotReleaseReadinessHandoff.ps1 not found at $exportScript"
 }
 
+function Assert-ReportContainsRecommendedCommandSection {
+    param(
+        [string]$ReportPath,
+        [switch]$ShouldNotContain
+    )
+
+    (Test-Path $ReportPath) | Should Be $true
+    $reportText = Get-Content -Path $ReportPath -Raw
+
+    if ($ShouldNotContain) {
+        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+    }
+    else {
+        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+}
+
 Describe "Release readiness handoff scripts" {
     It "throws when multiple targets are specified for Set script" {
         $threw = $false
@@ -138,9 +155,7 @@ Describe "Release readiness handoff scripts" {
         $threw | Should Be $false
         $outputText = $output | Out-String
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath
     }
 
     It "omits recommended-command mode when NoIncludeRecommendedCommands is used in PR DryRun" {
@@ -201,9 +216,7 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match [regex]::Escape($startMarker)) | Should Be $true
         ($outputText -match [regex]::Escape($endMarker)) | Should Be $true
         ($outputText -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath
     }
 
     It "filters snippet checks to non-passing entries when IncludeFailedOnly is used in PR DryRun" {
@@ -331,9 +344,7 @@ Describe "Release readiness handoff scripts" {
         $threw | Should Be $false
         $outputText = $output | Out-String
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath
     }
 
     It "allows explicit IncludeRecommendedCommands in Issue DryRun and preserves custom markers" {
