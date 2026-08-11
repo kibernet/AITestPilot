@@ -84,6 +84,18 @@ To include the CI gate path-resolution regression checks in the local validation
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 ```
 
+Quick command lookup (local development):
+
+```text
+.\tools\Run-DevGate.ps1
+.\tools\Invoke-AITestPilotCiGate.ps1
+.\tools\Validate-AITestPilot.ps1
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+Get-Help .\tools\Validate-AITestPilot.ps1 -Full
+Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
+```
+
 For strict alias-conflict assertions (including `OutputPath` + `SummaryPath` conflict rejection), run:
 
 ```powershell

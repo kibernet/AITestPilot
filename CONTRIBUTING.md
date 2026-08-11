@@ -74,6 +74,26 @@ For stricter path-alias regression checks:
 Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 ```
 
+### Local workflow quick lookup
+
+```text
+.\tools\Run-DevGate.ps1
+.\tools\Invoke-AITestPilotCiGate.ps1
+.\tools\Validate-AITestPilot.ps1
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+.\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias
+Get-Help .\tools\Validate-AITestPilot.ps1 -Full
+Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
+```
+
+Use these in this order when you need deeper checks:
+
+1. `Run-DevGate` (normal PR gate)
+2. `Validate-AITestPilot` (full local validation)
+3. `Validate-AITestPilot -RunCiGatePathRegression` (path regression)
+4. `Validate-AITestPilot -RunCiGatePathRegressionStrict` (strict alias-binding path regression)
+
 ## What to include in PR description
 
 Please include:
