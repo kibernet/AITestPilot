@@ -5,6 +5,9 @@ obj/
 *.user
 *.suo
 
+# App Store submission and marketing working assets
+/appstore/
+
 # Unity generated state
 Library/
 Temp/
