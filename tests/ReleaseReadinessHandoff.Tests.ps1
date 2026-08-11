@@ -66,5 +66,24 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
         ($outputText -match "## Release readiness handoff") | Should Be $true
     }
-}
 
+    It "prevents overwriting an existing output file when NoOverwrite is set" {
+        $out = Join-Path $TestDrive "handoff-block.md"
+        Set-Content -Path $out -Encoding UTF8 -Value "pre-existing"
+
+        $threw = $false
+        $message = ""
+        try {
+            & $exportScript -OutputPath $out -NoIncludeRecommendedCommands -NoOverwrite
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+
+        $threw | Should Be $true
+        (Test-Path $out) | Should Be $true
+        ($existingContent = Get-Content -Path $out -Raw -Encoding UTF8).TrimEnd("`r", "`n") | Should Be "pre-existing"
+        ($message -match "Output file already exists. Re-run without -NoOverwrite to replace") | Should Be $true
+    }
+}
