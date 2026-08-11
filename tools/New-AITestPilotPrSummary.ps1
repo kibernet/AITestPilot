@@ -68,7 +68,7 @@ param(
     [string]$ImmediateRemediation,
 
     [Parameter(Mandatory)]
-    [ValidateSet("PASS", "FAIL/WARN", "SKIPPED")]
+    [ValidateSet("PASS", "WARN", "FAIL/WARN", "SKIPPED")]
     [string]$RecheckOutput,
 
     [Parameter(Mandatory)]
@@ -95,7 +95,8 @@ param(
 
     [string]$OutputPath,
 
-    [switch]$CopyToClipboard
+    [switch]$CopyToClipboard,
+    [switch]$AsPrBlock
 )
 
 Set-StrictMode -Version Latest
@@ -113,14 +114,14 @@ $summaryBlock = @"
 - Re-check command output: $RecheckOutput
 
 ### Evidence
-- Temp\dev-gate-summary.json: $TempDevGateSummary
-- Temp\quick-start\quick-start-manifest.json: $TempQuickStartManifest
-- Temp\repair-loop\repair-loop-manifest.json: $TempRepairLoopManifest
-- Temp\developer-gate-manifest.json: $TempDeveloperGateManifest
-- Temp\ci-gate-summary.json: $TempCiGateSummary
-- Temp\release-evidence\latest\*: $TempReleaseEvidence
-- artifacts\ai-testpilot-release\latest\*: $ArtifactsRelease
-- Temp\pr-validation-checklist.md: $TempPrChecklist
+- `Temp\dev-gate-summary.json`: $TempDevGateSummary
+- `Temp\quick-start\quick-start-manifest.json`: $TempQuickStartManifest
+- `Temp\repair-loop\repair-loop-manifest.json`: $TempRepairLoopManifest
+- `Temp\developer-gate-manifest.json`: $TempDeveloperGateManifest
+- `Temp\ci-gate-summary.json`: $TempCiGateSummary
+- `Temp\release-evidence\latest\*`: $TempReleaseEvidence
+- `artifacts\ai-testpilot-release\latest\*`: $ArtifactsRelease
+- `Temp\pr-validation-checklist.md`: $TempPrChecklist
 
 ### Commit / release decision
 - Merge decision: $MergeDecision
@@ -129,6 +130,24 @@ $summaryBlock = @"
   - what was fixed: $WhatWasFixed
   - remaining risk / watch points: $WatchPoints
 "@
+
+if ($AsPrBlock) {
+    $summaryBlock = @"
+## PR summary block (ready to paste in Description)
+
+**Severity:** $Severity
+**Current status:** $Status
+**Merge decision:** $MergeDecision
+
+- Last failing command: $LastFailingCommand
+- Failure reason: $FailureReason
+- Remediation: $ImmediateRemediation
+- Re-check result: $RecheckOutput
+- Root cause: $RootCause
+- What was fixed: $WhatWasFixed
+- Watch points: $WatchPoints
+"@
+}
 
 if ($OutputPath) {
     $outputFullPath = $OutputPath

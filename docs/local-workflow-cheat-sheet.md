@@ -8,6 +8,27 @@ Use this checklist as a quick operational map.
 
 ## 0) Minimum command sequence (recommended baseline)
 
+### 30-second PR summary bootstrap (for triage updates)
+```powershell
+.\tools\New-AITestPilotPrSummary.ps1 `
+  -Severity 1 `
+  -Status OPEN `
+  -LastFailingCommand '.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json' `
+  -FailureReason 'BLOCKED_REASON indicates dependency/path regression.' `
+  -ImmediateRemediation 'Re-run failing command after fixing environment or snapshot baseline.' `
+  -RecheckOutput WARN `
+  -MergeDecision HOLD `
+  -RootCause 'Needs one follow-up command fix after latest change.' `
+  -WhatWasFixed 'Pending fix captured after re-run.' `
+  -WatchPoints 'Monitor for repeat in next two release cycles.'
+```
+
+Use compact PR-mode output if you only need a short paste-ready block:
+
+```powershell
+.\tools\New-AITestPilotPrSummary.ps1 -Severity 1 -Status OPEN -LastFailingCommand '.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json' -FailureReason 'BLOCKED_REASON indicates dependency/path regression.' -ImmediateRemediation 'Re-run after fixing environment or snapshot baseline.' -RecheckOutput WARN -MergeDecision HOLD -RootCause 'Pending follow-up fix.' -WhatWasFixed 'Captured after re-run.' -WatchPoints 'Watch next two cycles.' -AsPrBlock
+```
+
 Run these in order for most changes:
 
 ```powershell
