@@ -2461,6 +2461,34 @@ Describe "Developer gate replay profile checks" {
         Remove-Item -Path $developerGateManifest -ErrorAction SilentlyContinue
     }
 
+    It "marks replay profile schema check as FAIL and includes missing-profile path in failure message" {
+        $developerGateManifest = Join-Path $repoRoot "Temp\replay-profile-missing-manifest.json"
+        $missingProfile = Join-Path $repoRoot "Temp\replay-profile-does-not-exist.json"
+        Remove-Item -Path $missingProfile -ErrorAction SilentlyContinue
+
+        try {
+            & $gatewayScript `
+                -SkipQuickStart `
+                -SkipRepairLoop `
+                -RunReplayProfileSchemaCheck `
+                -ReplayProfileJsonPath $missingProfile `
+                -DeveloperGateManifestPath $developerGateManifest
+        }
+        catch {
+        }
+
+        $manifest = Get-Content -Raw $developerGateManifest | ConvertFrom-Json
+        $manifest.status | Should Be "PARTIAL_FAIL"
+
+        $replaySchemaStep = @($manifest.steps | Where-Object { $_.name -eq "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" })
+        $replaySchemaStep.Count | Should Be 1
+        $replaySchemaStep[0].status | Should Be "FAIL"
+        ($replaySchemaStep[0].message -match [regex]::Escape("Replay profile JSON not found:")) | Should Be $true
+        ($replaySchemaStep[0].message -match [regex]::Escape((Split-Path $missingProfile -Leaf))) | Should Be $true
+
+        Remove-Item -Path $developerGateManifest -ErrorAction SilentlyContinue
+    }
+
     It "Run-DevGate summarizes replay schema validation pass in PR checklist context" {
         $developerGateManifest = Join-Path $TestDrive "developer-gate-manifest-summary.json"
         $summaryPath = Join-Path $TestDrive "run-summary.json"
