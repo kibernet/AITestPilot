@@ -373,6 +373,97 @@ Quick action order:
   - remaining risk / watch points: monitor docs path stability in next milestone PR.
 ```
 
+## 10) Worked examples by severity
+
+```text
+### Severity 0 (BLOCKED) example
+
+## PR summary block (ready to paste in Description)
+
+### Severity and outcome
+- Severity: 0
+- Current status: RESOLVED
+- Last failing command: .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+- Failure reason: environment dependency missing (`unity_cmd` not found), blocked_reason=UnityPathNotFound.
+- Immediate remediation: installed/updated CI toolchain path and reran command.
+- Re-check command output: PASS
+
+### Evidence
+- `Temp\dev-gate-summary.json`: BLOCKED_REASON=OK
+- `Temp\quick-start\quick-start-manifest.json`: refreshed
+- `Temp\repair-loop\repair-loop-manifest.json`: no change
+- `Temp\developer-gate-manifest.json`: passed
+- `Temp\ci-gate-summary.json`: not required for this PR scope
+- `Temp\release-evidence\latest\*`: none
+- `artifacts\ai-testpilot-release\latest\*`: none
+- `Temp\pr-validation-checklist.md`: regenerated
+
+### Commit / release decision
+- Merge decision: HOLD
+- Reviewer-facing notes:
+  - root cause: missing Unity executable path on local agent.
+  - what was fixed: corrected environment configuration and updated docs for local setup.
+  - remaining risk / watch points: validate all dev environments before next milestone.
+
+### Severity 1 example
+
+## PR summary block (ready to paste in Description)
+
+### Severity and outcome
+- Severity: 1
+- Current status: OPEN
+- Last failing command: .\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression
+- Failure reason: docs path snapshot drift detected in `Temp\quick-start\` (non-blocking warning).
+- Immediate remediation: refreshed `Temp\quick-start\` docs snapshot and added follow-up note.
+- Re-check command output: WARN
+
+### Evidence
+- `Temp\dev-gate-summary.json`: BLOCKED_REASON=OK
+- `Temp\quick-start\quick-start-manifest.json`: updated
+- `Temp\repair-loop\repair-loop-manifest.json`: no change
+- `Temp\developer-gate-manifest.json`: passed
+- `Temp\ci-gate-summary.json`: passed with warning
+- `Temp\release-evidence\latest\*`: not produced (non-release scope)
+- `artifacts\ai-testpilot-release\latest\*`: not produced (non-release scope)
+- `Temp\pr-validation-checklist.md`: regenerated
+
+### Commit / release decision
+- Merge decision: HOLD
+- Reviewer-facing notes:
+  - root cause: docs freshness policy changed without corresponding PR metadata.
+  - what was fixed: refreshed snapshot and aligned PR notes.
+  - remaining risk / watch points: keep an eye on doc-path baseline churn for next 1-2 cycles.
+
+### Severity 2 example
+
+## PR summary block (ready to paste in Description)
+
+### Severity and outcome
+- Severity: 2
+- Current status: RESOLVED
+- Last failing command: .\tools\Run-DevGate.ps1 -GeneratePrChecklist
+- Failure reason: checklist title wording and markdown spacing mismatch only.
+- Immediate remediation: updated PR checklist block copy and aligned header level.
+- Re-check command output: PASS
+
+### Evidence
+- `Temp\dev-gate-summary.json`: BLOCKED_REASON=OK
+- `Temp\quick-start\quick-start-manifest.json`: passed
+- `Temp\repair-loop\repair-loop-manifest.json`: passed
+- `Temp\developer-gate-manifest.json`: passed
+- `Temp\ci-gate-summary.json`: passed
+- `Temp\release-evidence\latest\*`: none (non-release scope)
+- `artifacts\ai-testpilot-release\latest\*`: none (non-release scope)
+- `Temp\pr-validation-checklist.md`: regenerated
+
+### Commit / release decision
+- Merge decision: MERGE
+- Reviewer-facing notes:
+  - root cause: presentation formatting mismatch, no functional impact.
+  - what was fixed: checklist copy standardized.
+  - remaining risk / watch points: none.
+```
+
 Artifacts produced:
 - [ ] Temp\quick-start\quick-start-manifest.json (if available)
 - [ ] Temp\repair-loop\repair-loop-manifest.json (if available)
