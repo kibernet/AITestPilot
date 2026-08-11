@@ -14,6 +14,18 @@ Run these in order for most changes:
 .\tools\Invoke-AITestPilotLocalPreflight.ps1
 ```
 
+For release milestone verification, use the release preflight entrypoint:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePreflight.ps1
+```
+
+If you want the same checks without running the full release pipeline, add `-SkipReleasePipeline`:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipStrictPathRegression
+```
+
 If the change touches only docs/markdown, run with `-SkipStrictPathRegression` as a fast-path exception.
 
 Equivalent manual sequence:
@@ -42,6 +54,12 @@ cd AITestPilot
 .\tools\Invoke-AITestPilotQuickStartChecklist.ps1
 ```
 
+For release preflight with strict validation and docs-freshness regression enabled:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePreflight.ps1 -SummaryPath Temp\release-preflight-summary.json
+```
+
 ## 2) Daily local development
 
 - PR/local quality gate
@@ -60,6 +78,12 @@ cd AITestPilot
 
 ```powershell
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
+```
+
+- Release-docs-freshness regression stress check (default off, recommended for milestone/release-prep)
+
+```powershell
+.\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression
 ```
 
 - Strict CI path regression (alias conflict guard)
@@ -120,6 +144,7 @@ Use this minimal checklist before opening or updating a pull request:
 ```powershell
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+.\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression
 ```
 
 - Run CI-style gate with an archived summary:
@@ -162,6 +187,7 @@ Copy/paste this into PR description:
 - [ ] .\tools\Validate-AITestPilot.ps1
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict *(if CI gate path logic changed)*
+- [ ] .\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression *(for release scope or before docs freshness probe changes)*
 - [ ] .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
 - [ ] .\tools\Invoke-AITestPilotReleasePipeline.ps1 *(release scope)*
 

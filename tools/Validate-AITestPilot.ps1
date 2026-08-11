@@ -16,6 +16,10 @@ Runs the CI gate path-regression script in strict mode.
 Includes native PowerShell binding-conflict validation for `-OutputPath` + `-SummaryPath` aliases.
 This mode is stricter than -RunCiGatePathRegression and supersedes non-strict mode when both are set.
 
+.PARAMETER RunReleaseDocsFreshnessRegression
+Runs the release-docs-freshness probe regression script after the standard validation pass.
+This is optional because the regression matrix is intentionally stress-focused and can be expensive.
+
 .EXAMPLE
 PS> .\tools\Validate-AITestPilot.ps1
 
@@ -28,7 +32,8 @@ PS> .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
 [CmdletBinding()]
 param(
     [switch]$RunCiGatePathRegression,
-    [switch]$RunCiGatePathRegressionStrict
+    [switch]$RunCiGatePathRegressionStrict,
+    [switch]$RunReleaseDocsFreshnessRegression
 )
 
 Set-StrictMode -Version Latest
@@ -246,6 +251,14 @@ try {
         & (Join-Path $PSScriptRoot "Test-AITestPilotCiGatePathResolution.ps1")
         if ($LASTEXITCODE -ne 0) {
             throw "CI gate path regression check failed"
+        }
+    }
+
+    if ($RunReleaseDocsFreshnessRegression.IsPresent) {
+        Write-Host "==> release-docs-freshness probe regression"
+        & (Join-Path $PSScriptRoot "Test-AITestPilotReleaseDocsFreshnessProbeRegression.ps1")
+        if ($LASTEXITCODE -ne 0) {
+            throw "release-docs-freshness probe regression check failed"
         }
     }
 

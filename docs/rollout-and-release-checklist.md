@@ -30,6 +30,7 @@
   - `.\tools\Run-DevGate.ps1`
   - `.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression`
   - `.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict`（如有路径约束变更）
+  - `.\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression`（里程碑/发布准备期建议）
 - [ ] 记录失败/跳过说明
   - 在 PR 描述中列出跳过原因、影响范围、责任人
 - [ ] 对齐核心业务交互
@@ -47,6 +48,7 @@
   - 记录失败类型、修复时长、复发率、覆盖缺口
 - [ ] 发布流水线联动
   - `.\tools\Invoke-AITestPilotReleasePipeline.ps1`
+  - `.\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipDocsFreshnessRegression`（如无需边界回归）
 - [ ] 产物归档
   - `Temp\release-evidence\latest\`
   - `artifacts\ai-testpilot-release\latest\`
@@ -56,6 +58,7 @@
 - [ ] `Temp\developer-gate-manifest.json`
 - [ ] `Temp\dev-gate-summary.json`
 - [ ] `Temp\ci-gate-summary.json`
+- [ ] `.\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression`（如启用）
 - [ ] `Temp\release-evidence\latest\`
 - [ ] `artifacts\ai-testpilot-release\latest\`
 
@@ -66,7 +69,9 @@
 - [ ] .\tools\Run-DevGate.ps1
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict *(if touched path logic)*
+- [ ] .\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression *(for release milestone or docs freshness changes)*
 - [ ] .\tools\Invoke-AITestPilotReleasePipeline.ps1 *(for release milestone only)*
+- [ ] .\tools\Invoke-AITestPilotReleasePreflight.ps1 *(for release milestone local preflight)*
 
 Artifacts produced:
 - [ ] Temp\developer-gate-manifest.json

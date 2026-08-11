@@ -128,6 +128,7 @@ Quick command lookup (local development):
 .\tools\Validate-AITestPilot.ps1
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+.\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression
 Get-Help .\tools\Validate-AITestPilot.ps1 -Full
 Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 ```
@@ -141,6 +142,24 @@ For one-click local preflight:
 .\tools\Invoke-AITestPilotLocalPreflight.ps1
 ```
 
+For a release-grade preflight (release pipeline + strict checks + docs-freshness regression):
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePreflight.ps1
+```
+
+For a lighter local preflight variant, add `-SkipReleasePipeline`:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline
+```
+
+To include the optional release-docs-freshness regression matrix in that flow:
+
+```powershell
+.\tools\Invoke-AITestPilotLocalPreflight.ps1 -RunReleaseDocsFreshnessRegression
+```
+
 For strict alias-conflict assertions (including `OutputPath` + `SummaryPath` conflict rejection), run:
 
 ```powershell
@@ -148,6 +167,14 @@ For strict alias-conflict assertions (including `OutputPath` + `SummaryPath` con
 ```
 
 This strict mode validates the regression in a stricter way, including native command binding conflict failures.
+
+For stronger release-docs-freshness coverage (including malformed prior manifests and drift edge cases), run:
+
+```powershell
+.\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression
+```
+
+This mode is recommended before release-milestone PRs and before changing release-docs-freshness-related probe logic.
 
 You can also inspect full parameter docs with:
 

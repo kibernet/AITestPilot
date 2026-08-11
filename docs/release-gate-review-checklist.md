@@ -9,9 +9,37 @@ Release Gate Review Checklist for AITestPilot versions and milestone publishing.
 - [ ] `Validate-AITestPilot.ps1 -RunCiGatePathRegression`
 - [ ] `Invoke-AITestPilotReleasePipeline.ps1` (if this is a release milestone)
 - [ ] `Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict` (when path-related logic changed)
+- [ ] `Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression` (for release milestone / docs-freshness probe changes)
+- [ ] `Invoke-AITestPilotReleasePreflight.ps1` (release milestone full preflight)
 - [ ] `Invoke-AITestPilotLocalPreflight.ps1` (for final local baseline)
 - [ ] `Invoke-AITestPilotCiGate.ps1 -SummaryPath Temp\ci-gate-summary.json` (if CI gate path was required)
 - [ ] `Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias`
+
+### 1.1 Recommended release milestone command sequence (mainline-ready)
+
+```powershell
+# 1) local baseline (kept in release style by default)
+.\tools\Invoke-AITestPilotReleasePreflight.ps1
+
+# 2) local-only smoke when full release pipeline is intentionally deferred
+.\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline
+
+# 3) strict docs-freshness-focused preflight (skip strict path checks to save time while keeping docs regression)
+.\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipStrictPathRegression
+
+# 4) full release preflight with explicit pipeline options
+.\tools\Invoke-AITestPilotReleasePreflight.ps1 -EvidenceBundleDir Temp\release-evidence\latest
+```
+
+```text
+Expected key evidence:
+- Temp\release-preflight-summary.json
+- Temp\release-preflight-manifest.json
+- Temp\release-evidence\latest\release-docs-freshness-manifest.json
+- Temp\release-evidence\latest\release-docs-freshness-drift-manifest.json
+- Temp\release-evidence\latest\release-docs-freshness-drift.md
+- artifacts\ai-testpilot-release\latest\ (if full release pipeline executed)
+```
 
 ## 2) Evidence required for release review
 

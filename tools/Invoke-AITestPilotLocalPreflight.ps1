@@ -16,6 +16,10 @@ Output path for the preflight JSON summary.
 .PARAMETER SkipStrictPathRegression
 Skips the strict alias-conflict path regression step.
 
+.PARAMETER RunReleaseDocsFreshnessRegression
+Runs the release-docs-freshness probe regression pass by invoking Validate-AITestPilot with
+`-RunReleaseDocsFreshnessRegression`.
+
 .PARAMETER ContinueOnFailure
 Continue through failures and emit a summary with failed steps.
 
@@ -32,6 +36,7 @@ PS> .\tools\Invoke-AITestPilotLocalPreflight.ps1 -SkipStrictPathRegression
 param(
     [string]$SummaryPath = "Temp\preflight-summary.json",
     [switch]$SkipStrictPathRegression,
+    [switch]$RunReleaseDocsFreshnessRegression,
     [switch]$ContinueOnFailure,
     [string]$PreflightManifestPath = "Temp\preflight-manifest.json"
 )
@@ -87,6 +92,12 @@ try {
         (Invoke-Step -Name "Run-CiGatePathRegression" -Command ".\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression" -Action { & (Join-Path $PSScriptRoot "Validate-AITestPilot.ps1") -RunCiGatePathRegression }),
         (Invoke-Step -Name "Run-CiGatePathRegressionStrict" -Command ".\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict" -Action { & (Join-Path $PSScriptRoot "Validate-AITestPilot.ps1") -RunCiGatePathRegressionStrict })
     )
+
+    if ($RunReleaseDocsFreshnessRegression) {
+        $steps += @(
+            (Invoke-Step -Name "Run-ReleaseDocsFreshnessRegression" -Command ".\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression" -Action { & (Join-Path $PSScriptRoot "Validate-AITestPilot.ps1") -RunReleaseDocsFreshnessRegression })
+        )
+    }
 
     if ($SkipStrictPathRegression) {
         $steps = @($steps | Where-Object { $_.name -ne "Run-CiGatePathRegressionStrict" })

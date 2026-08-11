@@ -2,7 +2,9 @@
 param(
     [string]$EvidenceBundleDir,
     [string]$ManifestPath,
-    [string]$ReportPath
+    [string]$ReportPath,
+    [string]$DriftManifestPath,
+    [string]$DriftReportPath
 )
 
 Set-StrictMode -Version Latest
@@ -20,6 +22,14 @@ if ([string]::IsNullOrWhiteSpace($ManifestPath)) {
 
 if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $ReportPath = Join-Path $EvidenceBundleDir "release-docs-freshness.md"
+}
+
+if ([string]::IsNullOrWhiteSpace($DriftManifestPath)) {
+    $DriftManifestPath = Join-Path $EvidenceBundleDir "release-docs-freshness-drift-manifest.json"
+}
+
+if ([string]::IsNullOrWhiteSpace($DriftReportPath)) {
+    $DriftReportPath = Join-Path $EvidenceBundleDir "release-docs-freshness-drift.md"
 }
 
 function Resolve-FullPath {
@@ -94,9 +104,30 @@ function Read-JsonFile {
         return $null
     }
 
-    return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json
+    return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json -ErrorAction Stop
 }
 
+function Read-JsonFileWithStatus {
+    param(
+        [string]$Path,
+        [ref]$IsReadable
+    )
+
+    $IsReadable.Value = $false
+    if (-not (Test-Path $Path)) {
+        return $null
+    }
+
+    try {
+        $json = Read-JsonFile $Path
+        $IsReadable.Value = $true
+        return $json
+    }
+    catch {
+        Write-Verbose ("Failed to parse JSON manifest at {0}: {1}" -f $Path, $_.Exception.Message)
+        return $null
+    }
+}
 function Get-JsonValue {
     param(
         [object]$Object,
@@ -130,9 +161,131 @@ function Format-MarkdownCell {
     return ([string]$Value).Replace("|", "\|").Replace("`r", " ").Replace("`n", "<br>")
 }
 
+function To-StringArray {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return @()
+    }
+
+    if ($Value -is [System.String]) {
+        return @($Value)
+    }
+
+    if ($Value -is [System.Collections.IDictionary]) {
+        return @($Value.Values | ForEach-Object { [string]$_ })
+    }
+
+    if ($Value -is [pscustomobject]) {
+        return @($Value.PSObject.Properties | ForEach-Object { [string]$_.Value })
+    }
+
+    if ($Value -is [System.Collections.IEnumerable]) {
+        return @($Value | ForEach-Object { [string]$_ })
+    }
+
+    return @([string]$Value)
+}
+
+function Compare-StringSetDelta {
+    param(
+        [object]$Previous,
+        [object]$Current,
+        [string]$Name
+    )
+
+    $previousArray = @()
+    foreach ($value in @($Previous)) {
+        if ($null -ne $value) {
+            $previousArray += [string]$value
+        }
+    }
+
+    $currentArray = @()
+    foreach ($value in @($Current)) {
+        if ($null -ne $value) {
+            $currentArray += [string]$value
+        }
+    }
+
+    $prevSet = @{}
+    $prevIndex = @{}
+    for ($i = 0; $i -lt $previousArray.Count; $i++) {
+        $value = [string]$previousArray[$i]
+        $prevSet[$value] = $true
+        $prevIndex[$value] = $i
+    }
+
+    $currentSet = @{}
+    $currentIndex = @{}
+    for ($i = 0; $i -lt $currentArray.Count; $i++) {
+        $value = [string]$currentArray[$i]
+        $currentSet[$value] = $true
+        $currentIndex[$value] = $i
+    }
+
+    $added = @()
+    foreach ($value in $currentArray) {
+        if (-not $prevSet.ContainsKey([string]$value)) {
+            $added += [string]$value
+        }
+    }
+
+    $removed = @()
+    foreach ($value in $previousArray) {
+        if (-not $currentSet.ContainsKey([string]$value)) {
+            $removed += [string]$value
+        }
+    }
+
+    $changed = @()
+    $stableCount = 0
+    $union = @()
+    $union = @($previousArray + $currentArray | Sort-Object -Unique)
+    foreach ($value in $union) {
+        $inPrevious = $prevSet.ContainsKey($value)
+        $inCurrent = $currentSet.ContainsKey($value)
+        if ($inPrevious -and $inCurrent) {
+            $stableCount++
+        }
+        elseif (-not $inPrevious -and -not $inCurrent) {
+            continue
+        }
+
+        $changeType = if (-not $inPrevious) { "Added" } elseif (-not $inCurrent) { "Removed" } else { "Stable" }
+        $changed += [ordered]@{
+            name = $value
+            change = $changeType
+            previousIndex = if ($inPrevious) { [int]$prevIndex[$value] } else { -1 }
+            currentIndex = if ($inCurrent) { [int]$currentIndex[$value] } else { -1 }
+        }
+    }
+
+    return [ordered]@{
+        name = $Name
+        previousCount = [int]$previousArray.Count
+        currentCount = [int]$currentArray.Count
+        added = @($added | Sort-Object -Unique)
+        removed = @($removed | Sort-Object -Unique)
+        stableCount = [int]$stableCount
+        changedCount = [int]( @($changed | Where-Object { $_.change -ne "Stable" }).Count )
+        addedCount = [int]$added.Count
+        removedCount = [int]$removed.Count
+        changedSourceFileList = @($changed | Where-Object { $_.change -ne "Stable" })
+    }
+}
+
+function Get-SafeCount {
+    param([object]$Value)
+
+    return @(To-StringArray -Value $Value).Count
+}
+
 $evidenceBundlePath = Assert-PathUnderRepo $EvidenceBundleDir "EvidenceBundleDir"
 $manifestFullPath = Assert-PathUnderRepo $ManifestPath "ManifestPath"
 $reportFullPath = Assert-PathUnderRepo $ReportPath "ReportPath"
+$driftManifestFullPath = Assert-PathUnderRepo $DriftManifestPath "DriftManifestPath"
+$driftReportFullPath = Assert-PathUnderRepo $DriftReportPath "DriftReportPath"
 
 New-Item -ItemType Directory -Force $evidenceBundlePath | Out-Null
 
@@ -240,7 +393,9 @@ $requiredArtifactNames = @(
     "first-testable-release.md",
     "first-testable-operator-dashboard-manifest.json",
     "first-testable-operator-dashboard.md",
-    "release-docs-freshness-manifest.json"
+    "release-docs-freshness-manifest.json",
+    "release-docs-freshness-drift-manifest.json",
+    "release-docs-freshness-drift.md"
 )
 $combinedDocsText = [string]::Join([Environment]::NewLine, @(
         $docTexts["README.md"],
@@ -497,14 +652,31 @@ Add-DocsCheck "hard_mode_probes_use_default_source_manifests" `
     "Hard-mode copied-bundle probes must delegate source manifest selection to the release evidence index default canonical list."
 
 $previousArtifactPipelineManifestPath = Join-Path $repoRoot "artifacts\ai-testpilot-release\latest\pipeline-manifest.json"
-$previousArtifactPipelineManifest = Read-JsonFile $previousArtifactPipelineManifestPath
+$previousArtifactPipelineManifestPresent = Test-Path $previousArtifactPipelineManifestPath
+$previousArtifactPipelineManifestReadable = $false
+$previousArtifactPipelineManifest = Read-JsonFileWithStatus -Path $previousArtifactPipelineManifestPath -IsReadable ([ref]$previousArtifactPipelineManifestReadable)
 $previousArtifactPipelineStatus = [string](Get-JsonValue $previousArtifactPipelineManifest "status" "")
 $previousArtifactPipelineStepCount = [int](Get-JsonValue $previousArtifactPipelineManifest "stepCount" 0)
-$previousArtifactPipelineManifestPresent = $null -ne $previousArtifactPipelineManifest
+
+$previousReleaseDocsFreshnessManifestPath = Join-Path $repoRoot "artifacts\ai-testpilot-release\latest\release-docs-freshness-manifest.json"
+$previousReleaseDocsFreshnessManifestPresent = Test-Path $previousReleaseDocsFreshnessManifestPath
+$previousReleaseDocsFreshnessManifestReadable = $false
+$previousReleaseDocsFreshnessManifest = Read-JsonFileWithStatus -Path $previousReleaseDocsFreshnessManifestPath -IsReadable ([ref]$previousReleaseDocsFreshnessManifestReadable)
+
+$previousReleaseDocsFreshnessPipelineStepCount = [int](Get-JsonValue $previousReleaseDocsFreshnessManifest "pipelineStepCount" 0)
+$previousReleaseDocsFreshnessSourceFiles = To-StringArray (Get-JsonValue $previousReleaseDocsFreshnessManifest "sourceFiles" @())
+$previousReleaseDocsFreshnessRequiredDocFiles = To-StringArray (Get-JsonValue $previousReleaseDocsFreshnessManifest "requiredDocFiles" @())
+$previousReleaseDocsFreshnessMissingStepDocs = To-StringArray (Get-JsonValue $previousReleaseDocsFreshnessManifest "missingPipelineStepDocs" @())
+$previousReleaseDocsFreshnessSourceFilesCount = Get-SafeCount $previousReleaseDocsFreshnessSourceFiles
+$previousReleaseDocsFreshnessRequiredDocFilesCount = Get-SafeCount $previousReleaseDocsFreshnessRequiredDocFiles
 
 Add-DocsCheck "previous_artifact_pipeline_manifest_readable_when_present" `
-    ((-not $previousArtifactPipelineManifestPresent) -or ($previousArtifactPipelineStatus.Length -gt 0 -and $previousArtifactPipelineStepCount -gt 0)) `
+    ((-not $previousArtifactPipelineManifestPresent) -or $previousArtifactPipelineManifestReadable) `
     "Previous copied artifact pipeline manifest is optional for the probe, but must be readable when present."
+
+Add-DocsCheck "previous_release_docs_freshness_manifest_readable_when_present" `
+    ((-not $previousReleaseDocsFreshnessManifestPresent) -or $previousReleaseDocsFreshnessManifestReadable) `
+    "Previous release-docs-freshness manifest is optional for drift reporting and must be readable when present."
 
 $documentedFiles = @(
     "README.md",
@@ -559,6 +731,102 @@ $failedChecks = @($checks | Where-Object { -not [bool]$_["passed"] })
 $status = if ($failedChecks.Count -eq 0) { "PASS" } else { "FAIL" }
 $docsFresh = $status -eq "PASS"
 
+$changedSourceFileList = Compare-StringSetDelta -Previous $previousReleaseDocsFreshnessSourceFiles -Current $sourceFiles -Name "sourceFiles"
+$requiredDocFilesDelta = Compare-StringSetDelta -Previous $previousReleaseDocsFreshnessRequiredDocFiles -Current $requiredDocFiles -Name "requiredDocFiles"
+$missingStepDocsDelta = Compare-StringSetDelta -Previous $previousReleaseDocsFreshnessMissingStepDocs -Current $missingPipelineStepDocs -Name "missingStepDocs"
+
+$changedPipelineStepCountDelta = [int]($pipelineSteps.Count - $previousReleaseDocsFreshnessPipelineStepCount)
+$driftHasSourceChanges = (Get-SafeCount $changedSourceFileList.changedSourceFileList) -gt 0 -or `
+    (Get-SafeCount $requiredDocFilesDelta.changedSourceFileList) -gt 0 -or `
+    (Get-SafeCount $missingStepDocsDelta.changedSourceFileList) -gt 0
+$driftHasAnyCountDelta = $driftHasSourceChanges -or ($changedPipelineStepCountDelta -ne 0)
+
+$driftType = if (-not $previousReleaseDocsFreshnessManifestPresent) {
+    "Stable"
+}
+elseif ($changedPipelineStepCountDelta -gt 0 -and (Get-SafeCount $requiredDocFilesDelta.added) -gt 0 -and (Get-SafeCount $requiredDocFilesDelta.removed) -eq 0 -and `
+    -not $driftHasSourceChanges) {
+    "Added"
+}
+elseif ($changedPipelineStepCountDelta -lt 0 -and (Get-SafeCount $requiredDocFilesDelta.removed) -gt 0 -and (Get-SafeCount $requiredDocFilesDelta.added) -eq 0 -and `
+    -not $driftHasSourceChanges) {
+    "Removed"
+}
+elseif ($driftHasAnyCountDelta) {
+    "Changed"
+}
+else {
+    "Stable"
+}
+
+$driftReportGeneratedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+
+$driftReportLines = @(
+    "# Release Docs Freshness Drift Report",
+    "",
+    "| Field | Value |",
+    "| --- | --- |",
+    "| Drift type | $(Format-MarkdownCell $driftType) |",
+    "| Report generated at (UTC) | $(Format-MarkdownCell $driftReportGeneratedAtUtc) |",
+    "| Previous manifest path | $(Format-MarkdownCell (Convert-ToRepoRelativePath $previousReleaseDocsFreshnessManifestPath)) |",
+    "| Changed pipeline step count delta | $(Format-MarkdownCell $changedPipelineStepCountDelta) |",
+    "| Current pipeline step count | $(Format-MarkdownCell $pipelineSteps.Count) |",
+    "| Previous pipeline step count | $(Format-MarkdownCell $previousReleaseDocsFreshnessPipelineStepCount) |",
+    "| Current required doc file count | $(Format-MarkdownCell $requiredDocFiles.Count) |",
+    "| Previous required doc file count | $(Format-MarkdownCell $previousReleaseDocsFreshnessRequiredDocFilesCount) |",
+    "| Current source file count | $(Format-MarkdownCell $sourceFiles.Count) |",
+    "| Previous source file count | $(Format-MarkdownCell $previousReleaseDocsFreshnessSourceFilesCount) |"
+)
+
+$driftReportLines += @(
+    "",
+    "## Changed source files",
+    "",
+    "| File | Change | Prev Index | Curr Index |",
+    "| --- | --- | --- | --- |"
+)
+foreach ($entry in $changedSourceFileList.changedSourceFileList) {
+    $driftReportLines += "| $(Format-MarkdownCell $entry.name) | $(Format-MarkdownCell $entry.change) | $($entry.previousIndex) | $($entry.currentIndex) |"
+}
+if ((Get-SafeCount $changedSourceFileList.changedSourceFileList) -eq 0) {
+    $driftReportLines += "| None | None |  |  |"
+}
+
+$driftReportLines += @(
+    "",
+    "## Required doc file delta",
+    "",
+    "| File | Change | Prev Index | Curr Index |",
+    "| --- | --- | --- | --- |"
+)
+foreach ($entry in $requiredDocFilesDelta.changedSourceFileList) {
+    $driftReportLines += "| $(Format-MarkdownCell $entry.name) | $(Format-MarkdownCell $entry.change) | $($entry.previousIndex) | $($entry.currentIndex) |"
+}
+if ((Get-SafeCount $requiredDocFilesDelta.changedSourceFileList) -eq 0) {
+    $driftReportLines += "| None | None |  |  |"
+}
+
+$driftReportLines += @(
+    "",
+    "## Missing pipeline step docs delta",
+    "",
+    "| Step | Change | Prev Index | Curr Index |",
+    "| --- | --- | --- | --- |"
+)
+foreach ($entry in $missingStepDocsDelta.changedSourceFileList) {
+    $driftReportLines += "| $(Format-MarkdownCell $entry.name) | $(Format-MarkdownCell $entry.change) | $($entry.previousIndex) | $($entry.currentIndex) |"
+}
+if ((Get-SafeCount $missingStepDocsDelta.changedSourceFileList) -eq 0) {
+    $driftReportLines += "| None | None |  |  |"
+}
+
+$driftReportLines += ""
+$driftReportLines += "## Pipeline step drift snapshot"
+$driftReportLines += ""
+$driftReportLines += "* Pipeline step count change: $changedPipelineStepCountDelta"
+$driftReportLines += "* Missing pipeline step docs current: $($missingPipelineStepDocs.Count)"
+$driftReportLines += "* Missing pipeline step docs previous: $(Get-SafeCount $previousReleaseDocsFreshnessMissingStepDocs)"
+$driftReportLines += "* Previous manifest present: $previousReleaseDocsFreshnessManifestPresent"
 $reportLines = @(
     "# Release Docs Freshness",
     "",
@@ -576,6 +844,10 @@ $reportLines = @(
     "| Hard-mode default source probe failures | $($hardModeDefaultSourceProbeFailures.Count) |",
     "| Previous artifact pipeline status | $(Format-MarkdownCell $previousArtifactPipelineStatus) |",
     "| Previous artifact pipeline step count | $previousArtifactPipelineStepCount |",
+    "| Release docs drift type | $(Format-MarkdownCell $driftType) |",
+    "| Release docs drift source file changes | $(Get-SafeCount $changedSourceFileList.changedSourceFileList) |",
+    "| Release docs required doc file changes | $(Get-SafeCount $requiredDocFilesDelta.changedSourceFileList) |",
+    "| Missing step docs delta changes | $(Get-SafeCount $missingStepDocsDelta.changedSourceFileList) |",
     "",
     "## Checks",
     "",
@@ -617,10 +889,41 @@ if ($missingSourceManifestReferences.Count -eq 0) {
 
 New-Item -ItemType Directory -Force (Split-Path $reportFullPath -Parent) | Out-Null
 $reportLines | Set-Content -Path $reportFullPath -Encoding UTF8
+$driftReportLines | Set-Content -Path $driftReportFullPath -Encoding UTF8
+
+$driftManifest = [ordered]@{
+    schemaVersion = "aitestpilot.release_docs_freshness_drift.v1"
+    status = $status
+    driftType = $driftType
+    reportGeneratedAtUtc = $driftReportGeneratedAtUtc
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("O")
+    evidenceBundleDir = $evidenceBundlePath
+    previousManifestPath = (Convert-ToRepoRelativePath $previousReleaseDocsFreshnessManifestPath)
+    previousManifestPresent = [bool]$previousReleaseDocsFreshnessManifestPresent
+    changedPipelineStepCountDelta = [int]$changedPipelineStepCountDelta
+    previousPipelineStepCount = [int]$previousReleaseDocsFreshnessPipelineStepCount
+    currentPipelineStepCount = [int]$pipelineSteps.Count
+    changedSourceFileList = @($changedSourceFileList.changedSourceFileList)
+    requiredDocFilesDelta = @($requiredDocFilesDelta.changedSourceFileList)
+    missingStepDocsDelta = @($missingStepDocsDelta.changedSourceFileList)
+    sourceFilesCurrent = @($sourceFiles)
+    sourceFilesPrevious = @($previousReleaseDocsFreshnessSourceFiles)
+    requiredDocFilesCurrent = @($requiredDocFiles)
+    requiredDocFilesPrevious = @($previousReleaseDocsFreshnessRequiredDocFiles)
+    generatedFiles = @(
+        (Convert-ToEvidenceRelativePath $driftManifestFullPath),
+        (Convert-ToEvidenceRelativePath $driftReportFullPath)
+    )
+    previousManifestReadable = [bool]$previousReleaseDocsFreshnessManifestReadable
+}
+
+$driftManifest | ConvertTo-Json -Depth 12 | Set-Content -Path $driftManifestFullPath -Encoding UTF8
 
 $generatedFiles = @(
     (Convert-ToEvidenceRelativePath $manifestFullPath),
-    (Convert-ToEvidenceRelativePath $reportFullPath)
+    (Convert-ToEvidenceRelativePath $reportFullPath),
+    (Convert-ToEvidenceRelativePath $driftManifestFullPath),
+    (Convert-ToEvidenceRelativePath $driftReportFullPath)
 )
 
 $manifest = [ordered]@{
@@ -662,6 +965,7 @@ $manifest = [ordered]@{
     previousArtifactPipelineManifestPath = (Convert-ToRepoRelativePath $previousArtifactPipelineManifestPath)
     previousArtifactPipelineStatus = $previousArtifactPipelineStatus
     previousArtifactPipelineStepCount = [int]$previousArtifactPipelineStepCount
+    previousArtifactPipelineManifestReadable = [bool]$previousArtifactPipelineManifestReadable
     reportGenerated = (Test-Path $reportFullPath)
     reportContentValidated = [bool]$reportContentValidated
     releasePipelineSendsEmail = $false
@@ -670,6 +974,14 @@ $manifest = [ordered]@{
     fixtureEvidencePromoted = $false
     productionOutputBoundary = "release_docs_freshness_only"
     sourceFiles = @($sourceFiles)
+    driftType = $driftType
+    changedPipelineStepCountDelta = [int]$changedPipelineStepCountDelta
+    changedSourceFileList = @($changedSourceFileList.changedSourceFileList)
+    requiredDocFilesDelta = @($requiredDocFilesDelta.changedSourceFileList)
+    missingStepDocsDelta = @($missingStepDocsDelta.changedSourceFileList)
+    previousReleaseDocsFreshnessManifestPresent = [bool]$previousReleaseDocsFreshnessManifestPresent
+    previousReleaseDocsFreshnessManifestReadable = [bool]$previousReleaseDocsFreshnessManifestReadable
+    previousReleaseDocsFreshnessManifestPath = (Convert-ToRepoRelativePath $previousReleaseDocsFreshnessManifestPath)
     generatedFiles = @($generatedFiles)
     documentedFiles = @($documentedFiles)
     files = @($generatedFiles)
@@ -687,4 +999,6 @@ if ($failedChecks.Count -gt 0) {
 
 Write-Output "Release docs freshness manifest: $manifestFullPath"
 Write-Output "Release docs freshness report: $reportFullPath"
+Write-Output "Release docs freshness drift manifest: $driftManifestFullPath"
+Write-Output "Release docs freshness drift report: $driftReportFullPath"
 Write-Output "PASS AI TestPilot release docs freshness probe"
