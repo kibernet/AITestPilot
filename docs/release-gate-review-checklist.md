@@ -47,6 +47,12 @@ For a quick audit artifact, additionally run:
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
 ```
 
+For strict gate runs:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
+```
+
 ## 2) Evidence required for release review
 
 - [ ] `Temp\developer-gate-manifest.json`

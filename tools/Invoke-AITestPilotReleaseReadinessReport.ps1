@@ -34,6 +34,9 @@ Emit release-pipeline-only checks as required (default: false for local quick re
 
 .PARAMETER IncludeRecommendedCommands
 Include the recommended command sequence at the end of the report.
+
+.PARAMETER FailOnWarning
+Treat WARN entries as blocking failures. Useful for strict gate automation.
 #>
 [CmdletBinding()]
 param(
@@ -44,7 +47,8 @@ param(
     [string]$ReleaseArtifactRoot = "artifacts\ai-testpilot-release\latest",
     [string]$OutputPath = "",
     [switch]$RequireReleasePipeline,
-    [switch]$IncludeRecommendedCommands
+    [switch]$IncludeRecommendedCommands,
+    [switch]$FailOnWarning
 )
 
 Set-StrictMode -Version Latest
@@ -138,12 +142,6 @@ function Check-JsonField {
     return @{ label = "$Label (`"$JsonPath=$value`")"; status = "FAIL"; value = $value; path = $fullPath; detail = "$JsonPath=$value"; raw = $obj }
 }
 
-function Relative-PathOr-Empty {
-    param([string]$Path)
-    if ([string]::IsNullOrWhiteSpace($Path)) { return "" }
-    return $Path
-}
-
 $summaryPathFull = Resolve-PathUnderRepo $SummaryPath
 $preflightManifestPathFull = Resolve-PathUnderRepo $PreflightManifestPath
 $localSummary = Read-JsonFile -Path $summaryPathFull
@@ -156,27 +154,28 @@ $rows += @{
     detail = if ($null -ne $localSummary -and (Read-JsonValue $localSummary "status" "") -eq "PASS") { "status=PASS ($SummaryPath)" } else { if (Test-Path $summaryPathFull) { "status!=PASS or unreadable ($SummaryPath)" } else { "not found ($SummaryPath)" } }
 }
 
-$rows += @{
-    title = "Release preflight manifest path (`$PreflightManifestPath`) (optional helper path)"
-    status = if (Test-Path $preflightManifestPathFull) { "PASS" } else { "WARN" }
-    detail = if (Test-Path $preflightManifestPathFull) { "manifest present: $PreflightManifestPath" } else { "not present by default in release preflight wrapper" }
+$rows += if (Test-Path $preflightManifestPathFull) {
+    Check-JsonField -RelPath $PreflightManifestPath -Label "Release preflight manifest status is PASS (`$PreflightManifestPath`)" -JsonPath "status" -Expected "PASS"
+}
+else {
+    @{ label = "Release preflight manifest status is PASS (`$PreflightManifestPath`)"; status = "WARN"; value = $PreflightManifestPath; path = $preflightManifestPathFull; detail = "manifest optional; not present by default in release preflight wrapper" }
 }
 
 $rows += @{
     title = "Run-DevGate executed"
-    status = if ($localSummary -and ((Read-JsonValue $localSummary "steps" @()).name -contains "Run-DevGate")) { "PASS" } else { "FAIL" }
+    status = if ($null -ne $localSummary -and ((Read-JsonValue $localSummary "steps" @()).name -contains "Run-DevGate")) { "PASS" } else { "FAIL" }
     detail = "from 'release-preflight-summary.json'"
 }
 
 $rows += @{
     title = "Validate-AITestPilot executed"
-    status = if ($localSummary -and ((Read-JsonValue $localSummary "steps" @()).name -contains "Validate-AITestPilot")) { "PASS" } else { "FAIL" }
+    status = if ($null -ne $localSummary -and ((Read-JsonValue $localSummary "steps" @()).name -contains "Validate-AITestPilot")) { "PASS" } else { "FAIL" }
     detail = "from 'release-preflight-summary.json'"
 }
 
-$rows += Check-File -RelPath "Temp\quick-start\quick-start-manifest.json" -Label "quick-start manifest exists"
-$rows += Check-File -RelPath "Temp\developer-gate-manifest.json" -Label "developer gate manifest exists"
-$rows += Check-File -RelPath "Temp\repair-loop\repair-loop-manifest.json" -Label "repair-loop manifest exists"
+$rows += Check-File -RelPath "$LocalArtifactDir\quick-start\quick-start-manifest.json" -Label "quick-start manifest exists"
+$rows += Check-File -RelPath "$LocalArtifactDir\developer-gate-manifest.json" -Label "developer gate manifest exists"
+$rows += Check-File -RelPath "$LocalArtifactDir\repair-loop\repair-loop-manifest.json" -Label "repair-loop manifest exists"
 $rows += Check-File -RelPath $ReleaseEvidenceDir -Label "release evidence directory exists"
 $rows += Check-File -RelPath "$ReleaseEvidenceDir\release-docs-freshness-manifest.json" -Label "release-docs-freshness manifest exists"
 $rows += Check-File -RelPath "$ReleaseEvidenceDir\release-docs-freshness-drift-manifest.json" -Label "release-docs-freshness drift manifest exists"
@@ -191,17 +190,57 @@ if ($RequireReleasePipeline) {
     $rows += Check-File -RelPath "$ReleaseArtifactRoot\release-docs-freshness-drift-manifest.json" -Label "release artifact drift manifest copied to final artifacts"
 }
 
-$rows += Check-File -RelPath "Temp\ci-gate-summary.json" -Label "ci-gate-summary.json optional artifact exists"
-$rows += Check-File -RelPath "Temp\ci-gate-path-tests\relative\dev manifest.json" -Label "CI path regression baseline witness exists"
+$rows += Check-File -RelPath "$LocalArtifactDir\ci-gate-summary.json" -Label "ci-gate-summary.json optional artifact exists"
+$rows += Check-File -RelPath "$LocalArtifactDir\ci-gate-path-tests\relative\dev manifest.json" -Label "CI path regression baseline witness exists"
+
+$passCount = 0
+$warnCount = 0
+$failCount = 0
+$blockCount = 0
 
 $lines = @(
     "# AITestPilot Release Readiness Report",
     "",
     "Generated: $((Get-Date).ToString("yyyy-MM-dd HH:mm:sszzz"))",
     "",
-    "## 1) Artifact checks",
+    "## 0) Readiness gate summary",
     ""
 )
+
+foreach ($row in $rows) {
+    $itemStatus = "FAIL"
+    if ($null -ne $row) {
+        if ($row -is [hashtable] -and $row.ContainsKey("status")) {
+            $itemStatus = [string]$row["status"]
+        }
+        elseif ($row.PSObject -and $row.PSObject.Properties.Name -contains "status") {
+            $itemStatus = [string]$row.status
+        }
+    }
+
+    if ($itemStatus -eq "PASS") { $passCount++ }
+    elseif ($itemStatus -eq "WARN") { $warnCount++ }
+    else { $failCount++; }
+
+    if (($itemStatus -eq "FAIL") -or ($FailOnWarning -and $itemStatus -eq "WARN")) { $blockCount++ }
+}
+
+$gateStatus = if ($blockCount -gt 0) { "BLOCKED" } else { "READY" }
+
+$lines += "- Gate status: **$gateStatus**"
+$lines += "- PASS: $passCount"
+$lines += "- WARN: $warnCount"
+$lines += "- FAIL: $failCount"
+$lines += ""
+$lines += "## 1) Artifact checks"
+$lines += ""
+
+$lines += if ($blockCount -gt 0) {
+    "Blocking conditions detected. Review WARN/FAIL entries marked above before proceeding."
+} else {
+    "No blocking conditions detected."
+}
+$lines += ""
 
 foreach ($row in $rows) {
     $itemTitle = "unknown"
@@ -249,4 +288,8 @@ if (-not [string]::IsNullOrWhiteSpace($OutputPath)) {
     Write-Output "Release readiness report: $fullOutput"
 } else {
     Write-Output $text
+}
+
+if ($FailOnWarning -and $blockCount -gt 0) {
+    throw "Release readiness check blocked. Inspect the generated report for WARN/FAIL items."
 }

@@ -154,6 +154,12 @@ Generate a ready-to-paste milestone/PR readiness report:
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
 ```
 
+For strict automation (non-zero exit on any WARN/FAIL item):
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
+```
+
 For a lighter local preflight variant, add `-SkipReleasePipeline`:
 
 ```powershell

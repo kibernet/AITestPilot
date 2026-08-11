@@ -31,6 +31,12 @@ When you finish verification, generate a one-click readiness snapshot for PR/mil
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
 ```
 
+For strict gating, add `-FailOnWarning` so CI/automation fails on unresolved WARN or FAIL items:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
+```
+
 ## Release Pipeline Step Index
 
 `tools\Invoke-AITestPilotReleaseDocsFreshnessProbe.ps1` treats this table as the machine-checked release step coverage contract. Keep each step ID aligned with `Invoke-PipelineStep` entries in `tools\Invoke-AITestPilotReleasePipeline.ps1`.

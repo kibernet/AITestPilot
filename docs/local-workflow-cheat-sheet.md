@@ -66,6 +66,12 @@ For an auto-generated milestone readiness report:
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
 ```
 
+Use strict gate mode in automation:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
+```
+
 ## 2) Daily local development
 
 - PR/local quality gate
