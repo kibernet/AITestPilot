@@ -115,3 +115,10 @@ After opening the PR, if you have GitHub CLI auth configured, you can sync this 
 ```powershell
 .\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber <YOUR_PR_NUMBER> -FailOnWarning
 ```
+
+You can also use the same command for issue/milestone handoffs:
+
+```powershell
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber <YOUR_ISSUE_NUMBER> -FailOnWarning
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber <YOUR_MILESTONE_NUMBER> -FailOnWarning
+```

@@ -61,6 +61,13 @@ If your PR already exists and GH CLI auth is available, sync the block in one st
 .\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber <YOUR_PR_NUMBER> -FailOnWarning
 ```
 
+You can also sync to issue/milestone descriptions:
+
+```powershell
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber <YOUR_ISSUE_NUMBER> -FailOnWarning
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber <YOUR_MILESTONE_NUMBER> -FailOnWarning
+```
+
 ## Release Pipeline Step Index
 
 `tools\Invoke-AITestPilotReleaseDocsFreshnessProbe.ps1` treats this table as the machine-checked release step coverage contract. Keep each step ID aligned with `Invoke-PipelineStep` entries in `tools\Invoke-AITestPilotReleasePipeline.ps1`.

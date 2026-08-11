@@ -58,6 +58,8 @@ To generate or sync the same block directly into PR/issue/milestone descriptions
 ```powershell
 .\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning -DryRun
 .\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber 123 -FailOnWarning
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber 456 -FailOnWarning
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber 7 -FailOnWarning
 ```
 
 For machine-readable validation output:
