@@ -7,6 +7,11 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      require_readiness_gate:
+        description: Fail the workflow if the readiness report has WARN/FAIL items.
+        required: false
+        type: boolean
+        default: false
       unity_path:
         description: Path to Unity 2021.3 editor on the self-hosted Windows runner.
         required: false
@@ -74,6 +79,7 @@ jobs:
       AI_TESTPILOT_REQUIRE_LIVE_MODEL_ENDPOINT_SMOKE: ${{ github.event_name == 'workflow_dispatch' && inputs.require_live_model_endpoint_smoke || false }}
       AI_TESTPILOT_ALLOW_MISSING_MODEL_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_missing_model_api_key || false }}
       AI_TESTPILOT_USE_CURSOR_AGENT_EXTERNAL_TASK_OUTPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.use_cursor_agent_external_task_output || false }}
+      AI_TESTPILOT_REQUIRE_READINESS_GATE: ${{ github.event_name == 'workflow_dispatch' && inputs.require_readiness_gate || false }}
       AITESTPILOT_LIVE_MODEL_ENDPOINT: ${{ secrets.AITESTPILOT_LIVE_MODEL_ENDPOINT }}
       AI_TESTPILOT_MODEL_API_KEY: ${{ secrets.AI_TESTPILOT_MODEL_API_KEY }}
       AITESTPILOT_LIVE_MODEL: ${{ secrets.AITESTPILOT_LIVE_MODEL }}
@@ -173,10 +179,26 @@ jobs:
             throw "Release pipeline did not pass. status=$($manifest.status) ciExitCode=$($manifest.ciExitCode)"
           }
 
+      - name: Generate release readiness snapshot
+        run: |
+          $args = @(
+            "-OutputPath", "Temp\release-readiness-report.md",
+            "-RequireReleasePipeline",
+            "-IncludeRecommendedCommands"
+          )
+
+          if ($env:AI_TESTPILOT_REQUIRE_READINESS_GATE -ieq "true") {
+            $args += "-FailOnWarning"
+          }
+
+          & .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 @args
+
       - name: Upload release evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ai-testpilot-release-evidence
-          path: artifacts\ai-testpilot-release\latest
+          path: |
+            artifacts\ai-testpilot-release\latest
+            Temp\release-readiness-report.md
           if-no-files-found: error

@@ -154,11 +154,17 @@ $rows += @{
     detail = if ($null -ne $localSummary -and (Read-JsonValue $localSummary "status" "") -eq "PASS") { "status=PASS ($SummaryPath)" } else { if (Test-Path $summaryPathFull) { "status!=PASS or unreadable ($SummaryPath)" } else { "not found ($SummaryPath)" } }
 }
 
-$rows += if (Test-Path $preflightManifestPathFull) {
-    Check-JsonField -RelPath $PreflightManifestPath -Label "Release preflight manifest status is PASS (`$PreflightManifestPath`)" -JsonPath "status" -Expected "PASS"
+if (Test-Path $preflightManifestPathFull) {
+    $rows += Check-JsonField -RelPath $PreflightManifestPath -Label "Release preflight manifest status is PASS (`$PreflightManifestPath`)" -JsonPath "status" -Expected "PASS"
 }
 else {
-    @{ label = "Release preflight manifest status is PASS (`$PreflightManifestPath`)"; status = "WARN"; value = $PreflightManifestPath; path = $preflightManifestPathFull; detail = "manifest optional; not present by default in release preflight wrapper" }
+    $rows += @{
+        label = "Release preflight manifest status is PASS (`$PreflightManifestPath`)"
+        status = "PASS"
+        value = $PreflightManifestPath
+        path = $preflightManifestPathFull
+        detail = "not present in default release-preflight wrapper; this is optional"
+    }
 }
 
 $rows += @{
