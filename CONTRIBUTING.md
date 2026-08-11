@@ -108,6 +108,10 @@ For rollout and release-stage evidence template (7/30 day cadence, PR copy/paste
 
 `.\docs\rollout-and-release-checklist.md`
 
+For release gate final review before milestone publish, see:
+
+`.\docs\release-gate-review-checklist.md`
+
 ## What to include in PR description
 
 Please include:
