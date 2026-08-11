@@ -313,6 +313,35 @@ Quick action order:
 5) Escalate to reviewers only when Severity 0/1 remain for >1 release cycle
 ```
 
+```text
+## PR summary block (ready to paste in Description)
+
+### Severity and outcome
+- Severity: [0 | 1 | 2]
+- Current status: [BLOCKED | OPEN | RESOLVED]
+- Last failing command: [paste exact command]
+- Failure reason: [brief text / ticket / trace]
+- Immediate remediation: [what was changed]
+- Re-check command output: [PASS | FAIL/WARN | SKIPPED]
+
+### Evidence
+- `Temp\dev-gate-summary.json`:
+- `Temp\quick-start\quick-start-manifest.json`:
+- `Temp\repair-loop\repair-loop-manifest.json`:
+- `Temp\developer-gate-manifest.json`:
+- `Temp\ci-gate-summary.json`:
+- `Temp\release-evidence\latest\*`:
+- `artifacts\ai-testpilot-release\latest\*`:
+- `Temp\pr-validation-checklist.md`:
+
+### Commit / release decision
+- Merge decision: [DO NOT MERGE / HOLD / MERGE]
+- Reviewer-facing notes:
+  - [root cause]
+  - [what was fixed]
+  - [remaining risk / watch points]
+```
+
 Artifacts produced:
 - [ ] Temp\quick-start\quick-start-manifest.json (if available)
 - [ ] Temp\repair-loop\repair-loop-manifest.json (if available)
