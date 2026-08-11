@@ -26,6 +26,12 @@ if (-not $recommendedCommandSectionMatch.Success) {
 }
 $recommendedCommandSectionTitle = $recommendedCommandSectionMatch.Groups["title"].Value
 $recommendedCommandSectionPattern = [regex]::Escape($recommendedCommandSectionTitle)
+$recommendedCommandFenceMatch = [regex]::Match($reportScriptContent, '\$recommendedCommandsCodeFence\s*=\s*"(?<fence>[^"]+)"')
+if (-not $recommendedCommandFenceMatch.Success) {
+    throw "Unable to read recommended command code fence from report script at $reportScript"
+}
+$recommendedCommandCodeFence = $recommendedCommandFenceMatch.Groups["fence"].Value
+$recommendedCommandCodeFencePattern = [regex]::Escape($recommendedCommandCodeFence)
 
 function Assert-ReportContainsRecommendedCommandSection {
     param(
@@ -2120,7 +2126,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         Assert-ReportContainsRecommendedCommandSection -ReportPath $outputPath
         (Test-Path $outputPath) | Should Be $true
         $reportText = Get-Content -Path $outputPath -Raw
-        ($reportText -match "```powershell") | Should Be $true
+        ($reportText -match ("```{0}" -f [regex]::Escape($recommendedCommandCodeFence))) | Should Be $true
     }
 
     It "writes the dry-run handoff block to console output" {

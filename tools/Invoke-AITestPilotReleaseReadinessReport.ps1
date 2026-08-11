@@ -60,6 +60,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $recommendedCommandsSectionTitle = "## 2) Recommended command sequence (mainline)"
+$recommendedCommandsCodeFence = "powershell"
 $recommendedCommands = @(
     ".\tools\Invoke-AITestPilotReleasePreflight.ps1"
     ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline"
@@ -161,6 +162,10 @@ function Check-JsonField {
 
 function Get-RecommendedCommandSection {
     return $recommendedCommandsSectionTitle
+}
+
+function Get-RecommendedCommandsCodeFence {
+    return $recommendedCommandsCodeFence
 }
 
 $summaryPathFull = Resolve-PathUnderRepo $SummaryPath
@@ -294,7 +299,7 @@ if ($IncludeRecommendedCommands) {
     $lines += ""
     $lines += Get-RecommendedCommandSection
     $lines += ""
-    $lines += '```powershell'
+    $lines += ('```{0}' -f (Get-RecommendedCommandsCodeFence))
     foreach ($command in $recommendedCommands) { $lines += $command }
     $lines += '```'
 }
