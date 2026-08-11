@@ -816,3 +816,7 @@ Not implemented yet:
 - Prefab mutation and retest orchestration across Unity editor restarts.
 - Further CI providers beyond GitHub Actions and Azure Pipelines if required.
 - Real game-project driver implementation for production login, account preparation, activity, fishing, and other game systems.
+
+## License
+
+Kibernet AI TestPilot is available under the [MIT License](LICENSE). It may be used, modified, distributed, sublicensed, and sold, including in commercial and closed-source projects, subject to the license terms.
