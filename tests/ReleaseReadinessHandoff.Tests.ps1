@@ -110,6 +110,6 @@ Describe "Release readiness handoff scripts" {
         $dryRunText = $dryRunOutput | Out-String
         ($dryRunText -match [regex]::Escape($startMarker)) | Should Be $true
         ($dryRunText -match [regex]::Escape($endMarker)) | Should Be $true
-        ($dryRunText -match "<!-- ai-testpilot-readiness:start -->") | Should Be $false
+        ($dryRunText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $false
     }
 }
