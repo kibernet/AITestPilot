@@ -107,6 +107,16 @@ jobs:
         run: |
           dotnet run --project .\tests\Kibernet.AITestPilot.Core.SmokeTests\Kibernet.AITestPilot.Core.SmokeTests.csproj --no-build
 
+      - name: Run release readiness handoff regression tests
+        run: |
+          if (-not (Get-Command Invoke-Pester -ErrorAction SilentlyContinue)) {
+            if (-not (Get-Module -ListAvailable -Name Pester)) {
+              Write-Output "Pester module not found. Attempting lightweight bootstrap from PSGallery..."
+              Install-Module -Name Pester -Scope CurrentUser -Force -SkipPublisherCheck -AllowClobber
+            }
+          }
+          Invoke-Pester -Script .\tests\ReleaseReadinessHandoff.Tests.ps1
+
       - name: Run release pipeline
         run: |
           function Test-Flag {
