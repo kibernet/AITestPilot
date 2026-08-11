@@ -18,18 +18,46 @@ if (-not (Test-Path $exportScript)) {
 function Assert-ReportContainsRecommendedCommandSection {
     param(
         [string]$ReportPath,
+        [string]$Text,
         [switch]$ShouldNotContain
     )
 
-    (Test-Path $ReportPath) | Should Be $true
-    $reportText = Get-Content -Path $ReportPath -Raw
-
-    if ($ShouldNotContain) {
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+    if (-not [string]::IsNullOrWhiteSpace($Text)) {
+        $targetText = $Text
     }
     else {
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        (Test-Path $ReportPath) | Should Be $true
+        $targetText = Get-Content -Path $ReportPath -Raw
     }
+
+    if ($ShouldNotContain) {
+        ($targetText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+    }
+    else {
+        ($targetText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+}
+
+function Get-HandoffSnippet {
+    param(
+        [string]$Text
+    )
+
+    $match = [regex]::Match($Text, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
+    if (-not $match.Success) {
+        throw "Expected snippet block not found."
+    }
+
+    return $match.Groups["snippet"].Value
+}
+
+function Assert-SnippetHasNoPassedChecks {
+    param(
+        [string]$Text
+    )
+
+    $snippetText = Get-HandoffSnippet $Text
+    ($snippetText -match "- \[x\]") | Should Be $false
 }
 
 Describe "Release readiness handoff scripts" {
@@ -244,12 +272,7 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
         (Test-Path $reportPath) | Should Be $true
 
-        $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
-        if (-not $match.Success) {
-            throw "Expected snippet block not found."
-        }
-        $snippetText = $match.Groups["snippet"].Value
-        ($snippetText -match "- \[x\]") | Should Be $false
+        Assert-SnippetHasNoPassedChecks -Text $outputText
     }
 
     It "combines IncludeFailedOnly and NoIncludeRecommendedCommands in PR DryRun" {
@@ -279,12 +302,7 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
         Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath -ShouldNotContain
 
-        $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
-        if (-not $match.Success) {
-            throw "Expected snippet block not found."
-        }
-        $snippetText = $match.Groups["snippet"].Value
-        ($snippetText -match "- \[x\]") | Should Be $false
+        Assert-SnippetHasNoPassedChecks -Text $outputText
     }
 
     It "does not require gh CLI when Issue sync is run in DryRun mode" {
@@ -402,12 +420,7 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
         Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath -ShouldNotContain
 
-        $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
-        if (-not $match.Success) {
-            throw "Expected snippet block not found."
-        }
-        $snippetText = $match.Groups["snippet"].Value
-        ($snippetText -match "- \[x\]") | Should Be $false
+        Assert-SnippetHasNoPassedChecks -Text $outputText
     }
 
     It "does not require gh CLI when Milestone sync is run in DryRun mode" {
@@ -525,12 +538,7 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
         Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath -ShouldNotContain
 
-        $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
-        if (-not $match.Success) {
-            throw "Expected snippet block not found."
-        }
-        $snippetText = $match.Groups["snippet"].Value
-        ($snippetText -match "- \[x\]") | Should Be $false
+        Assert-SnippetHasNoPassedChecks -Text $outputText
     }
 
     It "replaces an existing PR handoff marker block during sync instead of appending duplicates" {
@@ -887,14 +895,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         (([regex]::Matches($updatedBody, [regex]::Escape($startMarker)).Count) -eq 1) | Should Be $true
         (([regex]::Matches($updatedBody, [regex]::Escape($endMarker)).Count) -eq 1) | Should Be $true
         ($updatedBody -match "Existing PR body with setup notes.") | Should Be $true
-        ($updatedBody -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        Assert-ReportContainsRecommendedCommandSection -Text $updatedBody -ShouldNotContain
 
-        $match = [regex]::Match($updatedBody, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
-        if (-not $match.Success) {
-            throw "Expected snippet block not found."
-        }
-        $snippetText = $match.Groups["snippet"].Value
-        ($snippetText -match "- \[x\]") | Should Be $false
+        Assert-SnippetHasNoPassedChecks -Text $updatedBody
     }
 
     It "throws readable error when PR metadata returned by gh is not valid JSON" {
@@ -1251,14 +1254,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         $updatedBody = Get-Content -Path $capturePath -Raw -Encoding UTF8
 
         ($updatedBody -match "Existing issue body with setup notes.") | Should Be $true
-        ($updatedBody -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        Assert-ReportContainsRecommendedCommandSection -Text $updatedBody -ShouldNotContain
 
-        $match = [regex]::Match($updatedBody, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
-        if (-not $match.Success) {
-            throw "Expected snippet block not found."
-        }
-        $snippetText = $match.Groups["snippet"].Value
-        ($snippetText -match "- \[x\]") | Should Be $false
+        Assert-SnippetHasNoPassedChecks -Text $updatedBody
     }
 
     It "uses default recommended-command mode in issue sync (include recommended by default)" {
@@ -1795,13 +1793,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
 
         $description = [string]$payload.description
         ($description -match "Milestone description with setup notes.") | Should Be $true
-        ($description -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
-        $match = [regex]::Match($description, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
-        if (-not $match.Success) {
-            throw "Expected snippet block not found."
-        }
-        $snippetText = $match.Groups["snippet"].Value
-        ($snippetText -match "- \[x\]") | Should Be $false
+        Assert-ReportContainsRecommendedCommandSection -Text $description -ShouldNotContain
+        Assert-SnippetHasNoPassedChecks -Text $description
     }
 
     It "throws readable error when milestone metadata returned by gh is not valid JSON" {
