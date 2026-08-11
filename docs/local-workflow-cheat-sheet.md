@@ -291,6 +291,28 @@ Docs freshness regression warning     | Run `.\tools\Validate-AITestPilot.ps1 -R
 All checks pass, but PR template fails | Regenerate the checklist with `.\tools\Run-DevGate.ps1 -GeneratePrChecklist`; copy-paste the latest block exactly.
 ```
 
+## 8) Failure triage decision tree (who to fix first)
+
+- Severity 0: stop milestone immediately
+  - **BLOCKED_REASON != OK** in DevGate
+  - **No release evidence** for release candidates
+  - **Schema validation fail** for replay profile JSON
+- Severity 1: keep on branch, do not merge
+  - **Strict path regression fail** (possible gate alias conflict)
+  - **Docs freshness regression warning** for changed public docs
+- Severity 2: can merge after recheck
+  - Minor checklist formatting mismatch while all command outputs are passing
+
+Quick action order:
+
+```text
+1) Fix Severity 0 items first (blocking)
+2) Re-run the smallest required command that writes the failing artifact
+3) Re-run the parent command set that depends on it (strictest first)
+4) Re-open PR checklist and update evidence references
+5) Escalate to reviewers only when Severity 0/1 remain for >1 release cycle
+```
+
 Artifacts produced:
 - [ ] Temp\quick-start\quick-start-manifest.json (if available)
 - [ ] Temp\repair-loop\repair-loop-manifest.json (if available)
