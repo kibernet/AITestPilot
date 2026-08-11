@@ -34,6 +34,18 @@ AI TestPilot 是面向 Unity 的“证据优先”游戏质量保障平台。它
 
 本项目采用 **MIT License**，支持大多数商业与合作场景；完整条款见 [LICENSE](LICENSE)。
 
+### 行业落地适配（典型场景）
+
+- **轻量级 QA 团队**：在现有 Unity 回归流程上补充 AI 辅助定位，减少重复手工执行、提升跨项目可复用性。
+- **中型发布组织**：将“测试 - 修复 - 回归”链路标准化为可审计的证据资产，支持并行修复与复测闭环。
+- **高频迭代项目**：通过预定义动作边界和统一证据格式，降低每次大版本上新时的回归风险。
+
+### 对业务有价值的交付物
+
+- **证据包**：`Temp\developer-gate-manifest.json`、`Temp\dev-gate-summary.json`、`Temp\ci-gate-summary.json`
+- **可复测闭环**：修复任务、补丁前置校验、重测与回滚结果，全部留痕。
+- **风险可控**：通过 allowlist 与 schema 限制执行行为，避免“模型幻觉”引入不可控动作。
+
 ## Why AI TestPilot
 
 Game QA automation usually breaks at the boundaries between UI state, gameplay APIs, flaky replay steps, bug reports, repair tools, and CI. AI TestPilot provides one auditable contract across those boundaries.
