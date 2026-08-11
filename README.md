@@ -19,43 +19,47 @@ Kibernet AI TestPilot turns gameplay testing into a controlled engineering loop:
 > 2. paste/attach `Temp\developer-gate-manifest.json` in PR notes
 > 3. explain any skipped steps with reasons in PR description
 
-## 项目简介
+## 什么是这个项目
 
-AI TestPilot 是一套面向 Unity 的 **证据驱动游戏质量工程平台**。它把“采集快照 → 决策执行 → 缺陷归档 → 修复交付 → 回放验证 → 发布准入”打造成一条可审计、可回放、可持续演进的闭环。
+AI TestPilot 是一套面向 Unity 项目的“证据驱动游戏测试工程”实践框架，目标是将“模型驱动自动化”变成可审计、可追溯、可回放的工程交付流程。它把一次测试动作从“快照采集 → 决策 → 执行 → 诊断 → 修复协作 → 发布验证”串成一条统一链路，关键环节均产出机器可读证据。
 
-该项目不是“把 AI 放进 QA”这么浅层的功能叠加，而是通过工程化边界实现“AI 只在受控空间内参与决策”。你可以把它理解为：
+在传统 QA 自动化中，常见问题通常不是“能否运行”，而是“为什么通过了”与“问题是否可复现”。AI TestPilot 的设计核心是“先约束、后执行、再验证、最后放行”：
 
-- 自动采集可还原的游戏状态与上下文；
-- 通过版本化动作规范与 allowlist 约束执行路径；
-- 将缺陷、风险、修复证据结构化为可追踪资产；
-- 将发布决策绑定到可验证的 artifact，而非团队主观判断。
+- 所有动作都通过版本化 Schema 与 Allowlist 校验后才能执行。
+- 每次缺陷都形成结构化证据包（JSON + Markdown + Manifest），可直接用于 PR 审核与追踪。
+- 修复协作不靠人工口头约定，而是通过补丁安全前置、清洁环境回放、重测与回滚证据闭环。
+- 发布由证据状态驱动，不靠主观判断。
 
-### 典型适用场景
+适用场景：
 
-- 回归测试与缺陷复现：`Snapshot / UI / 日志 / 游戏状态`
-- 规则或模型辅助的动作决策与执行
-- 缺陷识别、风险分类与知识闭环沉淀
-- 代理化修复流程：任务绑定、补丁预检、回放验证、回滚证明
-- PR / Issue / Milestone 的发布就绪报告自动化
+- 需要稳定复现 Gameplay 回归问题的 Unity 项目。
+- 需要将自动化测试结果与外部修复 Agent 协作对齐的团队。
+- 需要在 PR 前提供机器可读的交付证据以支撑风险决策的工程组织。
 
-### 项目定位
+核心价值：
 
-- **可验证优先**：每条自动化结果都保留机器可读证据（JSON/Markdown/Manifest）
-- **边界约束优先**：模型只能在可版本化的动作 schema 与 allowlist 下执行
-- **发布可追溯**：报告、摘要、证据索引和门禁输出形成统一链路
+- **可审计性**：每一步检查都有统一 schema、时间戳与状态语义，支持事后追溯。
+- **可复现性**：回放配置、重测命令与证据清单可跨环境复验。
+- **可协作性**：外部修复任务有明确输入/输出边界，降低误解与返工。
+- **可发布性**：通过 release evidence、补丁验收、回滚凭据形成统一闸口。
 
-### 使用说明（高层）
+### 使用说明
 
-- 支持 Unity 2021.3+ 的脚本化验证与本地门禁
-- 自动化覆盖 PR/Issue/Milestone 注入发布就绪内容
-- 与修复环节对齐，降低上下文丢失与重复操作风险
+- 支持 Unity 2021.3+ 的验证链路。
+- 支持 PR / Issue / Milestone 的验收清单自动推送。
+- 可将本地预检、修复验证、发布预检串成统一工作流。
 
-### 合规与交付边界
+### 项目里程碑（当前可见）
 
-- **授权协议**：MIT（[LICENSE](LICENSE)）
-- **环境要求**：Windows PowerShell 5.1+ / .NET 8 / Git / Unity 2021.3+
-- **生产前提**：接入真实 Replay Driver、真实模型调用链与生产凭据管理后再用于正式发布验证
+- **阶段一：** 建立完整的证据驱动闭环，覆盖测试-缺陷-修复-回测。
+- **阶段二：** 增加发布门禁与路径回归的工程化检查。
+- **阶段三：** 持续优化外部协作体验与策略可观察性。
 
+### 依赖与要求
+
+- **技术栈：** Windows PowerShell 5.1+ / .NET 8 / Git / Unity 2021.3+
+- **运行环境：** Windows 桌面（支持本地预检、批处理验证）
+- **前置能力：** Replay Driver 与模型接入能力按项目实际配置准备
 ## Why AI TestPilot
 
 Game QA automation usually breaks at the boundaries between UI state, gameplay APIs, flaky replay steps, bug reports, repair tools, and CI. AI TestPilot provides one auditable contract across those boundaries.
