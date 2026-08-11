@@ -172,6 +172,13 @@ One-command bundle (report + summary + PR snippet):
 .\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md
 ```
 
+Structured automation consumption:
+
+```powershell
+$result = .\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md -PassThru
+$result.GateStatus
+```
+
 Generate a PR-ready copy block from the machine-readable summary:
 
 ```powershell

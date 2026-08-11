@@ -33,6 +33,9 @@ Only include non-PASS checks in the snippet output.
 
 .PARAMETER SkipSnippet
 Generate only report + machine-readable summary, but skip PR snippet generation.
+
+.PARAMETER PassThru
+Return a structured object (including paths + parsed machine-readable summary) to the pipeline.
 #>
 [CmdletBinding()]
 param(
@@ -43,7 +46,8 @@ param(
     [switch]$RequireReleasePipeline,
     [switch]$FailOnWarning,
     [switch]$IncludeFailedOnly,
-    [switch]$SkipSnippet
+    [switch]$SkipSnippet,
+    [switch]$PassThru
 )
 
 Set-StrictMode -Version Latest
@@ -56,6 +60,42 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 function Resolve-PathUnderRepo {
     param([string]$Path)
     return [System.IO.Path]::GetFullPath((Join-Path $repoRoot $Path))
+}
+
+function Read-JsonFile {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) {
+        return $null
+    }
+    try {
+        return Get-Content -Path $Path -Encoding UTF8 -Raw | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch {
+        return $null
+    }
+}
+
+function New-BundleResult {
+    param(
+        [string]$ReportOutputPath,
+        [string]$SummaryJsonPath,
+        [string]$SnippetOutputPath,
+        [bool]$FailOnWarningFlag,
+        [bool]$RequirePipelineFlag
+    )
+
+    $summaryPayload = Read-JsonFile -Path $SummaryJsonPath
+    return [ordered]@{
+        ReportPath = $ReportOutputPath
+        SummaryJsonPath = $SummaryJsonPath
+        SnippetPath = $SnippetOutputPath
+        GateStatus = if ($null -ne $summaryPayload -and $summaryPayload.PSObject.Properties["gate_status"]) { [string]$summaryPayload.gate_status } else { "" }
+        Counts = if ($null -ne $summaryPayload -and $summaryPayload.PSObject.Properties["counts"]) { $summaryPayload.counts } else { $null }
+        Summary = $summaryPayload
+        StrictMode = [bool]$FailOnWarningFlag
+        RequireReleasePipeline = [bool]$RequirePipelineFlag
+        BundleCommandSucceeded = $true
+    }
 }
 
 if (-not (Test-Path $reportScript)) {
@@ -85,7 +125,14 @@ catch {
 
 if ($SkipSnippet) {
     if ($null -ne $reportError) { throw $reportError }
-    Write-Output "Release readiness bundle complete without snippet. summary: $SummaryJsonPath"
+    $reportPath = Resolve-PathUnderRepo $ReportOutputPath
+    $summaryPath = Resolve-PathUnderRepo $SummaryJsonPath
+    Write-Output "Release readiness bundle complete without snippet. summary: $summaryPath"
+    if ($PassThru) {
+        $report = New-BundleResult -ReportOutputPath $reportPath -SummaryJsonPath $summaryPath -SnippetOutputPath "" -FailOnWarningFlag ([bool]$FailOnWarning) -RequirePipelineFlag ([bool]$RequireReleasePipeline)
+        $report["BundleCommandSucceeded"] = $true
+        return $report
+    }
     return
 }
 
@@ -106,3 +153,9 @@ if ($IncludeFailedOnly) { $snippetParams["IncludeFailedOnly"] = $true }
 
 if ($null -ne $reportError) { throw $reportError }
 Write-Output "Release readiness bundle complete."
+
+if ($PassThru) {
+    $reportPath = Resolve-PathUnderRepo $ReportOutputPath
+    $snippetPath = Resolve-PathUnderRepo $SnippetOutputPath
+    return New-BundleResult -ReportOutputPath $reportPath -SummaryJsonPath $summaryPath -SnippetOutputPath $snippetPath -FailOnWarningFlag ([bool]$FailOnWarning) -RequirePipelineFlag ([bool]$RequireReleasePipeline)
+}
