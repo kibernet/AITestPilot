@@ -259,19 +259,22 @@ Copy/paste this into PR description:
 - [ ] .\tools\Run-DevGate.ps1 -RunReplayProfileSchemaCheck *(if replay profile JSON is modified)*
 - [ ] .\tools\Invoke-AITestPilotReleasePipeline.ps1 *(release scope)*
 
-## 6) 鐜板満蹇€熸牳瀵癸紙寤鸿璐村湪 PR 鎻忚堪棣栭儴锛?
+```
+## 6) PR readiness spot-check (paste at the top of PR description)
 ```text
-- 鏈湴鍩虹嚎鏍￠獙锛?\tools\Validate-AITestPilot.ps1
-- PR 闂ㄧ鎽樿锛?\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
-- 鍙戝竷闂ㄧ锛堥噷绋嬬锛夛細.\tools\Run-DevGate.ps1 -GeneratePrChecklist -PrChecklistPath Temp\pr-validation-checklist.md
-- 蹇€熻矾寰勫洖褰掞細.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
-- 鍙戝竷璇佹嵁锛堝杩涘叆鍙戝竷闃舵锛夛細.\tools\Invoke-AITestPilotReleasePipeline.ps1
+- Local baseline: .\tools\Validate-AITestPilot.ps1
+- Gate summary: .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+- Milestone checklist: .\tools\Run-DevGate.ps1 -GeneratePrChecklist -PrChecklistPath Temp\pr-validation-checklist.md
+- Fast path regression: .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+- Release evidence (if release stage): .\tools\Invoke-AITestPilotReleasePipeline.ps1
 ```
 
 ```text
-鑻ヤ互涓婁换涓€椤逛负 FAIL/WARN锛岃鍏堟殏鍋滆繘鍏ヤ笅涓€绾ч噷绋嬬锛屽苟鍦?PR 澶囨敞涓爣娉ㄥけ璐ュ煙锛?- 棰勬/鏋勫缓澶辫触锛圖evGate锛?- Schema/鍥炴斁澶辫触锛圴alidation锛?- 璇佹嵁閾惧け璐ワ紙Release / Docs Freshness锛?
+If any of the above returns FAIL/WARN, stop the next milestone and tag PR notes with failure area:
+- Precheck/build failure (DevGate)
+- Schema/replay failure (Validation)
+- Evidence chain failure (Release / Docs Freshness)
 ```
-
 Artifacts produced:
 - [ ] Temp\quick-start\quick-start-manifest.json (if available)
 - [ ] Temp\repair-loop\repair-loop-manifest.json (if available)
@@ -280,7 +283,6 @@ Artifacts produced:
 - [ ] Temp\ci-gate-summary.json (if CI gate run)
 - [ ] Temp\release-evidence\latest\...
 - [ ] artifacts\ai-testpilot-release\latest\...
-```
 
 PR template location:
 
