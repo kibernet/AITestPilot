@@ -21,7 +21,32 @@ $ErrorActionPreference = "Stop"
 
 $devGateScript = Join-Path $PSScriptRoot "Invoke-AITestPilotDeveloperGate.ps1"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$developerManifest = Join-Path $repoRoot $DeveloperGateManifestPath
+
+function Resolve-ManifestPath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return Join-Path $repoRoot $Path
+}
+
+function Resolve-SummaryPath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return Join-Path $repoRoot $Path
+}
+
+$developerManifest = Resolve-ManifestPath -Path $DeveloperGateManifestPath
 $defaultManifest = Join-Path $repoRoot "Temp\developer-gate-manifest.json"
 $manifestParsePath = if (Test-Path $developerManifest) { $developerManifest } else { $defaultManifest }
 
@@ -114,7 +139,7 @@ Write-Host "Run-DevGate summary:"
 Write-Host ($summaryPayload | ConvertTo-Json -Depth 8)
 
 if (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
-    $summaryPathResolved = Join-Path $repoRoot $SummaryPath
+    $summaryPathResolved = Resolve-SummaryPath -Path $SummaryPath
     New-Item -ItemType Directory -Force (Split-Path $summaryPathResolved -Parent) | Out-Null
     $summaryPayload | ConvertTo-Json -Depth 8 | Set-Content -Path $summaryPathResolved -Encoding UTF8
     Write-Host "Run-DevGate summary written to: $summaryPathResolved"

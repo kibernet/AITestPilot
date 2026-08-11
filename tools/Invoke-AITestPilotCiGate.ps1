@@ -22,8 +22,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$manifestPath = Join-Path $repoRoot $DeveloperGateManifestPath
+$manifestPath = if ([System.IO.Path]::IsPathRooted($DeveloperGateManifestPath)) { $DeveloperGateManifestPath } else { Join-Path $repoRoot $DeveloperGateManifestPath }
 $devGateScript = Join-Path $PSScriptRoot "Run-DevGate.ps1"
+$summaryOutputPath = if ([System.IO.Path]::IsPathRooted($OutputPath)) { $OutputPath } else { Join-Path $repoRoot $OutputPath }
 
 function Build-RunDevGateArgs {
     param([hashtable]$BoundParameters)
@@ -41,6 +42,8 @@ function Build-RunDevGateArgs {
     if (-not [string]::IsNullOrWhiteSpace($BoundParameters["RepairLoopOutputDir"])) { $args.RepairLoopOutputDir = $BoundParameters["RepairLoopOutputDir"] }
     if (-not [string]::IsNullOrWhiteSpace($BoundParameters["RepairLoopEvidenceBundleDir"])) { $args.RepairLoopEvidenceBundleDir = $BoundParameters["RepairLoopEvidenceBundleDir"] }
     if (-not [string]::IsNullOrWhiteSpace($BoundParameters["UnityPath"])) { $args.UnityPath = $BoundParameters["UnityPath"] }
+    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["ManifestPath"])) { $args.ManifestPath = $BoundParameters["ManifestPath"] }
+    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["DeveloperGateManifestPath"])) { $args.DeveloperGateManifestPath = $BoundParameters["DeveloperGateManifestPath"] }
 
     return $args
 }
@@ -175,8 +178,8 @@ catch {
 $summary.failed_steps = @("summary parse failed: $($_.Exception.Message)")
 }
 
-New-Item -ItemType Directory -Force (Split-Path (Join-Path $repoRoot $OutputPath) -Parent) | Out-Null
-Set-Content -Path (Join-Path $repoRoot $OutputPath) -Value ($summary | ConvertTo-Json -Depth 8) -Encoding UTF8
+New-Item -ItemType Directory -Force (Split-Path $summaryOutputPath -Parent) | Out-Null
+Set-Content -Path $summaryOutputPath -Value ($summary | ConvertTo-Json -Depth 8) -Encoding UTF8
 
 Write-Host ""
 Write-Host "AI TestPilot CI gate summary:"

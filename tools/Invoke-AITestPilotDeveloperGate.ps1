@@ -22,6 +22,18 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $quickStartOutput = if ([string]::IsNullOrWhiteSpace($QuickStartOutputDir)) { Join-Path $repoRoot "Temp\quick-start" } else { $QuickStartOutputDir }
 $repairLoopOutput = if ([string]::IsNullOrWhiteSpace($RepairLoopOutputDir)) { Join-Path $repoRoot "Temp\repair-loop" } else { $RepairLoopOutputDir }
 
+function Resolve-RelativePath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return Join-Path $repoRoot $Path
+}
+
 $developerGate = [ordered]@{
     startTime = (Get-Date).ToString("o")
     repository = $repoRoot
@@ -142,7 +154,7 @@ else {
 }
 
 $developerGate.endTime = (Get-Date).ToString("o")
-$developerManifest = Join-Path $repoRoot $DeveloperGateManifestPath
+$developerManifest = Resolve-RelativePath -Path $DeveloperGateManifestPath
 New-Item -ItemType Directory -Force (Split-Path $developerManifest -Parent) | Out-Null
 $developerGate | ConvertTo-Json -Depth 8 | Set-Content -Path $developerManifest -Encoding UTF8
 
