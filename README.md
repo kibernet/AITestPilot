@@ -114,6 +114,12 @@ If you need a machine-readable copy for CI artifacts or local archival, use:
 .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
 ```
 
+If you need the manifest written to a custom location, use:
+
+```powershell
+.\tools\Run-DevGate.ps1 -ManifestPath Temp\custom-developer-gate-manifest.json
+```
+
 CI-friendly mode (optional, writes `Temp\ci-gate-summary.json` and exits non-zero on non-pass unless `-AllowPartialFail` is set):
 
 ```powershell

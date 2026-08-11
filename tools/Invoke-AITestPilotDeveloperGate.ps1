@@ -10,7 +10,9 @@ param(
     [string]$QuickStartOutputDir,
     [string]$RepairLoopOutputDir,
     [string]$RepairLoopEvidenceBundleDir,
-    [string]$UnityPath
+    [string]$UnityPath,
+    [Alias("ManifestPath")]
+    [string]$DeveloperGateManifestPath = "Temp\developer-gate-manifest.json"
 )
 
 Set-StrictMode -Version Latest
@@ -140,7 +142,8 @@ else {
 }
 
 $developerGate.endTime = (Get-Date).ToString("o")
-$developerManifest = Join-Path $repoRoot "Temp\developer-gate-manifest.json"
+$developerManifest = Join-Path $repoRoot $DeveloperGateManifestPath
+New-Item -ItemType Directory -Force (Split-Path $developerManifest -Parent) | Out-Null
 $developerGate | ConvertTo-Json -Depth 8 | Set-Content -Path $developerManifest -Encoding UTF8
 
 Write-Host "Developer gate manifest:"

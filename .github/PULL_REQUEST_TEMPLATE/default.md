@@ -25,7 +25,7 @@ If you used skips, list them:
 
 - Quick start manifest: `Temp\quick-start\quick-start-manifest.json`
 - Repair loop manifest: `Temp\repair-loop\repair-loop-manifest.json`
-- Developer gate manifest: `Temp\developer-gate-manifest.json`
+- Developer gate manifest: `Temp\developer-gate-manifest.json` (or custom `Run-DevGate.ps1 -ManifestPath` target)
 - CI gate summary: `Temp\ci-gate-summary.json` (if generated)
 - Local run summary (optional): `Temp\dev-gate-summary.json`
 

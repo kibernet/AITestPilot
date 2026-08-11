@@ -11,14 +11,19 @@ param(
     [string]$RepairLoopOutputDir,
     [string]$RepairLoopEvidenceBundleDir,
     [string]$UnityPath,
-    [string]$SummaryPath
+    [string]$SummaryPath,
+    [Alias("ManifestPath")]
+    [string]$DeveloperGateManifestPath = "Temp\developer-gate-manifest.json"
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $devGateScript = Join-Path $PSScriptRoot "Invoke-AITestPilotDeveloperGate.ps1"
-$developerManifest = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path "Temp\developer-gate-manifest.json"
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$developerManifest = Join-Path $repoRoot $DeveloperGateManifestPath
+$defaultManifest = Join-Path $repoRoot "Temp\developer-gate-manifest.json"
+$manifestParsePath = if (Test-Path $developerManifest) { $developerManifest } else { $defaultManifest }
 
 $devGateParameters = @{}
 foreach ($entry in $PSBoundParameters.GetEnumerator()) {
@@ -38,9 +43,9 @@ $summary = @{
     failedSteps = @()
 }
 
-if (Test-Path $developerManifest) {
+if (Test-Path $manifestParsePath) {
     try {
-        $manifest = Get-Content -Raw $developerManifest | ConvertFrom-Json
+        $manifest = Get-Content -Raw $manifestParsePath | ConvertFrom-Json
         $summary.status = if ($manifest.status) { $manifest.status } else { "UNKNOWN" }
         $summary.quickStartStatus = "NOT_RUN"
         $summary.repairLoopStatus = "NOT_RUN"
@@ -75,7 +80,7 @@ if (Test-Path $developerManifest) {
     }
 }
 else {
-    $summary.failedSteps += "developer-gate manifest not found at $developerManifest"
+    $summary.failedSteps += "developer-gate manifest not found at $manifestParsePath"
 }
 
 $summaryPayload = @{
@@ -89,12 +94,27 @@ $summaryPayload = @{
     failed_steps = $summary.failedSteps
 }
 
+if (Test-Path $manifestParsePath) {
+    $manifestParseResolved = (Resolve-Path $manifestParsePath).Path
+    $developerManifestResolved = (Resolve-Path $developerManifest -ErrorAction SilentlyContinue)
+    if (-not $developerManifestResolved -or $manifestParseResolved -ne $developerManifestResolved.Path) {
+        $manifestDir = Split-Path $developerManifest -Parent
+        if ($manifestDir) {
+            New-Item -ItemType Directory -Force $manifestDir | Out-Null
+        }
+        Copy-Item -Path $manifestParsePath -Destination $developerManifest -Force
+    }
+}
+else {
+    $summary.failedSteps += "Unable to copy manifest to target path because source manifest does not exist: $manifestParsePath"
+}
+
 Write-Host ""
 Write-Host "Run-DevGate summary:"
 Write-Host ($summaryPayload | ConvertTo-Json -Depth 8)
 
 if (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
-    $summaryPathResolved = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path $SummaryPath
+    $summaryPathResolved = Join-Path $repoRoot $SummaryPath
     New-Item -ItemType Directory -Force (Split-Path $summaryPathResolved -Parent) | Out-Null
     $summaryPayload | ConvertTo-Json -Depth 8 | Set-Content -Path $summaryPathResolved -Encoding UTF8
     Write-Host "Run-DevGate summary written to: $summaryPathResolved"

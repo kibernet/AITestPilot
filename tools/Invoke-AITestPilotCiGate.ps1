@@ -45,6 +45,17 @@ function Build-RunDevGateArgs {
     return $args
 }
 
+function Resolve-PathOrNull {
+    param([string]$Path)
+
+    try {
+        return (Resolve-Path $Path -ErrorAction Stop).Path
+    }
+    catch {
+        return $null
+    }
+}
+
 function Parse-DeveloperGateSummary {
     param([string]$Path)
 
@@ -141,7 +152,9 @@ try {
 
     $runSummary = Parse-DeveloperGateSummary -Path $manifestParsePath
 
-    if ((Resolve-Path $manifestPath -ErrorAction SilentlyContinue).Path -ne (Resolve-Path $manifestParsePath -ErrorAction SilentlyContinue).Path) {
+    $manifestPathResolved = Resolve-PathOrNull -Path $manifestPath
+    $manifestParseResolved = Resolve-PathOrNull -Path $manifestParsePath
+    if ($manifestPathResolved -ne $manifestParseResolved) {
         $manifestDir = Split-Path $manifestPath -Parent
         if ($manifestDir) {
             New-Item -ItemType Directory -Force $manifestDir | Out-Null

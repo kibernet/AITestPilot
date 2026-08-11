@@ -21,6 +21,12 @@ To archive the same JSON summary locally (optional):
 .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
 ```
 
+To write the developer gate manifest to a custom location:
+
+```powershell
+.\tools\Run-DevGate.ps1 -ManifestPath Temp\custom-developer-gate-manifest.json
+```
+
 For automation/CI style checks, use:
 
 ```powershell
@@ -43,7 +49,7 @@ Please include:
 - Paths for produced manifests when relevant:
   - `Temp\quick-start\quick-start-manifest.json`
   - `Temp\repair-loop\repair-loop-manifest.json`
-  - `Temp\developer-gate-manifest.json`
+  - `Temp\developer-gate-manifest.json` (or your custom `-ManifestPath`)
 - Any skipped steps and reasons
 - Known risks or follow-up work
 

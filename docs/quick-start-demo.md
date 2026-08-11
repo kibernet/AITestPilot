@@ -42,6 +42,12 @@ If you need a saved machine-readable summary:
 .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
 ```
 
+If you need the developer gate manifest in a custom path:
+
+```powershell
+.\tools\Run-DevGate.ps1 -ManifestPath Temp\custom-developer-gate-manifest.json
+```
+
 CI-friendly single command (writes summary JSON to `Temp\ci-gate-summary.json`):
 
 ```powershell
