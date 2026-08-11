@@ -404,10 +404,17 @@ $missingRequiredDocStrings = @()
 foreach ($requiredDocString in $requiredDocStrings) {
     $file = [string]$requiredDocString.file
     $pattern = [string]$requiredDocString.pattern
-    $text = [string]$docTexts[$file]
+    # README is the public product overview. Detailed release-pipeline anchors may
+    # live in any of the linked release documents instead of bloating the landing page.
+    $text = if ($file -eq "README.md") {
+        $combinedDocsText
+    }
+    else {
+        [string]$docTexts[$file]
+    }
     if (-not $text.Contains($pattern)) {
         $missingRequiredDocStrings += [ordered]@{
-            file = $file
+            file = if ($file -eq "README.md") { "linked release docs" } else { $file }
             pattern = $pattern
             label = [string]$requiredDocString.label
         }

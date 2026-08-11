@@ -1,822 +1,234 @@
 # Kibernet AI TestPilot
 
-Kibernet AI TestPilot is a Unity game QA automation system. The repo currently contains the first implementation slice:
+**Evidence-driven AI game QA for Unity.**
 
-- `src/Kibernet.AITestPilot.Core`: model-agnostic .NET core for snapshots, action whitelisting, decision loops, bug packaging, bug knowledge graph, and release gates.
-- `tests/Kibernet.AITestPilot.Core.SmokeTests`: dependency-free smoke tests that exercise the core loop and bug flow.
-- `unity/com.kibernet.ai-testpilot`: Unity 2021.3 UPM package with `AutomationId`, snapshot capture, UI extraction, log collection, action execution, rule-based exploration, bug prompt export, and an editor window.
-- `Kibernet_AI_TestPilot_FULL_SPEC.md`: original product specification.
+Kibernet AI TestPilot turns gameplay testing into a controlled engineering loop: capture a structured Unity state, choose an allowlisted action, detect and package failures, hand repair context to a coding agent, replay the exact scenario, and make the release decision from machine-readable evidence.
 
-## Validate
+[![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](LICENSE)
+![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-000000.svg)
+![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4.svg)
+![Status: Early Access](https://img.shields.io/badge/Status-Early%20Access-f59e0b.svg)
 
-Run from the repo root:
+> [!IMPORTANT]
+> AI TestPilot is an early-access engineering project. Its core, Unity package, smoke tests, evidence contracts, and package-release gates are implemented. Production use still requires a game-specific replay driver, real endpoint credentials and live-smoke evidence when a model is enabled, and host-project evidence for production Lua or repair workflows.
+
+## Why AI TestPilot
+
+Game QA automation usually breaks at the boundaries between UI state, gameplay APIs, flaky replay steps, bug reports, repair tools, and CI. AI TestPilot provides one auditable contract across those boundaries.
+
+- **Model-agnostic exploration** — use deterministic policies, a native JSON model endpoint, or an OpenAI-compatible chat-completions gateway.
+- **Constrained execution** — model output is parsed against a versioned action schema and rejected unless it matches the allowlist.
+- **Reproducible bugs** — logs, state, steps, risk, source context, and artifacts are packaged into durable JSON and Markdown.
+- **Repair-agent handoff** — generate task-bound context, acceptance criteria, expected outputs, patch preflight, retest, and rollback evidence.
+- **Learning from prior failures** — persist a bug knowledge graph with module, failure-type, and fix-history signals.
+- **Evidence-backed releases** — gate releases on validated artifacts rather than optimistic status flags.
+
+## System Flow
+
+```mermaid
+flowchart LR
+    Game["Unity game under test"] --> Capture["Snapshot, UI, state, and logs"]
+    Capture --> Decide["Rule-based or model decision client"]
+    Decide --> Guard["Versioned schema and action allowlist"]
+    Guard --> Execute["Unity action executor"]
+    Execute --> Game
+    Capture --> Detect["Bug detection and risk classification"]
+    Detect --> Package["Bug package and knowledge graph"]
+    Package --> Repair["Repair-agent handoff"]
+    Repair --> Retest["Replay, retest, and rollback proof"]
+    Retest --> Gate["Release evidence and policy gate"]
+```
+
+The runtime loop is intentionally narrow: an AI can propose an action, but it cannot bypass the product-owned schema, allowlist, executor, or release policy.
+
+## Capabilities
+
+| Area | What is implemented | Primary evidence |
+| --- | --- | --- |
+| Unity observation | `AutomationId`, UI extraction, game-state capture, log collection, snapshot serialization | Snapshot JSON and schema regression checks |
+| Decision loop | Deterministic client, provider-neutral HTTP client, OpenAI-compatible request wrapper, prior fix hints | Per-step decision traces |
+| Safe execution | Versioned action contract and allowlisted actions such as `click`, `wait`, login, scene entry, reward, and fishing flows | Parsed-action and validation results |
+| Bug intelligence | Detection, risk classification, bug packages, persistent knowledge graph, recurring-module ranking | JSON and Markdown bug artifacts |
+| Repair workflow | Structured repair task, agent handoff, output import, patch safety preflight, apply/retest/rollback probes | Task-bound patch and retest manifests |
+| Replay integration | Configurable replay profiles and a production-driver contract for real game APIs | Driver descriptors and targeted retest reports |
+| Release engineering | Repo validation, Unity batch validation, GitHub Actions, Azure Pipelines, risk policy, evidence index | Stable release-evidence bundle |
+| Lua repair support | Static findings, deterministic sandbox patching, production evidence intake contract | Analysis, patch-plan, and readiness manifests |
+
+## Quick Start
+
+### Prerequisites
+
+- Windows PowerShell 5.1 or PowerShell 7+
+- .NET 8 SDK
+- Unity 2021.3 LTS for package import and batchmode validation
+- Git
+
+### Clone and validate the core
 
 ```powershell
+git clone https://github.com/kibernet/AITestPilot.git
+cd AITestPilot
 .\tools\Validate-AITestPilot.ps1
 ```
 
-The script builds the .NET solution, runs the smoke tests, and checks the Unity package shape. This is repo-side validation; Unity editor import validation is still a separate target.
+This command builds the .NET solution, builds the model-endpoint and Lua-analysis probes, runs the dependency-free smoke suite, and validates the Unity package structure.
 
-To validate Unity package import, compilation, and the generated sample-scene automation loop with Unity 2021.3:
+### Install the Unity package
+
+Add the package through Unity Package Manager with the Git URL:
+
+```text
+https://github.com/kibernet/AITestPilot.git?path=/unity/com.kibernet.ai-testpilot#main
+```
+
+For local development, use **Package Manager → Add package from disk** and select:
+
+```text
+unity/com.kibernet.ai-testpilot/package.json
+```
+
+Then:
+
+1. Add `AutomationId` to UI objects that should be visible to the test agent.
+2. Open **Tools → Kibernet → AI TestPilot**.
+3. Capture and inspect a snapshot.
+4. Start with the deterministic rule-based loop before enabling a live model endpoint.
+5. Integrate a production replay driver before treating package evidence as proof of real game behavior.
+
+### Validate Unity import and the sample scene
 
 ```powershell
 .\tools\Validate-UnityPackageImport.ps1
 ```
 
-That script writes scene-level evidence to `Temp\ai-testpilot-scene-validation.json`, including snapshot JSON schema evidence, `multiStepRunner`, `runReports`, a persisted `bugPackage`, a persisted `bugKnowledgeGraph`, a `retestReport`, a structured `repairTask`, a repair-agent handoff, repair-agent run tracking, `productionReplayIntegration`, and `releaseEvidence`. It also copies the current evidence, bug package JSON/Markdown, bug knowledge graph JSON/Markdown, repair task JSON/Markdown, repair-agent handoff JSON/Markdown, repair-agent run JSON/Markdown, production replay integration checklist JSON/Markdown, and Unity logs into `Temp\release-evidence\latest` with a `manifest.json` summary.
+The command imports the package into a temporary Unity project, compiles Runtime and Editor assemblies, runs a generated sample scene, exercises the decision loop and bug flow, and writes release evidence under `Temp/release-evidence/latest`.
 
-To retest a specific generated repair task:
+## Model Endpoint Integration
 
-```powershell
-.\tools\Invoke-AITestPilotRepairRetest.ps1
-```
-
-By default it reads `Temp\release-evidence\latest\repair-task.json`, replays the recorded reproduction steps in Unity batchmode, and writes `repair-retest.json` plus `repair-retest-manifest.json` into the same evidence bundle.
-The targeted retest also creates an editable replay profile asset in the temporary Unity project and exports `sample-business-replay-profile.json` into the evidence bundle.
-
-To validate repair-agent patch output ingestion:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentPatchOutputImport.ps1 -GenerateSampleOutput
-```
-
-By default it reads `Temp\release-evidence\latest\repair-agent-run.json`, validates `repair-agent.patch` plus `repair-agent-summary.md`, and writes `repair-agent-patch-output-manifest.json`. The release pipeline uses `-GenerateSampleOutput` to prove the import and gate path deterministically without claiming that an external Cursor repair agent has already run.
-For real external repair-agent output, the run artifact must be updated to `status=EXTERNAL_AGENT_COMPLETED`, `agentLaunched=true`, `patchOutputStatus=PRODUCED`, required patch outputs marked `produced=true`, and the import must be called with `-ConfirmExternalAgentCompleted`.
-
-To prove pending external runs cannot be promoted just because patch files exist:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentExternalCompletionFailureProbe.ps1
-```
-
-That probe writes `repair-agent-external-completion-failure-probe-manifest.json` and expects `external_agent_unverified` output to be rejected while the run remains `AWAITING_EXTERNAL_AGENT`.
-
-To prove real external patch import is not tied to the deterministic sample null-guard snippet:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentGenericPatchImportProbe.ps1
-```
-
-That probe imports a verified `external_agent` patch that does not contain `reward == null`, preflights it, and writes `repair-agent-generic-patch-import-probe-manifest.json` while keeping `mainRepositoryPatchApplied=false`.
-
-To prove the same apply path against a clean candidate made from the current source snapshot:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentSourceSnapshotApplyValidate.ps1
-```
-
-That probe copies the current source tree into a clean temporary git repository, applies a verified external-agent patch through the repository apply guard, runs `Validate-AITestPilot.ps1` inside the candidate repository, generates rollback evidence that includes newly added files, applies the rollback, and verifies the candidate repository is clean while keeping `mainRepositoryPatchApplied=false`.
-
-To record whether the current main worktree is ready for real repair-agent patch application:
-
-```powershell
-.\tools\Invoke-AITestPilotMainWorktreeApplyReadiness.ps1
-```
-
-That readiness check reads the source snapshot apply/validate proof, records the main repository `git status`, filters generated evidence directories, and writes `repair-agent-main-worktree-apply-readiness-manifest.json`. It records either `readyForMainRepositoryApply=false` with blocking reasons such as `dirty_worktree` and `untracked_source_files`, or `readyForMainRepositoryApply=true` once the source baseline is clean. It never applies a patch by itself and keeps `mainRepositoryPatchApplied=false`.
-
-To prove the explicit apply/retest/rollback path against this main worktree:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentMainWorktreeApplyRetestRollback.ps1
-```
-
-That probe requires the main worktree readiness manifest to be clean and ready. It can consume an external repair-agent output directory with `-ExternalOutputDir`, requiring `repair-agent-run.json`, `repair-agent.patch`, and `repair-agent-summary.md`, then imports that verified `external_agent` patch in an isolated evidence bundle. It binds the patch and summary to the current `repair-task.json` `taskId`, `bugId`, and `suggestedFix`, preflights it, applies it to the real main worktree through `Invoke-AITestPilotRepairAgentRepositoryPatchApplyGuard.ps1 -ApplyToRepository`, runs repo validation and repair retest before rollback, applies the generated rollback patch, and verifies the main worktree is clean again. The manifest records `inputPackageSource`, `patchGeneratedByProbe`, `mainRepositoryPatchApplied=true` for the probe, and `mainRepositoryPatchPersisted=false` after rollback.
-
-To run the release-gated external output directory intake acceptance:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1
-```
-
-That acceptance script creates a deterministic external-output-directory fixture unless `-ExternalOutputDir` is provided, then calls the main worktree apply/retest/rollback probe with that directory. It writes `repair-agent-external-task-output-acceptance-manifest.json`, copies the accepted three-file package into release evidence, and proves the intake path used `inputPackageSource=external_output_directory` with `patchGeneratedByProbe=false`. This is an intake contract for external repair-agent output files; a real agent-produced package remains the next boundary.
-
-To analyze a repair-agent patch result against prior fix hints and retest evidence:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentPatchResultAnalysis.ps1
-```
-
-That analysis consumes the bug knowledge graph, repair task, accepted external task output, and main worktree apply/retest/rollback evidence. It writes `repair-agent-patch-result-analysis-manifest.json` plus Markdown, proving the prior fix hint was matched, the agent output referenced it, post-apply retest passed, rollback returned the worktree clean, and the knowledge graph outcome is `RETEST_PASSED_AFTER_PATCH`.
-
-To persist patch-result analysis across a multi-bug historical trend:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentPatchResultHistoryProbe.ps1
-```
-
-That history probe consumes the current patch-result analysis, writes `repair-agent-patch-result-history-manifest.json`, `repair-agent-patch-result-history.json`, and Markdown, then proves the current analysis is included in a multi-bug history with module, failure-type, and outcome aggregates. The default history rows are deterministic release fixtures, so the manifest explicitly records that real production repair-agent output is not being claimed.
-
-To produce that external output directory with the installed headless Cursor Agent:
-
-```powershell
-.\tools\Invoke-AITestPilotCursorAgentExternalTaskOutput.ps1
-.\tools\Invoke-AITestPilotRepairAgentExternalTaskOutputAcceptance.ps1 -ExternalOutputDir .\Temp\release-evidence\cursor-agent-external-output
-```
-
-The Cursor Agent wrapper requires `cursor-agent` to be authenticated. On Windows it resolves `cursor-agent.cmd` by default so PowerShell does not accidentally choose the script shim; operators can still override the executable with `-CursorAgentCommand`. It runs the headless producer with `--sandbox disabled` by default because the wrapper confines requested writes to `Temp\release-evidence\cursor-agent-external-output`, enforces a default 300-second `-CursorAgentTimeoutSeconds`, and validates the produced package through patch import and safety preflight before any main worktree apply occurs. It captures `repair-agent-cursor-agent-external-output-manifest.json`, and the committed agent contract is `.agents/ai-testpilot-repair-agent.json`.
-
-To prove optional Cursor Agent evidence is bound to the accepted external-output directory instead of stale `repair-agent-cursor-agent-*` files from an older run:
-
-```powershell
-.\tools\Invoke-AITestPilotCursorAgentExternalOutputBindingProbe.ps1
-```
-
-That binding probe writes `repair-agent-cursor-agent-external-output-binding-probe-manifest.json` and verifies four isolated cases: a baseline release with no Cursor Agent manifest, stale Cursor Agent evidence paired with fixture acceptance, mismatched producer/acceptance hashes, and a matched producer/acceptance binding. The default release pipeline runs the Cursor Agent external output binding guard after release evidence index field coverage and before the release gate.
-
-To preflight an imported repair-agent patch before any repository application:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentExternalPatchPreflight.ps1
-```
-
-The preflight parses unified-diff target paths, rejects absolute paths, path traversal, `.git` metadata, sensitive file names, and paths outside the allowed repo/project prefixes, then writes `repair-agent-external-patch-preflight-manifest.json`. The release pipeline also runs `Invoke-AITestPilotRepairAgentExternalPatchPreflightFailureProbe.ps1` to prove unsafe `../` paths are blocked before any apply step.
-
-To evaluate whether an imported patch is allowed to touch the real repository worktree:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentRepositoryPatchApplyGuard.ps1
-```
-
-Without `-ApplyToRepository`, this only writes `repair-agent-repository-patch-apply-guard-manifest.json`, worktree status snapshots, and a rollback plan. Real repository application requires the explicit switch, a clean source worktree, external-agent patch output, and a preflight manifest that allows repository apply; the deterministic sample path is intentionally blocked.
-
-To prove the positive apply/rollback path without touching this repository:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentRepositoryPatchApplyCleanProbe.ps1
-```
-
-That probe creates a clean temporary git repository, marks a temporary repair-agent run copy as externally completed, imports the patch output as `external_agent`, runs the same repository apply guard with `-ApplyToRepository`, verifies the patch changed the fixture, generates a rollback patch, applies the rollback, and records `mainRepositoryPatchApplied=false`.
-
-To prove the post-apply retest sequence on that positive path:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentRepositoryPatchApplyCleanRetest.ps1
-```
-
-That probe applies the verified external-agent patch in a clean temporary git repository, runs the post-patch repair retest before rollback, records the retest result, then applies the generated rollback patch and verifies the temporary repository is clean. It also records `mainRepositoryPatchApplied=false`.
-
-To validate patch application and post-patch retest orchestration for the imported patch output:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairAgentPatchApplyRetest.ps1
-```
-
-This applies the deterministic sample patch inside `Temp\release-evidence\latest\repair-agent-patch-apply-sandbox`, runs the post-patch retest command, and writes `repair-agent-patch-apply-retest-manifest.json`. It intentionally records `repositoryPatchApplied=false` so the evidence does not imply that real project source code was changed by the sample patch.
-
-For a real game project, point the retest at a production replay driver type:
-
-```powershell
-.\tools\Invoke-AITestPilotRepairRetest.ps1 -GameReplayDriverType "Your.Game.Tests.ProductionReplayDriver"
-```
-
-That type must implement `IGameActionReplayDriver`; if it also implements `IGameActionReplayStateProvider`, the retest evidence records account, login, scene, reward, and fishing counters.
-For the hooks-based production adapter path, see `docs\integration\production-driver.md` and `unity\com.kibernet.ai-testpilot\Samples~\ProductionReplayDriver\ProductionReplayDriverTemplate.cs`.
-Scene validation also creates `Assets/AITestPilotGenerated/ProductionReplayIntegrationPlan.asset` and exports `production-replay-integration-checklist.json` plus `production-replay-integration-checklist.md` into the evidence bundle. That checklist is intentionally marked `TEMPLATE_READY` with `realProjectBound=false`; it is a handoff artifact for wiring real game APIs, not proof that a production game driver has already been implemented.
-
-To prove the package can distinguish template, invalid, and bound integration-plan states:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionReplayIntegrationContractProbe.ps1
-```
-
-That probe generates a contract fixture only: `TEMPLATE_READY` for the unbound template, `INVALID` when `realProjectBound` is flipped without bound hooks, and `BOUND` when all required hooks are marked bound with complete metadata. It records `realProjectApiCallsProven=false`; real production release still requires targeted retest evidence with a non-sample driver.
-
-To generate a host-project production driver binding starter kit:
-
-```powershell
-.\tools\New-AITestPilotProductionDriverBindingKit.ps1 -OutputDir "Temp\production-driver-binding-kit\latest" -DriverTypeName "Your.Game.Tests.ProductionReplayDriver" -DriverId "your_game.production_replay"
-```
-
-The kit includes a customized `HookedGameActionReplayDriver` template, an authoring checklist, a host CI helper that calls production-bound readiness plus evidence intake, and `Export-ProductionDriverEvidenceBundle.ps1` for packaging the four required driver evidence files after the host project is truly production-bound. The generated hooks intentionally return `Fail(...)` until the host project wires real APIs; the kit is handoff material, not production-bound evidence, and the export helper rejects the current sample/unbound evidence.
-
-To write a machine-readable production driver readiness boundary:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionReplayDriverReadiness.ps1
-```
-
-That script reads the production replay checklist, targeted retest, negative driver failure probe, and replay profile import evidence. It writes `production-replay-driver-readiness-manifest.json` with `readyForProductionDriverRelease=false` and explicit blockers while the repo still uses the sample driver and the checklist remains unbound. Passing `-RequireProductionBound` turns those blockers into a hard failure for real-project CI.
-
-To intake a real game project's production driver evidence bundle:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionDriverEvidenceIntake.ps1 -EvidenceBundleDir "path\to\release-evidence"
-```
-
-That intake requires production-bound readiness and writes `production-driver-evidence-intake-manifest.json`. In the default repo pipeline it runs with `-ExpectBlocked`, proving the current sample/unbound bundle is rejected instead of accepted as production evidence.
-The evidence bundle may live outside this repository; the default release pipeline also runs `Invoke-AITestPilotProductionDriverExternalBundleIntakeProbe.ps1`, which copies the sample/unbound evidence to a system temp directory and proves that repo-external bundle paths are inspected while still blocked by production-bound policy.
-
-To prove the production-bound evidence contract can accept a complete host-project-shaped bundle without promoting fixture data as production:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionDriverEvidenceContractProbe.ps1
-```
-
-That probe builds an isolated BOUND fixture bundle, runs the same `Invoke-AITestPilotProductionDriverEvidenceIntake.ps1` path without `-ExpectBlocked`, and writes `production-driver-evidence-contract-probe-manifest.json`. It records `releasePipelineUsesFixture=false` and `realProductionDriverEvidenceAccepted=false`, so the default release still keeps the sample/unbound boundary while proving the acceptance contract for real host-project evidence.
-
-To prove the production-bound CI mode blocks the current sample/unbound evidence:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionReplayDriverBoundFailureProbe.ps1
-```
-
-That probe copies the current evidence bundle, reruns production replay driver readiness with `-RequireProductionBound`, expects it to fail on the sample/unbound blockers, and writes `production-replay-driver-bound-failure-probe-manifest.json` plus the failing readiness manifest copy into release evidence.
-
-To prove that driver failures are surfaced with actionable hook diagnostics:
-
-```powershell
-.\tools\Invoke-AITestPilotReplayDriverFailureProbe.ps1
-```
-
-That probe intentionally fails `claim_reward` and writes `repair-driver-failure-manifest.json` plus Unity failure logs into the evidence bundle.
-
-To import a replay profile JSON back into an editable Unity asset:
-
-```powershell
-.\tools\Invoke-AITestPilotReplayProfileImport.ps1
-```
-
-By default it reads `Temp\release-evidence\latest\sample-business-replay-profile.json`, imports it to `Assets/AITestPilotGenerated/ImportedReplayProfile.asset` inside the temporary Unity project, exports a normalized JSON copy, and writes `replay-profile-import-manifest.json` into the evidence bundle.
-
-To export a machine-readable release evidence index:
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1
-```
-
-That script scans the release gate source manifests, writes `release-evidence-index.json`, `release-evidence-index.md`, and `release-evidence-index-manifest.json`, and keeps expected-failure auxiliary probe manifests separate from primary release evidence. It also records release evidence index field coverage with 133 semantic field checks across the primary handoff, handoff export, external evidence, semantic preflight, owner return status, progress notification, and risk policy manifests, plus a field-level definition SHA256 and source script SHA256 and a source manifest SHA256 hash set so stale index artifacts cannot satisfy a newer release gate or changed source manifests. The full release pipeline runs it before the release gate, then refreshes the final artifact index after writing `pipeline-manifest.json` so CI and portal handoff can consume one stable evidence summary that includes the pipeline manifest.
-
-To prove the release evidence index field coverage contract:
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseEvidenceIndexFieldCoverageProbe.ps1
-```
-
-That probe writes `release-evidence-index-field-coverage-probe-manifest.json`, `release-evidence-index-field-coverage-probe.md`, and `release-evidence-index-field-coverage-probe\`. It runs six isolated scenarios for baseline coverage, auto-email promotion rejection, fake-receipt promotion rejection, semantic-preflight read-only enforcement, handoff export NEXT-STEPS validation rejection, and live-smoke fixture rejection outside contract mode. The probe snapshots the latest bundle to prove its case copies do not pollute `Temp\release-evidence\latest`; it does not send email, accept real host-project evidence, or promote fixture evidence as production evidence.
-
-The release pipeline follows that with the Cursor Agent external output binding guard, which writes `repair-agent-cursor-agent-external-output-binding-probe-manifest.json` and proves old optional Cursor Agent producer files cannot make the release gate treat fixture acceptance as current headless Cursor Agent output.
-
-To aggregate the release risk policy for AI exploration, high-risk graph nodes, production driver evidence, production Lua evidence, live endpoint configuration, external live-smoke evidence intake, live-smoke accepted-contract proof, returned-evidence inbox contract proof, owner contact readiness contract proof, owner send readiness proof, owner packet dispatch receipt intake proof, owner packet real receipt guard proof, live endpoint policy, and CI provider controls:
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseRiskPolicy.ps1
-```
-
-That script writes `release-risk-policy-manifest.json` and `release-risk-policy.md`. The manifest records a release risk policy source script SHA256 so the release gate can reject stale risk-policy output generated by an older script. Default package-release mode accepts only explicitly recorded sample/unbound production-driver and no-production-Lua boundaries plus the production Lua evidence kit, live model endpoint configuration-kit, external live-smoke intake guard, accepted live-smoke evidence contract, returned-evidence inbox contract, owner contact readiness contract, and owner send readiness kit; production CI can make those hard requirements with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, `-ProductionLuaEvidenceDir`, `-RequireLiveModelEndpointSmoke`, and `-LiveModelEndpointSmokeEvidenceDir`.
-
-To prove provider-specific CI build, smoke test, and vision evidence checks are wired for GitHub Actions and Azure Pipelines:
-
-```powershell
-.\tools\Invoke-AITestPilotProviderCiQualityProbe.ps1
-```
-
-That probe writes `provider-ci-quality-probe-manifest.json` and verifies both provider workflows run explicit .NET build checks, smoke tests, and post-pipeline scene-validation evidence checks around the release pipeline.
-
-To generate the host-project production handoff package from the current release evidence:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffPackage.ps1
-```
-
-That package writes `production-handoff-package-manifest.json` plus `production-handoff-package\README.md`, `action-plan.md`, `required-external-evidence.json`, `blocker-resolution-map.json`, `blocker-resolution-map.md`, `owner-packets\owner-packet-index.json`, one owner packet per remaining action item, `ci-commands.ps1`, `verify-external-evidence.ps1`, `accept-external-evidence.ps1`, and `external-evidence-preflight-self-check.json`. It consolidates the remaining production driver, production Lua, live-model, and CI hard-mode steps without promoting fixture evidence as real host-project evidence, validates that owner, kit, evidence, blocker-resolution, command, preflight, direct-fallback acceptance-wrapper, and per-owner packet details render as concrete handoff content, and includes host-project scripts for checking external evidence paths and running unified direct fallback acceptance before hard validation. The release pipeline also runs `Invoke-AITestPilotProductionHandoffExternalEvidencePreflightProbe.ps1`, which feeds complete accepted fixture evidence into the generated preflight with `-RequireAllEvidence -RunIntake`, runs the generated fallback acceptance wrapper in contract mode to produce a Markdown report, and records the result as contract proof without accepting it as real production evidence.
-
-For a smaller owner-facing handoff artifact, run `.\tools\Invoke-AITestPilotProductionHandoffExport.ps1`. It writes `production-handoff-export-manifest.json`, `production-handoff-export\README.md`, `production-handoff-export\FIRST-TESTABLE.md`, `production-handoff-export\run-owner-return-status.ps1`, and `production-handoff-export.zip` containing the handoff package, owner packets, generated kits, returned-evidence inbox, and contract reports without promoting fixture evidence as real host-project evidence. After the owner response bundle kit workflow probe passes, the release pipeline refreshes this export so the final zip also carries the fillable owner response bundle kit and its folder/zip owner-return-status-then-semantic-preflight-then-auto-acceptance instructions, with source-to-export SHA256 proof for every kit file. After the canonical production external evidence action queue, owner route map, owner-return status, and their probes pass, the pipeline refreshes the export again so `operator-actions\` includes `NEXT-STEPS.md`, the canonical action queue, the owner-return bundle status report/probe, route-map proof, remaining-work source snapshot, separate queue probe proof, and the zip-root `run-owner-return-status.ps1` self-contained helper with bundled `owner-return-status-source\` manifests.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffExportZipIndex.ps1
-```
-
-That script writes `production-handoff-export-zip-index-manifest.json`, `production-handoff-export-zip-index.json`, and a Markdown report. It opens the owner-facing export zip, computes the zip SHA256, enumerates every file entry, rejects unsafe or duplicate paths, and verifies every zipped entry hash against the matching `production-handoff-export\` source file.
-
-To create the returned-evidence inbox that owners fill after receiving packets:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionExternalEvidenceInbox.ps1
-```
-
-That script writes `production-external-evidence-inbox-manifest.json`, `production-external-evidence-inbox.md`, and `production-external-evidence-inbox\accept-returned-evidence.ps1`. The inbox contains `production-driver-evidence`, `production-lua-evidence`, and `live-smoke-evidence` directories with README files and required-file lists. `accept-returned-evidence.ps1` is kept as a bundled/direct-inbox bridge for compatibility and direct inbox submissions; the canonical owner-return path remains owner-return status, then semantic preflight, then auto acceptance with `-RequireAllEvidence`.
-
-The release pipeline also runs `Invoke-AITestPilotProductionExternalEvidenceInboxContractProbe.ps1`, which fills the returned-evidence inbox with complete accepted fixture evidence from outside the repository, executes the bundled bridge wrapper `accept-returned-evidence.ps1` in contract mode, and records the result as direct-wrapper proof while keeping `realHostProjectEvidenceAccepted=false`.
-
-To summarize external evidence collection after distributing owner packets, run `.\tools\Invoke-AITestPilotProductionHandoffStatus.ps1`. It writes `production-handoff-status-manifest.json` and `production-handoff-status.md`, showing accepted versus pending owner packets, remaining blocker counts, inbox-derived missing evidence files, required evidence files, and the next owner-return status, semantic-preflight, and auto-acceptance commands without promoting fixture evidence as real host-project evidence. Any acceptance-wrapper command fields are compatibility/direct-inbox bridge commands, not the primary operator path. In the default package-release path it tracks nine missing evidence files from `production-external-evidence-inbox-manifest.json`.
-
-To prepare the owner dispatch queue and email drafts before real owner addresses are configured:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffDispatchPlan.ps1
-```
-
-That script writes `production-handoff-dispatch-manifest.json`, `production-handoff-dispatch.md`, `production-handoff-dispatch\production-handoff-dispatch-queue.json`, and one draft per owner under `production-handoff-dispatch\email-drafts`. It keeps `realOwnerEmailAddressesConfigured=false` and `automaticEmailSendReady=false`, so the release evidence is ready for manual owner routing without claiming any message was sent or any real host-project evidence was returned.
-
-To generate and validate the owner contact roster before dispatch:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffContactReadiness.ps1
-```
-
-That script writes `production-handoff-contact-readiness-manifest.json`, `production-handoff-contact-readiness.md`, and `production-handoff-contact-roster.json`. In the default package-release path it creates one contact entry per owner packet but keeps the email fields empty, recording `missingOwnerContactCount=3`, `realOwnerEmailAddressesConfigured=false`, and `automaticEmailSendReady=false`.
-
-The release pipeline also runs `Invoke-AITestPilotProductionHandoffContactReadinessContractProbe.ps1`, which supplies a complete fixture contact roster with reserved `example.invalid` addresses and proves contact readiness accepts configured owner contacts while preserving `automaticEmailSendReady=false`, `realHostProjectEvidenceAccepted=false`, and the default missing-contact release boundary.
-
-To generate the guarded owner-packet send queue and agently-cli helper:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffSendReadiness.ps1
-```
-
-That script writes `production-handoff-send-readiness-manifest.json`, `production-handoff-send-readiness.md`, `production-handoff-send\production-handoff-send-queue.json`, `production-handoff-send\send-owner-packets.ps1`, and `production-handoff-send\README.md`. In the default package-release path it reports `sendReadinessStatus=BLOCKED_MISSING_OWNER_EMAILS`, keeps `automaticEmailSendReady=false`, and generates a helper that requires real contact roster entries, `agently-cli` authorization, and explicit two-stage confirmation tokens before any owner packet email can be sent.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffMailAuthReadiness.ps1
-```
-
-That script writes `production-handoff-mail-auth-readiness-manifest.json`, `production-handoff-mail-auth-readiness.md`, and `production-handoff-mail-auth\`. It generates local helpers for `agently-cli auth login` and `agently-cli +me` checks while keeping OAuth login, local authorization, and email sending outside the default CI pipeline.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerUnblockPack.ps1
-```
-
-That script writes `production-handoff-owner-unblock-pack-manifest.json`, `production-handoff-owner-unblock-pack.md`, and `production-handoff-owner-unblock-pack\`. It consolidates the remaining owner contacts, blocked sends, mail authorization boundary, missing external evidence files, owner action matrix, operator next steps, and progress email draft without marking any email or host-project evidence as complete.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerUnblockPackContractProbe.ps1
-```
-
-That probe writes `production-handoff-owner-unblock-pack-contract-probe-manifest.json` and proves the unblock pack preserves the default missing-contact/missing-evidence state while a complete fixture contact roster plus complete fixture returned evidence moves the copied pack to `READY_FOR_CONFIRMATION_PENDING_REAL_ACCEPTANCE` without running OAuth login, sending email, or accepting fixture evidence as real host-project evidence.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerInputRequestPack.ps1
-```
-
-That script writes `production-handoff-owner-input-request-pack-manifest.json`, `production-handoff-owner-input-request-pack.md`, and `production-handoff-owner-input-request-pack\`. It turns the remaining external-owner blockers into a fill-in contact roster template, owner input checklist, returned-evidence checklist, and request email draft for `kibernet@sina.com` while keeping `ownerInputRequestStatus=AWAITING_EXTERNAL_OWNER_INPUT`, `automaticEmailSendReady=false`, and all real-evidence acceptance flags false.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerContactExternalIntakeProbe.ps1
-```
-
-That probe writes `production-handoff-owner-contact-external-intake-probe-manifest.json` and a Markdown report. It starts with a repo-external contact roster fixture, imports it into an isolated bundle, proves contact readiness accepts all owner contacts, and proves send readiness moves to `READY_FOR_CONFIRMATION` while the default bundle still records missing contacts and `emailSent=false`.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffSendDryRunProbe.ps1
-```
-
-That probe writes `production-handoff-send-dry-run-probe-manifest.json` and a Markdown report. It proves the generated `send-owner-packets.ps1` dry run works without local `agently-cli` authorization: the default bundle previews three blocked sends, and the external-contact intake bundle previews three prepared sends, without creating confirmation tokens or sending email.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffSendLocalWorkflowProbe.ps1
-```
-
-That probe writes `production-handoff-send-local-workflow-probe-manifest.json` and a Markdown report. It proves the local owner-packet send workflow stops before send when unauthenticated, requests one confirmation token per owner when contacts are accepted, writes one machine-readable fake receipt per owner only after token confirmation, and keeps `realOwnerPacketEmailSent=false`, `emailSent=false`, `ownerPacketReceiptRealDeliveryVerifiedCount=0`, and `ownerPacketReceiptReleasePipelineGeneratedCount=0`.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerPacketDispatchReceiptIntakeProbe.ps1
-```
-
-That probe writes `production-handoff-owner-packet-dispatch-receipt-intake-probe-manifest.json` and a Markdown report. It proves fake owner-packet workflow receipts are rejected, contract-shaped receipts and queued-only receipts are accepted only as non-real-send dispatch evidence, and the release pipeline still records `realOwnerPacketEmailSent=false`, `emailSent=false`, and `releasePipelineSendsEmail=false`.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerPacketRealReceiptGuardProbe.ps1
-```
-
-That probe writes `production-handoff-owner-packet-real-receipt-guard-probe-manifest.json` and a Markdown report. It proves a valid owner-packet receipt remains pending operator real-send confirmation before real send state can be accepted, and contract fixture mode cannot set `emailSent=true` or claim real delivery.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleProbe.ps1
-```
-
-That probe writes `production-handoff-owner-response-bundle-probe-manifest.json` and a Markdown report. It builds a repo-external owner response bundle containing a contact roster plus driver, Lua, and live-smoke evidence directories, imports it into an isolated bundle, and proves contacts, returned evidence, send dry-run previews, and owner unblock readiness move together without sending email or promoting fixture evidence as real host-project evidence.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKit.ps1
-```
-
-That script writes `production-handoff-owner-response-bundle-kit-manifest.json`, a Markdown report, `production-handoff-owner-response-bundle-kit\`, and `production-handoff-owner-response-bundle-kit.zip`. The kit is the fillable owner-return package: a contact roster template, driver/Lua/live-smoke evidence directories, required-file manifests, per-owner mini kits under `owner-response-mini-kits\`, a local verifier, a mini-kit merge helper, an import helper, and a request draft that keeps owner-return status ahead of semantic preflight and auto acceptance. It does not send email, run OAuth, accept production evidence, or include fixture evidence.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerResponseBundleKitWorkflowProbe.ps1
-```
-
-That probe writes `production-handoff-owner-response-bundle-kit-workflow-probe-manifest.json` and a Markdown report. It copies the generated kit into an isolated workflow, proves the untouched template is rejected, fills fixture contacts plus the nine required placeholder evidence files, proves the verifier returns `READY_FOR_IMPORT`, proves the import helper copies the roster and evidence into an isolated evidence bundle, and proves the three per-owner mini kits can be filled, merged back into the full owner response bundle, verified, and semantic-preflighted without sending email or accepting production evidence.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerRouteMap.ps1
-```
-
-That route map writes `production-handoff-owner-route-map-manifest.json` and a Markdown report. It joins the canonical action queue, gap analysis, contact readiness, send readiness, owner response bundle kit, and returned-evidence inbox by `owner + area`, then proves each of the three external owner areas has a coherent path from owner packet to returned bundle required files, owner-return status, semantic preflight, auto acceptance, and hard validation without closing repo-side gaps.
+AI TestPilot supports two request formats:
 
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffOwnerRouteMapProbe.ps1
-```
-
-That probe writes `production-handoff-owner-route-map-probe-manifest.json`, a Markdown report, and scenario outputs. It proves the current route map passes while owner-route mismatches, missing route endpoints, and auto acceptance without semantic preflight are blocked in isolated evidence-bundle copies.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionExternalEvidenceActionQueue.ps1 `
-    -EvidenceBundleDir .\artifacts\ai-testpilot-release\latest `
-    -RequirePostDispatch
-```
-
-That operator-side script writes `production-external-evidence-action-queue-manifest.json` and a Markdown report. It turns the current remaining production evidence state into a single action queue with the three owner areas, nine missing files, eleven blocker reasons, owner-return status commands, semantic-preflight commands, auto-acceptance commands with `-RequireAllEvidence`, legacy/direct-inbox acceptance-wrapper commands, hard-validation commands, and owner response bundle directory/zip auto-acceptance commands that run only after owner-return status and semantic preflight. Each queue item also points at its fillable owner-response-bundle area and repeats the directory/zip status, semantic-preflight, and auto-acceptance commands, so a returned owner bundle can be checked and then accepted from the item row without cross-referencing the kit README. The final handoff export also writes `operator-actions\NEXT-STEPS.md` as a short operator checklist over those same three routes before the full action queue; inside the zip, that checklist runs `run-owner-return-status.ps1` first, then `run-semantic-preflight.ps1`, then uses `production-external-evidence-inbox\accept-returned-evidence.ps1` only as the bundled bridge for the zip-contained/direct-inbox path, and marks the hard-validation commands as repo-root commands. The bridge delegates to the handoff acceptance path with `-RequireAllEvidence`, while the repo-side action queue still exposes the canonical `Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1` commands for operators working from the repository. The release pipeline runs this script as the canonical `production_external_evidence_action_queue` step before `Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1`; in CI it falls back to the pending remaining-work snapshot and keeps the local progress-mail action in tracked work. The standalone `-RequirePostDispatch` form remains the real-operator path after accepted local receipt intake and clears only the local progress-mail action.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionExternalEvidenceActionQueueProbe.ps1
-```
-
-That probe writes `production-external-evidence-action-queue-probe-manifest.json` and a Markdown report. It proves pending-mail and post-dispatch queues stay distinct, missing post-dispatch snapshots are rejected when required, owner response bundle directory/zip owner-return-status, semantic-preflight, and auto-acceptance commands are exposed at queue and item level, and the three external evidence areas remain unaccepted until real host-project evidence arrives.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionExternalEvidenceGapAnalysis.ps1 `
-    -EvidenceBundleDir .\artifacts\ai-testpilot-release\latest
-```
-
-That script writes `production-external-evidence-gap-analysis-manifest.json` and a Markdown report. It turns the canonical action queue and current remaining-work snapshot into an operator/audit summary showing the three remaining external evidence areas, nine missing files, eleven blocker reasons, zero repo-side-closable gaps, and the next owner/operator commands, with owner-return status before semantic preflight and auto acceptance, without sending email, accepting real host-project evidence, or promoting fixtures.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionExternalEvidencePartialMatrixProbe.ps1
-```
-
-That probe writes `production-external-evidence-partial-matrix-probe-manifest.json` and a Markdown report. It builds isolated returned-bundle variants for driver-only, Lua-only, live-smoke-only, one-file-missing, and malformed zip cases, then proves each one is rejected before acceptance can claim all production evidence is ready.
-
-To follow the canonical operator owner-return flow for a filled owner response bundle:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionExternalEvidenceOwnerReturnBundleStatus.ps1 `
-    -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"
-
-.\tools\Invoke-AITestPilotProductionExternalEvidenceSemanticPreflight.ps1 `
-    -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip"
-
-.\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1 `
-    -OwnerResponseBundleZipPath "path\to\filled-owner-response-bundle.zip" `
-    -RequireAllEvidence
-```
-
-Use `-OwnerResponseBundleDir` instead of `-OwnerResponseBundleZipPath` for an already-expanded returned bundle, preserving the same status -> semantic preflight -> auto acceptance order.
-
-The read-only owner return status layer writes `production-external-evidence-owner-return-bundle-status-manifest.json` and `production-external-evidence-owner-return-bundle-status.md`. It is the first operator check. With no returned bundle supplied it keeps `ownerReturnReadinessStatus=PENDING_EXTERNAL_EVIDENCE`, `nextRequiredAction=collect_owner_response_bundle_zip`, `pendingOwnerPacketCount=3`, `remainingMissingFileCount=9`, and `remainingBlockingReasonCount=11`. With `-OwnerResponseBundleDir`, `-OwnerResponseBundleZipPath`, `AITESTPILOT_OWNER_RESPONSE_BUNDLE_DIR`, or `AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH`, it runs semantic preflight only and maps complete returned zip evidence to `READY_FOR_AUTO_ACCEPTANCE_CANDIDATE` or strict-payload issues to `NEEDS_OWNER_REPAIR`; explicit parameters override environment discovery, and it never runs acceptance, hard validation, mail, or real evidence promotion. `production-external-evidence-owner-return-bundle-status-probe-manifest.json` proves the default pending, explicit complete zip candidate-ready, environment zip candidate-ready, explicit-zip-over-environment, and extra-payload repair-needed cases with `caseCount=5` and `checkCount=8`.
-
-The operator-side semantic preflight is the second check, not acceptance. Operators should check `readyForAcceptanceCandidate`, `semanticPreflightStatus`, and `semanticFailCount` before invoking auto acceptance; the preflight only reads returned evidence and does not copy returned evidence, run hard validation, send email, accept real evidence, or promote fixtures. `OwnerResponseBundleZipPath` zip inputs are safety-inspected before resolution, and unsafe, duplicate, absolute, or traversal zip entries are rejected before extraction. Safe owner response bundle zips may contain the generated `owner-response-bundle-template` top-level directory or an arbitrary single top-level wrapper directory. The release-pipeline semantic preflight probe writes `production-external-evidence-semantic-preflight-probe-manifest.json` and a Markdown report. It runs a read-only returned-evidence preflight against default missing evidence, complete contract-shaped external roots, complete owner response bundle directories, complete owner response bundle zip, partial zip, semantic-bad zip, arbitrary single top-level wrapper zip, unsafe zip, extra-payload owner response bundle, and nested-payload owner response bundle zip; the probe passes only when missing, partial, semantically bad, unsafe, extra-payload, and nested-payload owner returns are not candidate-ready and no acceptance, hard validation, email, real-evidence acceptance, or fixture promotion occurs. The expected manifest totals are `caseCount=12`, `completeCandidateCaseCount=4`, `rejectedCaseCount=8`, `checkCount=14`, `ownerResponseBundleZipCaseCount=6`, `ownerResponseBundleZipSafeCaseCount=5`, `ownerResponseBundleZipUnsafeCaseCount=1`, `ownerResponseBundleZipArbitraryWrapperReady=true`, and `payloadShapeRejectedCaseCount=2`. `Invoke-AITestPilotProductionExternalEvidenceOwnerReturnRepairPack.ps1` turns one semantic preflight manifest into `production-external-evidence-owner-return-repair-pack-manifest.json` and an owner-readable repair pack; `Invoke-AITestPilotProductionExternalEvidenceOwnerReturnRepairPackProbe.ps1` writes `production-external-evidence-owner-return-repair-pack-probe-manifest.json` and proves every rejected preflight case generates repair items while preserving `readOnly=true`, `acceptanceRun=false`, `hardValidationRun=false`, `emailSent=false`, and no real-evidence or fixture promotion.
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseProgressNotificationOutbox.ps1
-```
-
-That script writes `release-progress-notification-outbox-manifest.json`, `release-progress-notification-outbox.md`, and `release-progress-notification-outbox\`. It prepares the requested big-node progress email for `kibernet@sina.com`, records the current remaining external counts, writes a `BIG_NODE_ONLY` cadence policy that suppresses separate small proof/probe emails, writes `remaining-work-snapshot.json`/`.md` with the three external owner areas plus the local progress-mail action, and provides a local `agently-cli` send helper with optional `-ReceiptPath` output while keeping the notification in `PENDING_LOCAL_MAIL_AUTH_AND_CONFIRMATION` with `emailSent=false`. The release pipeline first reruns a route-map refresh after the owner route map and probe pass, then reruns a final strict-payload refresh after semantic preflight proves extra-payload owner bundles and nested-payload owner bundle zips are rejected; the final outbox latest big node is `production_external_evidence_strict_payload_shape` without reducing the three external owner areas, nine missing files, or eleven blockers.
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseProgressNotificationRemainingWorkSnapshotProbe.ps1
-```
-
-That probe writes `release-progress-notification-remaining-work-snapshot-probe-manifest.json` and a Markdown report. It independently verifies the outbox remaining-work snapshot against owner input, production driver readiness, production Lua readiness, and the returned-evidence inbox, keeping the pending local mail action separate from the eleven external blockers. It is a small proof node and is included in the `BIG_NODE_ONLY` suppression list, so it does not create a separate progress email.
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHandoffMailHelperAuthStatusProbe.ps1
-```
+- `NativeJson` for a provider-neutral decision endpoint.
+- `OpenAICompatibleChatCompletions` for OpenAI-compatible or local gateways.
 
-That probe writes `production-handoff-mail-helper-auth-status-probe-manifest.json`, a Markdown report, and `production-handoff-mail-helper-auth-status-probe\`. It runs the generated owner-packet and progress-notification send helpers against a fake unauthenticated `agently-cli` that emits JSON followed by the real-world `tip:` line, proving the helpers stop at the local-auth boundary without calling `+me`, creating confirmation tokens, or sending email.
+Create a settings asset from Unity:
 
-```powershell
-.\tools\Invoke-AITestPilotReleaseProgressNotificationConfirmationProbe.ps1
-```
-
-That probe writes `release-progress-notification-confirmation-probe-manifest.json`, a Markdown report, and `release-progress-notification-confirmation-probe\`. It runs the progress notification helper against a fake logged-in `agently-cli`, proving `-PrepareConfirmation` requests a confirmation token and a later `-ConfirmationToken` run includes that token. The probe keeps `emailSent=false` and uses fake CLI evidence only; real delivery still requires local OAuth plus the actual CLI confirmation token.
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseProgressNotificationReceiptProbe.ps1
-```
-
-That probe writes `release-progress-notification-receipt-probe-manifest.json`, a Markdown report, and `release-progress-notification-receipt-probe\`. It runs the progress notification helper against a fake token-confirmed `agently-cli`, proving a successful helper run writes a machine-readable send receipt with the fake message id while keeping `emailSent=false` and `realDeliveryVerified=false`.
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseProgressNotificationDispatchReceiptIntake.ps1 `
-    -ReceiptPath "path\to\progress-notification-send-receipt.json" `
-    -RequireReceipt `
-    -ConfirmLocalSendReceipt
-```
-
-That intake script writes `release-progress-notification-dispatch-receipt-intake-manifest.json` and a Markdown report. It accepts a real local `agently-cli` send receipt only when the receipt matches the pending outbox recipient/subject, has non-fake dispatch evidence (`messageId` or `queued=true`), was token-confirmed, and was not generated by the release pipeline. The paired `Invoke-AITestPilotReleaseProgressNotificationDispatchReceiptIntakeProbe.ps1` proves `msg_fake_*` receipts are rejected, queued-only receipts are accepted as dispatch evidence, and contract-shaped receipts do not set `emailSent=true`.
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseProgressNotificationPostDispatchSnapshot.ps1 `
-    -EvidenceBundleDir .\artifacts\ai-testpilot-release\latest
-```
-
-That operator-side script writes `release-progress-notification-post-dispatch-snapshot-manifest.json` and a Markdown report after a real receipt intake has passed. It does not send email; it clears only the local progress-mail remaining action and leaves the three external production evidence areas as the remaining release work.
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseProgressNotificationPostDispatchSnapshotProbe.ps1
-```
-
-That probe writes `release-progress-notification-post-dispatch-snapshot-probe-manifest.json` and a Markdown report. It proves contract fixture dispatch intake is rejected by the post-dispatch snapshot helper and cannot clear the local progress-mail remaining action without real operator-accepted dispatch evidence.
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseProgressNotificationLocalSendWorkflowProbe.ps1
-```
-
-That probe writes `release-progress-notification-local-send-workflow-probe-manifest.json`, a Markdown report, and `release-progress-notification-local-send-workflow-probe\`. It proves the complete local operator workflow with a fake CLI: unauthenticated runs stop before `message +send`, logged-in prepare requests a confirmation token, token-confirmed send writes a receipt, and dispatch receipt intake accepts only contract shape without claiming real email delivery.
-
-```powershell
-.\tools\Invoke-AITestPilotReleaseProgressNotificationRealReceiptGuardProbe.ps1
-```
-
-That probe writes `release-progress-notification-real-receipt-guard-probe-manifest.json`, a Markdown report, and `release-progress-notification-real-receipt-guard-probe\`. It proves a valid send receipt cannot set `emailSent=true` unless the operator explicitly runs receipt intake with `-ConfirmLocalSendReceipt`; contract fixture mode still cannot claim a real send even when that confirmation switch is present.
-
-The stable repo-side acceptance implementation remains the delegated target behind auto acceptance and a direct fallback for operators who already have separate driver, Lua, and live-smoke evidence directories:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionExternalEvidenceAcceptance.ps1 `
-    -ProductionDriverEvidenceDir "path\to\production-driver-evidence" `
-    -ProductionLuaEvidenceDir "path\to\production-lua-evidence" `
-    -LiveModelEndpointSmokeEvidenceDir "path\to\live-smoke-evidence" `
-    -RequireAllEvidence
+```text
+Tools/Kibernet/AI TestPilot/Create Model Endpoint Settings
 ```
 
-That command runs the production driver intake, production Lua readiness, and live-smoke evidence intake into an isolated acceptance bundle, then writes `production-external-evidence-acceptance-manifest.json` and a Markdown report summarizing status, missing files, command results, and the fixture boundary. For returned owner bundles, operators should reach this through the auto-acceptance step after owner-return status and semantic preflight. The release pipeline also runs `Invoke-AITestPilotProductionExternalEvidenceAcceptanceContractProbe.ps1`, which proves this stable delegated entry point accepts complete host-project-shaped fixture evidence while recording `realHostProjectEvidenceAccepted=false` and a validated Markdown report. It also runs `Invoke-AITestPilotProductionExternalEvidenceAcceptanceFailureProbe.ps1`, proving fully missing evidence and driver-only partial evidence fail under `-RequireAllEvidence` while still producing owner-readable rejection reports.
+The asset stores endpoint and model configuration but never stores the API key itself. Secrets are referenced through environment variables, and live requests are disabled by default.
 
-```powershell
-.\tools\Invoke-AITestPilotProductionExternalEvidenceAutoAcceptance.ps1
-```
+For contracts, configuration, traces, retry policy, failure classification, and live-smoke requirements, see [Model Endpoint Bridge](docs/model-endpoint.md).
 
-That operator-side entry point is the third step in the canonical owner-return flow after owner-return status and semantic preflight. It discovers evidence directories from explicit parameters, `AITESTPILOT_*` environment variables, an owner response bundle directory or `-OwnerResponseBundleZipPath` / `AITESTPILOT_OWNER_RESPONSE_BUNDLE_ZIP_PATH`, an evidence root, or the returned-evidence inbox, and should be run with `-RequireAllEvidence` for owner returns. The generated `accept-returned-evidence.ps1` also accepts a filled owner response bundle directory or zip directly as a bundled bridge/direct fallback, so returned kit archives do not need a manual copy step before compatibility-wrapper acceptance. Auto acceptance stays `PENDING_EXTERNAL_EVIDENCE` and does not run acceptance until all nine required files are present and the semantic preflight gate reports a candidate-ready return with zero semantic failures; complete-but-semantic-bad and extra-payload bundles are blocked before acceptance. Once ready, it delegates to `Invoke-AITestPilotProductionExternalEvidenceAcceptance.ps1`. `production-external-evidence-auto-acceptance-probe-manifest.json` proves the same semantic gate runs before stable acceptance for evidence roots plus owner response bundle directories/zips and records `extraPayloadOwnerResponseBundleRejected=true` for a complete owner bundle with unexpected payload. The paired probes prove missing default evidence stays pending, complete external fixture evidence from an evidence root, owner response bundle directory, complete owner response bundle zip, or arbitrary single top-level wrapper zip passes only in contract mode after semantic preflight, and partial, semantic-bad, or extra-payload owner response bundles fail before acceptance without sending mail or accepting real host-project evidence.
+## Production Replay Integration
 
-The generated owner response bundle kit README and request draft include the exact folder and zip owner-return status, semantic-preflight, and auto-acceptance commands, and the kit workflow probe gates that handoff text before release.
+Real projects bind business actions through `IGameActionReplayDriver` or `HookedGameActionReplayDriver`. The standard integration surface covers account preparation, login, scene entry, reward claiming, and fishing; projects can register additional replay handlers without weakening the action boundary.
 
-To prove all production hard-mode switches block the current sample or missing-evidence state together:
+Generate a host-project starter kit:
 
 ```powershell
-.\tools\Invoke-AITestPilotProductionHardModeFailureProbe.ps1
+.\tools\New-AITestPilotProductionDriverBindingKit.ps1 `
+  -DriverTypeName "Your.Game.Tests.ProductionReplayDriver" `
+  -DriverId "your_game.production_replay"
 ```
 
-That probe copies the current evidence into an isolated bundle, runs release risk policy, evidence index, and release gate with `-RequireProductionReplayDriverBound`, `-RequireProductionLuaPatched`, and `-RequireLiveModelEndpointSmoke`, then expects the combined hard-mode path to block on the current production driver, Lua, and live-model evidence gaps.
-
-To prove the same combined hard-mode path can pass when complete production-shaped evidence is present:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionHardModeSuccessContractProbe.ps1
-```
+The generated hooks fail closed until real game APIs and state verification are implemented. See [Production Replay Driver Integration](docs/integration/production-driver.md).
 
-That probe copies accepted fixture driver, Lua, and live-smoke evidence into an isolated bundle, runs release risk policy, evidence index, and release gate with all three hard-mode switches, and records `production-hard-mode-success-contract-probe-manifest.json` without replacing the default release evidence or accepting fixture data as real host-project evidence.
+## Evidence, Safety, and Trust Boundaries
 
-To run the full repo-side release gate over the evidence bundle:
+AI TestPilot is designed so that fixtures prove contracts without being presented as production proof.
 
-```powershell
-.\tools\Invoke-AITestPilotReleaseGate.ps1
-```
+- Unknown or malformed actions fail before touching the game.
+- API keys are referenced by environment-variable name and are not serialized into evidence.
+- External patches are checked for absolute paths, traversal, repository metadata, sensitive files, and out-of-scope targets.
+- Main-worktree patch application requires an explicit switch, a clean baseline, accepted external-agent provenance, and a passing preflight.
+- Retest and rollback results are recorded separately from patch generation.
+- Fixture, sample, skipped, contract-mode, and real-provider evidence are explicitly distinguished.
+- Production hard mode rejects unbound replay drivers, missing production Lua proof, or missing required live-endpoint evidence.
 
-The gate requires scene validation, repair-agent patch output import, external completion failure probe, generic external repair-agent patch import probe, source snapshot apply/validate/rollback probe, main worktree readiness, external task output directory acceptance, patch result analysis, patch result history, main worktree apply/retest/rollback evidence driven from that external directory, external patch safety preflight, unsafe-patch failure probe, repository patch apply guard, clean temporary repository apply/rollback probe, clean temporary repository apply/retest/rollback probe, patch apply/retest orchestration, targeted repair retest, driver descriptor/configuration, the negative driver failure probe, replay profile import, production driver readiness, Lua static analysis evidence, Lua auto-patch sandbox evidence, production Lua patch readiness, production Lua evidence kit proof, production Lua external bundle intake proof, live model endpoint configuration kit proof, external live-smoke evidence intake proof, live-smoke accepted-contract proof, production handoff package proof with a complete blocker-resolution map, returned external evidence inbox proof, production handoff export proof, production handoff status proof, owner dispatch plan proof, owner contact readiness proof, owner packet dispatch receipt intake proof, owner packet real receipt guard proof, production handoff owner route map proof, production external evidence owner return status proof, production external evidence acceptance contract and failure proof, production hard-mode failure proof, production hard-mode success contract proof, release risk policy acceptance, release evidence index coverage including the 133-field semantic coverage summary, the six-scenario field coverage probe, Cursor Agent external output binding guard evidence, and all listed evidence files. To prove the gate blocks incomplete evidence:
+These boundaries are part of the release contract, not documentation-only promises. See [Architecture](docs/architecture.md) and [CI Release Pipeline](docs/ci-release-pipeline.md).
 
-```powershell
-.\tools\Invoke-AITestPilotReleaseGateFailureProbe.ps1
-```
+## CI and Release Gates
 
-For CI, run the full pipeline wrapper:
+Run the full release pipeline with:
 
 ```powershell
 .\tools\Invoke-AITestPilotReleasePipeline.ps1
 ```
 
-It runs the full chain and exports stable artifacts to `artifacts\ai-testpilot-release\latest`. A failed run initializes a fresh evidence bundle, removes final release-status artifacts from the copied `latest` output, and writes `release-artifact-invalidated-manifest.json` beside `pipeline-manifest.json` so stale PASS gate/index files are not presented as the current release. On a passing run, the artifact export refreshes the owner-facing handoff export and zip index again from the copied `artifacts\ai-testpilot-release\latest` root, then runs `Invoke-AITestPilotFirstTestableReleaseProbe.ps1`, writes `first-testable-release-manifest.json` / `first-testable-release.md`, verifies the zip-root `production-handoff-export\FIRST-TESTABLE.md`, `run-owner-return-status.ps1`, per-owner mini kit zips, and `merge-owner-mini-kits.ps1` entry points, runs `Invoke-AITestPilotFirstTestableOperatorDashboard.ps1`, writes `first-testable-operator-dashboard-manifest.json` / `first-testable-operator-dashboard.md`, then refreshes the final release evidence index so downstream consumers see the copied artifact plus its testable-release report and operator dashboard. The wrapper hard-checks that the final index was generated after the first-testable and dashboard manifests and inventories them with matching SHA256 plus complete listed-file coverage for `first-testable-release.md` and `first-testable-operator-dashboard.md`; `Invoke-AITestPilotFinalArtifactFreshnessProbe.ps1` repeats that check as a read-only final-artifact probe that writes its manifest outside the artifact so it cannot stale the artifact it verifies. See `docs\ci-release-pipeline.md`.
-The pipeline also writes `release-docs-freshness-manifest.json` before hard-mode probes and release policy checks. That manifest proves the release pipeline step index, README, CI release docs, architecture summary, roadmap, core artifact names, source files, and source-manifest lists are still aligned with the current `Invoke-AITestPilotReleasePipeline.ps1` chain.
-To rerun the quick first-testable artifact check manually:
+The pipeline produces a stable artifact bundle under:
+
+```text
+artifacts/ai-testpilot-release/latest
+```
+
+Repository workflows are provided for:
+
+- GitHub Actions on a self-hosted Windows runner with Unity 2021.3.
+- Azure Pipelines on a self-hosted Windows pool with Unity 2021.3.
+
+Optional hard-mode switches can require a production replay driver, production Lua patch evidence, and a real live-model smoke test. The default package pipeline deliberately does not claim that those host-project integrations already exist.
+
+## Repository Layout
+
+```text
+AITestPilot/
+├── src/Kibernet.AITestPilot.Core/          # Model-agnostic contracts and workflow logic
+├── tests/Kibernet.AITestPilot.Core.SmokeTests/
+├── unity/com.kibernet.ai-testpilot/        # Unity 2021.3 UPM package
+├── tools/                                  # Validation, evidence, repair, and release scripts
+├── docs/                                   # Architecture and integration documentation
+├── .github/workflows/                      # GitHub Actions release gate
+└── .azure-pipelines/                       # Azure Pipelines release gate
+```
+
+## Project Status
+
+The current release is `0.1.0` and should be treated as early access.
+
+**Ready today:**
+
+- Core and Unity package development
+- Deterministic exploration and offline model-contract validation
+- Bug packaging, knowledge graph persistence, repair-task generation, and guarded retest workflows
+- Package-level CI evidence and release-gate development
+
+**Requires host-project integration:**
+
+- Real login, account, gameplay, reward, and fishing APIs
+- Real model credentials and provider smoke evidence when live decisions are required
+- Real production Lua analysis, patch, retest, and rollback evidence
+- Production repair-agent output against an actual game codebase
+
+See the [Roadmap](docs/roadmap.md) for the implementation boundary and next milestones.
+
+## Contributing
+
+Issues and pull requests are welcome. Contributions should preserve the project's core invariants:
+
+1. Keep model output behind a versioned, validated action contract.
+2. Do not serialize credentials or secret values into logs or evidence.
+3. Distinguish fixture proof from real production evidence.
+4. Add deterministic validation for new behavior.
+5. Keep release-gate failures actionable and machine-readable.
+
+Before opening a pull request, run:
 
 ```powershell
-.\tools\Invoke-AITestPilotFirstTestableReleaseProbe.ps1
-.\tools\Invoke-AITestPilotFirstTestableOperatorDashboard.ps1
-.\tools\Invoke-AITestPilotReleaseEvidenceIndex.ps1 -EvidenceBundleDir .\artifacts\ai-testpilot-release\latest
-.\tools\Invoke-AITestPilotFinalArtifactFreshnessProbe.ps1 -ArtifactDir .\artifacts\ai-testpilot-release\latest
+.\tools\Validate-AITestPilot.ps1
 ```
 
-It writes `first-testable-release-manifest.json`, `first-testable-release.md`, `first-testable-operator-dashboard-manifest.json`, and `first-testable-operator-dashboard.md` into `artifacts\ai-testpilot-release\latest`, validates the PASS pipeline/gate/index state, verifies the owner-facing export zip hash, checks the operator entry points in both the extracted export directory and the zip index, requires the three per-owner mini kit zips plus the merge helper, and keeps the boundary explicit: three external owner areas, nine missing files, eleven blockers, blocked owner sends, pending owner-return status, and no real evidence accepted.
-Production CI that must block until real game APIs are wired can run the same wrapper with `-RequireProductionReplayDriverBound`; in that mode the release gate no longer accepts the sample/unbound package-release boundary.
-The repository also includes `.github\workflows\ai-testpilot-release.yml` for a self-hosted Windows Unity GitHub Actions runner and `.azure-pipelines\ai-testpilot-release.yml` for an Azure Pipelines self-hosted Windows Unity pool. Both expose production-bound driver, production Lua patch evidence directory, live model smoke, external live-smoke evidence directory, and Cursor Agent output controls, run the release pipeline, enforce `pipeline-manifest.json` status, and upload/publish the release evidence artifact. The release pipeline validates those provider workflows through `Invoke-AITestPilotGitHubActionsWorkflowProbe.ps1` and `Invoke-AITestPilotAzurePipelinesWorkflowProbe.ps1`.
+Unity-facing changes should also pass `Validate-UnityPackageImport.ps1` on Unity 2021.3.
 
-For a real model endpoint, use the generic HTTP/JSON `ModelEndpointDecisionClient` in the core library. It posts the goal, snapshot, previous steps, prior fix hints, allowed action list, and action JSON schema to a configured endpoint, validates the returned action before execution, and can write per-step trace files. See `docs\model-endpoint.md`.
-The Unity package also includes a `ModelEndpointSettings` asset and editor entry under `Tools/Kibernet/AI TestPilot/Create Model Endpoint Settings`; sample-scene validation proves the settings asset, offline request contract, and action parser without calling an external provider.
-For OpenAI-compatible or local chat-completions gateways, use `RequestFormat=OpenAICompatibleChatCompletions` or the Unity menu `Tools/Kibernet/AI TestPilot/Create OpenAI-Compatible Model Endpoint Settings`.
+## Documentation
 
-To prove the model endpoint contract and trace path for CI without calling an external model:
-
-```powershell
-.\tools\Invoke-AITestPilotModelEndpointTraceProbe.ps1
-```
-
-The full release pipeline runs this probe before the release gate.
-To generate provider preset diagnostics without making a live network request:
-
-```powershell
-.\tools\Invoke-AITestPilotModelEndpointProviderDiagnostics.ps1
-```
-
-The diagnostics manifest records supported presets for native JSON, OpenAI chat completions, OpenAI-compatible gateways, and local OpenAI-compatible gateways. It never serializes API key values; it records only whether the relevant environment variables are configured.
-To validate provider-specific live-smoke retry tuning and alert routing without calling a provider:
-
-```powershell
-.\tools\Invoke-AITestPilotModelEndpointProviderRetryPolicyProbe.ps1
-```
-
-The retry policy manifest covers the provider presets and live failure categories with provider-specific retry counts, backoff ceilings, escalation owners, alert routes, and recommended production CI live-smoke retry arguments. This is policy evidence; a real live endpoint still requires `Invoke-AITestPilotLiveModelEndpointSmoke.ps1 -RequireLive`.
-
-To generate a host-project live model endpoint configuration template and prove the static intake contract without serializing secrets or calling a provider:
-
-```powershell
-.\tools\New-AITestPilotLiveModelEndpointConfigKit.ps1
-.\tools\Invoke-AITestPilotLiveModelEndpointConfigIntake.ps1 -ConfigDir "path\to\live-model-config"
-.\tools\Invoke-AITestPilotLiveModelEndpointConfigKitProbe.ps1
-```
-
-The kit writes `live-model-endpoint-config.json`, schema guidance, and a live-smoke runbook. The release pipeline runs the kit probe, which stores a pending template in release evidence, runs an isolated accepted fixture through config intake, and proves a pending repo-external config is read and blocked under hard configuration mode. This is static configuration evidence only: it records `secretsSerialized=false`, `liveSmokeExecuted=false`, and `productionLiveEndpointAccessProven=false`; a real endpoint still requires `Invoke-AITestPilotLiveModelEndpointSmoke.ps1 -RequireLive`.
-
-To intake live smoke evidence exported by a host project:
-
-```powershell
-.\tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceIntake.ps1 -SmokeEvidenceDir "path\to\live-smoke-evidence" -RequireLiveModelEndpointSmoke -PromoteToCanonical
-.\tools\Invoke-AITestPilotLiveModelEndpointExternalSmokeIntakeProbe.ps1
-```
-
-The intake expects `live-model-endpoint-smoke-manifest.json` plus `live-model-endpoint-decision-trace.json` with a real `status=PASS` live HTTP request, validated action response, action schema evidence, and trace payload. Production readiness depends on direct live-provider provenance in the smoke manifest: `fixtureOnly=false`, `contractFixtureMode=false`, `realProviderAccessProven=true`, `liveSmokeExecuted=true`, `productionLiveEndpointAccessProven=true`, `evidenceProvenance=direct_live_http_endpoint_pass`, `endpointMode=live_http_endpoint`, `clientType=ModelEndpointDecisionClient`, configured endpoint/API-key/model evidence, `requestFormat`, `attemptCount`, validated request/response contract fields, and a PASS trace with request and response JSON. `-PromoteToCanonical` copies accepted evidence into the canonical release-gate filenames so production CI can satisfy `-RequireLiveModelEndpointSmoke` from a host-project evidence directory. Contract fixture promotion is permitted only inside contract-mode probes and bundles; it does not prove production live endpoint/provider access. The release pipeline always runs the external smoke intake probe, which generates a SKIPPED fixture outside the repository and proves hard live-smoke mode rejects it.
-
-To prove the accepted live-smoke evidence contract without promoting fixture provider access:
-
-```powershell
-.\tools\Invoke-AITestPilotLiveModelEndpointSmokeEvidenceContractProbe.ps1
-```
-
-That probe generates a PASS-shaped host-project smoke bundle outside the repository, runs the same intake path with `-RequireLiveModelEndpointSmoke -PromoteToCanonical` in an isolated contract-mode bundle, and records that canonical smoke and trace evidence can be accepted by the contract without claiming production provider access. The promoted files remain fixture evidence only; the outer probe records `releasePipelineUsesFixture=false`, `realProductionLiveEndpointAccessProven=false`, and `realLiveSmokeExecuted=false`, while the fixture manifest records `fixtureOnly=true` and `realProviderAccessProven=false`.
-
-To prove Lua static analysis and patch-plan evidence for replay repair candidates:
-
-```powershell
-.\tools\Invoke-AITestPilotLuaStaticAnalysisProbe.ps1
-```
-
-The Lua static analyzer scans deterministic Lua fixtures for unguarded field access, global writes, dynamic `require`, and unprotected game API calls. It writes `lua-static-analysis-manifest.json`, a JSON/Markdown report, a patch-plan Markdown artifact, and fixture files into release evidence. The default probe is a package-side contract and explicitly records that real production Lua has not been analyzed yet.
-
-To prove deterministic Lua auto-patch application in a sandbox:
-
-```powershell
-.\tools\Invoke-AITestPilotLuaAutoPatchSandboxProbe.ps1
-```
-
-That sandbox probe applies the generated Lua patch operations to fixture copies, writes `lua-auto-patch-sandbox-manifest.json`, before/after analysis reports, operation JSON, a patch artifact, and patched Lua copies. The release gate requires the pre-patch findings to be present, all operations applied, post-patch findings cleared, and `mainRepositoryMutated=false` / `realProductionLuaPatched=false`.
-
-To record production Lua patch readiness without claiming the sample fixture is production code:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionLuaPatchReadiness.ps1
-```
-
-That readiness check consumes the Lua static-analysis and auto-patch sandbox evidence, then records whether a real production Lua patch evidence bundle has been provided. The default package path writes `production-lua-patch-readiness-manifest.json` with explicit blockers such as `real_production_lua_bundle_missing`, while keeping package release separate. To prove the hard production mode blocks that sample/no-production boundary:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionLuaPatchBoundFailureProbe.ps1
-```
-
-To generate the host-project evidence template and prove the accepted evidence contract without promoting fixture data as production:
-
-```powershell
-.\tools\New-AITestPilotProductionLuaPatchEvidenceKit.ps1
-.\tools\Invoke-AITestPilotProductionLuaPatchEvidenceKitProbe.ps1
-```
-
-The kit writes `production-lua-patch-evidence.json`, schema guidance, retest and rollback templates. The release pipeline runs the kit probe, which keeps the generated template pending while using an isolated accepted fixture only to prove `Invoke-AITestPilotProductionLuaPatchReadiness.ps1` accepts a complete evidence contract. The probe records `releasePipelineUsesFixture=false` and `realProductionLuaPatchEvidenceAccepted=false`.
-
-The default pipeline also proves repo-external production Lua evidence intake with:
-
-```powershell
-.\tools\Invoke-AITestPilotProductionLuaPatchExternalBundleIntakeProbe.ps1
-```
-
-That probe generates a pending evidence template under the system temp directory, copies the Lua readiness inputs beside it, runs readiness with `-RequireProductionLuaPatched`, and expects the command to fail while proving the external `production-lua-patch-evidence.json` was read and copied. This closes the path boundary without accepting incomplete template evidence as production.
-
-Production CI can require real production Lua analysis, patch, validation, retest, and rollback evidence through:
-
-```powershell
-.\tools\Invoke-AITestPilotReleasePipeline.ps1 -ProductionLuaEvidenceDir "path\to\production-lua-evidence" -RequireProductionLuaPatched
-```
-
-To prove live endpoint failures are classified before hitting a real provider:
-
-```powershell
-.\tools\Invoke-AITestPilotLiveModelEndpointFailureProbe.ps1
-```
-
-The failure probe uses a deterministic HTTP 401 response, expects `failureCategory=auth`, and writes `live-model-endpoint-failure-probe-manifest.json` plus a failed decision trace into release evidence.
-Failure manifests also include `failureRemediation` and `failurePolicy`, so CI artifacts point to concrete next steps and whether the failure should be retried or escalated to a configuration, network, quota, gateway, or model-owner path.
-For explicit live endpoint validation, set `AITESTPILOT_LIVE_MODEL_ENDPOINT`, `AI_TESTPILOT_MODEL_API_KEY`, and `AITESTPILOT_LIVE_MODEL`, then run:
-
-```powershell
-.\tools\Invoke-AITestPilotLiveModelEndpointSmoke.ps1 -RequireLive
-```
-
-Production CI can require that same live check through `.\tools\Invoke-AITestPilotReleasePipeline.ps1 -RequireLiveModelEndpointSmoke`.
-When a configured live smoke fails with a retryable `failurePolicy`, the wrapper retries within `-MaxPolicyRetries` and caps waits with `-MaxRetryBackoffSeconds`. The final manifest records `retryPolicyExecuted`, `attemptCount`, and per-attempt status so release artifacts prove whether retry policy actually ran.
-
-## Unity Package Install
-
-In a Unity project, add the package by local path:
-
-```json
-"com.kibernet.ai-testpilot": "file:E:/code/kibernet/AITestPilot/unity/com.kibernet.ai-testpilot"
-```
-
-Then:
-
-1. Add `AutomationId` components to UI objects that should be visible to the AI.
-2. Open `Tools/Kibernet/AI TestPilot`.
-3. Capture snapshots, export snapshot JSON, or generate `bug_fix.md` for Cursor.
-4. Add `DecisionLoopRunner` to run the deterministic local exploration loop.
-
-## Current Boundary
-
-Implemented now:
-
-- Snapshot, UI, game-state, and log DTOs.
-- Whitelisted actions: `click`, `wait`, `prepare_account`, `login`, `enter_scene`, `close_popup`, `claim_reward`, `play_fishing`, `finish`.
-- Bug detection, bug package creation from logs, and persistent bug package JSON/Markdown evidence.
-- Bug knowledge graph fix suggestion plus persistent graph JSON/Markdown evidence with module and failure-type risk ranking.
-- Release gate abstraction.
-- Unity SDK adapter and editor bridge.
-- Unity batch validation for a generated sample scene: snapshot capture, rule-based click, action execution, bug packaging, and graph fix reuse.
-- Unity batch validation for `DecisionLoopRunner` multi-step execution with max-step boundary evidence.
-- Snapshot JSON schema regression check for the AI model input contract.
-- Persistent report models for AI runs, bug retests, and release evidence.
-- Structured repair task generation for Cursor or another fixing agent.
-- Cursor-ready repair-agent handoff JSON/Markdown with required context files and retest command.
-- Repair-agent run tracking JSON/Markdown with explicit external-agent boundary and expected patch output slots.
-- Repair-agent patch output import manifest for patch and summary artifacts, with deterministic sample validation in CI.
-- Repair-agent external completion provenance guard and negative probe proving pending runs cannot be promoted by patch files alone.
-- Generic external repair-agent patch import probe proving real external patch import is not tied to the deterministic sample null-guard snippet.
-- Source snapshot apply/validate/rollback probe proving verified external patches can apply to a clean candidate made from the current source tree, pass repo validation, and roll back newly added files.
-- External repair-agent task output directory intake acceptance for the main worktree apply/retest/rollback path.
-- Repair-agent patch result analysis connecting prior fix hints, accepted external output, post-apply retest, rollback, and knowledge graph outcome.
-- Repair-agent patch result history aggregating multi-bug outcomes with module, failure-type, retest, rollback, and production-output boundary evidence.
-- Optional headless Cursor Agent external output generation, with import/preflight evidence and no repository mutation before acceptance.
-- Cursor Agent external output binding guard proving stale optional producer evidence cannot be treated as the accepted output unless task context and file hashes match.
-- External repair-agent patch preflight manifest with target-path safety checks and a negative path-traversal failure probe.
-- Repository patch apply guard manifest with explicit apply switch, clean-worktree, external-agent source, and rollback-plan evidence.
-- Clean temporary repository apply/rollback probe proving the external-agent apply path and rollback patch mechanics without mutating the main repository.
-- Clean temporary repository apply/retest/rollback probe proving post-apply retest runs before rollback without mutating the main repository.
-- Repair-agent patch apply/retest manifest with sandbox patch application, explicit `repositoryPatchApplied=false`, and post-patch retest evidence.
-- Targeted Unity batch retest from a repair-task JSON.
-- Runtime replay adapter registry and configurable replay profile for game-specific action playback.
-- Runtime `IGameActionReplayDriver` contract for account setup, login, scene entry, activity reward, and fishing flows.
-- Runtime game replay driver registry and batch retest driver type selection.
-- Hooks-based production driver adapter and copyable integration template.
-- Production replay integration plan asset and release-evidence checklist for real game driver handoff.
-- Production replay integration contract probe for `TEMPLATE_READY`, invalid flip, and `BOUND` checklist states.
-- Production driver binding kit generator and release-gated probe for host-project production replay driver starter files.
-- Driver capability/configuration descriptor recorded in repair retest evidence.
-- Negative replay-driver failure probe with driver, handler, action, target, and step diagnostics.
-- Production replay driver readiness manifest separating package release readiness from real-project driver binding readiness.
-- Production driver evidence intake manifest for accepting real production-bound bundles or proving sample/unbound bundles are blocked.
-- Production driver evidence contract probe proving an isolated BOUND fixture can pass intake without being promoted as real production evidence.
-- Production driver external bundle intake probe proving standalone repo-external evidence directories can be inspected without accepting sample/unbound evidence.
-- Production-bound replay driver failure probe proving sample/unbound evidence fails when real production binding is required.
-- Repo-side release gate that blocks missing driver descriptor, missing negative probe, failed retest, or missing evidence files.
-- CI release pipeline wrapper with stable artifact output under `artifacts\ai-testpilot-release\latest`.
-- GitHub Actions release workflow for self-hosted Windows Unity runners, with release-gated workflow probe and evidence artifact upload.
-- Azure Pipelines release workflow for self-hosted Windows Unity pools, with release-gated workflow probe and evidence artifact publishing.
-- Provider-specific build, smoke test, and vision evidence checks for GitHub Actions and Azure Pipelines, with release-gated quality probe evidence.
-- Production handoff package that consolidates host-project production driver, Lua, live-model, and CI hard-mode next steps without promoting fixture evidence, with generated-content quality checks, a blocker-resolution map, per-owner action packets, a returned-evidence inbox with a bundled/direct-inbox bridge wrapper, a compact owner-facing handoff export zip that includes the fillable owner response bundle kit, source-to-export SHA256 proof for every kit file, `operator-actions\NEXT-STEPS.md`, canonical owner-return status report/probe, canonical operator action queue from the current remaining-work snapshot, owner route map proof, and separate pending/post-dispatch probe proof after final refresh, zip entry/hash index proof, item-level owner response bundle paths plus owner-return-status-before-semantic-preflight-before-auto-acceptance commands with `-RequireAllEvidence`, an owner-level evidence collection status report, owner packet dispatch receipt intake proof, owner packet real receipt guard proof, a machine-readable external evidence gap analysis, a production handoff owner route map that joins owner packet/contact/send/bundle/required-files/owner-return-status/preflight/acceptance/hard-validation links, a partial/malformed returned-bundle rejection matrix, returned-evidence semantic preflight proof for complete owner response bundle zip, partial zip, semantic-bad zip, arbitrary single top-level wrapper zip, extra-payload owner bundle, and nested-payload owner bundle zip `OwnerResponseBundleZipPath` cases, an owner dispatch queue with email drafts, an owner contact roster readiness report, progress-notification send-helper auth-status parsing proof, fake-CLI two-stage confirmation proof, a runnable external-evidence preflight script, a stable repo-side external evidence acceptance fallback delegated by auto acceptance, accepted-fixture contract probes, and missing/partial evidence failure probes for owner-facing action plans.
-- Production hard-mode failure probe proving combined driver, Lua, and live-model hard switches block the current sample or missing-evidence state.
-- Production hard-mode success contract probe proving the combined hard-mode path passes with complete accepted fixture evidence in an isolated bundle while preserving the default real-evidence boundary.
-- Release-gated machine-readable release evidence index for CI, portal handoff, and audit consumers, with 133 semantic field checks, a source manifest SHA256 hash set, and a six-scenario field coverage probe that protects the latest bundle from pollution while preserving no-mail, no-real-host-evidence, and no-fixture-promotion boundaries.
-- Release-gated Cursor Agent external output binding probe that keeps optional headless Cursor Agent evidence tied to the current accepted external-output directory before the release gate runs.
-- Release-gated risk policy manifest with release risk policy source script SHA256 binding that blocks failed AI exploration, unresolved high-risk graph nodes, missing driver evidence, missing production Lua evidence, missing live-smoke policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure/success contract evidence while preserving explicit package-release boundaries.
-- Generic HTTP/JSON model endpoint decision client with action schema validation and per-step trace artifacts.
-- Model endpoint trace probe included in release evidence and enforced by the repo-side release gate.
-- Unity `ModelEndpointSettings` asset, editor creation flow, request-contract builder, response parser, and batch evidence.
-- Prior fix hints included in model endpoint decision requests and release-gate evidence.
-- Optional live model endpoint smoke with release-gate enforcement when explicitly required.
-- OpenAI-compatible chat-completions request wrapper for model gateways that do not accept the native AI TestPilot JSON contract directly.
-- Model endpoint provider preset diagnostics for native, OpenAI, OpenAI-compatible, and local OpenAI-compatible gateways.
-- Deterministic live model endpoint failure probe with auth failure classification and trace evidence.
-- Live model endpoint failure remediation hints for auth, rate limit, request/endpoint, provider outage, timeout, network, empty response, response contract, and configuration failures.
-- Live model endpoint retry/escalation policy in failure evidence.
-- Policy-driven live model endpoint retry execution with per-attempt evidence.
-- Provider-specific live-smoke retry tuning and alert routing manifest for native, OpenAI, OpenAI-compatible, and local gateways.
-- Live model endpoint configuration kit generator, static config intake, and release-gated probe proving host-project endpoint configs can be validated while secrets and real provider access remain outside repo evidence.
-- Live model endpoint smoke evidence intake plus release-gated repo-external SKIPPED evidence rejection for host-project live-smoke handoff.
-- Live model endpoint smoke evidence accepted-contract probe proving PASS-shaped host-project evidence can be accepted and promoted only inside an isolated contract-mode bundle, without claiming real endpoint/provider access.
-- Core Lua static analyzer plus release-gated Lua static analysis manifest for unguarded field access, global writes, dynamic `require`, unprotected game API calls, safe-fixture checks, and patch-plan evidence.
-- Release-gated Lua auto-patch sandbox evidence proving deterministic fixture patches clear findings without mutating production Lua.
-- Production Lua patch readiness manifest and hard-bound failure probe separating sandbox-proven patches from real production Lua analysis, patch, retest, and rollback evidence.
-- Production Lua patch evidence kit generator plus release-gated contract probe for host-project Lua evidence templates.
-- Production Lua external bundle intake probe proving repo-external evidence directories are inspected while incomplete template evidence is blocked.
-- Sample business replay path covering account setup, login, `enter_scene`, activity reward, and `play_fishing`.
-- Persisted replay profile asset plus JSON export for CI evidence.
-- Replay profile JSON import back into an editable Unity `ActionReplayProfile` asset.
-
-Not implemented yet:
-
-- Cloud/local cluster orchestration.
-- Real live model endpoint credentials, provider access, and required live-smoke evidence for the selected deployment, with direct smoke-manifest provenance fields such as `realProviderAccessProven=true`, `liveSmokeExecuted=true`, `productionLiveEndpointAccessProven=true`, and `evidenceProvenance=direct_live_http_endpoint_pass`.
-- Real production Lua patch execution with host-project analysis, retest, rollback, and evidence export.
-- Prefab mutation and retest orchestration across Unity editor restarts.
-- Further CI providers beyond GitHub Actions and Azure Pipelines if required.
-- Real game-project driver implementation for production login, account preparation, activity, fishing, and other game systems.
+- [Architecture](docs/architecture.md)
+- [Model Endpoint Bridge](docs/model-endpoint.md)
+- [Production Replay Driver Integration](docs/integration/production-driver.md)
+- [CI Release Pipeline](docs/ci-release-pipeline.md)
+- [Roadmap](docs/roadmap.md)
+- [Original Product Specification](Kibernet_AI_TestPilot_FULL_SPEC.md)
 
 ## License
 
-Kibernet AI TestPilot is available under the [MIT License](LICENSE). It may be used, modified, distributed, sublicensed, and sold, including in commercial and closed-source projects, subject to the license terms.
+Kibernet AI TestPilot is released under the [MIT License](LICENSE). Commercial use, modification, distribution, sublicensing, and use in closed-source products are permitted under the license terms.
