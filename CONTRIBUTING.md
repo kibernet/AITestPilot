@@ -39,7 +39,7 @@ This runs:
 
 - `Invoke-AITestPilotQuickStart.ps1` (+ `Invoke-AITestPilotQuickStartChecklist.ps1`)
 - `Invoke-AITestPilotRepairLoop.ps1`
-- Writes `Temp\ci-gate-summary.json` (or `-SummaryPath` destination), reads `Temp\developer-gate-manifest.json` by default (or `-ManifestPath`).
+- Writes `Temp\ci-gate-summary.json` (or `-SummaryPath` / `-OutputPath` destination), reads `Temp\developer-gate-manifest.json` by default (or `-ManifestPath`).
 - Fails by default when status is not PASS.
 
 ## What to include in PR description

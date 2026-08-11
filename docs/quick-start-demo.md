@@ -63,6 +63,8 @@ If you need a custom output path:
 .\tools\Invoke-AITestPilotCiGate.ps1 -SummaryPath Temp\ci-gate-summary.json
 ```
 
+`-OutputPath` is also an alias for `-SummaryPath` here.
+
 If you need a custom manifest location:
 
 ```powershell
