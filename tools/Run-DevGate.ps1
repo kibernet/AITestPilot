@@ -140,6 +140,7 @@ if ($devGateParameters.ContainsKey("RepairLoopEvidenceBundleDir")) {
 $summary = @{
     status = "UNKNOWN"
     quickStartStatus = "UNKNOWN"
+    repairLoopStatus = "UNKNOWN"
     replayProfileSchemaCheckStatus = "NOT_RUN"
     replayProfileSchemaCheckSkipped = $false
     quickStartSkipped = $false

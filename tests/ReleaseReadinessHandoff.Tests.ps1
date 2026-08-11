@@ -2362,3 +2362,139 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($message -match "Output file already exists. Re-run without -NoOverwrite to replace") | Should Be $true
     }
 }
+
+Describe "Developer gate replay profile checks" {
+    $gatewayScript = Join-Path $repoRoot "tools\Invoke-AITestPilotDeveloperGate.ps1"
+    $runDevGateScript = Join-Path $repoRoot "tools\Run-DevGate.ps1"
+    $invalidProfileMissingAdapter = @"
+{
+    "rules": [
+        {
+            "action": "login",
+            "target": "qa_account",
+            "handlerKey": "game.login"
+        }
+    ]
+}
+"@
+
+    $validProfile = @"
+{
+    "adapterId": "profile.test_pass",
+    "rules": [
+        {
+            "action": "prepare_account",
+            "target": "qa_smoke_account",
+            "handlerKey": "game.prepare_account",
+            "successMessage": "Configured profile prepared the QA smoke account.",
+            "allowDefaultFallback": false
+        },
+        {
+            "action": "login",
+            "target": "qa_smoke_account",
+            "handlerKey": "game.login",
+            "successMessage": "Configured profile logged in with the QA smoke account.",
+            "allowDefaultFallback": false
+        },
+        {
+            "action": "enter_scene",
+            "target": "Activity",
+            "handlerKey": "game.enter_scene",
+            "successMessage": "Configured profile entered Activity.",
+            "allowDefaultFallback": false
+        }
+    ]
+}
+"@
+
+    It "marks replay profile schema check as PASS when profile is valid" {
+        $developerGateManifest = Join-Path $repoRoot "Temp\replay-profile-valid-manifest.json"
+        $replayProfile = Join-Path $repoRoot "Temp\replay-profile-valid.json"
+        $runSummaryPath = Join-Path $TestDrive "run-summary-valid.json"
+
+        Set-Content -Path $replayProfile -Value $validProfile -Encoding UTF8
+        & $gatewayScript `
+            -SkipQuickStart `
+            -SkipRepairLoop `
+            -RunReplayProfileSchemaCheck `
+            -ReplayProfileJsonPath $replayProfile `
+            -DeveloperGateManifestPath $developerGateManifest
+
+        $manifest = Get-Content -Raw $developerGateManifest | ConvertFrom-Json
+        $manifest.status | Should Be "PASS"
+
+        $replaySchemaStep = @($manifest.steps | Where-Object { $_.name -eq "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" })
+        $replaySchemaStep.Count | Should Be 1
+        $replaySchemaStep[0].status | Should Be "PASS"
+
+        Remove-Item -Path $replayProfile -ErrorAction SilentlyContinue
+        Remove-Item -Path $developerGateManifest -ErrorAction SilentlyContinue
+        if (Test-Path $runSummaryPath) {
+            Remove-Item -Path $runSummaryPath -ErrorAction SilentlyContinue
+        }
+    }
+
+    It "marks replay profile schema check as FAIL and preserves issue detail in manifest when invalid" {
+        $developerGateManifest = Join-Path $repoRoot "Temp\replay-profile-invalid-manifest.json"
+        $replayProfile = Join-Path $repoRoot "Temp\replay-profile-invalid.json"
+        Set-Content -Path $replayProfile -Value $invalidProfileMissingAdapter -Encoding UTF8
+
+        try {
+            & $gatewayScript `
+                -SkipQuickStart `
+                -SkipRepairLoop `
+                -RunReplayProfileSchemaCheck `
+                -ReplayProfileJsonPath $replayProfile `
+                -DeveloperGateManifestPath $developerGateManifest
+        }
+        catch {
+        }
+
+        $manifest = Get-Content -Raw $developerGateManifest | ConvertFrom-Json
+        $manifest.status | Should Be "PARTIAL_FAIL"
+        $replaySchemaStep = @($manifest.steps | Where-Object { $_.name -eq "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" })
+        $replaySchemaStep.Count | Should Be 1
+        $replaySchemaStep[0].status | Should Be "FAIL"
+        ($replaySchemaStep[0].message -match "REQUIRED_FIELD_MISSING") | Should Be $true
+
+        Remove-Item -Path $replayProfile -ErrorAction SilentlyContinue
+        Remove-Item -Path $developerGateManifest -ErrorAction SilentlyContinue
+    }
+
+    It "Run-DevGate summarizes replay schema validation pass in PR checklist context" {
+        $developerGateManifest = Join-Path $TestDrive "developer-gate-manifest-summary.json"
+        $summaryPath = Join-Path $TestDrive "run-summary.json"
+        $checklistPath = Join-Path $TestDrive "pr-validation-checklist.md"
+        $replayProfile = Join-Path $repoRoot "Temp\replay-profile-summary-valid.json"
+
+        Set-Content -Path $replayProfile -Value $validProfile -Encoding UTF8
+
+        try {
+            & $runDevGateScript `
+                -SkipQuickStart `
+                -SkipRepairLoop `
+                -RunReplayProfileSchemaCheck `
+                -ReplayProfileJsonPath $replayProfile `
+                -DeveloperGateManifestPath $developerGateManifest `
+                -SummaryPath $summaryPath `
+                -GeneratePrChecklist `
+                -PrChecklistPath $checklistPath
+        }
+        catch {
+        }
+
+        $summary = Get-Content -Raw $summaryPath | ConvertFrom-Json
+        $summary.replay_profile_schema_check_status | Should Be "PASS"
+        $summary.developer_gate_status | Should Be "PASS"
+
+        Test-Path $checklistPath | Should Be $true
+        (Get-Content -Raw $checklistPath -ErrorAction SilentlyContinue -Encoding UTF8) | Should Match ([regex]::Escape("- [x] Replay profile schema check: PASS"))
+
+        Remove-Item -Path $replayProfile -ErrorAction SilentlyContinue
+        Remove-Item -Path $summaryPath -ErrorAction SilentlyContinue
+        Remove-Item -Path $checklistPath -ErrorAction SilentlyContinue
+        if (Test-Path $developerGateManifest) {
+            Remove-Item -Path $developerGateManifest -ErrorAction SilentlyContinue
+        }
+    }
+}
