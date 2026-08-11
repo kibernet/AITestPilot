@@ -19,6 +19,12 @@ Kibernet AI TestPilot turns gameplay testing into a controlled engineering loop:
 > 2. paste/attach `Temp\developer-gate-manifest.json` in PR notes
 > 3. explain any skipped steps with reasons in PR description
 
+## 项目介绍（中文）
+
+AI TestPilot 是一个面向 Unity 的“证据优先”游戏质量保障平台。它通过统一状态采集、动作白名单约束、问题封装、修复交接与回放复测，建立从发现缺陷到发布放行的闭环。对研发团队而言，它的价值在于：缩短回归定位时间、提高复现一致性、减少 PR 评审中的口头争议。
+
+项目采用 **MIT 许可证**，更适合需要低门槛协作与商业落地的团队；许可条款见 [LICENSE](LICENSE)。
+
 ## Why AI TestPilot
 
 Game QA automation usually breaks at the boundaries between UI state, gameplay APIs, flaky replay steps, bug reports, repair tools, and CI. AI TestPilot provides one auditable contract across those boundaries.
