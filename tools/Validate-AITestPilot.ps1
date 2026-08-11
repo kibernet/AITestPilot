@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$RunCiGatePathRegression
+    [switch]$RunCiGatePathRegression,
+    [switch]$RunCiGatePathRegressionStrict
 )
 
 Set-StrictMode -Version Latest
@@ -206,7 +207,14 @@ try {
         }
     }
 
-    if ($RunCiGatePathRegression.IsPresent) {
+    if ($RunCiGatePathRegressionStrict.IsPresent) {
+        Write-Host "==> CI gate path regression (strict mode)"
+        & (Join-Path $PSScriptRoot "Test-AITestPilotCiGatePathResolution.ps1") -StrictOutputPathAlias
+        if ($LASTEXITCODE -ne 0) {
+            throw "CI gate path regression check failed"
+        }
+    }
+    elseif ($RunCiGatePathRegression.IsPresent) {
         Write-Host "==> CI gate path regression"
         & (Join-Path $PSScriptRoot "Test-AITestPilotCiGatePathResolution.ps1")
         if ($LASTEXITCODE -ne 0) {

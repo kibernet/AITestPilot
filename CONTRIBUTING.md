@@ -50,6 +50,12 @@ Optionally include path-resolution regression checks in local validation:
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 ```
 
+For stricter alias checks (including conflict validation between `OutputPath` and `SummaryPath`):
+
+```powershell
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+```
+
 For stricter path-alias regression checks:
 
 ```powershell
