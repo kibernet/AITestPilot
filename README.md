@@ -93,6 +93,33 @@ Kibernet AI TestPilot 是一款面向 Unity 的 AI 游戏测试工程化平台�
 3. 运行 `.\tools\Run-DevGate.ps1`，生成开发者门禁摘要。
 4. 将 `Temp\developer-gate-manifest.json` 附在 PR 说明中用于初始评审。
 
+### 最小验收清单（可直接用于里程碑开场）
+
+若以下项无法通过，请先暂停进入下一阶段：
+
+- 本地基础校验通过：`.\tools\Validate-AITestPilot.ps1` 返回非异常。
+- 基础证据文件可落盘：`Temp\developer-gate-manifest.json`、`Temp\dev-gate-summary.json`、`Temp\release-readiness-report.md`。
+- 至少一条缺陷路径生成完整证明链（snapshot、decision trace、bug package、回测片段）。
+- 关键动作仍满足 allowlist/Schema 校验（含未知动作拒绝与异常动作审计记录）。
+- 未接入真实生产 API 的项目，明确标注“fixture-only”，并避免将其作为生产上线证据。
+
+### 常见问题（FAQ）
+
+- **Q：项目是只能用于 Unity 2021.3+ 吗？**
+  A：当前 release 流程围绕 Unity 2021.3+ 验证和打包，建议接入方按此基线启动；低版本需要额外验证。
+
+- **Q：我能直接在生产环境接管全部发布？**
+  A：当前定位是提供可审计的工程化能力；生产上线仍需接入方提供真实玩法 API、模型提供商真实 smoke 证据与 Lua 生产修复链路。
+
+- **Q：模型行为为什么还要被限制？**
+  A：为了防止越权执行与不可解释动作，AI 只在 Schema + Allowlist 与执行器网关内提交流程，所有动作都可回放和追溯。
+
+- **Q：如果 PR 门禁失败该怎么办？**
+  A：优先查看 `Temp\developer-gate-summary.json` 与 `Temp\pr-validation-checklist.md` 的第一轮失败分类，按失败域（预检/证据/发布）对应修正后重跑。
+
+- **Q：我不想每次都手填 PR 说明，能否自动化？**
+  A：可以。优先使用 `-GeneratePrChecklist` 与 `-PrChecklistPath` 生成粘贴块，再配合里程碑注入工具。
+
 ## Why AI TestPilot
 
 Game QA automation usually breaks at the boundaries between UI state, gameplay APIs, flaky replay steps, bug reports, repair tools, and CI. AI TestPilot provides one auditable contract across those boundaries.
