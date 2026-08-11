@@ -125,4 +125,30 @@ Describe "Release readiness handoff scripts" {
         ($resultText -match "Wrote handoff block to:") | Should Be $true
         (Test-Path $nestedOut) | Should Be $true
     }
+
+    It "prevents overwrite even when nested output path exists" {
+        $nestedOut = Join-Path (Join-Path $TestDrive "nested") "artifacts\release\handoff-block.md"
+        if (-not (Test-Path (Split-Path $nestedOut -Parent))) {
+            New-Item -ItemType Directory -Path (Split-Path $nestedOut -Parent) -Force | Out-Null
+        }
+        Set-Content -Path $nestedOut -Encoding UTF8 -Value "keep-me"
+
+        $threw = $false
+        $message = ""
+        try {
+            & $exportScript `
+                -OutputPath $nestedOut `
+                -FailOnWarning `
+                -NoIncludeRecommendedCommands `
+                -NoOverwrite
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+
+        $threw | Should Be $true
+        ($content = Get-Content -Path $nestedOut -Raw -Encoding UTF8).TrimEnd("`r", "`n") | Should Be "keep-me"
+        ($message -match "Output file already exists. Re-run without -NoOverwrite to replace") | Should Be $true
+    }
 }
