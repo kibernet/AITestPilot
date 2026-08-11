@@ -168,6 +168,12 @@ You can also run a local path-resolution regression check (relative/absolute pat
 .\tools\Test-AITestPilotCiGatePathResolution.ps1
 ```
 
+To run strict path-regression assertions (including strict alias conflict checks), use:
+
+```powershell
+.\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias
+```
+
 This command builds the .NET solution, builds the model-endpoint and Lua-analysis probes, runs the dependency-free smoke suite, and validates the Unity package structure.
 
 `Run-DevGate.ps1` also prints a machine-readable summary block that can be copied directly into the PR template, including quick start and repair-loop statuses.

@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$TestOutputRoot = "Temp\ci-gate-path-tests",
+    [switch]$StrictOutputPathAlias,
     [switch]$KeepArtifacts
 )
 
@@ -44,11 +45,42 @@ function Assert-Passed([string]$SummaryPath) {
     }
 }
 
+function Invoke-CiGateWithAliasConflictCheck {
+    param(
+        [hashtable]$InvokeArgs
+    )
+
+    if ($StrictOutputPathAlias.IsPresent -and
+        $InvokeArgs.ContainsKey("OutputPath") -and
+        $InvokeArgs.ContainsKey("SummaryPath")) {
+        throw "Strict alias check failed: passing both OutputPath and SummaryPath is not allowed."
+    }
+}
+
 function Assert-SummaryManifest([string]$SummaryPath, [string]$ExpectedManifestPath) {
     $summary = Get-Content -Raw $SummaryPath | ConvertFrom-Json
     if ($summary.developer_gate_manifest -ne $ExpectedManifestPath) {
         throw "Manifest path mismatch. Expected: '$ExpectedManifestPath', got: '$($summary.developer_gate_manifest)'"
     }
+}
+
+function Assert-CiGateFailure {
+    param(
+        [scriptblock]$Command,
+        [string]$ExpectedMessageContains
+    )
+
+    try {
+        & $Command
+    }
+    catch {
+        if ($_.Exception.Message -notmatch [regex]::Escape($ExpectedMessageContains)) {
+            throw "Expected error containing '$ExpectedMessageContains', got: $($_.Exception.Message)"
+        }
+        Write-Host "PASS negative case: $ExpectedMessageContains"
+        return
+    }
+    throw "Expected command to fail, but it succeeded."
 }
 
 function Run-CiGateCase {
@@ -59,7 +91,8 @@ function Run-CiGateCase {
         [string]$QuickStartOutputDir = "",
         [string]$RepairLoopOutputDir = "",
         [string]$RepairLoopEvidenceBundleDir = "",
-        [switch]$UseOutputAlias
+        [switch]$UseOutputAlias,
+        [switch]$ForceConflict
     )
 
     Write-Host "==> $Name"
@@ -85,6 +118,18 @@ function Run-CiGateCase {
     if ($expectedQuickStartOutputDir) { $invokeArgs["QuickStartOutputDir"] = $QuickStartOutputDir }
     if ($expectedRepairLoopOutputDir) { $invokeArgs["RepairLoopOutputDir"] = $RepairLoopOutputDir }
     if (-not [string]::IsNullOrWhiteSpace($RepairLoopEvidenceBundleDir)) { $invokeArgs["RepairLoopEvidenceBundleDir"] = $RepairLoopEvidenceBundleDir }
+
+    if ($ForceConflict.IsPresent) {
+        $invokeArgs["SummaryPath"] = $SummaryPath
+        $invokeArgs["OutputPath"] = $SummaryPath
+    }
+
+    if ($ForceConflict.IsPresent -and $StrictOutputPathAlias.IsPresent) {
+        Assert-CiGateFailure -Command { Invoke-CiGateWithAliasConflictCheck -InvokeArgs $invokeArgs } -ExpectedMessageContains "Strict alias check failed: passing both OutputPath and SummaryPath is not allowed."
+        return
+    }
+
+    Invoke-CiGateWithAliasConflictCheck -InvokeArgs $invokeArgs
 
     & $ciGateScript @invokeArgs
     if ($LASTEXITCODE -ne 0) {
@@ -129,14 +174,28 @@ $testCases = @(
         SummaryPath = Join-Path $repoRoot "Temp\ci-gate-path-tests\alias\summary out.json"
         ManifestPath = Join-Path $repoRoot "Temp\ci-gate-path-tests\alias\manifest out.json"
         UseOutputAlias = $true
+    },
+    @{
+        Name = "Strict alias conflict rejection"
+        SummaryPath = Join-Path $repoRoot "Temp\ci-gate-path-tests\strict-conflict\summary out.json"
+        ManifestPath = Join-Path $repoRoot "Temp\ci-gate-path-tests\strict-conflict\manifest out.json"
+        ForceConflict = $true
     }
 )
 
 $results = @()
 try {
     foreach ($case in $testCases) {
+        if ($case.ContainsKey("ForceConflict") -and $case.ForceConflict -and -not $StrictOutputPathAlias.IsPresent) {
+            Write-Host "==> $($case.Name) (skipped: requires -StrictOutputPathAlias)"
+            continue
+        }
+
         if ($case.ContainsKey("UseOutputAlias") -and $case.UseOutputAlias) {
             Run-CiGateCase -Name $case.Name -SummaryPath $case.SummaryPath -ManifestPath $case.ManifestPath -UseOutputAlias
+        }
+        elseif ($case.ContainsKey("ForceConflict") -and $case.ForceConflict) {
+            Run-CiGateCase -Name $case.Name -SummaryPath $case.SummaryPath -ManifestPath $case.ManifestPath -ForceConflict
         }
         else {
             Run-CiGateCase -Name $case.Name -SummaryPath $case.SummaryPath -ManifestPath $case.ManifestPath -QuickStartOutputDir $case.QuickStartOutputDir -RepairLoopOutputDir $case.RepairLoopOutputDir -RepairLoopEvidenceBundleDir $case.RepairLoopEvidenceBundleDir
