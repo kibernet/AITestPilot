@@ -19,32 +19,44 @@ Kibernet AI TestPilot turns gameplay testing into a controlled engineering loop:
 > 2. paste/attach `Temp\developer-gate-manifest.json` in PR notes
 > 3. explain any skipped steps with reasons in PR description
 
-## 项目介绍（中文）
+## 项目总览（定位与价值）
 
-AI TestPilot 是面向 Unity 的“证据优先”游戏质量保障平台。它把“发现-复现-修复-回归”构建为一套可审计工作流：统一采集游戏状态与上下文证据、通过 allowlist 与版本化动作 schema 控制执行边界、自动封装问题包并驱动修复交接，最终将结果回流到可复测、可回放、可发布的证据链。
+AI TestPilot 是一个面向 **Unity 游戏 AI 测试**的证据驱动工程框架。它把“执行动作、检测缺陷、修复闭环、发布放行”压缩成一条可重复审计的流程链：
 
-### 适用价值（为什么选它）
+- 快速捕获 `Snapshot / UI / 日志`，再交给规则化决策或模型决策器；
+- 所有动作都受 `Action Schema + Allowlist` 约束；
+- 缺陷被结构化打包成可追溯工单，并支持修复后重放验证；
+- 由脚本化证据和发布门控决定是否可交付。
 
-- 缩短回归定位时间：缺陷一旦发生可快速关联到具体日志、状态、截图与重放片段。
-- 提高复现一致性：每条失败都生成可重放场景和标准化上下文，不再依赖口头描述。
-- 降低 PR 风险：本地门禁与发布证据链可作为评审的硬约束，减少“看起来过了但没验证”的问题。
-- 加速团队协同：测试、开发与修复流均使用统一 JSON/Markdown 产物，便于交接和追责。
+### 适用场景
 
-### 项目许可
+- 自动化回归测试与冒烟验证：在可控边界内验证关键流程，不再依赖“肉眼抽查 + 手工结论”。
+- 漏洞与缺陷修复协作：修复任务、patch 预检、重跑与回滚证据全部留痕。
+- 游戏业务交付：把可复现测试证据挂接到 CI、项目管理与发布流程。
 
-本项目采用 **MIT License**，支持大多数商业与合作场景；完整条款见 [LICENSE](LICENSE)。
+### 项目定位
 
-### 行业落地适配（典型场景）
+- **核心范围**：Unity 集成、决策环、缺陷编排、证据产物、发布门控。
+- **交付边界**：生产环境接入（真实账号、真实业务 API、真实模型入口）由宿主项目承担，并在 release 管道中做明确校验。
+- **行业价值**：让“AI 可玩性测试”从“体验工程”升级为“工程可验证能力”，适用于对质量成本敏感的手游、轻度重度互动游戏，以及需要高频灰度的运营项目。
 
-- **轻量级 QA 团队**：在现有 Unity 回归流程上补充 AI 辅助定位，减少重复手工执行、提升跨项目可复用性。
-- **中型发布组织**：将“测试 - 修复 - 回归”链路标准化为可审计的证据资产，支持并行修复与复测闭环。
-- **高频迭代项目**：通过预定义动作边界和统一证据格式，降低每次大版本上新时的回归风险。
+### 项目能力
 
-### 对业务有价值的交付物
+- **可控探索**：模型决策前置于规则/allowlist，避免越权动作执行。
+- **稳定回放**：以快照与执行轨迹为核心，支持修复后重测。
+- **安全修复闭环**：修复任务、补丁预检、主干打回、重测与回滚证据统一管理。
+- **发布可交付**：Release pipeline 与证据索引将“通过”从口头陈述变为可核验产物。
 
-- **证据包**：`Temp\developer-gate-manifest.json`、`Temp\dev-gate-summary.json`、`Temp\ci-gate-summary.json`
-- **可复测闭环**：修复任务、补丁前置校验、重测与回滚结果，全部留痕。
-- **风险可控**：通过 allowlist 与 schema 限制执行行为，避免“模型幻觉”引入不可控动作。
+### 为什么要用行业标准方式组织测试证据
+
+- 自动化并不等于合格，关键在于证据是否可审计、可复现、可追责。
+- 本项目强调三层证据：**fixture 证据**、**样例/演示证据**、**真实发布证据**。
+- 审核者、运营和开发可以用同一套证据模板对齐理解，避免口径漂移。
+
+### 项目许可证与目标
+
+- 开源协议：**MIT License**（详见 [LICENSE](LICENSE)）
+- 当前目标：将框架能力沉淀为可复用、可交接、可量化的发布流程资产，不要求替代宿主项目业务逻辑。
 
 ## Why AI TestPilot
 
@@ -277,34 +289,36 @@ Then:
 
 The command imports the package into a temporary Unity project, compiles Runtime and Editor assemblies, runs a generated sample scene, exercises the decision loop and bug flow, and writes release evidence under `Temp/release-evidence/latest`.
 
-## 生产落地建议（7天/30天）
+## 落地与验收（7/30天）
 
-以下是一个可直接对业务团队执行的落地节奏，可根据团队规模做等比缩放：
+下面给出一条面向团队可直接执行的推进节奏，可用于正式评审会汇报：
 
-- **第 1-3 天（试点接入）**
-  - 本地跑通：`.\tools\Validate-AITestPilot.ps1`、`.\tools\Invoke-AITestPilotLocalPreflight.ps1`
-  - 建立项目级证据目录策略：约定每次验证结果保存在 `Temp\` 下的统一路径
-  - 与 Unity 团队确认 `AutomationId` 最低覆盖范围（主入口/关键状态切换/关键结果页）
+- **第1-3天：项目接入与基础验证**
+  - 执行 ` .\tools\Validate-AITestPilot.ps1` 或 ` .\tools\Invoke-AITestPilotLocalPreflight.ps1`。
+  - 建立固定输出目录（默认 `Temp\`）并确保 Manifest/Summary 可落盘。
+  - 初始化 Unity 侧基础接入：补齐关键 `AutomationId`、验证样例流程与快照产物。
 
-- **第 4-7 天（PR 门禁与团队规范）**
-  - 在 PR 模板中接入门禁产物检查（`Temp\developer-gate-manifest.json`、`Temp\dev-gate-summary.json`）
-  - 在提交人手册中固定：失败修复必须附带重现路径与 evidence links
-  - 对接一个基础生产 replay driver 的最小实现（账号登录/场景进入/奖励流程）
+- **第4-7天：PR 与发布流程对齐**
+  - 按 PR 模板要求上报 `Temp\developer-gate-manifest.json`、`Temp\dev-gate-summary.json`。
+  - 明确失败处理策略与跳过原因，避免“模糊跳过”。
+  - 完成核心 replay 场景对接（账号登录、场景进入、结算/领奖等基础动作）。
 
-- **第 8-30 天（持续化交付）**
-  - 为关键场景启用 `Run-CiGatePathRegression` 与 `Run-CiGatePathRegressionStrict` 的定期回归策略
-  - 将修复任务接入代码修复流程，要求“补丁前置校验 + 重测 + 回滚证据”三段式闭环
-  - 用 `Invoke-AITestPilotReleasePipeline.ps1` 形成每个里程碑的发布前发布证据包
+- **第8-30天：稳定交付与发布能力化**
+  - 完成路径回归检查链路：`Run-CiGatePathRegression` 与 `Run-CiGatePathRegressionStrict`。
+  - 形成风险矩阵（失败类型、复发率、修复周期）并逐步收敛。
+  - 跑完整发布流水线：`Invoke-AITestPilotReleasePipeline.ps1`，建立可追溯 release 证据。
 
-### 落地验收清单（示例）
+### 落地验收清单
 
-- `Temp\developer-gate-manifest.json`：门禁基础产物必须可复现、可比对
-- `Temp\dev-gate-summary.json`：包含 quick-start 与 repair loop 的成功/失败状态
-- `Temp\ci-gate-summary.json`：关键路径回归与 alias 冲突场景可回归
-- `Temp\release-evidence\latest\`：发布包证据完整（至少包含快照、补丁、回归与回滚索引）
-- `artifacts\ai-testpilot-release\latest\`：发布线下归档产物存在并通过团队复核
+- `Temp\developer-gate-manifest.json`：开发者门禁结果
+- `Temp\dev-gate-summary.json`：门禁汇总（含 quick-start / repair-loop）
+- `Temp\ci-gate-summary.json`：CI 风格门禁结果
+- `Temp\release-evidence\latest\`：发布证据包
+- `artifacts\ai-testpilot-release\latest\`：发布构建产物
 
-该流程的可复用 PR 与上线模板请见：`.\docs\rollout-and-release-checklist.md`。发布前最终复核模板见：`.\docs\release-gate-review-checklist.md`。
+用于正式发布 PR 的完整说明请参考：
+- [Rollout & Release Checklist](docs/rollout-and-release-checklist.md)
+- [Release Gate Review Checklist](docs/release-gate-review-checklist.md)
 
 ## Model Endpoint Integration
 
@@ -376,13 +390,13 @@ Optional hard-mode switches can require a production replay driver, production L
 
 ```text
 AITestPilot/
-├── src/Kibernet.AITestPilot.Core/          # Model-agnostic contracts and workflow logic
-├── tests/Kibernet.AITestPilot.Core.SmokeTests/
-├── unity/com.kibernet.ai-testpilot/        # Unity 2021.3 UPM package
-├── tools/                                  # Validation, evidence, repair, and release scripts
-├── docs/                                   # Architecture and integration documentation
-├── .github/workflows/                      # GitHub Actions release gate
-└── .azure-pipelines/                       # Azure Pipelines release gate
+├─ src/Kibernet.AITestPilot.Core/          # Model-agnostic contracts and workflow logic
+├─ tests/Kibernet.AITestPilot.Core.SmokeTests/
+├─ unity/com.kibernet.ai-testpilot/        # Unity 2021.3 UPM package
+├─ tools/                                  # Validation, evidence, repair, and release scripts
+├─ docs/                                   # Architecture and integration documentation
+├─ .github/workflows/                      # GitHub Actions release gate
+└─ .azure-pipelines/                       # Azure Pipelines release gate
 ```
 
 ## Project Status
