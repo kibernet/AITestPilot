@@ -62,6 +62,12 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 function Resolve-PathUnderRepo {
     param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return ""
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return [System.IO.Path]::GetFullPath($Path)
+    }
     return [System.IO.Path]::GetFullPath((Join-Path $repoRoot $Path))
 }
 

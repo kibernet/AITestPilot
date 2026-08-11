@@ -7,12 +7,16 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $scriptsDir = Join-Path $repoRoot "tools"
 $setScript = Join-Path $scriptsDir "Set-AITestPilotReleaseReadinessMilestoneNotes.ps1"
 $exportScript = Join-Path $scriptsDir "Export-AITestPilotReleaseReadinessHandoff.ps1"
+$reportScript = Join-Path $scriptsDir "Invoke-AITestPilotReleaseReadinessReport.ps1"
 
 if (-not (Test-Path $setScript)) {
     throw "Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 not found at $setScript"
 }
 if (-not (Test-Path $exportScript)) {
     throw "Export-AITestPilotReleaseReadinessHandoff.ps1 not found at $exportScript"
+}
+if (-not (Test-Path $reportScript)) {
+    throw "Invoke-AITestPilotReleaseReadinessReport.ps1 not found at $reportScript"
 }
 
 function Assert-ReportContainsRecommendedCommandSection {
@@ -68,6 +72,62 @@ function Assert-SnippetOutputHasNoPassedChecks {
     $snippetText = Get-Content -Path $SnippetPath -Raw
     ($snippetText -match "### Checks") | Should Be $true
     ($snippetText -match "- \[x\]") | Should Be $false
+}
+
+function New-ReleaseReadinessReportFixture {
+    param([string]$BasePath)
+
+    if (-not (Test-Path $BasePath)) {
+        New-Item -ItemType Directory -Path $BasePath | Out-Null
+    }
+
+    $summaryPath = Join-Path $BasePath "release-preflight-summary.json"
+    $manifestPath = Join-Path $BasePath "release-preflight-manifest.json"
+    $localArtifactDir = Join-Path $BasePath "local-artifacts"
+    $releaseEvidenceDir = Join-Path $BasePath "release-evidence"
+    $localEvidencePath = Join-Path $releaseEvidenceDir "release-docs-freshness-manifest.json"
+    $localEvidenceDriftPath = Join-Path $releaseEvidenceDir "release-docs-freshness-drift-manifest.json"
+    $ciGateSummaryPath = Join-Path $BasePath "ci-gate-summary.json"
+    $ciGatePathTestsPath = Join-Path $BasePath "ci-gate-path-tests\relative\dev manifest.json"
+
+    New-Item -ItemType Directory -Path $localArtifactDir -Force | Out-Null
+    New-Item -ItemType Directory -Path $releaseEvidenceDir -Force | Out-Null
+    New-Item -ItemType Directory -Path (Split-Path $ciGatePathTestsPath -Parent) -Force | Out-Null
+
+    [pscustomobject]@{
+        status = "PASS"
+        steps = @(
+            @{ name = "Run-DevGate" }
+            @{ name = "Validate-AITestPilot" }
+        )
+    } | ConvertTo-Json -Depth 10 | Set-Content -Path $summaryPath -Encoding UTF8
+
+    [pscustomobject]@{
+        status = "PASS"
+        schemaVersion = "ai-testpilot.release_preflight.v1"
+    } | ConvertTo-Json -Depth 10 | Set-Content -Path $manifestPath -Encoding UTF8
+
+    @{} | ConvertTo-Json | Set-Content -Path (Join-Path $localArtifactDir "quick-start-manifest.json") -Encoding UTF8
+    @{} | ConvertTo-Json | Set-Content -Path (Join-Path $localArtifactDir "developer-gate-manifest.json") -Encoding UTF8
+    @{} | ConvertTo-Json | Set-Content -Path (Join-Path $localArtifactDir "repair-loop-manifest.json") -Encoding UTF8
+    @{} | ConvertTo-Json | Set-Content -Path $ciGateSummaryPath -Encoding UTF8
+    @{} | ConvertTo-Json | Set-Content -Path $ciGatePathTestsPath -Encoding UTF8
+
+    [pscustomobject]@{
+        status = "PASS"
+    } | ConvertTo-Json -Depth 10 | Set-Content -Path $localEvidencePath -Encoding UTF8
+    [pscustomobject]@{
+        status = "PASS"
+    } | ConvertTo-Json -Depth 10 | Set-Content -Path $localEvidenceDriftPath -Encoding UTF8
+
+    return [ordered]@{
+        SummaryPath = $summaryPath
+        ManifestPath = $manifestPath
+        LocalArtifactDir = $localArtifactDir
+        ReleaseEvidenceDir = $releaseEvidenceDir
+        OutputPath = Join-Path $BasePath "release-readiness-report.md"
+        SummaryOutputPath = Join-Path $BasePath "release-readiness-report-summary.json"
+    }
 }
 
 Describe "Release readiness handoff scripts" {
@@ -2018,6 +2078,41 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         Assert-ReportContainsRecommendedCommandSection -ReportPath (Join-Path $repoRoot $reportOut) -ShouldNotContain
 
         Assert-SnippetOutputHasNoPassedChecks -SnippetPath $snippetOut
+    }
+
+    It "omits recommended command section in release readiness report by default" {
+        $fixture = New-ReleaseReadinessReportFixture -BasePath (Join-Path $TestDrive "report-default")
+        $outputPath = Join-Path $TestDrive "release-readiness-report-default.md"
+
+        & $reportScript `
+            -SummaryPath $fixture.SummaryPath `
+            -PreflightManifestPath $fixture.ManifestPath `
+            -LocalArtifactDir $fixture.LocalArtifactDir `
+            -ReleaseEvidenceDir $fixture.ReleaseEvidenceDir `
+            -SummaryOutputPath $fixture.SummaryOutputPath `
+            -OutputPath $outputPath
+
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $outputPath -ShouldNotContain
+        (Test-Path $outputPath) | Should Be $true
+    }
+
+    It "includes recommended command section when IncludeRecommendedCommands is set in release readiness report" {
+        $fixture = New-ReleaseReadinessReportFixture -BasePath (Join-Path $TestDrive "report-include")
+        $outputPath = Join-Path $TestDrive "release-readiness-report-include.md"
+
+        & $reportScript `
+            -SummaryPath $fixture.SummaryPath `
+            -PreflightManifestPath $fixture.ManifestPath `
+            -LocalArtifactDir $fixture.LocalArtifactDir `
+            -ReleaseEvidenceDir $fixture.ReleaseEvidenceDir `
+            -SummaryOutputPath $fixture.SummaryOutputPath `
+            -IncludeRecommendedCommands `
+            -OutputPath $outputPath
+
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $outputPath
+        (Test-Path $outputPath) | Should Be $true
+        $reportText = Get-Content -Path $outputPath -Raw
+        ($reportText -match "```powershell") | Should Be $true
     }
 
     It "writes the dry-run handoff block to console output" {
