@@ -206,6 +206,41 @@ Describe "Release readiness handoff scripts" {
         ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
     }
 
+    It "filters snippet checks to non-passing entries when IncludeFailedOnly is used in PR DryRun" {
+        $threw = $false
+        $output = $null
+        $reportPathRelative = Join-Path "Temp" "no-gh-pr-report-failedonly.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-pr-failedonly"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -PullRequestNumber 77 -DryRun -IncludeFailedOnly -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        (Test-Path $reportPath) | Should Be $true
+
+        $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
+        if (-not $match.Success) {
+            throw "Expected snippet block not found."
+        }
+        $snippetText = $match.Groups["snippet"].Value
+        ($snippetText -match "- \[x\]") | Should Be $false
+    }
+
     It "does not require gh CLI when Issue sync is run in DryRun mode" {
         $threw = $false
         $output = $null
@@ -1320,6 +1355,27 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
 
         $report = Get-Content -Path $reportOut -Raw
         ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+    }
+
+    It "exports handoff snippet with only failed/warning checks when IncludeFailedOnly is enabled" {
+        $out = Join-Path $TestDrive "handoff-block-failedonly.md"
+        $reportOut = Join-Path "Temp" "release-readiness-report-failedonly.md"
+        $snippetOut = Join-Path "Temp" "release-readiness-snippet-failedonly.md"
+
+        $result = & $exportScript `
+            -OutputPath $out `
+            -IncludeFailedOnly `
+            -FailOnWarning `
+            -ReportOutputPath $reportOut `
+            -SnippetOutputPath $snippetOut
+        $resultText = $result | Out-String
+
+        ($resultText -match "Wrote handoff block to:") | Should Be $true
+        (Test-Path $out) | Should Be $true
+        (Test-Path $snippetOut) | Should Be $true
+        $snippetText = Get-Content -Path $snippetOut -Raw
+        ($snippetText -match "### Checks") | Should Be $true
+        ($snippetText -match "- \[x\]") | Should Be $false
     }
 
     It "writes the dry-run handoff block to console output" {
