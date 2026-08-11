@@ -182,6 +182,175 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($updatedBody -match "Bundle status: \*\*") | Should Be $true
     }
 
+    It "appends a handoff block to issue body when no existing marker is present" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh-issue"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        $capturePath = Join-Path $fakeGhDir "last-issue-body.md"
+        $statePath = Join-Path $fakeGhDir "gh-state.json"
+        $startMarker = "<!-- ai-testpilot-release-readiness:start -->"
+        $endMarker = "<!-- ai-testpilot-release-readiness:end -->"
+        $existingBody = @"
+## Issue Title
+
+Existing issue body with setup notes.
+"@
+        @{
+            ExistingIssueBody = $existingBody
+            LastIssueEditBodyPath = $capturePath
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $statePath -Encoding UTF8
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$statePath = Join-Path `$scriptRoot "gh-state.json"
+`$state = @{}
+if (Test-Path `$statePath) {
+    try {
+        `$state = Get-Content -Path `$statePath -Encoding UTF8 -Raw | ConvertFrom-Json
+    }
+    catch {
+        `$state = @{}
+    }
+}
+
+if (`$Args.Count -lt 2) { exit 1 }
+
+if (`$Args[0] -eq "issue" -and `$Args[1] -eq "view") {
+    `$body = [string](`$state.ExistingIssueBody)
+    @{ body = `$body } | ConvertTo-Json -Depth 5
+    return
+}
+
+if (`$Args[0] -eq "issue" -and `$Args[1] -eq "edit") {
+    `$bodyFile = `$null
+    `$bodyFileIndex = [Array]::IndexOf(`$Args, "--body-file")
+    if (`$bodyFileIndex -ge 0 -and (`$bodyFileIndex + 1) -lt `$Args.Count) {
+        `$bodyFile = `$Args[`$bodyFileIndex + 1]
+    }
+    else {
+        `$bodyFile = `$Args[`$Args.Length - 1]
+    }
+    if (-not (Test-Path `$bodyFile)) { exit 1 }
+    Copy-Item -Path `$bodyFile -Destination `$state.LastIssueEditBodyPath -Force
+    return
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -IssueNumber 456 -NoIncludeRecommendedCommands
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        if (-not (Test-Path $capturePath)) {
+            throw "Expected issue update body capture file to be created."
+        }
+        $updatedBody = Get-Content -Path $capturePath -Raw -Encoding UTF8
+
+        ($updatedBody -match [regex]::Escape($startMarker)) | Should Be $true
+        ($updatedBody -match [regex]::Escape($endMarker)) | Should Be $true
+        ($updatedBody -match "Existing issue body with setup notes.") | Should Be $true
+        ($updatedBody -match "Bundle status: \*\*") | Should Be $true
+        (([regex]::Matches($updatedBody, [regex]::Escape($startMarker)).Count) -eq 1) | Should Be $true
+    }
+
+    It "syncs handoff block into milestone description with repo path and milestone API shape" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh-milestone"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        $capturePath = Join-Path $fakeGhDir "last-milestone-description.json"
+        $statePath = Join-Path $fakeGhDir "gh-state.json"
+        @{
+            Repository = "owner/repo"
+            ExistingMilestoneDescription = "Owner repo release milestone initial description."
+            LastMilestoneDescriptionPath = $capturePath
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $statePath -Encoding UTF8
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$statePath = Join-Path `$scriptRoot "gh-state.json"
+`$state = @{}
+if (Test-Path `$statePath) {
+    try {
+        `$state = Get-Content -Path `$statePath -Encoding UTF8 -Raw | ConvertFrom-Json
+    }
+    catch {
+        `$state = @{}
+    }
+}
+
+if (`$Args.Count -lt 1) { exit 1 }
+
+if (`$Args[0] -eq "repo" -and `$Args[1] -eq "view") {
+    Write-Output (`$state.Repository)
+    return
+}
+
+if (`$Args[0] -eq "api") {
+    if (`$Args.Contains("-X") -and `$Args.Contains("PATCH")) {
+        `$bodyFileIndex = [Array]::IndexOf(`$Args, "--input")
+        if (`$bodyFileIndex -ge 0 -and (`$bodyFileIndex + 1) -lt `$Args.Count) {
+            `$bodyFile = `$Args[`$bodyFileIndex + 1]
+            if (Test-Path `$bodyFile) {
+                Copy-Item -Path `$bodyFile -Destination `$state.LastMilestoneDescriptionPath -Force
+                return
+            }
+        }
+        exit 1
+    }
+
+    @{ description = `$state.ExistingMilestoneDescription } | ConvertTo-Json -Depth 5
+    return
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -MilestoneNumber 7 -NoIncludeRecommendedCommands
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        if (-not (Test-Path $capturePath)) {
+            throw "Expected milestone update payload capture file to be created."
+        }
+        $payload = Get-Content -Path $capturePath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($null -eq $payload.description) {
+            throw "Expected description field in milestone PATCH payload."
+        }
+
+        $description = [string]$payload.description
+        ($description -match "Owner repo release milestone initial description.") | Should Be $true
+        ($description -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        ($description -match "<!-- ai-testpilot-release-readiness:end -->") | Should Be $true
+        ($description -match "## Release readiness handoff") | Should Be $true
+    }
+
     It "exports a handoff block with marker wrappers" {
         $out = Join-Path $TestDrive "handoff-block.md"
         $result = & $exportScript -OutputPath $out -FailOnWarning -NoIncludeRecommendedCommands
