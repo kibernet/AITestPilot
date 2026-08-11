@@ -113,6 +113,64 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match "Bundle status: \*\*") | Should Be $true
     }
 
+    It "uses default recommended-command mode in PR DryRun (include recommended by default)" {
+        $threw = $false
+        $output = $null
+        $reportPathRelative = Join-Path "Temp" "no-gh-pr-report.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-pr-default"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -PullRequestNumber 77 -DryRun -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        (Test-Path $reportPath) | Should Be $true
+        $reportText = Get-Content -Path $reportPath -Raw
+        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+
+    It "omits recommended-command mode when NoIncludeRecommendedCommands is used in PR DryRun" {
+        $threw = $false
+        $output = $null
+        $reportPathRelative = Join-Path "Temp" "no-gh-pr-report-noinclude.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-pr-default"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -PullRequestNumber 77 -DryRun -NoIncludeRecommendedCommands -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        (Test-Path $reportPath) | Should Be $true
+        $reportText = Get-Content -Path $reportPath -Raw
+        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+    }
+
     It "does not require gh CLI when Issue sync is run in DryRun mode" {
         $threw = $false
         $output = $null
@@ -140,6 +198,36 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match "Bundle status: \*\*") | Should Be $true
     }
 
+    It "uses default recommended-command mode in Issue DryRun (include recommended by default)" {
+        $threw = $false
+        $output = $null
+        $reportPathRelative = Join-Path "Temp" "no-gh-issue-report.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-issue-default"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -IssueNumber 456 -DryRun -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        (Test-Path $reportPath) | Should Be $true
+        $reportText = Get-Content -Path $reportPath -Raw
+        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+
     It "does not require gh CLI when Milestone sync is run in DryRun mode" {
         $threw = $false
         $output = $null
@@ -165,6 +253,36 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
         ($outputText -match "## Release readiness handoff") | Should Be $true
         ($outputText -match "Bundle status: \*\*") | Should Be $true
+    }
+
+    It "uses default recommended-command mode in Milestone DryRun (include recommended by default)" {
+        $threw = $false
+        $output = $null
+        $reportPathRelative = Join-Path "Temp" "no-gh-milestone-report.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-milestone-default"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -MilestoneNumber 7 -DryRun -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        (Test-Path $reportPath) | Should Be $true
+        $reportText = Get-Content -Path $reportPath -Raw
+        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
     }
 
     It "replaces an existing PR handoff marker block during sync instead of appending duplicates" {
