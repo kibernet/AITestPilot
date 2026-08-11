@@ -342,6 +342,37 @@ Quick action order:
   - [remaining risk / watch points]
 ```
 
+## 9) Worked example (for Severity 1, after docs fix)
+
+```text
+## PR summary block (ready to paste in Description)
+
+### Severity and outcome
+- Severity: 1
+- Current status: RESOLVED
+- Last failing command: .\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression
+- Failure reason: doc-path snapshot changed under `Temp\quick-start\` after documentation-only updates.
+- Immediate remediation: updated `docs/local-workflow-cheat-sheet.md` reference list in PR artifact and re-ran freshness regression.
+- Re-check command output: PASS
+
+### Evidence
+- `Temp\dev-gate-summary.json`: BLOCKED_REASON=OK; no schema/build regressions.
+- `Temp\quick-start\quick-start-manifest.json`: updated-path count = 1
+- `Temp\repair-loop\repair-loop-manifest.json`: no change
+- `Temp\developer-gate-manifest.json`: passed
+- `Temp\ci-gate-summary.json`: not required for this PR scope
+- `Temp\release-evidence\latest\*`: none (non-release scope)
+- `artifacts\ai-testpilot-release\latest\*`: none (non-release scope)
+- `Temp\pr-validation-checklist.md`: regenerated with docs updates
+
+### Commit / release decision
+- Merge decision: HOLD
+- Reviewer-facing notes:
+  - root cause: docs freshness checks expected older snapshot paths.
+  - what was fixed: added new references and refreshed `Temp\quick-start\` snapshot.
+  - remaining risk / watch points: monitor docs path stability in next milestone PR.
+```
+
 Artifacts produced:
 - [ ] Temp\quick-start\quick-start-manifest.json (if available)
 - [ ] Temp\repair-loop\repair-loop-manifest.json (if available)
