@@ -67,6 +67,17 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match "## Release readiness handoff") | Should Be $true
     }
 
+    It "defaults to printing handoff to console when no sync target is specified" {
+        $output = & $setScript -NoIncludeRecommendedCommands
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        ($outputText -match "<!-- ai-testpilot-release-readiness:end -->") | Should Be $true
+        ($outputText -match "## Release readiness handoff") | Should Be $true
+        ($outputText -match "Updated PR body") | Should Be $false
+        ($outputText -match "Updated issue body") | Should Be $false
+        ($outputText -match "Updated milestone description") | Should Be $false
+    }
+
     It "prevents overwriting an existing output file when NoOverwrite is set" {
         $out = Join-Path $TestDrive "handoff-block.md"
         Set-Content -Path $out -Encoding UTF8 -Value "pre-existing"
