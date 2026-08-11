@@ -80,6 +80,13 @@ Artifacts produced:
 - [ ] Temp\release-evidence\latest\...
 - [ ] artifacts\ai-testpilot-release\latest\...
 
+- [ ] 生成 PR 复用清单（推荐）：
+
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json -GeneratePrChecklist
+Get-Content Temp\pr-validation-checklist.md
+```
+
 Skipped / partial steps:
 - [ ] Please list skipped command(s) and reason(s), with owner and owner approval.
 ```

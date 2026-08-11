@@ -350,7 +350,7 @@ Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 
 This command builds the .NET solution, builds the model-endpoint and Lua-analysis probes, runs the dependency-free smoke suite, and validates the Unity package structure.
 
-`Run-DevGate.ps1` also prints a machine-readable summary block that can be copied directly into the PR template, including quick start and repair-loop statuses.
+`Run-DevGate.ps1` prints a machine-readable summary block and can now also emit a PR-ready checklist block (`-GeneratePrChecklist`) that is easier to paste directly into the PR template, including quick-start, repair-loop, and replay-profile statuses.
 
 ### Install the Unity package
 

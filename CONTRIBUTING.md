@@ -21,6 +21,13 @@ To archive the same JSON summary locally (optional):
 .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
 ```
 
+For PR-ready copy/paste block (recommended):
+
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json -GeneratePrChecklist
+Get-Content Temp\pr-validation-checklist.md
+```
+
 To write the developer gate manifest to a custom location:
 
 ```powershell

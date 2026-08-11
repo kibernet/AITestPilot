@@ -93,6 +93,14 @@ For PR-friendly summary formatting:
 - [ ] `Temp\release-readiness-report.md`
 - [ ] `Temp\release-readiness-pr-snippet.md` (optional)
 - [ ] `Temp\release-readiness-handoff-block.md` (recommended when using file-driven checklist handoff)
+- [ ] `Temp\pr-validation-checklist.md`（或运行 `-PrChecklistPath` 指定的文件） 
+
+Run-DevGate PR checklist generation (recommended):
+
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json -GeneratePrChecklist -PrChecklistPath Temp\pr-validation-checklist.md
+Get-Content Temp\pr-validation-checklist.md
+```
 
 ## 3) Risk control check
 
