@@ -181,9 +181,7 @@ Describe "Release readiness handoff scripts" {
         }
 
         $threw | Should Be $false
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath -ShouldNotContain
     }
 
     It "allows explicit IncludeRecommendedCommands in PR DryRun and preserves custom markers" {
@@ -279,10 +277,7 @@ Describe "Release readiness handoff scripts" {
         $threw | Should Be $false
         $outputText = $output | Out-String
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
-        (Test-Path $reportPath) | Should Be $true
-
-        $report = Get-Content -Path $reportPath -Raw
-        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath -ShouldNotContain
 
         $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
         if (-not $match.Success) {
@@ -377,9 +372,7 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match [regex]::Escape($startMarker)) | Should Be $true
         ($outputText -match [regex]::Escape($endMarker)) | Should Be $true
         ($outputText -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath
     }
 
     It "combines IncludeFailedOnly and NoIncludeRecommendedCommands in Issue DryRun" {
@@ -407,10 +400,7 @@ Describe "Release readiness handoff scripts" {
         $threw | Should Be $false
         $outputText = $output | Out-String
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
-        (Test-Path $reportPath) | Should Be $true
-
-        $report = Get-Content -Path $reportPath -Raw
-        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath -ShouldNotContain
 
         $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
         if (-not $match.Success) {
@@ -472,9 +462,7 @@ Describe "Release readiness handoff scripts" {
         $threw | Should Be $false
         $outputText = $output | Out-String
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath
     }
 
     It "allows explicit IncludeRecommendedCommands in Milestone DryRun and preserves custom markers" {
@@ -507,9 +495,7 @@ Describe "Release readiness handoff scripts" {
         ($outputText -match [regex]::Escape($startMarker)) | Should Be $true
         ($outputText -match [regex]::Escape($endMarker)) | Should Be $true
         ($outputText -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath
     }
 
     It "combines IncludeFailedOnly and NoIncludeRecommendedCommands in Milestone DryRun" {
@@ -537,10 +523,7 @@ Describe "Release readiness handoff scripts" {
         $threw | Should Be $false
         $outputText = $output | Out-String
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
-        (Test-Path $reportPath) | Should Be $true
-
-        $report = Get-Content -Path $reportPath -Raw
-        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath -ShouldNotContain
 
         $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
         if (-not $match.Success) {
@@ -821,9 +804,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
             throw "Expected PR update body capture file to be created."
         }
         $updatedBody = Get-Content -Path $capturePath -Raw -Encoding UTF8
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath
 
         ($updatedBody -match "Existing PR body with setup notes.") | Should Be $true
         ($updatedBody -match "Bundle status: \*\*") | Should Be $true
@@ -1357,9 +1338,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
             throw "Expected issue update body capture file to be created."
         }
         $updatedBody = Get-Content -Path $capturePath -Raw -Encoding UTF8
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath
 
         ($updatedBody -match "Existing issue body with setup notes.") | Should Be $true
         ($updatedBody -match "Bundle status: \*\*") | Should Be $true
@@ -1731,9 +1710,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         $description = [string]$payload.description
         ($description -match "Owner repo release milestone initial description.") | Should Be $true
         ($description -match [regex]::Escape("## Release readiness handoff")) | Should Be $true
-        (Test-Path $reportPath) | Should Be $true
-        $reportText = Get-Content -Path $reportPath -Raw
-        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath $reportPath
     }
 
     It "syncs filtered milestone handoff snippet when IncludeFailedOnly and NoIncludeRecommendedCommands are used" {
@@ -1960,8 +1937,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         (Test-Path $out) | Should Be $true
         (Test-Path $reportOut) | Should Be $true
 
-        $report = Get-Content -Path $reportOut -Raw
-        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath (Join-Path $repoRoot $reportOut)
     }
 
     It "allows explicit IncludeRecommendedCommands in export and preserves custom markers" {
@@ -1982,8 +1958,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($content -match [regex]::Escape($endMarker)) | Should Be $true
         ($content -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
 
-        $report = Get-Content -Path $reportOut -Raw
-        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        Assert-ReportContainsRecommendedCommandSection -ReportPath (Join-Path $repoRoot $reportOut)
     }
 
     It "omits recommended command section when NoIncludeRecommendedCommands is used in export" {
@@ -1996,8 +1971,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         (Test-Path $out) | Should Be $true
         (Test-Path $reportOut) | Should Be $true
 
-        $report = Get-Content -Path $reportOut -Raw
-        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        Assert-ReportContainsRecommendedCommandSection -ReportPath (Join-Path $repoRoot $reportOut) -ShouldNotContain
     }
 
     It "exports handoff snippet with only failed/warning checks when IncludeFailedOnly is enabled" {
@@ -2040,8 +2014,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         (Test-Path $reportOut) | Should Be $true
         (Test-Path $snippetOut) | Should Be $true
 
-        $report = Get-Content -Path $reportOut -Raw
-        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        Assert-ReportContainsRecommendedCommandSection -ReportPath (Join-Path $repoRoot $reportOut) -ShouldNotContain
 
         $snippetText = Get-Content -Path $snippetOut -Raw
         ($snippetText -match "### Checks") | Should Be $true
