@@ -2489,6 +2489,58 @@ Describe "Developer gate replay profile checks" {
         Remove-Item -Path $developerGateManifest -ErrorAction SilentlyContinue
     }
 
+    It "Run-DevGate fails replay schema validation when profile path is outside repository" {
+        $developerGateManifest = Join-Path $TestDrive "developer-gate-manifest-outside.json"
+        $summaryPath = Join-Path $TestDrive "run-summary-outside.json"
+        $checklistPath = Join-Path $TestDrive "pr-validation-checklist-outside.md"
+        $outsideProfile = Join-Path $env:TEMP ("replay-profile-outside-" + [guid]::NewGuid().ToString() + ".json")
+        $schemaManifest = Join-Path $repoRoot "Temp\release-evidence\latest\replay-profile-schema-check-manifest.json"
+
+        Set-Content -Path $outsideProfile -Value $validProfile -Encoding UTF8
+        @'
+{
+    "status": "PASS",
+    "issues": []
+}
+'@ | Set-Content -Path $schemaManifest -Encoding UTF8
+
+        $threw = $false
+        $message = ""
+        try {
+            & $runDevGateScript `
+                -SkipQuickStart `
+                -SkipRepairLoop `
+                -RunReplayProfileSchemaCheck `
+                -ReplayProfileJsonPath $outsideProfile `
+                -DeveloperGateManifestPath $developerGateManifest `
+                -SummaryPath $summaryPath `
+                -GeneratePrChecklist `
+                -PrChecklistPath $checklistPath
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+
+        $threw | Should Be $true
+        ($message.Length -gt 0) | Should Be $true
+
+        $manifest = Get-Content -Raw $developerGateManifest | ConvertFrom-Json
+        $manifest.status | Should Be "PARTIAL_FAIL"
+        $replaySchemaStep = @($manifest.steps | Where-Object { $_.name -eq "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" })
+        $replaySchemaStep.Count | Should Be 1
+        $replaySchemaStep[0].status | Should Be "FAIL"
+        ($replaySchemaStep[0].message -match [regex]::Escape("ReplayProfileJsonPath must stay under repo root")) | Should Be $true
+
+        Remove-Item -Path $outsideProfile -ErrorAction SilentlyContinue
+        Remove-Item -Path $summaryPath -ErrorAction SilentlyContinue
+        Remove-Item -Path $checklistPath -ErrorAction SilentlyContinue
+        Remove-Item -Path $developerGateManifest -ErrorAction SilentlyContinue
+        if (Test-Path $schemaManifest) {
+            Remove-Item -Path $schemaManifest -ErrorAction SilentlyContinue
+        }
+    }
+
     It "Run-DevGate summarizes replay schema validation pass in PR checklist context" {
         $developerGateManifest = Join-Path $TestDrive "developer-gate-manifest-summary.json"
         $summaryPath = Join-Path $TestDrive "run-summary.json"

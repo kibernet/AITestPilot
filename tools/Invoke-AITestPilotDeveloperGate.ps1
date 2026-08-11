@@ -47,6 +47,33 @@ function Resolve-PathToRepoRoot {
     return Join-Path $repoRoot $Path
 }
 
+function Assert-PathUnderRoot {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        throw "$Label cannot be empty."
+    }
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $fullRoot = [System.IO.Path]::GetFullPath($repoRoot)
+    if ($fullPath.Equals($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $fullPath
+    }
+
+    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    if (-not $fullPath.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
 $quickStartOutput = if ([string]::IsNullOrWhiteSpace($QuickStartOutputDir)) { Join-Path $repoRoot "Temp\quick-start" } else { Resolve-RelativePath -Path $QuickStartOutputDir }
 $repairLoopOutput = if ([string]::IsNullOrWhiteSpace($RepairLoopOutputDir)) { Join-Path $repoRoot "Temp\repair-loop" } else { Resolve-RelativePath -Path $RepairLoopOutputDir }
 
@@ -81,6 +108,7 @@ function Invoke-CheckedScript {
         $Arguments = @{}
     }
 
+    $LASTEXITCODE = 0
     & $scriptPath @Arguments
     $exitCode = 0
     if (Test-Path Variable:LASTEXITCODE) {
@@ -153,6 +181,7 @@ if ($RunReplayProfileSchemaCheck.IsPresent) {
             Resolve-PathToRepoRoot -Path $ReplayProfileJsonPath
         }
 
+        $replayProfilePath = Assert-PathUnderRoot -Path $replayProfilePath -Label "ReplayProfileJsonPath"
         if (-not (Test-Path $replayProfilePath)) {
             throw "Replay profile JSON not found: $replayProfilePath"
         }
@@ -160,6 +189,10 @@ if ($RunReplayProfileSchemaCheck.IsPresent) {
         $replayProfileEvidenceDir = Join-Path $repoRoot "Temp\release-evidence\latest"
         New-Item -ItemType Directory -Force $replayProfileEvidenceDir | Out-Null
         $replayProfileManifestPath = Join-Path $replayProfileEvidenceDir "replay-profile-schema-check-manifest.json"
+        if (Test-Path $replayProfileManifestPath) {
+            Remove-Item -Path $replayProfileManifestPath -Force
+        }
+
         $replayProfileExecutionError = $null
         try {
             Invoke-CheckedScript "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" @{
@@ -173,7 +206,7 @@ if ($RunReplayProfileSchemaCheck.IsPresent) {
         }
 
         $replayProfileManifest = Read-JsonSafely -Path $replayProfileManifestPath
-        if ($replayProfileManifest -and $replayProfileManifest.status -eq "PASS") {
+        if (-not $replayProfileExecutionError -and $replayProfileManifest -and $replayProfileManifest.status -eq "PASS") {
             Add-Step -Name "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" -Status "PASS"
         }
         else {
