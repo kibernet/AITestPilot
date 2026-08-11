@@ -15,6 +15,12 @@ Before opening a pull request, run the local developer gate:
 .\tools\Run-DevGate.ps1
 ```
 
+To archive the same JSON summary locally (optional):
+
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+```
+
 For automation/CI style checks, use:
 
 ```powershell

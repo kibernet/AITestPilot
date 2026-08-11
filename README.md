@@ -108,6 +108,12 @@ Or use the shorter command:
 .\tools\Run-DevGate.ps1
 ```
 
+If you need a machine-readable copy for CI artifacts or local archival, use:
+
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+```
+
 CI-friendly mode (optional, writes `Temp\ci-gate-summary.json` and exits non-zero on non-pass unless `-AllowPartialFail` is set):
 
 ```powershell

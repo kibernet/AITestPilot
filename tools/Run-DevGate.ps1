@@ -10,7 +10,8 @@ param(
     [string]$QuickStartOutputDir,
     [string]$RepairLoopOutputDir,
     [string]$RepairLoopEvidenceBundleDir,
-    [string]$UnityPath
+    [string]$UnityPath,
+    [string]$SummaryPath
 )
 
 Set-StrictMode -Version Latest
@@ -19,7 +20,14 @@ $ErrorActionPreference = "Stop"
 $devGateScript = Join-Path $PSScriptRoot "Invoke-AITestPilotDeveloperGate.ps1"
 $developerManifest = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path "Temp\developer-gate-manifest.json"
 
-& $devGateScript @PSBoundParameters
+$devGateParameters = @{}
+foreach ($entry in $PSBoundParameters.GetEnumerator()) {
+    if ($entry.Key -ne "SummaryPath") {
+        $devGateParameters[$entry.Key] = $entry.Value
+    }
+}
+
+& $devGateScript @devGateParameters
 
 $summary = @{
     status = "UNKNOWN"
@@ -76,6 +84,7 @@ $summaryPayload = @{
     repair_loop_status = $summary.repairLoopStatus
     quick_start_skipped = $summary.quickStartSkipped
     repair_loop_skipped = $summary.repairLoopSkipped
+    summary_manifest = $developerManifest
     skip_reasons = $summary.skipReasons
     failed_steps = $summary.failedSteps
 }
@@ -83,6 +92,13 @@ $summaryPayload = @{
 Write-Host ""
 Write-Host "Run-DevGate summary:"
 Write-Host ($summaryPayload | ConvertTo-Json -Depth 8)
+
+if (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
+    $summaryPathResolved = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path $SummaryPath
+    New-Item -ItemType Directory -Force (Split-Path $summaryPathResolved -Parent) | Out-Null
+    $summaryPayload | ConvertTo-Json -Depth 8 | Set-Content -Path $summaryPathResolved -Encoding UTF8
+    Write-Host "Run-DevGate summary written to: $summaryPathResolved"
+}
 
 if ($summaryPayload.developer_gate_status -ne "PASS") {
     Write-Host "Please include this summary in PR description."

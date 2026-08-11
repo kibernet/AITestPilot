@@ -27,6 +27,7 @@ If you used skips, list them:
 - Repair loop manifest: `Temp\repair-loop\repair-loop-manifest.json`
 - Developer gate manifest: `Temp\developer-gate-manifest.json`
 - CI gate summary: `Temp\ci-gate-summary.json` (if generated)
+- Local run summary (optional): `Temp\dev-gate-summary.json`
 
 Status:
 

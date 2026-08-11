@@ -36,6 +36,12 @@ Or use shorter command:
 .\tools\Run-DevGate.ps1
 ```
 
+If you need a saved machine-readable summary:
+
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+```
+
 CI-friendly single command (writes summary JSON to `Temp\ci-gate-summary.json`):
 
 ```powershell
