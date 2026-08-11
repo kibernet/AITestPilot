@@ -112,4 +112,17 @@ Describe "Release readiness handoff scripts" {
         ($dryRunText -match [regex]::Escape($endMarker)) | Should Be $true
         ($dryRunText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $false
     }
+
+    It "creates nested output directories automatically for the handoff file" {
+        $nestedOut = Join-Path (Join-Path $TestDrive "nested") "artifacts\release\handoff-block.md"
+
+        $result = & $exportScript `
+            -OutputPath $nestedOut `
+            -FailOnWarning `
+            -NoIncludeRecommendedCommands
+        $resultText = $result | Out-String
+
+        ($resultText -match "Wrote handoff block to:") | Should Be $true
+        (Test-Path $nestedOut) | Should Be $true
+    }
 }
