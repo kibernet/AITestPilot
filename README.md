@@ -120,6 +120,8 @@ If you need the manifest written to a custom location, use:
 .\tools\Run-DevGate.ps1 -ManifestPath Temp\custom-developer-gate-manifest.json
 ```
 
+`-ManifestPath` and `-SummaryPath` both accept absolute paths; otherwise paths are resolved relative to repository root.
+
 CI-friendly mode (optional, writes `Temp\ci-gate-summary.json` and exits non-zero on non-pass unless `-AllowPartialFail` is set):
 
 ```powershell

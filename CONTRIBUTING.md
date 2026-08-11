@@ -27,6 +27,8 @@ To write the developer gate manifest to a custom location:
 .\tools\Run-DevGate.ps1 -ManifestPath Temp\custom-developer-gate-manifest.json
 ```
 
+`-ManifestPath` and `-SummaryPath` support absolute paths; relative paths are resolved against repository root.
+
 For automation/CI style checks, use:
 
 ```powershell
