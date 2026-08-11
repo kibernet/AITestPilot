@@ -2,6 +2,19 @@
 
 Use this checklist as a quick operational map.
 
+## 0) Minimum command sequence (recommended baseline)
+
+Run these in order for most changes:
+
+```powershell
+.\tools\Run-DevGate.ps1
+.\tools\Validate-AITestPilot.ps1
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+```
+
+If the change touches only docs/markdown, you can skip the strict validation step as a fast-path exception.
+
 ## 1) New task / onboarding
 
 - Clone and run baseline validation
@@ -120,4 +133,22 @@ Temp\repair-loop\repair-loop-manifest.json
 Temp\developer-gate-manifest.json
 Temp\dev-gate-summary.json
 Temp\ci-gate-summary.json
+```
+
+Copy/paste this into PR description:
+
+```text
+## Validation run
+- [ ] .\tools\Run-DevGate.ps1
+- [ ] .\tools\Validate-AITestPilot.ps1
+- [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
+- [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict *(if CI gate path logic changed)*
+- [ ] .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+
+Artifacts produced:
+- [ ] Temp\quick-start\quick-start-manifest.json (if available)
+- [ ] Temp\repair-loop\repair-loop-manifest.json (if available)
+- [ ] Temp\developer-gate-manifest.json
+- [ ] Temp\dev-gate-summary.json
+- [ ] Temp\ci-gate-summary.json (if CI gate run)
 ```

@@ -111,6 +111,10 @@ Please include:
 - Any skipped steps and reasons
 - Known risks or follow-up work
 
+You can also copy/paste the checklist from:
+
+`.\docs\local-workflow-cheat-sheet.md`
+
 ## Documentation checklist
 
 - Update related docs when you change behavior.

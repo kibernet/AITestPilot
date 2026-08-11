@@ -97,7 +97,7 @@ Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 ```
 
 See full local workflow cheat sheet: `.\docs\local-workflow-cheat-sheet.md`
-It includes a PR/release preflight checklist section for quick verification.
+It includes a minimum baseline command sequence and a PR/release preflight checklist for quick verification.
 
 For strict alias-conflict assertions (including `OutputPath` + `SummaryPath` conflict rejection), run:
 
