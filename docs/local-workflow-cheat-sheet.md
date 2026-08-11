@@ -275,6 +275,22 @@ If any of the above returns FAIL/WARN, stop the next milestone and tag PR notes 
 - Schema/replay failure (Validation)
 - Evidence chain failure (Release / Docs Freshness)
 ```
+
+## 7) FAIL/WARN 2-minute recovery map
+
+Use this map when PR checks fail; apply commands in order, stop once fixed.
+
+```text
+Failure signal                      | Fast recovery action
+----------------------------------|-------------------------
+Precheck/build failure (DevGate)    | Re-run `.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json` and read `blocked_reason`; fix build/test/environment prerequisites first.
+Schema/replay failure (Validation)  | Run `.\tools\Validate-AITestPilot.ps1 -RunReplayProfileSchemaCheck`; if the artifact points to JSON schema drift, update schema fixture and rerun.
+Path-regression alias conflict       | Run `.\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias` and align aliases in local overrides.
+Release evidence unavailable         | Re-run `.\tools\Invoke-AITestPilotReleasePipeline.ps1`; verify `Temp\release-evidence\latest\` and `artifacts\ai-testpilot-release\latest\`.
+Docs freshness regression warning     | Run `.\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression`; check doc-path snapshots in `Temp\quick-start\` and `Temp\repair-loop\`.
+All checks pass, but PR template fails | Regenerate the checklist with `.\tools\Run-DevGate.ps1 -GeneratePrChecklist`; copy-paste the latest block exactly.
+```
+
 Artifacts produced:
 - [ ] Temp\quick-start\quick-start-manifest.json (if available)
 - [ ] Temp\repair-loop\repair-loop-manifest.json (if available)
