@@ -20,18 +20,46 @@ if (-not (Test-Path $reportScript)) {
 }
 
 $reportScriptContent = Get-Content -Path $reportScript -Raw
-$recommendedCommandSectionMatch = [regex]::Match($reportScriptContent, '\$recommendedCommandsSectionTitle\s*=\s*"(?<title>[^"]+)"')
-if (-not $recommendedCommandSectionMatch.Success) {
-    throw "Unable to read recommended command section title from report script at $reportScript"
+$recommendedCommandSectionMatch = [regex]::Match($reportScriptContent, '(?ms)SectionTitle\s*=\s*"(?<title>[^"]+)"')
+if ($recommendedCommandSectionMatch.Success) {
+    $recommendedCommandSectionTitle = $recommendedCommandSectionMatch.Groups["title"].Value
 }
-$recommendedCommandSectionTitle = $recommendedCommandSectionMatch.Groups["title"].Value
+else {
+    # Backward compatibility: support earlier explicit variable declaration.
+    $recommendedCommandSectionLegacyMatch = [regex]::Match($reportScriptContent, '\$recommendedCommandsSectionTitle\s*=\s*"(?<title>[^"]+)"')
+    if (-not $recommendedCommandSectionLegacyMatch.Success) {
+        throw "Unable to read recommended command section title from report script at $reportScript"
+    }
+    $recommendedCommandSectionTitle = $recommendedCommandSectionLegacyMatch.Groups["title"].Value
+}
 $recommendedCommandSectionPattern = [regex]::Escape($recommendedCommandSectionTitle)
-$recommendedCommandFenceMatch = [regex]::Match($reportScriptContent, '\$recommendedCommandsCodeFence\s*=\s*"(?<fence>[^"]+)"')
+$recommendedCommandFenceMatch = [regex]::Match($reportScriptContent, '(?ms)CodeFence\s*=\s*"(?<fence>[^"]+)"')
 if (-not $recommendedCommandFenceMatch.Success) {
-    throw "Unable to read recommended command code fence from report script at $reportScript"
+    # Backward compatibility: support earlier explicit variable declaration.
+    $recommendedCommandFenceLegacyMatch = [regex]::Match($reportScriptContent, '\$recommendedCommandsCodeFence\s*=\s*"(?<fence>[^"]+)"')
+    if (-not $recommendedCommandFenceLegacyMatch.Success) {
+        throw "Unable to read recommended command code fence from report script at $reportScript"
+    }
+    $recommendedCommandCodeFence = $recommendedCommandFenceLegacyMatch.Groups["fence"].Value
 }
-$recommendedCommandCodeFence = $recommendedCommandFenceMatch.Groups["fence"].Value
-$recommendedCommandCodeFencePattern = [regex]::Escape($recommendedCommandCodeFence)
+else {
+    $recommendedCommandCodeFence = $recommendedCommandFenceMatch.Groups["fence"].Value
+}
+$recommendedCommandCommandsMatch = [regex]::Match($reportScriptContent, '(?ms)Commands\s*=\s*@\(\s*(?<commands>(?:\r?\n\s*"[^"]*"\s*)+)\)')
+if (-not $recommendedCommandCommandsMatch.Success) {
+    throw "Unable to read recommended command list from report script at $reportScript"
+}
+$recommendedCommandLines = @()
+$commandLineCandidates = $recommendedCommandCommandsMatch.Groups["commands"].Value -split "\r?\n"
+foreach ($commandLine in $commandLineCandidates) {
+    $commandMatch = [regex]::Match($commandLine.Trim(), '^"(?<command>.+)"$')
+    if ($commandMatch.Success) {
+        $recommendedCommandLines += $commandMatch.Groups["command"].Value
+    }
+}
+if ($recommendedCommandLines.Count -eq 0) {
+    throw "Unable to parse any recommended commands from report script at $reportScript"
+}
 
 function Assert-ReportContainsRecommendedCommandSection {
     param(
@@ -2127,6 +2155,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         (Test-Path $outputPath) | Should Be $true
         $reportText = Get-Content -Path $outputPath -Raw
         ($reportText -match ("```{0}" -f [regex]::Escape($recommendedCommandCodeFence))) | Should Be $true
+        foreach ($command in $recommendedCommandLines) {
+            ($reportText -match [regex]::Escape($command)) | Should Be $true
+        }
     }
 
     It "writes the dry-run handoff block to console output" {

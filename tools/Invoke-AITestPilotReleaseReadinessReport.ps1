@@ -59,14 +59,19 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$recommendedCommandsSectionTitle = "## 2) Recommended command sequence (mainline)"
-$recommendedCommandsCodeFence = "powershell"
-$recommendedCommands = @(
-    ".\tools\Invoke-AITestPilotReleasePreflight.ps1"
-    ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline"
-    ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipStrictPathRegression"
-    ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipDocsFreshnessRegression"
-)
+$recommendedCommandConfig = [ordered]@{
+    SectionTitle = "## 2) Recommended command sequence (mainline)"
+    CodeFence = "powershell"
+    Commands = @(
+        ".\tools\Invoke-AITestPilotReleasePreflight.ps1"
+        ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline"
+        ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipStrictPathRegression"
+        ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipDocsFreshnessRegression"
+    )
+}
+$recommendedCommandsSectionTitle = $recommendedCommandConfig.SectionTitle
+$recommendedCommandsCodeFence = $recommendedCommandConfig.CodeFence
+$recommendedCommands = $recommendedCommandConfig.Commands
 
 function Resolve-PathUnderRepo {
     param([string]$Path)
@@ -166,6 +171,10 @@ function Get-RecommendedCommandSection {
 
 function Get-RecommendedCommandsCodeFence {
     return $recommendedCommandsCodeFence
+}
+
+function Get-RecommendedCommandConfig {
+    return [PSCustomObject]$recommendedCommandConfig
 }
 
 $summaryPathFull = Resolve-PathUnderRepo $SummaryPath
