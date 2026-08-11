@@ -93,6 +93,7 @@ $generatorArgs = @{
     MarkerEnd = $MarkerEnd
 }
 if (-not $NoIncludeRecommendedCommands) { $generatorArgs["IncludeRecommendedCommands"] = $true }
+if ($NoIncludeRecommendedCommands) { $generatorArgs["NoIncludeRecommendedCommands"] = $true }
 if ($IncludeFailedOnly) { $generatorArgs["IncludeFailedOnly"] = $true }
 
 $raw = $null

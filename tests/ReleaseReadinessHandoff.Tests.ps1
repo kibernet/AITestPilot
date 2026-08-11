@@ -1272,6 +1272,56 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($content -match "## Release readiness handoff") | Should Be $true
     }
 
+    It "exports handoff block with recommended command section by default" {
+        $out = Join-Path $TestDrive "handoff-block-default-recommend.md"
+        $reportOut = Join-Path "Temp" "release-readiness-report-default.md"
+        $result = & $exportScript -OutputPath $out -FailOnWarning -ReportOutputPath $reportOut
+        $resultText = $result | Out-String
+
+        ($resultText -match "Wrote handoff block to:") | Should Be $true
+        (Test-Path $out) | Should Be $true
+        (Test-Path $reportOut) | Should Be $true
+
+        $report = Get-Content -Path $reportOut -Raw
+        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+
+    It "allows explicit IncludeRecommendedCommands in export and preserves custom markers" {
+        $out = Join-Path $TestDrive "handoff-block-include-custom.md"
+        $startMarker = "<!-- custom-export-include-start -->"
+        $endMarker = "<!-- custom-export-include-end -->"
+        $reportOut = Join-Path "Temp" "release-readiness-report-include.md"
+
+        $result = & $exportScript -OutputPath $out -IncludeRecommendedCommands -MarkerStart $startMarker -MarkerEnd $endMarker -ReportOutputPath $reportOut
+        $resultText = $result | Out-String
+
+        ($resultText -match "Wrote handoff block to:") | Should Be $true
+        (Test-Path $out) | Should Be $true
+        (Test-Path $reportOut) | Should Be $true
+
+        $content = Get-Content -Path $out -Raw
+        ($content -match [regex]::Escape($startMarker)) | Should Be $true
+        ($content -match [regex]::Escape($endMarker)) | Should Be $true
+        ($content -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
+
+        $report = Get-Content -Path $reportOut -Raw
+        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+
+    It "omits recommended command section when NoIncludeRecommendedCommands is used in export" {
+        $out = Join-Path $TestDrive "handoff-block-noinclude.md"
+        $reportOut = Join-Path "Temp" "release-readiness-report-noinclude.md"
+        $result = & $exportScript -OutputPath $out -NoIncludeRecommendedCommands -FailOnWarning -ReportOutputPath $reportOut
+        $resultText = $result | Out-String
+
+        ($resultText -match "Wrote handoff block to:") | Should Be $true
+        (Test-Path $out) | Should Be $true
+        (Test-Path $reportOut) | Should Be $true
+
+        $report = Get-Content -Path $reportOut -Raw
+        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+    }
+
     It "writes the dry-run handoff block to console output" {
         $output = & $setScript -DryRun -NoIncludeRecommendedCommands
         $outputText = $output | Out-String
