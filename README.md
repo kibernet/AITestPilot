@@ -160,6 +160,12 @@ For strict automation (non-zero exit on any WARN/FAIL item):
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
 ```
 
+For machine-readable consumption in CI/automation:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json
+```
+
 For a lighter local preflight variant, add `-SkipReleasePipeline`:
 
 ```powershell

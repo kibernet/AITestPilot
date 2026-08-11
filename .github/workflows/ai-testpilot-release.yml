@@ -184,7 +184,8 @@ jobs:
           $args = @(
             "-OutputPath", "Temp\release-readiness-report.md",
             "-RequireReleasePipeline",
-            "-IncludeRecommendedCommands"
+            "-IncludeRecommendedCommands",
+            "-SummaryOutputPath", "Temp\release-readiness-summary.json"
           )
 
           if ($env:AI_TESTPILOT_REQUIRE_READINESS_GATE -ieq "true") {
@@ -201,4 +202,5 @@ jobs:
           path: |
             artifacts\ai-testpilot-release\latest
             Temp\release-readiness-report.md
+            Temp\release-readiness-summary.json
           if-no-files-found: error

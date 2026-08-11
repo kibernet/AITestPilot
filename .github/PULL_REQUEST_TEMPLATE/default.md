@@ -16,6 +16,7 @@ Please run and report before merge:
 - [ ] `.\tools\Validate-AITestPilot.ps1`
 - [ ] `.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression`
 - [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands`
+- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json`
 
 ### Optional checks by scope
 
@@ -45,6 +46,7 @@ If you used skips, list them:
 - Release evidence: `Temp\release-evidence\latest\...` (if release candidate scope)
 - Release artifacts: `artifacts\ai-testpilot-release\latest\...` (if release pipeline run)
 - Release readiness report: `Temp\release-readiness-report.md`
+- Release readiness summary (optional): `Temp\release-readiness-summary.json`
 
 ## Copy/Paste release gate block (for milestone PR / pre-release PR)
 
@@ -63,6 +65,7 @@ If you used skips, list them:
 - Release evidence: Temp\release-evidence\latest\
 - Release artifacts: artifacts\ai-testpilot-release\latest\
 - Release readiness report: Temp\release-readiness-report.md
+- Release readiness summary: Temp\release-readiness-summary.json
 ```
 
 Status:

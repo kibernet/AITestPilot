@@ -37,6 +37,12 @@ For strict gating, add `-FailOnWarning` so CI/automation fails on unresolved WAR
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
 ```
 
+For CI/automation parsing, request machine-readable output:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json
+```
+
 In GitHub Actions (`workflow_dispatch`), you can enable this as a non-default hard gate:
 
 ```text
@@ -262,7 +268,7 @@ That directory includes `pipeline-manifest.json`, `release-gate-manifest.json`, 
 
 The post-dispatch fixture rejection is recorded as `release-progress-notification-post-dispatch-snapshot-probe-manifest.json`.
 
-`Temp\release-readiness-report.md` is also included in the release evidence artifact for audit-ready milestone/PR handoff.
+`Temp\release-readiness-report.md` and `Temp\release-readiness-summary.json` are included in the release evidence artifact for audit-ready milestone/PR handoff.
 
 The documentation freshness contract keeps the pipeline step index, core artifact names, source files, and source-manifest lists aligned. It also emits a periodic drift report (`release-docs-freshness-drift-manifest.json` + `release-docs-freshness-drift.md`) when compared to the previous successful copy in `artifacts/ai-testpilot-release/latest`.
 

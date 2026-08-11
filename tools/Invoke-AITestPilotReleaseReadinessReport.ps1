@@ -37,6 +37,9 @@ Include the recommended command sequence at the end of the report.
 
 .PARAMETER FailOnWarning
 Treat WARN entries as blocking failures. Useful for strict gate automation.
+
+.PARAMETER SummaryOutputPath
+Optional output path for a machine-readable JSON summary.
 #>
 [CmdletBinding()]
 param(
@@ -48,7 +51,8 @@ param(
     [string]$OutputPath = "",
     [switch]$RequireReleasePipeline,
     [switch]$IncludeRecommendedCommands,
-    [switch]$FailOnWarning
+    [switch]$FailOnWarning,
+    [string]$SummaryOutputPath = ""
 )
 
 Set-StrictMode -Version Latest
@@ -145,7 +149,6 @@ function Check-JsonField {
 $summaryPathFull = Resolve-PathUnderRepo $SummaryPath
 $preflightManifestPathFull = Resolve-PathUnderRepo $PreflightManifestPath
 $localSummary = Read-JsonFile -Path $summaryPathFull
-$preflightManifest = Read-JsonFile -Path $preflightManifestPathFull
 
 $rows = @()
 $rows += @{
@@ -294,6 +297,61 @@ if (-not [string]::IsNullOrWhiteSpace($OutputPath)) {
     Write-Output "Release readiness report: $fullOutput"
 } else {
     Write-Output $text
+}
+
+$summaryPayload = [ordered]@{
+    generated_utc = (Get-Date).ToUniversalTime().ToString("o")
+    gate_status = $gateStatus
+    fail_on_warning = [bool]$FailOnWarning
+    require_release_pipeline = [bool]$RequireReleasePipeline
+    counts = [ordered]@{
+        pass = $passCount
+        warn = $warnCount
+        fail = $failCount
+        blocking = $blockCount
+    }
+    checks = @()
+}
+
+foreach ($row in $rows) {
+    if ($null -eq $row) { continue }
+
+    $item = [ordered]@{
+        label = "unknown"
+        status = "FAIL"
+        detail = ""
+        value = ""
+        path = ""
+    }
+
+    if ($row -is [hashtable]) {
+        if ($row.ContainsKey("label")) { $item.label = [string]$row["label"] }
+        elseif ($row.ContainsKey("title")) { $item.label = [string]$row["title"] }
+        if ($row.ContainsKey("status")) { $item.status = [string]$row["status"] }
+        if ($row.ContainsKey("detail")) { $item.detail = [string]$row["detail"] }
+        if ($row.ContainsKey("value")) { $item.value = [string]$row["value"] }
+        if ($row.ContainsKey("path")) { $item.path = [string]$row["path"] }
+    }
+    elseif ($row.PSObject -and $row.PSObject.Properties) {
+        if ($row.PSObject.Properties.Name -contains "label") { $item.label = [string]$row.label }
+        elseif ($row.PSObject.Properties.Name -contains "title") { $item.label = [string]$row.title }
+        if ($row.PSObject.Properties.Name -contains "status") { $item.status = [string]$row.status }
+        if ($row.PSObject.Properties.Name -contains "detail") { $item.detail = [string]$row.detail }
+        if ($row.PSObject.Properties.Name -contains "value") { $item.value = [string]$row.value }
+        if ($row.PSObject.Properties.Name -contains "path") { $item.path = [string]$row.path }
+    }
+
+    $summaryPayload.checks += $item
+}
+
+if (-not [string]::IsNullOrWhiteSpace($SummaryOutputPath)) {
+    $summaryOutputFull = Resolve-PathUnderRepo $SummaryOutputPath
+    $summaryOutputDir = Split-Path $summaryOutputFull -Parent
+    if (-not (Test-Path $summaryOutputDir)) {
+        New-Item -ItemType Directory -Force -Path $summaryOutputDir | Out-Null
+    }
+    $summaryPayload | ConvertTo-Json -Depth 10 | Set-Content -Path $summaryOutputFull -Encoding UTF8
+    Write-Output "Release readiness summary: $summaryOutputFull"
 }
 
 if ($FailOnWarning -and $blockCount -gt 0) {

@@ -72,6 +72,12 @@ Use strict gate mode in automation:
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
 ```
 
+Machine-readable summary:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json
+```
+
 ## 2) Daily local development
 
 - PR/local quality gate

@@ -53,6 +53,12 @@ For strict gate runs:
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
 ```
 
+For machine-readable validation output:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json
+```
+
 ## 2) Evidence required for release review
 
 - [ ] `Temp\developer-gate-manifest.json`
