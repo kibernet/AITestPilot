@@ -21,34 +21,40 @@ Kibernet AI TestPilot turns gameplay testing into a controlled engineering loop:
 
 ## 项目简介
 
-AI TestPilot 是一个面向 Unity 的高可靠 AI 游戏质量工程平台。它将“自动化测试”升级为“可审计的质量工程循环”，通过统一证据链连接缺陷发现、修复交付与发布决策，减少“手工经验不可复现”和“自动化不可追责”的系统性风险。
+AI TestPilot 是一套面向 Unity 的 **证据驱动游戏质量工程平台**。它把“采集快照 → 决策执行 → 缺陷归档 → 修复交付 → 回放验证 → 发布准入”打造成一条可审计、可回放、可持续演进的闭环。
 
-项目定位为研发团队内可直接落地的工程能力，而不仅是单次验证脚本。核心目标是：
+该项目不是“把 AI 放进 QA”这么浅层的功能叠加，而是通过工程化边界实现“AI 只在受控空间内参与决策”。你可以把它理解为：
 
-- 稳定采集可重放的测试上下文（`Snapshot / UI / 日志 / 状态`）；
-- 在受控策略下生成动作并经过 Action Schema + Allowlist 的安全校验；
-- 将缺陷自动封装为可复测、可归档、可交接的证据对象；
-- 支持从缺陷定位、修复任务、补丁预检到回归验证与回滚证据的闭环；
-- 为发布和里程碑输出“可量化、可回放、可审计”的 readiness 依据。
+- 自动采集可还原的游戏状态与上下文；
+- 通过版本化动作规范与 allowlist 约束执行路径；
+- 将缺陷、风险、修复证据结构化为可追踪资产；
+- 将发布决策绑定到可验证的 artifact，而非团队主观判断。
 
-### 使用场景
+### 典型适用场景
 
-- 游戏研发验收：关键系统、玩法更新、Unity 版本升级前形成统一的质量证明；
-- PR / Issue / Milestone 流程：在评审与发布节奏中自动附带标准化证据；
-- QA 与修复代理协同：将模型探索结果转为清晰可执行的修复任务；
-- 团队治理：通过统一脚本和指标降低人力波动，提升发布一致性与可维护性。
+- 回归测试与缺陷复现：`Snapshot / UI / 日志 / 游戏状态`
+- 规则或模型辅助的动作决策与执行
+- 缺陷识别、风险分类与知识闭环沉淀
+- 代理化修复流程：任务绑定、补丁预检、回放验证、回滚证明
+- PR / Issue / Milestone 的发布就绪报告自动化
 
-### 项目边界
+### 项目定位
 
-- **范围说明**：当前聚焦于可复现、可验证和可归档的质量闭环能力；
-- **工程交付**：支持本地门禁与 release pipeline 中的复用；
-- **协作机制**：与 PR 门禁、里程碑说明和修复回路联动，提升团队协作可追踪性；
+- **可验证优先**：每条自动化结果都保留机器可读证据（JSON/Markdown/Manifest）
+- **边界约束优先**：模型只能在可版本化的动作 schema 与 allowlist 下执行
+- **发布可追溯**：报告、摘要、证据索引和门禁输出形成统一链路
 
-### 适用价值与使用说明
+### 使用说明（高层）
 
-- **可追踪**：优先保证“能解释、能复现、能回滚”；
-- **可落地**：默认采用 **MIT License**，详见 [LICENSE](LICENSE)；
-- **环境要求**：上生产环境前需结合项目特定 replay driver、端点与发布策略进行配置。
+- 支持 Unity 2021.3+ 的脚本化验证与本地门禁
+- 自动化覆盖 PR/Issue/Milestone 注入发布就绪内容
+- 与修复环节对齐，降低上下文丢失与重复操作风险
+
+### 合规与交付边界
+
+- **授权协议**：MIT（[LICENSE](LICENSE)）
+- **环境要求**：Windows PowerShell 5.1+ / .NET 8 / Git / Unity 2021.3+
+- **生产前提**：接入真实 Replay Driver、真实模型调用链与生产凭据管理后再用于正式发布验证
 
 ## Why AI TestPilot
 
@@ -367,34 +373,34 @@ Then:
 
 The command imports the package into a temporary Unity project, compiles Runtime and Editor assemblies, runs a generated sample scene, exercises the decision loop and bug flow, and writes release evidence under `Temp/release-evidence/latest`.
 
-## 落地与验收（7/30天）
+## 落地与验收（7/30 计划）
 
-下面给出一条面向团队可直接执行的推进节奏，可用于正式评审会汇报：
+给团队提供一条可执行的上线节奏示例：先跑基础验证，再补齐 PR 发布门禁，最后完成正式发布闭环。
 
-- **第1-3天：项目接入与基础验证**
-  - 执行 ` .\tools\Validate-AITestPilot.ps1` 或 ` .\tools\Invoke-AITestPilotLocalPreflight.ps1`。
-  - 建立固定输出目录（默认 `Temp\`）并确保 Manifest/Summary 可落盘。
-  - 初始化 Unity 侧基础接入：补齐关键 `AutomationId`、验证样例流程与快照产物。
+- **第 1-3 天（项目接入）**
+  - 运行 `\.\tools\Validate-AITestPilot.ps1` 与 `\.\tools\Invoke-AITestPilotLocalPreflight.ps1`
+  - 确认输出目录（默认 `Temp\`）并固定记录 `Manifest / Summary`
+  - 完成 Unity 首次接入：添加 `AutomationId`，验证 sample scene 与关键驱动点
 
-- **第4-7天：PR 与发布流程对齐**
-  - 按 PR 模板要求上报 `Temp\developer-gate-manifest.json`、`Temp\dev-gate-summary.json`。
-  - 明确失败处理策略与跳过原因，避免“模糊跳过”。
-  - 完成核心 replay 场景对接（账号登录、场景进入、结算/领奖等基础动作）。
+- **第 4-7 天（PR 阶段）**
+  - 在 PR 模板中附 `Temp\developer-gate-manifest.json` 与 `Temp\dev-gate-summary.json`
+  - 建立故障处理回放；将主要失败归类并提交修复计划
+  - 完成 Replay Driver 集成的最小闭环（可回放场景 + 回归验证）
 
-- **第8-30天：稳定交付与发布能力化**
-  - 完成路径回归检查链路：`Run-CiGatePathRegression` 与 `Run-CiGatePathRegressionStrict`。
-  - 形成风险矩阵（失败类型、复发率、修复周期）并逐步收敛。
-  - 跑完整发布流水线：`Invoke-AITestPilotReleasePipeline.ps1`，建立可追溯 release 证据。
+- **第 8-30 天（发布就绪）**
+  - 完成路径回归与严格别名冲突检测：`Run-CiGatePathRegression` / `Run-CiGatePathRegressionStrict`
+  - 形成发布决策台账与发布证据矩阵
+  - 运行 `\.\tools\Invoke-AITestPilotReleasePipeline.ps1`，确认可复用发布证据与清单
 
-### 落地验收清单
+### 落地与验收清单
 
-- `Temp\developer-gate-manifest.json`：开发者门禁结果
-- `Temp\dev-gate-summary.json`：门禁汇总（含 quick-start / repair-loop）
-- `Temp\ci-gate-summary.json`：CI 风格门禁结果
-- `Temp\release-evidence\latest\`：发布证据包
-- `artifacts\ai-testpilot-release\latest\`：发布构建产物
+- `Temp\developer-gate-manifest.json`：开发门禁 manifest
+- `Temp\dev-gate-summary.json`：PR 级开发门禁摘要
+- `Temp\ci-gate-summary.json`：CI 门禁摘要
+- `Temp\release-evidence\latest\`：发布证据集合
+- `artifacts\ai-testpilot-release\latest\`：发布制品输出目录
 
-用于正式发布 PR 的完整说明请参考：
+更多说明请参考：
 - [Rollout & Release Checklist](docs/rollout-and-release-checklist.md)
 - [Release Gate Review Checklist](docs/release-gate-review-checklist.md)
 
@@ -532,3 +538,4 @@ Unity-facing changes should also pass `Validate-UnityPackageImport.ps1` on Unity
 ## License
 
 Kibernet AI TestPilot is released under the [MIT License](LICENSE). Commercial use, modification, distribution, sublicensing, and use in closed-source products are permitted under the license terms.
+
