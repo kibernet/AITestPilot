@@ -21,20 +21,29 @@ Kibernet AI TestPilot turns gameplay testing into a controlled engineering loop:
 
 ## 项目介绍（中文）
 
-AI TestPilot 是一个面向 Unity 的“证据优先”游戏质量保障平台。它通过统一状态采集、动作白名单约束、问题封装、修复交接与回放复测，建立从发现缺陷到发布放行的闭环。对研发团队而言，它的价值在于：缩短回归定位时间、提高复现一致性、减少 PR 评审中的口头争议。
+AI TestPilot 是面向 Unity 的“证据优先”游戏质量保障平台。它把“发现-复现-修复-回归”构建为一套可审计工作流：统一采集游戏状态与上下文证据、通过 allowlist 与版本化动作 schema 控制执行边界、自动封装问题包并驱动修复交接，最终将结果回流到可复测、可回放、可发布的证据链。
 
-项目采用 **MIT 许可证**，更适合需要低门槛协作与商业落地的团队；许可条款见 [LICENSE](LICENSE)。
+### 适用价值（为什么选它）
+
+- 缩短回归定位时间：缺陷一旦发生可快速关联到具体日志、状态、截图与重放片段。
+- 提高复现一致性：每条失败都生成可重放场景和标准化上下文，不再依赖口头描述。
+- 降低 PR 风险：本地门禁与发布证据链可作为评审的硬约束，减少“看起来过了但没验证”的问题。
+- 加速团队协同：测试、开发与修复流均使用统一 JSON/Markdown 产物，便于交接和追责。
+
+### 项目许可
+
+本项目采用 **MIT License**，支持大多数商业与合作场景；完整条款见 [LICENSE](LICENSE)。
 
 ## Why AI TestPilot
 
 Game QA automation usually breaks at the boundaries between UI state, gameplay APIs, flaky replay steps, bug reports, repair tools, and CI. AI TestPilot provides one auditable contract across those boundaries.
 
-- **Model-agnostic exploration** — use deterministic policies, a native JSON model endpoint, or an OpenAI-compatible chat-completions gateway.
-- **Constrained execution** — model output is parsed against a versioned action schema and rejected unless it matches the allowlist.
-- **Reproducible bugs** — logs, state, steps, risk, source context, and artifacts are packaged into durable JSON and Markdown.
-- **Repair-agent handoff** — generate task-bound context, acceptance criteria, expected outputs, patch preflight, retest, and rollback evidence.
-- **Learning from prior failures** — persist a bug knowledge graph with module, failure-type, and fix-history signals.
-- **Evidence-backed releases** — gate releases on validated artifacts rather than optimistic status flags.
+- **Model-agnostic exploration**: Use deterministic policies, a native JSON model endpoint, or an OpenAI-compatible chat-completions gateway.
+- **Constrained execution**: Model output is parsed against a versioned action schema and rejected unless it matches the allowlist.
+- **Reproducible bugs**: Logs, state, steps, risk, source context, and artifacts are packaged into durable JSON and Markdown.
+- **Repair-agent handoff**: Generate task-bound context, acceptance criteria, expected outputs, patch preflight, retest, and rollback evidence.
+- **Learning from prior failures**: Persist a bug knowledge graph with module, failure-type, and fix-history signals.
+- **Evidence-backed releases**: Gate releases on validated artifacts rather than optimistic status flags.
 
 ## System Flow
 
@@ -234,7 +243,7 @@ Add the package through Unity Package Manager with the Git URL:
 https://github.com/kibernet/AITestPilot.git?path=/unity/com.kibernet.ai-testpilot#main
 ```
 
-For local development, use **Package Manager → Add package from disk** and select:
+For local development, use **Package Manager -> Add package from disk** and select:
 
 ```text
 unity/com.kibernet.ai-testpilot/package.json
@@ -243,7 +252,7 @@ unity/com.kibernet.ai-testpilot/package.json
 Then:
 
 1. Add `AutomationId` to UI objects that should be visible to the test agent.
-2. Open **Tools → Kibernet → AI TestPilot**.
+2. Open **Tools -> Kibernet -> AI TestPilot**.
 3. Capture and inspect a snapshot.
 4. Start with the deterministic rule-based loop before enabling a live model endpoint.
 5. Integrate a production replay driver before treating package evidence as proof of real game behavior.
