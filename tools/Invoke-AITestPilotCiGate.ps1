@@ -13,6 +13,8 @@ param(
     [string]$UnityPath,
     [Alias("SummaryPath")]
     [string]$OutputPath = "Temp\ci-gate-summary.json",
+    [Alias("ManifestPath")]
+    [string]$DeveloperGateManifestPath = "Temp\developer-gate-manifest.json",
     [switch]$AllowPartialFail
 )
 
@@ -20,7 +22,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$manifestPath = Join-Path $repoRoot "Temp\developer-gate-manifest.json"
+$manifestPath = Join-Path $repoRoot $DeveloperGateManifestPath
 $devGateScript = Join-Path $PSScriptRoot "Run-DevGate.ps1"
 
 function Build-RunDevGateArgs {
@@ -131,7 +133,22 @@ $summary = [ordered]@{
 }
 
 try {
-    $runSummary = Parse-DeveloperGateSummary -Path $manifestPath
+    $manifestParsePath = if (Test-Path $manifestPath) { $manifestPath } else { Join-Path $repoRoot "Temp\developer-gate-manifest.json" }
+
+    if (-not (Test-Path $manifestParsePath)) {
+        throw "Developer gate manifest not found: $manifestPath (or default Temp\\developer-gate-manifest.json)"
+    }
+
+    $runSummary = Parse-DeveloperGateSummary -Path $manifestParsePath
+
+    if ((Resolve-Path $manifestPath -ErrorAction SilentlyContinue).Path -ne (Resolve-Path $manifestParsePath -ErrorAction SilentlyContinue).Path) {
+        $manifestDir = Split-Path $manifestPath -Parent
+        if ($manifestDir) {
+            New-Item -ItemType Directory -Force $manifestDir | Out-Null
+        }
+        Copy-Item -Path $manifestParsePath -Destination $manifestPath -Force
+    }
+
     $summary.developer_gate_status = $runSummary.developer_gate_status
     $summary.quick_start_status = $runSummary.quick_start_status
     $summary.repair_loop_status = $runSummary.repair_loop_status
@@ -142,7 +159,7 @@ try {
 }
 catch {
     $summary.skip_reasons = @("summary parse failed: $($_.Exception.Message)")
-    $summary.failed_steps = @("summary parse failed: $($_.Exception.Message)")
+$summary.failed_steps = @("summary parse failed: $($_.Exception.Message)")
 }
 
 New-Item -ItemType Directory -Force (Split-Path (Join-Path $repoRoot $OutputPath) -Parent) | Out-Null

@@ -54,6 +54,12 @@ If you need a custom output path:
 .\tools\Invoke-AITestPilotCiGate.ps1 -SummaryPath Temp\ci-gate-summary.json
 ```
 
+If you need a custom manifest location:
+
+```powershell
+.\tools\Invoke-AITestPilotCiGate.ps1 -ManifestPath Temp\custom-developer-gate-manifest.json
+```
+
 Default output:
 - `Temp\quick-start\quick-start-manifest.json`
 - `Temp\quick-start\model-endpoint-trace-manifest.json` (if model endpoint trace step is run)

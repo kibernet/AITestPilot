@@ -126,6 +126,12 @@ To write to a custom summary path:
 .\tools\Invoke-AITestPilotCiGate.ps1 -SummaryPath Temp\ci-gate-summary.json
 ```
 
+To read/write a custom developer gate manifest path:
+
+```powershell
+.\tools\Invoke-AITestPilotCiGate.ps1 -ManifestPath Temp\custom-developer-gate-manifest.json
+```
+
 The command writes a quick-start manifest to:
 
 ```text
