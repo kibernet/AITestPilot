@@ -106,7 +106,8 @@ The following 20 items are the next concrete development queue, ordered by impac
 17. Add explicit checks for production Lua evidence age/freshness in release policy.
 18. Add a replay profile validation tool for non-Unity authored profiles (JSON lint + schema check).
 19. Add a periodic "release docs freshness" drift report in the release pipeline output.
-20. Add `docs/quick-start-demo.md` bilingual command snippets for external teams.
+20. Add `docs/quick-start-demo.md` bilingual command snippets for external teams.  
+    Completed: `docs/quick-start-demo.md` now includes English and Chinese command sections and bilingual operator copy blocks.
 
 ## V0.2 Unity Import Gate
 

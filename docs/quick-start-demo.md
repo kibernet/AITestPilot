@@ -2,6 +2,57 @@
 
 This page is the fastest entry point for trying AI TestPilot locally in your machine.
 
+## Bilingual command snippets (external-friendly) | 外部团队友好双语命令
+
+Use the same commands for both English and Chinese teams—only the description text changes to remove ambiguity when sharing outside the project.
+
+外部协作更稳妥方式：命令保持一致，只需按团队语言选择对应解释。下面命令可直接复制到工单、邮件或外部交付文档。
+
+### English
+
+```powershell
+# 1) Run the full quick-start workflow
+.\tools\Invoke-AITestPilotQuickStart.ps1
+
+# 2) Validate the quick-start manifest
+.\tools\Invoke-AITestPilotQuickStartChecklist.ps1
+
+# 3) Run standard PR/push readiness (recommended)
+.\tools\Run-DevGate.ps1
+
+# 4) Run CI-gate style check locally
+.\tools\Invoke-AITestPilotCiGate.ps1
+```
+
+### 中文
+
+```powershell
+# 1）执行完整快速上手流程
+.\tools\Invoke-AITestPilotQuickStart.ps1
+
+# 2）校验快速上手产物是否完整
+.\tools\Invoke-AITestPilotQuickStartChecklist.ps1
+
+# 3）执行标准 PR/Push 本地预检（推荐）
+.\tools\Run-DevGate.ps1
+
+# 4）本地执行 CI 级别预检
+.\tools\Invoke-AITestPilotCiGate.ps1
+```
+
+### Ready-to-paste bilingual operator block | 可直接粘贴的双语块
+
+```text
+English:
+cd <repo-root>; .\tools\Validate-AITestPilot.ps1; .\tools\Invoke-AITestPilotQuickStart.ps1; .\tools\Run-DevGate.ps1
+
+中文:
+进入仓库根目录后依次执行：
+.\tools\Validate-AITestPilot.ps1
+.\tools\Invoke-AITestPilotQuickStart.ps1
+.\tools\Run-DevGate.ps1
+```
+
 ## What this demo proves
 
 Running the quick start does **not** require live-game credentials or model keys. It proves:
