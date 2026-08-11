@@ -49,6 +49,7 @@ If you need the developer gate manifest in a custom path:
 ```
 
 `-ManifestPath`/`-SummaryPath` both accept absolute paths; if omitted or relative, they resolve to the repository root.
+`-OutputPath` is now accepted as an alias for `-SummaryPath`.
 
 CI-friendly single command (writes summary JSON to `Temp\ci-gate-summary.json`):
 

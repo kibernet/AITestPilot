@@ -11,6 +11,7 @@ param(
     [string]$RepairLoopOutputDir,
     [string]$RepairLoopEvidenceBundleDir,
     [string]$UnityPath,
+    [Alias("OutputPath")]
     [string]$SummaryPath,
     [Alias("ManifestPath")]
     [string]$DeveloperGateManifestPath = "Temp\developer-gate-manifest.json"
