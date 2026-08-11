@@ -34,7 +34,7 @@ When you finish verification, generate a one-click readiness snapshot for PR/mil
 For strict gating, add `-FailOnWarning` so CI/automation fails on unresolved WARN or FAIL items:
 
 ```powershell
-.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning $true
 ```
 
 For CI/automation parsing, request machine-readable output:
@@ -52,20 +52,26 @@ require_readiness_gate: true
 For PR/milestone handoff, generate the same markdown block directly:
 
 ```powershell
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning -DryRun
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning $true -DryRun
+```
+
+For a paste-ready file (recommended for review comments and checklists):
+
+```powershell
+.\tools\Export-AITestPilotReleaseReadinessHandoff.ps1 -OutputPath Temp\release-readiness-handoff-block.md -FailOnWarning $true
 ```
 
 If your PR already exists and GH CLI auth is available, sync the block in one step:
 
 ```powershell
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber <YOUR_PR_NUMBER> -FailOnWarning
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber <YOUR_PR_NUMBER> -FailOnWarning $true
 ```
 
 You can also sync to issue/milestone descriptions:
 
 ```powershell
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber <YOUR_ISSUE_NUMBER> -FailOnWarning
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber <YOUR_MILESTONE_NUMBER> -FailOnWarning
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber <YOUR_ISSUE_NUMBER> -FailOnWarning $true
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber <YOUR_MILESTONE_NUMBER> -FailOnWarning $true
 ```
 
 ## Release Pipeline Step Index

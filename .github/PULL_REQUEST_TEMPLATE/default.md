@@ -23,8 +23,9 @@ Please run and report before merge:
 - [ ] `.\tools\Invoke-AITestPilotCiGate.ps1` (if running CI-style aggregate validation)
 - [ ] `.\tools\Invoke-AITestPilotLocalPreflight.ps1` (if local baseline is preferred)
 - [ ] `.\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias` (if path alias regression is targeted)
-- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning` (strict mode, if this PR is milestone/release-facing)
-- [ ] `.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning -DryRun` (generate handoff block from readiness output)
+- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning $true` (strict mode, if this PR is milestone/release-facing)
+- [ ] `.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning $true -DryRun` (generate handoff block from readiness output)
+- [ ] `.\tools\Export-AITestPilotReleaseReadinessHandoff.ps1 -OutputPath Temp\release-readiness-handoff-block.md -FailOnWarning $true` (export paste-ready handoff block)
 
 If you used skips, list them:
 
@@ -47,6 +48,7 @@ If you used skips, list them:
 - Release artifacts: `artifacts\ai-testpilot-release\latest\...` (if release pipeline run)
 - Release readiness report: `Temp\release-readiness-report.md`
 - Release readiness summary (optional): `Temp\release-readiness-summary.json`
+- Release handoff block: `Temp\release-readiness-handoff-block.md` (paste-ready)
 
 ## Copy/Paste release gate block (for milestone PR / pre-release PR)
 
@@ -66,6 +68,7 @@ If you used skips, list them:
 - Release artifacts: artifacts\ai-testpilot-release\latest\
 - Release readiness report: Temp\release-readiness-report.md
 - Release readiness summary: Temp\release-readiness-summary.json
+- Release handoff block: Temp\release-readiness-handoff-block.md
 ```
 
 Status:
@@ -110,15 +113,21 @@ Paste the readiness report/snippet here if generated:
 # paste contents of Temp\\release-readiness-pr-snippet.md
 ```
 
+Paste the handoff block from this file if you used the one-shot export:
+
+```text
+# paste contents of Temp\\release-readiness-handoff-block.md
+```
+
 After opening the PR, if you have GitHub CLI auth configured, you can sync this block directly into the PR body:
 
 ```powershell
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber <YOUR_PR_NUMBER> -FailOnWarning
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber <YOUR_PR_NUMBER> -FailOnWarning $true
 ```
 
 You can also use the same command for issue/milestone handoffs:
 
 ```powershell
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber <YOUR_ISSUE_NUMBER> -FailOnWarning
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber <YOUR_MILESTONE_NUMBER> -FailOnWarning
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber <YOUR_ISSUE_NUMBER> -FailOnWarning $true
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber <YOUR_MILESTONE_NUMBER> -FailOnWarning $true
 ```

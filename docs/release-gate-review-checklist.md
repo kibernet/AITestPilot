@@ -50,22 +50,22 @@ For a quick audit artifact, run the one-command bundle:
 For strict gate runs:
 
 ```powershell
-.\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md -FailOnWarning
+.\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md -FailOnWarning $true
 ```
 
 If you prefer a paste-ready handoff file:
 
 ```powershell
-.\tools\Export-AITestPilotReleaseReadinessHandoff.ps1 -OutputPath Temp\release-readiness-handoff-block.md -FailOnWarning
+.\tools\Export-AITestPilotReleaseReadinessHandoff.ps1 -OutputPath Temp\release-readiness-handoff-block.md -FailOnWarning $true
 ```
 
 To generate or sync the same block directly into PR/issue/milestone descriptions:
 
 ```powershell
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning -DryRun
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber 123 -FailOnWarning
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber 456 -FailOnWarning
-.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber 7 -FailOnWarning
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning $true -DryRun
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber 123 -FailOnWarning $true
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber 456 -FailOnWarning $true
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber 7 -FailOnWarning $true
 ```
 
 For machine-readable validation output:
@@ -92,6 +92,7 @@ For PR-friendly summary formatting:
 - [ ] `Temp\release-readiness-summary.json`
 - [ ] `Temp\release-readiness-report.md`
 - [ ] `Temp\release-readiness-pr-snippet.md` (optional)
+- [ ] `Temp\release-readiness-handoff-block.md` (recommended when using file-driven checklist handoff)
 
 ## 3) Risk control check
 
