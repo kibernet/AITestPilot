@@ -82,8 +82,15 @@ function Invoke-CheckedScript {
     }
 
     & $scriptPath @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "$ScriptName failed with exit code $LASTEXITCODE"
+    $exitCode = 0
+    if (Test-Path Variable:LASTEXITCODE) {
+        if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+            $exitCode = $LASTEXITCODE
+        }
+    }
+
+    if ($exitCode -ne 0) {
+        throw "$ScriptName failed with exit code $exitCode"
     }
 }
 
@@ -152,12 +159,51 @@ if ($RunReplayProfileSchemaCheck.IsPresent) {
 
         $replayProfileEvidenceDir = Join-Path $repoRoot "Temp\release-evidence\latest"
         New-Item -ItemType Directory -Force $replayProfileEvidenceDir | Out-Null
-        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReplayProfileSchemaCheck.ps1") `
-            -ReplayProfileJsonPath $replayProfilePath `
-            -EvidenceBundleDir $replayProfileEvidenceDir `
-            -ManifestPath (Join-Path $replayProfileEvidenceDir "replay-profile-schema-check-manifest.json") | Out-Null
+        $replayProfileManifestPath = Join-Path $replayProfileEvidenceDir "replay-profile-schema-check-manifest.json"
+        $replayProfileExecutionError = $null
+        try {
+            Invoke-CheckedScript "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" @{
+                ReplayProfileJsonPath = $replayProfilePath
+                EvidenceBundleDir = $replayProfileEvidenceDir
+                ManifestPath = $replayProfileManifestPath
+            } | Out-Null
+        }
+        catch {
+            $replayProfileExecutionError = $_.Exception.Message
+        }
 
-        Add-Step -Name "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" -Status "PASS"
+        $replayProfileManifest = Read-JsonSafely -Path $replayProfileManifestPath
+        if ($replayProfileManifest -and $replayProfileManifest.status -eq "PASS") {
+            Add-Step -Name "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" -Status "PASS"
+        }
+        else {
+            $developerGate.status = "PARTIAL_FAIL"
+            $replayProfileFailureReason = if ($replayProfileManifest -and $replayProfileManifest.status) {
+                "Replay profile schema check status: $($replayProfileManifest.status)"
+            } else {
+                "Replay profile schema check failed. Check manifest for details."
+            }
+            if ($replayProfileExecutionError) {
+                $replayProfileFailureReason = "$replayProfileFailureReason $replayProfileExecutionError"
+            }
+
+            $replayProfileFailReasons = @()
+            if ($replayProfileManifest -and $replayProfileManifest.issues) {
+                $replayProfileFailReasons = @(
+                    @($replayProfileManifest.issues) |
+                    Where-Object { $_.severity -eq "FAIL" } |
+                    ForEach-Object { "[$($_.code)] $($_.path): $($_.message)" }
+                )
+            }
+
+            if ($replayProfileFailReasons.Count -gt 0) {
+                $replayProfileFailureReason = "$replayProfileFailureReason`n" + ($replayProfileFailReasons -join "`n")
+            }
+
+            Add-Step -Name "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" `
+                -Status "FAIL" `
+                -Message $replayProfileFailureReason
+        }
     }
     catch {
         $developerGate.status = "PARTIAL_FAIL"
