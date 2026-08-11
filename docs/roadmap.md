@@ -83,6 +83,31 @@
 - Release-gated Cursor Agent external output binding probe before the release gate, with `repair-agent-cursor-agent-external-output-binding-probe-manifest.json` covering no-Cursor baseline, stale optional evidence rejection, hash-mismatch rejection, and matched binding pass cases.
 - Release-gated risk policy with release risk policy source script SHA256 binding, blocking failing AI exploration, unresolved high-risk graph nodes, missing production driver evidence, missing production Lua evidence, missing live endpoint policy evidence, missing CI provider controls, missing production handoff evidence, or missing hard-mode failure/success-contract evidence.
 
+## Active Development Queue (Next 20 Slots)
+
+The following 20 items are the next concrete development queue, ordered by impact and unblock value:
+
+1. Complete a host-project smoke credential handoff bundle for real model access (`fixtureOnly=false` path).
+2. Add a production replay driver implementation for one real account/login path (not sample driver).
+3. Add production Lua evidence pack against one real module and close `RequireProductionLuaPatched` readiness.
+4. Run and publish one full `Invoke-AITestPilotReleasePipeline.ps1` with `-RequireProductionReplayDriverBound`.
+5. Add project-specific remediation guidance for real live endpoint failure modes.
+6. Expand `docs/integration/production-driver.md` with host-project on-boarding examples.
+7. Add a small set of Unity integration acceptance tests for login and activity reward replay.
+8. Add explicit evidence retention policy for release artifacts by sprint.
+9. Add regression coverage for path alias regression in strict mode across CI path outputs.
+10. Add a dashboard view for `repair-agent-patch-result-history.json` trends (module/failure-type).
+11. Add automatic export helper for knowledge graph risk matrix to CSV/Excel.
+12. Add a lightweight CLI summary page for `pipeline-manifest.json` failures.
+13. Add a preflight helper script to validate production handoff return packet completeness.
+14. Add a sample operator playbook for owner-response bundle triage.
+15. Add a scripted gate for missing/partial owner packets at release start.
+16. Add explicit checks for external mail workflow dry-run/readiness edge-cases in CI docs.
+17. Add explicit checks for production Lua evidence age/freshness in release policy.
+18. Add a replay profile validation tool for non-Unity authored profiles (JSON lint + schema check).
+19. Add a periodic "release docs freshness" drift report in the release pipeline output.
+20. Add `docs/quick-start-demo.md` bilingual command snippets for external teams.
+
 ## V0.2 Unity Import Gate
 
 - Export release evidence into a stable CI artifact directory.
