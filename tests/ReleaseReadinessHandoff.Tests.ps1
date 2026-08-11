@@ -182,6 +182,148 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($updatedBody -match "Bundle status: \*\*") | Should Be $true
     }
 
+    It "replaces an existing PR handoff marker block with custom markers during sync" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh-custom-pr"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        $capturePath = Join-Path $fakeGhDir "last-pr-body.md"
+        $statePath = Join-Path $fakeGhDir "gh-state.json"
+        $startMarker = "<!-- custom-pr-start -->"
+        $endMarker = "<!-- custom-pr-end -->"
+        $existingBody = @"
+## PR Title
+
+Some intro text.
+
+$startMarker
+## Release readiness handoff
+
+- Gate: **OLD**
+- PASS: 0
+- WARN: 0
+- FAIL: 0
+- Blocking: 0
+
+$endMarker
+
+Trailing section.
+"@
+        @{
+            ExistingPrBody = $existingBody
+            LastPrEditBodyPath = $capturePath
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $statePath -Encoding UTF8
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$statePath = Join-Path `$scriptRoot "gh-state.json"
+`$state = @{}
+if (Test-Path `$statePath) {
+    try {
+        `$state = Get-Content -Path `$statePath -Encoding UTF8 -Raw | ConvertFrom-Json
+    }
+    catch {
+        `$state = @{}
+    }
+}
+
+if (`$Args.Count -lt 2) { exit 1 }
+
+if (`$Args[0] -eq "pr" -and `$Args[1] -eq "view") {
+    `$body = [string](`$state.ExistingPrBody)
+    @{ body = `$body } | ConvertTo-Json -Depth 5
+    return
+}
+
+if (`$Args[0] -eq "pr" -and `$Args[1] -eq "edit") {
+    `$bodyFileIndex = [Array]::IndexOf(`$Args, "--body-file")
+    `$bodyFile = `$null
+    if (`$bodyFileIndex -ge 0 -and (`$bodyFileIndex + 1) -lt `$Args.Count) {
+        `$bodyFile = `$Args[`$bodyFileIndex + 1]
+    }
+    else {
+        `$bodyFile = `$Args[`$Args.Length - 1]
+    }
+
+    if (-not (Test-Path `$bodyFile)) { exit 1 }
+    Copy-Item -Path `$bodyFile -Destination `$state.LastPrEditBodyPath -Force
+    return
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -PullRequestNumber 77 -NoIncludeRecommendedCommands -MarkerStart $startMarker -MarkerEnd $endMarker
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        if (-not (Test-Path $capturePath)) {
+            throw "Expected PR update body capture file to be created."
+        }
+        $updatedBody = Get-Content -Path $capturePath -Raw -Encoding UTF8
+
+        (([regex]::Matches($updatedBody, [regex]::Escape($startMarker)).Count) -eq 1) | Should Be $true
+        (([regex]::Matches($updatedBody, [regex]::Escape($endMarker)).Count) -eq 1) | Should Be $true
+        ($updatedBody -match "## Release readiness handoff") | Should Be $true
+        ($updatedBody -match "Some intro text.") | Should Be $true
+        ($updatedBody -match "Trailing section.") | Should Be $true
+        ($updatedBody -notmatch "Gate: \*\*OLD\*\*") | Should Be $true
+        ($updatedBody -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
+        ($updatedBody -match [regex]::Escape("<!-- ai-testpilot-release-readiness:end -->")) | Should Be $false
+    }
+
+    It "throws readable error when PR metadata returned by gh is not valid JSON" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh-pr-bad-json"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+if (`$Args.Count -ge 2 -and `$Args[0] -eq "pr" -and `$Args[1] -eq "view") {
+    Write-Output "not-json"
+    exit 0
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $threw = $false
+        $message = ""
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -PullRequestNumber 99 -NoIncludeRecommendedCommands
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $true
+        ($message -match "Unable to parse JSON from GitHub response for PR #99") | Should Be $true
+    }
+
     It "fails with clear error when PR handoff body update via gh fails" {
         $fakeGhDir = Join-Path $TestDrive "fake-gh-pr-fail-edit"
         if (-not (Test-Path $fakeGhDir)) {

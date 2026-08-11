@@ -115,6 +115,19 @@ function Get-TextOrEmpty {
     }
 }
 
+function Convert-GhJson {
+    param(
+        [string]$RawJson,
+        [string]$Context
+    )
+    try {
+        return $RawJson | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch {
+        throw "Unable to parse JSON from GitHub response for $Context."
+    }
+}
+
 $summaryPath = Resolve-PathUnderRepo $SummaryJsonPath
 $reportPath = Resolve-PathUnderRepo $ReportOutputPath
 $snippetPath = Resolve-PathUnderRepo $SnippetOutputPath
@@ -243,7 +256,8 @@ function Merge-Or-AppendText {
 if ($PullRequestNumber -gt 0) {
     $viewJson = gh pr view $PullRequestNumber --json body
     if ($LASTEXITCODE -ne 0) { throw "Unable to read PR body for #$PullRequestNumber. Check gh auth and PR number." }
-    $prBody = ($viewJson | ConvertFrom-Json).body
+    $prPayload = Convert-GhJson -RawJson $viewJson -Context "PR #$PullRequestNumber"
+    $prBody = $prPayload.body
     if ($null -eq $prBody) { $prBody = "" }
     $updatedBody = Merge-Or-AppendText -OriginalText ([string]$prBody) -NewBlock $handoffBlock
     $tmp = Join-Path $env:TEMP "ai-testpilot-readiness-pr-$PullRequestNumber-body.md"
@@ -257,7 +271,8 @@ if ($PullRequestNumber -gt 0) {
 if ($IssueNumber -gt 0) {
     $viewJson = gh issue view $IssueNumber --json body
     if ($LASTEXITCODE -ne 0) { throw "Unable to read issue body for #$IssueNumber. Check gh auth and issue number." }
-    $issueBody = ($viewJson | ConvertFrom-Json).body
+    $issuePayload = Convert-GhJson -RawJson $viewJson -Context "issue #$IssueNumber"
+    $issueBody = $issuePayload.body
     if ($null -eq $issueBody) { $issueBody = "" }
     $updatedBody = Merge-Or-AppendText -OriginalText ([string]$issueBody) -NewBlock $handoffBlock
     $tmp = Join-Path $env:TEMP "ai-testpilot-readiness-issue-$IssueNumber-body.md"
@@ -279,7 +294,8 @@ if ($MilestoneNumber -gt 0) {
     if ($LASTEXITCODE -ne 0) {
         throw "Unable to read milestone #$MilestoneNumber."
     }
-    $existing = ($milestoneJson | ConvertFrom-Json).description
+    $milestonePayload = Convert-GhJson -RawJson $milestoneJson -Context "milestone #$MilestoneNumber"
+    $existing = $milestonePayload.description
     if ($null -eq $existing) { $existing = "" }
 
     $description = Merge-Or-AppendText -OriginalText ([string]$existing) -NewBlock $handoffBlock
