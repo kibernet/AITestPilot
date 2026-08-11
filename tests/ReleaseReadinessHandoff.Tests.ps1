@@ -61,6 +61,127 @@ Describe "Release readiness handoff scripts" {
         ($message -match "Specify only one of -IncludeRecommendedCommands or -NoIncludeRecommendedCommands.") | Should Be $true
     }
 
+    It "requires gh CLI before syncing handoff content to PR, issue, or milestone targets" {
+        $threw = $false
+        $message = ""
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            & $setScript -PullRequestNumber 77 -NoIncludeRecommendedCommands
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $true
+        ($message -match "GitHub CLI \(gh\) is required to sync to PR/issue/milestone targets") | Should Be $true
+    }
+
+    It "replaces an existing PR handoff marker block during sync instead of appending duplicates" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        $capturePath = Join-Path $fakeGhDir "last-pr-body.md"
+        $statePath = Join-Path $fakeGhDir "gh-state.json"
+        $startMarker = "<!-- ai-testpilot-release-readiness:start -->"
+        $endMarker = "<!-- ai-testpilot-release-readiness:end -->"
+        $existingBody = @"
+## PR Title
+
+Some intro text.
+
+$startMarker
+## Release readiness handoff
+
+- Gate: **OLD**
+- PASS: 0
+- WARN: 0
+- FAIL: 0
+- Blocking: 0
+
+$endMarker
+
+Trailing section.
+"@
+        @{
+            ExistingPrBody = $existingBody
+            LastPrEditBodyPath = $capturePath
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $statePath -Encoding UTF8
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$statePath = Join-Path `$scriptRoot "gh-state.json"
+`$state = @{}
+if (Test-Path `$statePath) {
+    try {
+        `$state = Get-Content -Path `$statePath -Encoding UTF8 -Raw | ConvertFrom-Json
+    }
+    catch {
+        `$state = @{}
+    }
+}
+
+if (`$Args.Count -lt 2) { exit 1 }
+
+if (`$Args[0] -eq "pr" -and `$Args[1] -eq "view") {
+    `$body = [string](`$state.ExistingPrBody)
+    @{ body = `$body } | ConvertTo-Json -Depth 5
+    return
+}
+
+if (`$Args[0] -eq "pr" -and `$Args[1] -eq "edit") {
+    `$bodyFile = `$Args[3]
+    if (`$bodyFile -eq "--body-file" -and `$Args.Count -gt 4) {
+        `$bodyFile = `$Args[4]
+    }
+    if (-not (Test-Path `$bodyFile)) { exit 1 }
+    Copy-Item -Path `$bodyFile -Destination `$state.LastPrEditBodyPath -Force
+    return
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -PullRequestNumber 77 -NoIncludeRecommendedCommands
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        if (-not (Test-Path $capturePath)) {
+            throw "Expected PR update body capture file to be created."
+        }
+        $updatedBody = Get-Content -Path $capturePath -Raw -Encoding UTF8
+
+        (([regex]::Matches($updatedBody, [regex]::Escape($startMarker)).Count) -eq 1) | Should Be $true
+        (([regex]::Matches($updatedBody, [regex]::Escape($endMarker)).Count) -eq 1) | Should Be $true
+        ($updatedBody -match "## Release readiness handoff") | Should Be $true
+        ($updatedBody -match "Some intro text.") | Should Be $true
+        ($updatedBody -match "Trailing section.") | Should Be $true
+        ($updatedBody -notmatch "Gate: \*\*OLD\*\*") | Should Be $true
+        ($updatedBody -match "Bundle status: \*\*") | Should Be $true
+    }
+
     It "exports a handoff block with marker wrappers" {
         $out = Join-Path $TestDrive "handoff-block.md"
         $result = & $exportScript -OutputPath $out -FailOnWarning -NoIncludeRecommendedCommands
