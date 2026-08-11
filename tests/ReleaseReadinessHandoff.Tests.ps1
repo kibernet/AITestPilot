@@ -2516,7 +2516,10 @@ Describe "Developer gate replay profile checks" {
         $summary.developer_gate_status | Should Be "PASS"
 
         Test-Path $checklistPath | Should Be $true
-        (Get-Content -Raw $checklistPath -ErrorAction SilentlyContinue -Encoding UTF8) | Should Match ([regex]::Escape("- [x] Replay profile schema check: PASS"))
+        $checklistText = Get-Content -Raw $checklistPath -ErrorAction SilentlyContinue -Encoding UTF8
+        $checklistText | Should Match ([regex]::Escape("- [x] Replay profile schema check: PASS"))
+        $checklistText | Should Match ([regex]::Escape("### Skipped steps"))
+        $checklistText | Should Match ([regex]::Escape("- quick-start: SkipQuickStart was set."))
 
         Remove-Item -Path $replayProfile -ErrorAction SilentlyContinue
         Remove-Item -Path $summaryPath -ErrorAction SilentlyContinue
@@ -2547,7 +2550,10 @@ Describe "Developer gate replay profile checks" {
         $summary.replay_profile_schema_check_status | Should Be "SKIPPED"
 
         Test-Path $checklistPath | Should Be $true
-        (Get-Content -Raw $checklistPath -ErrorAction SilentlyContinue -Encoding UTF8) | Should Match ([regex]::Escape("- [ ] Replay profile schema check: SKIPPED"))
+        $checklistText = Get-Content -Raw $checklistPath -ErrorAction SilentlyContinue -Encoding UTF8
+        $checklistText | Should Match ([regex]::Escape("- [ ] Replay profile schema check: SKIPPED"))
+        $checklistText | Should Match ([regex]::Escape("### Skipped steps"))
+        $checklistText | Should Match ([regex]::Escape("- replay-profile-schema-check: RunReplayProfileSchemaCheck was not set."))
 
         Remove-Item -Path $summaryPath -ErrorAction SilentlyContinue
         Remove-Item -Path $checklistPath -ErrorAction SilentlyContinue

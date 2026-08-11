@@ -68,23 +68,50 @@ function Build-PrChecklistMarkdown {
         [object]$Summary
     )
 
-    $quickStartStatus = $Summary.quick_start_status
+    function Get-SummaryValue {
+        param([object]$Source, [string]$Name)
+
+        if ($null -eq $Source) { return $null }
+
+        if ($Source.PSObject.Properties.Name -contains $Name) {
+            return $Source.$Name
+        }
+        if ($Source -is [hashtable] -or $Source -is [System.Collections.IDictionary]) {
+            if ($Source.ContainsKey($Name)) {
+                return $Source[$Name]
+            }
+        }
+        return $null
+    }
+
+    function Get-SummaryArrayValues {
+        param([object]$Source, [string]$Name)
+
+        $value = Get-SummaryValue -Source $Source -Name $Name
+        if ($null -eq $value) { return @() }
+
+        if ($value -is [string]) { return @($value) }
+        if ($value -is [System.Array]) { return [string[]]$value }
+        if ($value -is [System.Collections.IEnumerable]) {
+            return @($value)
+        }
+        return @($value)
+    }
+
+    $quickStartStatus = Get-SummaryValue -Source $Summary -Name "quick_start_status"
     $quickStartLine = if ($quickStartStatus -eq "PASS") { "[x]" } else { if ($quickStartStatus -eq "NOT_RUN" -or $quickStartStatus -eq "UNKNOWN" -or $quickStartStatus -eq "SKIPPED") { "[ ]" } else { "[!]" } }
 
-    $repairLoopStatus = $Summary.repair_loop_status
+    $repairLoopStatus = Get-SummaryValue -Source $Summary -Name "repair_loop_status"
     $repairLoopLine = if ($repairLoopStatus -eq "PASS") { "[x]" } else { if ($repairLoopStatus -eq "NOT_RUN" -or $repairLoopStatus -eq "UNKNOWN" -or $repairLoopStatus -eq "SKIPPED") { "[ ]" } else { "[!]" } }
 
-    $replayProfileStatus = $Summary.replay_profile_schema_check_status
+    $replayProfileStatus = Get-SummaryValue -Source $Summary -Name "replay_profile_schema_check_status"
     $replayProfileLine = if ($replayProfileStatus -eq "PASS") { "[x]" } else { if ($replayProfileStatus -eq "SKIPPED" -or $replayProfileStatus -eq "NOT_RUN" -or $replayProfileStatus -eq "UNKNOWN") { "[ ]" } else { "[!]" } }
 
-    $failedSteps = @()
-    if ($Summary.PSObject.Properties.Name -contains "failed_steps" -and $Summary.failed_steps) {
-        $failedSteps = @(@($Summary.failed_steps) | Where-Object { $_ -ne $null })
-    }
+    $failedSteps = @() + (Get-SummaryArrayValues -Source $Summary -Name "failed_steps")
     $failedLines = @()
-    if ($failedSteps.Count -gt 0) {
+    if (@($failedSteps).Count -gt 0) {
         $failedLines += "### Failed steps"
-        foreach ($failedStep in $failedSteps) {
+        foreach ($failedStep in @($failedSteps)) {
             $failedLines += "- $failedStep"
         }
     }
@@ -92,8 +119,24 @@ function Build-PrChecklistMarkdown {
         $failedLines += "### Failed steps"
         $failedLines += "No failed steps detected."
     }
-
     $failedSection = ($failedLines -join "`n")
+
+    $skipLines = @()
+    $skipReasons = @() + (Get-SummaryArrayValues -Source $Summary -Name "skip_reasons")
+    if (@($skipReasons).Count -gt 0) {
+        $skipLines += "### Skipped steps"
+        foreach ($skipReason in @($skipReasons)) {
+            if (-not [string]::IsNullOrWhiteSpace($skipReason)) {
+                $skipLines += "- $skipReason"
+            }
+        }
+    }
+    if ($skipLines.Count -eq 0) {
+        $skipLines += "### Skipped steps"
+        $skipLines += "No skipped steps recorded."
+    }
+
+    $skipSection = ($skipLines -join "`n")
 
 return @"
 ## Validation summary
@@ -103,6 +146,7 @@ return @"
 - $($replayProfileLine) Replay profile schema check: $replayProfileStatus
 
 $($failedSection)
+$($skipSection)
 
 "@
 }
