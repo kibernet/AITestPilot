@@ -96,6 +96,8 @@ Get-Help .\tools\Validate-AITestPilot.ps1 -Full
 Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 ```
 
+See full local workflow cheat sheet: `.\docs\local-workflow-cheat-sheet.md`
+
 For strict alias-conflict assertions (including `OutputPath` + `SummaryPath` conflict rejection), run:
 
 ```powershell
