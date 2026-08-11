@@ -19,47 +19,79 @@ if (-not (Test-Path $reportScript)) {
     throw "Invoke-AITestPilotReleaseReadinessReport.ps1 not found at $reportScript"
 }
 
-$reportScriptContent = Get-Content -Path $reportScript -Raw
-$recommendedCommandSectionMatch = [regex]::Match($reportScriptContent, '(?ms)SectionTitle\s*=\s*"(?<title>[^"]+)"')
-if ($recommendedCommandSectionMatch.Success) {
-    $recommendedCommandSectionTitle = $recommendedCommandSectionMatch.Groups["title"].Value
-}
-else {
-    # Backward compatibility: support earlier explicit variable declaration.
-    $recommendedCommandSectionLegacyMatch = [regex]::Match($reportScriptContent, '\$recommendedCommandsSectionTitle\s*=\s*"(?<title>[^"]+)"')
-    if (-not $recommendedCommandSectionLegacyMatch.Success) {
-        throw "Unable to read recommended command section title from report script at $reportScript"
+function Get-RecommendedCommandConfigFromScript {
+    param(
+        [string]$Path
+    )
+
+    $content = Get-Content -Path $Path -Raw
+    $tokens = $null
+    $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors -and $parseErrors.Count -gt 0) {
+        $errorMessages = $parseErrors | ForEach-Object { $_.Message }
+        throw "Unable to parse report script AST at ${Path}: $($errorMessages -join '; ')"
     }
-    $recommendedCommandSectionTitle = $recommendedCommandSectionLegacyMatch.Groups["title"].Value
+
+    $assignment = $ast.FindAll({
+        param($node)
+        $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and
+        $node.Left -is [System.Management.Automation.Language.VariableExpressionAst] -and
+        $node.Left.VariablePath.UserPath -eq "recommendedCommandConfig"
+    }, $true)
+
+    if ($null -ne $assignment -and $assignment.Count -gt 0) {
+        $rhsText = $assignment[0].Right.Extent.Text
+        $rhsValue = ([scriptblock]::Create($rhsText)).Invoke()
+        if ($rhsValue -is [System.Collections.IEnumerable]) {
+            if ($rhsValue -is [System.Collections.IDictionary]) {
+                return $rhsValue
+            }
+            return [pscustomobject]$rhsValue
+        }
+        throw "Unable to parse recommended command config value from report script at $Path"
+    }
+
+    # Backward compatibility for older scripts that expose three separate variables.
+    $sectionMatch = [regex]::Match($content, '\$recommendedCommandsSectionTitle\s*=\s*"(?<title>[^"]+)"')
+    $fenceMatch = [regex]::Match($content, '\$recommendedCommandsCodeFence\s*=\s*"(?<fence>[^"]+)"')
+    $commandsMatch = [regex]::Match($content, '(?ms)Commands\s*=\s*@\(\s*(?<commands>(?:\r?\n\s*"[^"]*"\s*)+)\)')
+    if (
+        -not $sectionMatch.Success -or
+        -not $fenceMatch.Success -or
+        -not $commandsMatch.Success
+    ) {
+        throw "Unable to read recommended command configuration from report script at $Path"
+    }
+
+    $recommendedCommandLines = @()
+    $commandLineCandidates = $commandsMatch.Groups["commands"].Value -split "\r?\n"
+    foreach ($commandLine in $commandLineCandidates) {
+        $commandMatch = [regex]::Match($commandLine.Trim(), '^\"(?<command>.+)\"$')
+        if ($commandMatch.Success) {
+            $recommendedCommandLines += $commandMatch.Groups["command"].Value
+        }
+    }
+
+    if ($recommendedCommandLines.Count -eq 0) {
+        throw "Unable to parse any recommended commands from report script at $Path"
+    }
+
+    return [ordered]@{
+        SectionTitle = $sectionMatch.Groups["title"].Value
+        CodeFence    = $fenceMatch.Groups["fence"].Value
+        Commands     = $recommendedCommandLines
+    }
+}
+
+$recommendedCommandConfigFromScript = Get-RecommendedCommandConfigFromScript -Path $reportScript
+$recommendedCommandSectionTitle = $recommendedCommandConfigFromScript["SectionTitle"]
+$recommendedCommandCodeFence = $recommendedCommandConfigFromScript["CodeFence"]
+$recommendedCommandLines = @($recommendedCommandConfigFromScript["Commands"])
+if (-not $recommendedCommandSectionTitle -or -not $recommendedCommandCodeFence -or $recommendedCommandLines.Count -eq 0) {
+    throw "Unable to load complete recommended command configuration from report script at $reportScript"
 }
 $recommendedCommandSectionPattern = [regex]::Escape($recommendedCommandSectionTitle)
-$recommendedCommandFenceMatch = [regex]::Match($reportScriptContent, '(?ms)CodeFence\s*=\s*"(?<fence>[^"]+)"')
-if (-not $recommendedCommandFenceMatch.Success) {
-    # Backward compatibility: support earlier explicit variable declaration.
-    $recommendedCommandFenceLegacyMatch = [regex]::Match($reportScriptContent, '\$recommendedCommandsCodeFence\s*=\s*"(?<fence>[^"]+)"')
-    if (-not $recommendedCommandFenceLegacyMatch.Success) {
-        throw "Unable to read recommended command code fence from report script at $reportScript"
-    }
-    $recommendedCommandCodeFence = $recommendedCommandFenceLegacyMatch.Groups["fence"].Value
-}
-else {
-    $recommendedCommandCodeFence = $recommendedCommandFenceMatch.Groups["fence"].Value
-}
-$recommendedCommandCommandsMatch = [regex]::Match($reportScriptContent, '(?ms)Commands\s*=\s*@\(\s*(?<commands>(?:\r?\n\s*"[^"]*"\s*)+)\)')
-if (-not $recommendedCommandCommandsMatch.Success) {
-    throw "Unable to read recommended command list from report script at $reportScript"
-}
-$recommendedCommandLines = @()
-$commandLineCandidates = $recommendedCommandCommandsMatch.Groups["commands"].Value -split "\r?\n"
-foreach ($commandLine in $commandLineCandidates) {
-    $commandMatch = [regex]::Match($commandLine.Trim(), '^"(?<command>.+)"$')
-    if ($commandMatch.Success) {
-        $recommendedCommandLines += $commandMatch.Groups["command"].Value
-    }
-}
-if ($recommendedCommandLines.Count -eq 0) {
-    throw "Unable to parse any recommended commands from report script at $reportScript"
-}
 
 function Assert-ReportContainsRecommendedCommandSection {
     param(
