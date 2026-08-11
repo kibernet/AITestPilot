@@ -54,8 +54,12 @@ function Build-RunDevGateArgs {
     if (-not [string]::IsNullOrWhiteSpace($BoundParameters["RepairLoopOutputDir"])) { $args.RepairLoopOutputDir = Resolve-OutputPath -Path $BoundParameters["RepairLoopOutputDir"] }
     if (-not [string]::IsNullOrWhiteSpace($BoundParameters["RepairLoopEvidenceBundleDir"])) { $args.RepairLoopEvidenceBundleDir = Resolve-OutputPath -Path $BoundParameters["RepairLoopEvidenceBundleDir"] }
     if (-not [string]::IsNullOrWhiteSpace($BoundParameters["UnityPath"])) { $args.UnityPath = $BoundParameters["UnityPath"] }
-    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["ManifestPath"])) { $args.ManifestPath = $BoundParameters["ManifestPath"] }
-    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["DeveloperGateManifestPath"])) { $args.DeveloperGateManifestPath = $BoundParameters["DeveloperGateManifestPath"] }
+    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["ManifestPath"])) {
+        $args.DeveloperGateManifestPath = Resolve-OutputPath -Path $BoundParameters["ManifestPath"]
+    }
+    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["DeveloperGateManifestPath"])) {
+        $args.DeveloperGateManifestPath = Resolve-OutputPath -Path $BoundParameters["DeveloperGateManifestPath"]
+    }
 
     return $args
 }
