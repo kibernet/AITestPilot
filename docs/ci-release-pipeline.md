@@ -49,6 +49,18 @@ In GitHub Actions (`workflow_dispatch`), you can enable this as a non-default ha
 require_readiness_gate: true
 ```
 
+For PR/milestone handoff, generate the same markdown block directly:
+
+```powershell
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning -DryRun
+```
+
+If your PR already exists and GH CLI auth is available, sync the block in one step:
+
+```powershell
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber <YOUR_PR_NUMBER> -FailOnWarning
+```
+
 ## Release Pipeline Step Index
 
 `tools\Invoke-AITestPilotReleaseDocsFreshnessProbe.ps1` treats this table as the machine-checked release step coverage contract. Keep each step ID aligned with `Invoke-PipelineStep` entries in `tools\Invoke-AITestPilotReleasePipeline.ps1`.
