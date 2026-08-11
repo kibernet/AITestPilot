@@ -53,6 +53,12 @@ For strict gate runs:
 .\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md -FailOnWarning
 ```
 
+If you prefer a paste-ready handoff file:
+
+```powershell
+.\tools\Export-AITestPilotReleaseReadinessHandoff.ps1 -OutputPath Temp\release-readiness-handoff-block.md -FailOnWarning
+```
+
 To generate or sync the same block directly into PR/issue/milestone descriptions:
 
 ```powershell

@@ -75,6 +75,12 @@ For a single command that prints the same handoff block and can also push it int
 .\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber 7
 ```
 
+If your PR checklist is file-driven, export handoff markdown first:
+
+```powershell
+.\tools\Export-AITestPilotReleaseReadinessHandoff.ps1 -OutputPath Temp\release-readiness-handoff-block.md
+```
+
 Use strict gate mode in automation:
 
 ```powershell

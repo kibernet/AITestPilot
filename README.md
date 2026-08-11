@@ -191,6 +191,12 @@ One-command handoff block generation (prints to console by default):
 .\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -DryRun
 ```
 
+Export the handoff block directly into a file (paste-ready):
+
+```powershell
+.\tools\Export-AITestPilotReleaseReadinessHandoff.ps1 -OutputPath Temp\release-readiness-handoff-block.md
+```
+
 Push the same generated block directly into a PR body / issue body / milestone description:
 
 ```powershell
