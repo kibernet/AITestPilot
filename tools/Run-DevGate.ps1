@@ -89,6 +89,8 @@ if ($devGateParameters.ContainsKey("RepairLoopEvidenceBundleDir")) {
 $summary = @{
     status = "UNKNOWN"
     quickStartStatus = "UNKNOWN"
+    replayProfileSchemaCheckStatus = "NOT_RUN"
+    replayProfileSchemaCheckSkipped = $false
     quickStartSkipped = $false
     repairLoopSkipped = $false
     skipReasons = @()
@@ -120,6 +122,14 @@ if (Test-Path $manifestParsePath) {
                     }
                 }
 
+                if ($step.name -eq "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" -or $step.name -eq "replay profile schema check block") {
+                    $summary.replayProfileSchemaCheckStatus = $step.status
+                    if ($step.status -eq "SKIPPED") {
+                        $summary.replayProfileSchemaCheckSkipped = $true
+                        $summary.skipReasons += "replay-profile-schema-check: $($step.message)"
+                    }
+                }
+
                 if ($step.status -eq "FAIL" -or $step.status -eq "WARN") {
                     $errorMessage = if ($step.message) { $step.message } else { $step.error }
                     $summary.failedSteps += "$($step.name): $($step.status)$(if ($errorMessage) { \" - $($errorMessage)\" })"
@@ -141,6 +151,8 @@ $summaryPayload = @{
     repair_loop_status = $summary.repairLoopStatus
     quick_start_skipped = $summary.quickStartSkipped
     repair_loop_skipped = $summary.repairLoopSkipped
+    replay_profile_schema_check_status = $summary.replayProfileSchemaCheckStatus
+    replay_profile_schema_check_skipped = $summary.replayProfileSchemaCheckSkipped
     summary_manifest = $developerManifest
     skip_reasons = $summary.skipReasons
     failed_steps = $summary.failedSteps

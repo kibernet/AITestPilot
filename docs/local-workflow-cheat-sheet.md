@@ -114,6 +114,11 @@ PR-friendly summary snippet:
 .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
 ```
 
+`Run-DevGate` summary JSON now includes replay-profile schema status fields:
+
+- `replay_profile_schema_check_status`
+- `replay_profile_schema_check_skipped`
+
 - Run with replay profile schema check:
 
 ```powershell
