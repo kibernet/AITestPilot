@@ -35,6 +35,7 @@ Equivalent manual sequence:
 .\tools\Validate-AITestPilot.ps1
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+.\tools\Validate-AITestPilot.ps1 -RunReplayProfileSchemaCheck
 ```
 
 ## 1) New task / onboarding
@@ -131,6 +132,12 @@ PR-friendly summary snippet:
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
 ```
 
+- Replay profile schema check for a provided JSON profile:
+
+```powershell
+.\tools\Validate-AITestPilot.ps1 -RunReplayProfileSchemaCheck -ReplayProfileJsonPath Temp\release-evidence\latest\sample-business-replay-profile.json
+```
+
 - Path-regression script only (stand-alone)
 
 ```powershell
@@ -184,6 +191,7 @@ Use this minimal checklist before opening or updating a pull request:
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
 .\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression
+.\tools\Validate-AITestPilot.ps1 -RunReplayProfileSchemaCheck
 ```
 
 - Run CI-style gate with an archived summary:

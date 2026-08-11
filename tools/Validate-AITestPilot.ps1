@@ -5,6 +5,7 @@ Run the full local AITestPilot validation suite.
 .DESCRIPTION
 Validates build, dependencies, unit/smoke behavior, and package shape.
 Optionally executes CI gate path regression checks (regular or strict mode) after the standard checks.
+Optionally runs replay-profile schema checks for a provided JSON profile path.
 
 .PARAMETER RunCiGatePathRegression
 Runs the CI gate path-regression script in the default mode.
@@ -20,6 +21,14 @@ This mode is stricter than -RunCiGatePathRegression and supersedes non-strict mo
 Runs the release-docs-freshness probe regression script after the standard validation pass.
 This is optional because the regression matrix is intentionally stress-focused and can be expensive.
 
+.PARAMETER RunReplayProfileSchemaCheck
+Runs the replay-profile schema validator when a profile JSON is provided or the default
+sample profile exists. This is useful when validating profile-driven replay workflows.
+
+.PARAMETER ReplayProfileJsonPath
+Optional path to the replay profile JSON file for schema validation.
+If omitted, the validator uses Temp\release-evidence\latest\sample-business-replay-profile.json.
+
 .EXAMPLE
 PS> .\tools\Validate-AITestPilot.ps1
 
@@ -33,7 +42,9 @@ PS> .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
 param(
     [switch]$RunCiGatePathRegression,
     [switch]$RunCiGatePathRegressionStrict,
-    [switch]$RunReleaseDocsFreshnessRegression
+    [switch]$RunReleaseDocsFreshnessRegression,
+    [switch]$RunReplayProfileSchemaCheck,
+    [string]$ReplayProfileJsonPath
 )
 
 Set-StrictMode -Version Latest
@@ -49,6 +60,20 @@ function Invoke-CheckedNative {
     if ($LASTEXITCODE -ne 0) {
         throw "$FilePath failed with exit code $LASTEXITCODE"
     }
+}
+
+function Resolve-OutputPath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $Path
+    }
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+
+    return Join-Path $repoRoot $Path
 }
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
@@ -237,6 +262,25 @@ try {
         if ($actionFile -notmatch [regex]::Escape($verb)) {
             throw "Missing action verb in AIAction.cs: $verb"
         }
+    }
+
+    if ($RunReplayProfileSchemaCheck.IsPresent) {
+        Write-Host "==> replay profile schema check"
+
+        if ([string]::IsNullOrWhiteSpace($ReplayProfileJsonPath)) {
+            $ReplayProfileJsonPath = "Temp\release-evidence\latest\sample-business-replay-profile.json"
+        }
+        $resolvedReplayProfilePath = Resolve-OutputPath -Path $ReplayProfileJsonPath
+        if (-not (Test-Path $resolvedReplayProfilePath)) {
+            throw "Replay profile JSON not found for schema check: $resolvedReplayProfilePath"
+        }
+
+        $replayProfileEvidenceDir = Join-Path $repoRoot "Temp\release-evidence\latest"
+        New-Item -ItemType Directory -Force $replayProfileEvidenceDir | Out-Null
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReplayProfileSchemaCheck.ps1") `
+            -ReplayProfileJsonPath $resolvedReplayProfilePath `
+            -EvidenceBundleDir $replayProfileEvidenceDir `
+            -ManifestPath (Join-Path $replayProfileEvidenceDir "replay-profile-schema-check-manifest.json")
     }
 
     if ($RunCiGatePathRegressionStrict.IsPresent) {

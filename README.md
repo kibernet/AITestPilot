@@ -131,6 +131,7 @@ Quick command lookup (local development):
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
 .\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression
+.\tools\Validate-AITestPilot.ps1 -RunReplayProfileSchemaCheck -ReplayProfileJsonPath Temp\release-evidence\latest\sample-business-replay-profile.json
 Get-Help .\tools\Validate-AITestPilot.ps1 -Full
 Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 ```
