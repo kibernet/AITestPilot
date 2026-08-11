@@ -1,3 +1,28 @@
+<#
+.SYNOPSIS
+Regression test for CI gate path resolution behavior.
+
+.DESCRIPTION
+Validates relative and absolute path handling across CI gate inputs, including output alias behavior
+and optional strict-mode validation for `OutputPath`/`SummaryPath` collisions.
+
+.PARAMETER TestOutputRoot
+The root directory for temporary test artifacts.
+Relative values resolve against repository root.
+
+.PARAMETER StrictOutputPathAlias
+Enables strict validation that a native PowerShell parameter binding collision
+between `-OutputPath` and `-SummaryPath` is rejected.
+
+.PARAMETER KeepArtifacts
+Keep generated artifacts under TestOutputRoot after checks complete.
+
+.EXAMPLE
+PS> .\tools\Test-AITestPilotCiGatePathResolution.ps1
+
+.EXAMPLE
+PS> .\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias
+#>
 [CmdletBinding()]
 param(
     [string]$TestOutputRoot = "Temp\ci-gate-path-tests",

@@ -1,3 +1,30 @@
+<#
+.SYNOPSIS
+Run the full local AITestPilot validation suite.
+
+.DESCRIPTION
+Validates build, dependencies, unit/smoke behavior, and package shape.
+Optionally executes CI gate path regression checks (regular or strict mode) after the standard checks.
+
+.PARAMETER RunCiGatePathRegression
+Runs the CI gate path-regression script in the default mode.
+Covers relative/absolute path resolution and `OutputPath` alias coverage without forcing
+a native binding-conflict failure case.
+
+.PARAMETER RunCiGatePathRegressionStrict
+Runs the CI gate path-regression script in strict mode.
+Includes native PowerShell binding-conflict validation for `-OutputPath` + `-SummaryPath` aliases.
+This mode is stricter than -RunCiGatePathRegression and supersedes non-strict mode when both are set.
+
+.EXAMPLE
+PS> .\tools\Validate-AITestPilot.ps1
+
+.EXAMPLE
+PS> .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
+
+.EXAMPLE
+PS> .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+#>
 [CmdletBinding()]
 param(
     [switch]$RunCiGatePathRegression,
