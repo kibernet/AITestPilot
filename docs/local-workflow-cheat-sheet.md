@@ -114,6 +114,14 @@ PR-friendly summary snippet:
 .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
 ```
 
+- Generate PR-ready checklist block (defaults to `Temp\pr-validation-checklist.md`):
+
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json -GeneratePrChecklist
+
+.\tools\Run-DevGate.ps1 -GeneratePrChecklist -PrChecklistPath Temp\pr-validation-checklist.md
+```
+
 `Run-DevGate` summary JSON now includes replay-profile schema status fields:
 
 - `replay_profile_schema_check_status`
@@ -242,6 +250,7 @@ Copy/paste this into PR description:
 ```text
 ## Validation run
 - [ ] .\tools\Run-DevGate.ps1
+- [ ] .\tools\Run-DevGate.ps1 -GeneratePrChecklist
 - [ ] .\tools\Validate-AITestPilot.ps1
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict *(if CI gate path logic changed)*

@@ -16,7 +16,9 @@ param(
     [Alias("ManifestPath")]
     [string]$DeveloperGateManifestPath = "Temp\developer-gate-manifest.json",
     [switch]$RunReplayProfileSchemaCheck,
-    [string]$ReplayProfileJsonPath
+    [string]$ReplayProfileJsonPath,
+    [switch]$GeneratePrChecklist,
+    [string]$PrChecklistPath
 )
 
 Set-StrictMode -Version Latest
@@ -61,13 +63,42 @@ function Resolve-OutputDir {
     return Join-Path $repoRoot $Path
 }
 
+function Build-PrChecklistMarkdown {
+    param(
+        [object]$Summary
+    )
+
+    $quickStartStatus = $Summary.quick_start_status
+    $quickStartLine = if ($quickStartStatus -eq "PASS") { "[x]" } else { if ($quickStartStatus -eq "NOT_RUN" -or $quickStartStatus -eq "UNKNOWN" -or $quickStartStatus -eq "SKIPPED") { "[ ]" } else { "[!]" } }
+
+    $repairLoopStatus = $Summary.repair_loop_status
+    $repairLoopLine = if ($repairLoopStatus -eq "PASS") { "[x]" } else { if ($repairLoopStatus -eq "NOT_RUN" -or $repairLoopStatus -eq "UNKNOWN" -or $repairLoopStatus -eq "SKIPPED") { "[ ]" } else { "[!]" } }
+
+    $replayProfileStatus = $Summary.replay_profile_schema_check_status
+    $replayProfileLine = if ($replayProfileStatus -eq "PASS") { "[x]" } else { if ($replayProfileStatus -eq "SKIPPED") { "[ ]" } else { "[!]" } }
+
+return @"
+## Validation summary
+
+- $($quickStartLine) Quick start: $quickStartStatus
+- $($repairLoopLine) Repair loop: $repairLoopStatus
+- $($replayProfileLine) Replay profile schema check: $replayProfileStatus
+
+"@
+}
+
 $developerManifest = Resolve-ManifestPath -Path $DeveloperGateManifestPath
 $defaultManifest = Join-Path $repoRoot "Temp\developer-gate-manifest.json"
 $manifestParsePath = if (Test-Path $developerManifest) { $developerManifest } else { $defaultManifest }
 
 $devGateParameters = @{}
 foreach ($entry in $PSBoundParameters.GetEnumerator()) {
-    if ($entry.Key -ne "SummaryPath" -and $entry.Key -ne "OutputPath") {
+    if (
+        $entry.Key -ne "SummaryPath" -and
+        $entry.Key -ne "OutputPath" -and
+        $entry.Key -ne "GeneratePrChecklist" -and
+        $entry.Key -ne "PrChecklistPath"
+    ) {
         $devGateParameters[$entry.Key] = $entry.Value
     }
 }
@@ -182,6 +213,19 @@ if (-not [string]::IsNullOrWhiteSpace($SummaryPath)) {
     New-Item -ItemType Directory -Force (Split-Path $summaryPathResolved -Parent) | Out-Null
     $summaryPayload | ConvertTo-Json -Depth 8 | Set-Content -Path $summaryPathResolved -Encoding UTF8
     Write-Host "Run-DevGate summary written to: $summaryPathResolved"
+}
+
+if ($GeneratePrChecklist.IsPresent) {
+    $checklistPayload = Build-PrChecklistMarkdown -Summary $summaryPayload
+    if ([string]::IsNullOrWhiteSpace($PrChecklistPath)) {
+        $PrChecklistPath = Join-Path $repoRoot "Temp\pr-validation-checklist.md"
+    } elseif (-not [System.IO.Path]::IsPathRooted($PrChecklistPath)) {
+        $PrChecklistPath = Join-Path $repoRoot $PrChecklistPath
+    }
+
+    New-Item -ItemType Directory -Force (Split-Path $PrChecklistPath -Parent) | Out-Null
+    Set-Content -Path $PrChecklistPath -Value $checklistPayload -Encoding UTF8
+    Write-Host "Run-DevGate PR checklist written to: $PrChecklistPath"
 }
 
 if ($summaryPayload.developer_gate_status -ne "PASS") {
