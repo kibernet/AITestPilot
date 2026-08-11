@@ -11,6 +11,8 @@ param(
     [string]$RepairLoopOutputDir,
     [string]$RepairLoopEvidenceBundleDir,
     [string]$UnityPath,
+    [switch]$RunReplayProfileSchemaCheck,
+    [string]$ReplayProfileJsonPath,
     [Alias("ManifestPath")]
     [string]$DeveloperGateManifestPath = "Temp\developer-gate-manifest.json"
 )
@@ -29,6 +31,19 @@ function Resolve-RelativePath {
     if ([System.IO.Path]::IsPathRooted($Path)) {
         return $Path
     }
+    return Join-Path $repoRoot $Path
+}
+
+function Resolve-PathToRepoRoot {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+
     return Join-Path $repoRoot $Path
 }
 
@@ -120,6 +135,37 @@ if (-not $SkipQuickStart) {
 }
 else {
     Add-Step -Name "Invoke-AITestPilotQuickStart.ps1" -Status "SKIPPED" -Message "SkipQuickStart was set."
+}
+
+if ($RunReplayProfileSchemaCheck.IsPresent) {
+    Write-Host "==> developer gate: replay profile schema check"
+    try {
+        $replayProfilePath = if ([string]::IsNullOrWhiteSpace($ReplayProfileJsonPath)) {
+            Join-Path $repoRoot "Temp\release-evidence\latest\sample-business-replay-profile.json"
+        } else {
+            Resolve-PathToRepoRoot -Path $ReplayProfileJsonPath
+        }
+
+        if (-not (Test-Path $replayProfilePath)) {
+            throw "Replay profile JSON not found: $replayProfilePath"
+        }
+
+        $replayProfileEvidenceDir = Join-Path $repoRoot "Temp\release-evidence\latest"
+        New-Item -ItemType Directory -Force $replayProfileEvidenceDir | Out-Null
+        & (Join-Path $repoRoot "tools\Invoke-AITestPilotReplayProfileSchemaCheck.ps1") `
+            -ReplayProfileJsonPath $replayProfilePath `
+            -EvidenceBundleDir $replayProfileEvidenceDir `
+            -ManifestPath (Join-Path $replayProfileEvidenceDir "replay-profile-schema-check-manifest.json") | Out-Null
+
+        Add-Step -Name "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" -Status "PASS"
+    }
+    catch {
+        $developerGate.status = "PARTIAL_FAIL"
+        Add-Step -Name "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" -Status "FAIL" -Message $_.Exception.Message
+    }
+}
+else {
+    Add-Step -Name "Invoke-AITestPilotReplayProfileSchemaCheck.ps1" -Status "SKIPPED" -Message "RunReplayProfileSchemaCheck was not set."
 }
 
 if (-not $SkipRepairLoop) {

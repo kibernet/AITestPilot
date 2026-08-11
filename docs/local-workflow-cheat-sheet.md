@@ -114,6 +114,12 @@ PR-friendly summary snippet:
 .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
 ```
 
+- Run with replay profile schema check:
+
+```powershell
+.\tools\Run-DevGate.ps1 -RunReplayProfileSchemaCheck -ReplayProfileJsonPath Temp\release-evidence\latest\sample-business-replay-profile.json
+```
+
 - CI-style path regression (recommended after touching CI gate path logic)
 
 ```powershell
@@ -236,6 +242,7 @@ Copy/paste this into PR description:
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict *(if CI gate path logic changed)*
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression *(for release scope or before docs freshness probe changes)*
 - [ ] .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+- [ ] .\tools\Run-DevGate.ps1 -RunReplayProfileSchemaCheck *(if replay profile JSON is modified)*
 - [ ] .\tools\Invoke-AITestPilotReleasePipeline.ps1 *(release scope)*
 
 Artifacts produced:

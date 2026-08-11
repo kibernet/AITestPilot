@@ -14,7 +14,9 @@ param(
     [Alias("OutputPath")]
     [string]$SummaryPath,
     [Alias("ManifestPath")]
-    [string]$DeveloperGateManifestPath = "Temp\developer-gate-manifest.json"
+    [string]$DeveloperGateManifestPath = "Temp\developer-gate-manifest.json",
+    [switch]$RunReplayProfileSchemaCheck,
+    [string]$ReplayProfileJsonPath
 )
 
 Set-StrictMode -Version Latest
