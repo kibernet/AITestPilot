@@ -185,6 +185,22 @@ Generate a PR-ready copy block from the machine-readable summary:
 .\tools\Invoke-AITestPilotReleaseReadinessSummary.ps1 -SummaryJson Temp\release-readiness-summary.json -OutputPath Temp\release-readiness-pr-snippet.md
 ```
 
+One-command handoff block generation (prints to console by default):
+
+```powershell
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -DryRun
+```
+
+Push the same generated block directly into a PR body / issue body / milestone description:
+
+```powershell
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber 123
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -IssueNumber 456
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -MilestoneNumber 7
+```
+
+Append flags are forwarded to the readiness bundle generator (`-IncludeRecommendedCommands`, `-RequireReleasePipeline`, `-FailOnWarning`, `-IncludeFailedOnly`).
+
 For a lighter local preflight variant, add `-SkipReleasePipeline`:
 
 ```powershell

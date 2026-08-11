@@ -53,6 +53,13 @@ For strict gate runs:
 .\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md -FailOnWarning
 ```
 
+To generate or sync the same block directly into PR/issue/milestone descriptions:
+
+```powershell
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning -DryRun
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber 123 -FailOnWarning
+```
+
 For machine-readable validation output:
 
 ```powershell
