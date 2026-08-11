@@ -74,6 +74,12 @@ For stricter path-alias regression checks:
 Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 ```
 
+Run a one-click local preflight:
+
+```powershell
+.\tools\Invoke-AITestPilotLocalPreflight.ps1
+```
+
 ### Local workflow quick lookup
 
 ```text

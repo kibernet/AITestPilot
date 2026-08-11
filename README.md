@@ -89,6 +89,7 @@ Quick command lookup (local development):
 ```text
 .\tools\Run-DevGate.ps1
 .\tools\Invoke-AITestPilotCiGate.ps1
+.\tools\Invoke-AITestPilotLocalPreflight.ps1
 .\tools\Validate-AITestPilot.ps1
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
@@ -98,6 +99,12 @@ Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 
 See full local workflow cheat sheet: `.\docs\local-workflow-cheat-sheet.md`
 It includes a minimum baseline command sequence and a PR/release preflight checklist for quick verification.
+
+For one-click local preflight:
+
+```powershell
+.\tools\Invoke-AITestPilotLocalPreflight.ps1
+```
 
 For strict alias-conflict assertions (including `OutputPath` + `SummaryPath` conflict rejection), run:
 

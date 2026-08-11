@@ -1,5 +1,9 @@
 # Local AITestPilot Workflow Cheat Sheet
 
+```powershell
+Get-Help .\tools\Invoke-AITestPilotLocalPreflight.ps1 -Full
+```
+
 Use this checklist as a quick operational map.
 
 ## 0) Minimum command sequence (recommended baseline)
@@ -7,13 +11,19 @@ Use this checklist as a quick operational map.
 Run these in order for most changes:
 
 ```powershell
+.\tools\Invoke-AITestPilotLocalPreflight.ps1
+```
+
+If the change touches only docs/markdown, run with `-SkipStrictPathRegression` as a fast-path exception.
+
+Equivalent manual sequence:
+
+```powershell
 .\tools\Run-DevGate.ps1
 .\tools\Validate-AITestPilot.ps1
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
 ```
-
-If the change touches only docs/markdown, you can skip the strict validation step as a fast-path exception.
 
 ## 1) New task / onboarding
 
