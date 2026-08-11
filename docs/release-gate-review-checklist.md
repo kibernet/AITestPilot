@@ -41,6 +41,12 @@ Expected key evidence:
 - artifacts\ai-testpilot-release\latest\ (if full release pipeline executed)
 ```
 
+For a quick audit artifact, additionally run:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
+```
+
 ## 2) Evidence required for release review
 
 - [ ] `Temp\developer-gate-manifest.json`

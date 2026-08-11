@@ -25,6 +25,12 @@ Useful variants:
 .\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipStrictPathRegression -SkipDocsFreshnessRegression -RunReleasePipeline
 ```
 
+When you finish verification, generate a one-click readiness snapshot for PR/milestone handoff:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
+```
+
 ## Release Pipeline Step Index
 
 `tools\Invoke-AITestPilotReleaseDocsFreshnessProbe.ps1` treats this table as the machine-checked release step coverage contract. Keep each step ID aligned with `Invoke-PipelineStep` entries in `tools\Invoke-AITestPilotReleasePipeline.ps1`.

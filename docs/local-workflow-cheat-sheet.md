@@ -60,6 +60,12 @@ For release preflight with strict validation and docs-freshness regression enabl
 .\tools\Invoke-AITestPilotReleasePreflight.ps1 -SummaryPath Temp\release-preflight-summary.json
 ```
 
+For an auto-generated milestone readiness report:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
+```
+
 ## 2) Daily local development
 
 - PR/local quality gate

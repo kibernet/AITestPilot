@@ -148,6 +148,12 @@ For a release-grade preflight (release pipeline + strict checks + docs-freshness
 .\tools\Invoke-AITestPilotReleasePreflight.ps1
 ```
 
+Generate a ready-to-paste milestone/PR readiness report:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
+```
+
 For a lighter local preflight variant, add `-SkipReleasePipeline`:
 
 ```powershell
