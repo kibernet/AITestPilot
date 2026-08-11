@@ -49,6 +49,35 @@ if ([string]::IsNullOrWhiteSpace($EvidenceBundleDir)) {
     $EvidenceBundleDir = Join-Path $repoRoot "Temp\release-evidence\latest"
 }
 
+function Assert-PathUnderRoot {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        throw "$Label cannot be empty."
+    }
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $fullRoot = [System.IO.Path]::GetFullPath($repoRoot)
+    if ($fullPath.Equals($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $fullPath
+    }
+
+    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
+        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    if (-not $fullPath.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "$Label must stay under repo root: $fullPath"
+    }
+
+    return $fullPath
+}
+
+$ReplayProfileJsonPath = Assert-PathUnderRoot -Path $ReplayProfileJsonPath -Label "ReplayProfileJsonPath"
+
 if (-not (Test-Path $UnityPath)) {
     throw "Unity executable not found: $UnityPath"
 }

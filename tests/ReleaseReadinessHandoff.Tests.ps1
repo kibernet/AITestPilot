@@ -15,6 +15,47 @@ if (-not (Test-Path $setScript)) {
 if (-not (Test-Path $exportScript)) {
     throw "Export-AITestPilotReleaseReadinessHandoff.ps1 not found at $exportScript"
 }
+
+Describe "Replay profile path hardening for direct tools" {
+    $replayProfileImportScript = Join-Path $repoRoot "tools\Invoke-AITestPilotReplayProfileImport.ps1"
+    $repairRetestScript = Join-Path $repoRoot "tools\Invoke-AITestPilotRepairRetest.ps1"
+
+    It "Replay profile import rejects ReplayProfileJsonPath outside repository root" {
+        $outsideProfile = Join-Path $env:TEMP ("replay-profile-import-outside-" + [guid]::NewGuid().ToString() + ".json")
+
+        $threw = $false
+        $message = ""
+        try {
+            & $replayProfileImportScript -ReplayProfileJsonPath $outsideProfile
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+
+        $threw | Should Be $true
+        ($message -match [regex]::Escape("ReplayProfileJsonPath must stay under repo root")) | Should Be $true
+
+        Remove-Item -Path $outsideProfile -ErrorAction SilentlyContinue
+    }
+
+    It "Replay task retest rejects ReplayProfileJsonPath outside repository root" {
+        $outsideProfile = Join-Path $env:TEMP ("replay-profile-retest-outside-" + [guid]::NewGuid().ToString() + ".json")
+
+        $threw = $false
+        $message = ""
+        try {
+            & $repairRetestScript -ReplayProfileJsonPath $outsideProfile
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+
+        $threw | Should Be $true
+        ($message -match [regex]::Escape("ReplayProfileJsonPath must stay under repo root")) | Should Be $true
+    }
+}
 if (-not (Test-Path $reportScript)) {
     throw "Invoke-AITestPilotReleaseReadinessReport.ps1 not found at $reportScript"
 }
