@@ -194,6 +194,10 @@ jobs:
 
           & .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 @args
 
+          & .\tools\Invoke-AITestPilotReleaseReadinessSummary.ps1 `
+            -SummaryJson "Temp\release-readiness-summary.json" `
+            -OutputPath "Temp\release-readiness-pr-snippet.md"
+
       - name: Upload release evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -203,4 +207,5 @@ jobs:
             artifacts\ai-testpilot-release\latest
             Temp\release-readiness-report.md
             Temp\release-readiness-summary.json
+            Temp\release-readiness-pr-snippet.md
           if-no-files-found: error

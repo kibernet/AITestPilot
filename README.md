@@ -166,6 +166,12 @@ For machine-readable consumption in CI/automation:
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json
 ```
 
+Generate a PR-ready copy block from the machine-readable summary:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessSummary.ps1 -SummaryJson Temp\release-readiness-summary.json -OutputPath Temp\release-readiness-pr-snippet.md
+```
+
 For a lighter local preflight variant, add `-SkipReleasePipeline`:
 
 ```powershell

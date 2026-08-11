@@ -59,6 +59,12 @@ For machine-readable validation output:
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json
 ```
 
+For PR-friendly summary formatting:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessSummary.ps1 -SummaryJson Temp\release-readiness-summary.json -OutputPath Temp\release-readiness-pr-snippet.md
+```
+
 ## 2) Evidence required for release review
 
 - [ ] `Temp\developer-gate-manifest.json`
@@ -68,6 +74,9 @@ For machine-readable validation output:
 - [ ] `Temp\ci-gate-summary.json`
 - [ ] `Temp\release-evidence\latest\`
 - [ ] `artifacts\ai-testpilot-release\latest\`
+- [ ] `Temp\release-readiness-summary.json`
+- [ ] `Temp\release-readiness-report.md`
+- [ ] `Temp\release-readiness-pr-snippet.md` (optional)
 
 ## 3) Risk control check
 

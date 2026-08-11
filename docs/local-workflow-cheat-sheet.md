@@ -78,6 +78,12 @@ Machine-readable summary:
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json
 ```
 
+PR-friendly summary snippet:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessSummary.ps1 -SummaryJson Temp\release-readiness-summary.json -OutputPath Temp\release-readiness-pr-snippet.md
+```
+
 ## 2) Daily local development
 
 - PR/local quality gate

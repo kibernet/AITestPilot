@@ -17,6 +17,7 @@ Please run and report before merge:
 - [ ] `.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression`
 - [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands`
 - [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json`
+- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessSummary.ps1 -SummaryJson Temp\release-readiness-summary.json -OutputPath Temp\release-readiness-pr-snippet.md`
 
 ### Optional checks by scope
 
@@ -100,8 +101,12 @@ Paste the `Run-DevGate` summary output here (recommended):
 - [ ] No unexpected `FAIL` steps in passed manifests
 - [ ] Required evidence paths are included in PR description
 
-Paste the readiness report here if generated:
+Paste the readiness report/snippet here if generated:
 
 ```
 # paste contents of Temp\\release-readiness-report.md
+```
+
+```
+# paste contents of Temp\\release-readiness-pr-snippet.md
 ```

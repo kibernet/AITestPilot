@@ -270,6 +270,12 @@ The post-dispatch fixture rejection is recorded as `release-progress-notificatio
 
 `Temp\release-readiness-report.md` and `Temp\release-readiness-summary.json` are included in the release evidence artifact for audit-ready milestone/PR handoff.
 
+Optional one-liner to format a PR paste block from that summary:
+
+```powershell
+.\tools\Invoke-AITestPilotReleaseReadinessSummary.ps1 -SummaryJson Temp\release-readiness-summary.json -OutputPath Temp\release-readiness-pr-snippet.md
+```
+
 The documentation freshness contract keeps the pipeline step index, core artifact names, source files, and source-manifest lists aligned. It also emits a periodic drift report (`release-docs-freshness-drift-manifest.json` + `release-docs-freshness-drift.md`) when compared to the previous successful copy in `artifacts/ai-testpilot-release/latest`.
 
 For local hardening, run `.\tools\Test-AITestPilotReleaseDocsFreshnessProbeRegression.ps1` to exercise baseline, missing-manifest, malformed-manifest, and dictionary-shaped historical-manifest scenarios.
