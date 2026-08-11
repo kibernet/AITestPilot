@@ -277,6 +277,33 @@ Then:
 
 The command imports the package into a temporary Unity project, compiles Runtime and Editor assemblies, runs a generated sample scene, exercises the decision loop and bug flow, and writes release evidence under `Temp/release-evidence/latest`.
 
+## 生产落地建议（7天/30天）
+
+以下是一个可直接对业务团队执行的落地节奏，可根据团队规模做等比缩放：
+
+- **第 1-3 天（试点接入）**
+  - 本地跑通：`.\tools\Validate-AITestPilot.ps1`、`.\tools\Invoke-AITestPilotLocalPreflight.ps1`
+  - 建立项目级证据目录策略：约定每次验证结果保存在 `Temp\` 下的统一路径
+  - 与 Unity 团队确认 `AutomationId` 最低覆盖范围（主入口/关键状态切换/关键结果页）
+
+- **第 4-7 天（PR 门禁与团队规范）**
+  - 在 PR 模板中接入门禁产物检查（`Temp\developer-gate-manifest.json`、`Temp\dev-gate-summary.json`）
+  - 在提交人手册中固定：失败修复必须附带重现路径与 evidence links
+  - 对接一个基础生产 replay driver 的最小实现（账号登录/场景进入/奖励流程）
+
+- **第 8-30 天（持续化交付）**
+  - 为关键场景启用 `Run-CiGatePathRegression` 与 `Run-CiGatePathRegressionStrict` 的定期回归策略
+  - 将修复任务接入代码修复流程，要求“补丁前置校验 + 重测 + 回滚证据”三段式闭环
+  - 用 `Invoke-AITestPilotReleasePipeline.ps1` 形成每个里程碑的发布前发布证据包
+
+### 落地验收清单（示例）
+
+- `Temp\developer-gate-manifest.json`：门禁基础产物必须可复现、可比对
+- `Temp\dev-gate-summary.json`：包含 quick-start 与 repair loop 的成功/失败状态
+- `Temp\ci-gate-summary.json`：关键路径回归与 alias 冲突场景可回归
+- `Temp\release-evidence\latest\`：发布包证据完整（至少包含快照、补丁、回归与回滚索引）
+- `artifacts\ai-testpilot-release\latest\`：发布线下归档产物存在并通过团队复核
+
 ## Model Endpoint Integration
 
 AI TestPilot supports two request formats:
