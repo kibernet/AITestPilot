@@ -104,6 +104,10 @@ For a ready-made checklist across onboarding, daily work, and pre-merge confiden
 
 `.\docs\local-workflow-cheat-sheet.md`
 
+For rollout and release-stage evidence template (7/30 day cadence, PR copy/paste block, acceptance criteria), see:
+
+`.\docs\rollout-and-release-checklist.md`
+
 ## What to include in PR description
 
 Please include:

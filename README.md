@@ -304,6 +304,8 @@ The command imports the package into a temporary Unity project, compiles Runtime
 - `Temp\release-evidence\latest\`：发布包证据完整（至少包含快照、补丁、回归与回滚索引）
 - `artifacts\ai-testpilot-release\latest\`：发布线下归档产物存在并通过团队复核
 
+该流程的可复用 PR 与上线模板请见：`.\docs\rollout-and-release-checklist.md`。
+
 ## Model Endpoint Integration
 
 AI TestPilot supports two request formats:
@@ -430,6 +432,7 @@ Unity-facing changes should also pass `Validate-UnityPackageImport.ps1` on Unity
 - [Production Replay Driver Integration](docs/integration/production-driver.md)
 - [Quick Start Demo](docs/quick-start-demo.md)
 - [CI Release Pipeline](docs/ci-release-pipeline.md)
+- [Rollout & Release Checklist](docs/rollout-and-release-checklist.md)
 - [Roadmap](docs/roadmap.md)
 - [Original Product Specification](Kibernet_AI_TestPilot_FULL_SPEC.md)
 
