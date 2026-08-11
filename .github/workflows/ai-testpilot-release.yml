@@ -188,16 +188,16 @@ jobs:
               -IncludeRecommendedCommands `
               -SummaryJsonPath "Temp\release-readiness-summary.json" `
               -SnippetOutputPath "Temp\release-readiness-pr-snippet.md" `
-              -FailOnWarning $true
+              -FailOnWarning
 
             & .\tools\Export-AITestPilotReleaseReadinessHandoff.ps1 `
               -OutputPath "Temp\release-readiness-handoff-block.md" `
-              -RequireReleasePipeline $true `
-              -IncludeRecommendedCommands $true `
+              -RequireReleasePipeline `
+              -IncludeRecommendedCommands `
               -SummaryJsonPath "Temp\release-readiness-summary.json" `
               -ReportOutputPath "Temp\release-readiness-report.md" `
               -SnippetOutputPath "Temp\release-readiness-pr-snippet.md" `
-              -FailOnWarning $true
+              -FailOnWarning
           }
           else {
             & .\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 `
@@ -209,8 +209,8 @@ jobs:
 
             & .\tools\Export-AITestPilotReleaseReadinessHandoff.ps1 `
               -OutputPath "Temp\release-readiness-handoff-block.md" `
-              -RequireReleasePipeline $true `
-              -IncludeRecommendedCommands $true `
+              -RequireReleasePipeline `
+              -IncludeRecommendedCommands `
               -SummaryJsonPath "Temp\release-readiness-summary.json" `
               -ReportOutputPath "Temp\release-readiness-report.md" `
               -SnippetOutputPath "Temp\release-readiness-pr-snippet.md"

@@ -13,6 +13,9 @@ Destination path for the handoff block.
 .PARAMETER IncludeRecommendedCommands
 Pass through to readiness bundle generation.
 
+.PARAMETER NoIncludeRecommendedCommands
+Disable recommended commands in the generated handoff block.
+
 .PARAMETER RequireReleasePipeline
 Pass through to readiness bundle generation.
 
@@ -40,9 +43,10 @@ Override the closing marker used in the generated block.
 [CmdletBinding()]
 param(
     [string]$OutputPath = "Temp\release-readiness-handoff-block.md",
-    [bool]$IncludeRecommendedCommands = $true,
-    [bool]$RequireReleasePipeline = $false,
-    [bool]$FailOnWarning = $false,
+    [switch]$IncludeRecommendedCommands,
+    [switch]$NoIncludeRecommendedCommands,
+    [switch]$RequireReleasePipeline,
+    [switch]$FailOnWarning,
     [switch]$IncludeFailedOnly,
     [string]$SummaryJsonPath = "Temp\release-readiness-summary.json",
     [string]$ReportOutputPath = "Temp\release-readiness-report.md",
@@ -76,7 +80,6 @@ if (-not [string]::IsNullOrWhiteSpace($outputDir) -and -not (Test-Path $outputDi
 
 $generatorArgs = @{
     DryRun = $true
-    IncludeRecommendedCommands = $IncludeRecommendedCommands
     RequireReleasePipeline = $RequireReleasePipeline
     FailOnWarning = $FailOnWarning
     SummaryJsonPath = $SummaryJsonPath
@@ -85,6 +88,7 @@ $generatorArgs = @{
     MarkerStart = $MarkerStart
     MarkerEnd = $MarkerEnd
 }
+if (-not $NoIncludeRecommendedCommands) { $generatorArgs["IncludeRecommendedCommands"] = $true }
 if ($IncludeFailedOnly) { $generatorArgs["IncludeFailedOnly"] = $true }
 
 $raw = $null

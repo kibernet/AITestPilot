@@ -23,6 +23,9 @@ GitHub milestone number to update by overwriting its description.
 .PARAMETER IncludeRecommendedCommands
 Pass through this flag to the readiness bundle.
 
+.PARAMETER NoIncludeRecommendedCommands
+Disable recommended commands in the generated handoff block.
+
 .PARAMETER RequireReleasePipeline
 Pass through this flag to the readiness bundle.
 
@@ -49,9 +52,10 @@ param(
     [int]$PullRequestNumber = 0,
     [int]$IssueNumber = 0,
     [int]$MilestoneNumber = 0,
-    [bool]$IncludeRecommendedCommands = $true,
-    [bool]$RequireReleasePipeline = $false,
-    [bool]$FailOnWarning = $false,
+    [switch]$IncludeRecommendedCommands,
+    [switch]$NoIncludeRecommendedCommands,
+    [switch]$RequireReleasePipeline,
+    [switch]$FailOnWarning,
     [switch]$IncludeFailedOnly,
     [string]$SummaryJsonPath = "Temp\release-readiness-summary.json",
     [string]$ReportOutputPath = "Temp\release-readiness-report.md",
@@ -124,7 +128,7 @@ $bundleArgs = @{
     SnippetOutputPath = $SnippetOutputPath
     PassThru = $true
 }
-if ($IncludeRecommendedCommands) { $bundleArgs["IncludeRecommendedCommands"] = $true }
+if (-not $NoIncludeRecommendedCommands) { $bundleArgs["IncludeRecommendedCommands"] = $true }
 if ($RequireReleasePipeline) { $bundleArgs["RequireReleasePipeline"] = $true }
 if ($FailOnWarning) { $bundleArgs["FailOnWarning"] = $true }
 if ($IncludeFailedOnly) { $bundleArgs["IncludeFailedOnly"] = $true }
