@@ -134,6 +134,7 @@ Quick command lookup (local development):
 .\tools\Validate-AITestPilot.ps1 -RunReplayProfileSchemaCheck -ReplayProfileJsonPath Temp\release-evidence\latest\sample-business-replay-profile.json
 Get-Help .\tools\Validate-AITestPilot.ps1 -Full
 Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json -GeneratePrChecklist
 ```
 
 See full local workflow cheat sheet: `.\docs\local-workflow-cheat-sheet.md`
@@ -278,6 +279,13 @@ If you need a machine-readable copy for CI artifacts or local archival, use:
 
 ```powershell
 .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+```
+
+If you also want a copy-paste PR checklist block, use:
+
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json -GeneratePrChecklist -PrChecklistPath Temp\pr-validation-checklist.md
+Get-Content Temp\pr-validation-checklist.md
 ```
 
 If you need the manifest written to a custom location, use:
