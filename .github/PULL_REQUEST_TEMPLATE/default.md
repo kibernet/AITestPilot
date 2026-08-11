@@ -24,6 +24,7 @@ Please run and report before merge:
 - [ ] `.\tools\Invoke-AITestPilotLocalPreflight.ps1` (if local baseline is preferred)
 - [ ] `.\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias` (if path alias regression is targeted)
 - [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning` (strict mode, if this PR is milestone/release-facing)
+- [ ] `.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -FailOnWarning -DryRun` (generate handoff block from readiness output)
 
 If you used skips, list them:
 
@@ -107,4 +108,10 @@ Paste the readiness report/snippet here if generated:
 
 ```
 # paste contents of Temp\\release-readiness-pr-snippet.md
+```
+
+After opening the PR, if you have GitHub CLI auth configured, you can sync this block directly into the PR body:
+
+```powershell
+.\tools\Set-AITestPilotReleaseReadinessMilestoneNotes.ps1 -PullRequestNumber <YOUR_PR_NUMBER> -FailOnWarning
 ```
