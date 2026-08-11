@@ -92,6 +92,12 @@ For strict alias-conflict assertions (including `OutputPath` + `SummaryPath` con
 
 This strict mode validates the regression in a stricter way, including native command binding conflict failures.
 
+You can also inspect full parameter docs with:
+
+```powershell
+Get-Help .\tools\Validate-AITestPilot.ps1 -Full
+```
+
 For day-one onboarding and a one-command smoke path, run:
 
 ```powershell
@@ -180,6 +186,12 @@ To run strict path-regression assertions (including strict alias conflict checks
 
 ```powershell
 .\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias
+```
+
+And inspect parameter docs with:
+
+```powershell
+Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 ```
 
 This command builds the .NET solution, builds the model-endpoint and Lua-analysis probes, runs the dependency-free smoke suite, and validates the Unity package structure.

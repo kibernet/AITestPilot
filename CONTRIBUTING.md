@@ -58,10 +58,20 @@ For stricter alias checks (including conflict validation between `OutputPath` an
 
 This strict mode exercises a real parameter-binding conflict and verifies it is rejected by PowerShell.
 
+Tip: preview parameter docs via:
+
+```powershell
+Get-Help .\tools\Validate-AITestPilot.ps1 -Full
+```
+
 For stricter path-alias regression checks:
 
 ```powershell
 .\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias
+```
+
+```powershell
+Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 ```
 
 ## What to include in PR description
