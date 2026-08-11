@@ -16,6 +16,21 @@ if (-not (Test-Path $exportScript)) {
 }
 
 Describe "Release readiness handoff scripts" {
+    It "throws when multiple targets are specified for Set script" {
+        $threw = $false
+        $message = ""
+        try {
+            & $setScript -NoIncludeRecommendedCommands -PullRequestNumber 12 -IssueNumber 34
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+
+        $threw | Should Be $true
+        ($message -match "Specify only one target at most among -PullRequestNumber, -IssueNumber, -MilestoneNumber.") | Should Be $true
+    }
+
     It "throws when both include and no-include switches are used together in Set script" {
         $threw = $false
         $message = ""
