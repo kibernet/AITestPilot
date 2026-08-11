@@ -478,3 +478,23 @@ PR template location:
 ```text
 .github/PULL_REQUEST_TEMPLATE/default.md
 ```
+
+## 11) One-command summary block generation
+
+Use this command to generate a full PR summary block and copy it to clipboard in one step:
+
+```powershell
+.\tools\New-AITestPilotPrSummary.ps1 `
+  -Severity 1 `
+  -Status OPEN `
+  -LastFailingCommand '.\tools\Validate-AITestPilot.ps1 -RunReleaseDocsFreshnessRegression' `
+  -FailureReason 'docs path snapshot drift detected in Temp\quick-start\ under docs-only changes.' `
+  -ImmediateRemediation 'Refreshed quick-start snapshot and aligned PR notes.' `
+  -RecheckOutput WARN `
+  -MergeDecision HOLD `
+  -RootCause 'Docs freshness policy changed without snapshot sync.' `
+  -WhatWasFixed 'Updated docs snapshot baseline and PR notes template.' `
+  -WatchPoints 'Monitor docs path baseline stability in next milestone.' `
+  -OutputPath 'Temp\pr-summary-block.md' `
+  -CopyToClipboard
+```
