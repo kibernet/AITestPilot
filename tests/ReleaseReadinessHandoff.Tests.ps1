@@ -1014,6 +1014,93 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($updatedBody -match [regex]::Escape("<!-- ai-testpilot-release-readiness:end -->")) | Should Be $false
     }
 
+    It "syncs filtered issue handoff snippet when IncludeFailedOnly and NoIncludeRecommendedCommands are used" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh-issue-failedonly-noinclude"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        $capturePath = Join-Path $fakeGhDir "last-issue-body.md"
+        $statePath = Join-Path $fakeGhDir "gh-state.json"
+        $existingBody = @"
+## Issue Title
+
+Existing issue body with setup notes.
+"@
+        @{
+            ExistingIssueBody = $existingBody
+            LastIssueEditBodyPath = $capturePath
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $statePath -Encoding UTF8
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$statePath = Join-Path `$scriptRoot "gh-state.json"
+`$state = @{}
+if (Test-Path `$statePath) {
+    try {
+        `$state = Get-Content -Path `$statePath -Encoding UTF8 -Raw | ConvertFrom-Json
+    }
+    catch {
+        `$state = @{}
+    }
+}
+
+if (`$Args.Count -lt 2) { exit 1 }
+
+if (`$Args[0] -eq "issue" -and `$Args[1] -eq "view") {
+    `$body = [string](`$state.ExistingIssueBody)
+    @{ body = `$body } | ConvertTo-Json -Depth 5
+    return
+}
+
+if (`$Args[0] -eq "issue" -and `$Args[1] -eq "edit") {
+    `$bodyFile = `$null
+    `$bodyFileIndex = [Array]::IndexOf(`$Args, "--body-file")
+    if (`$bodyFileIndex -ge 0 -and (`$bodyFileIndex + 1) -lt `$Args.Count) {
+        `$bodyFile = `$Args[`$bodyFileIndex + 1]
+    }
+    else {
+        `$bodyFile = `$Args[`$Args.Length - 1]
+    }
+    if (-not (Test-Path `$bodyFile)) { exit 1 }
+    Copy-Item -Path `$bodyFile -Destination `$state.LastIssueEditBodyPath -Force
+    return
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -IssueNumber 456 -IncludeFailedOnly -NoIncludeRecommendedCommands
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        if (-not (Test-Path $capturePath)) {
+            throw "Expected issue update body capture file to be created."
+        }
+        $updatedBody = Get-Content -Path $capturePath -Raw -Encoding UTF8
+
+        ($updatedBody -match "Existing issue body with setup notes.") | Should Be $true
+        ($updatedBody -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+
+        $match = [regex]::Match($updatedBody, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
+        if (-not $match.Success) {
+            throw "Expected snippet block not found."
+        }
+        $snippetText = $match.Groups["snippet"].Value
+        ($snippetText -match "- \[x\]") | Should Be $false
+    }
+
     It "throws readable error when issue metadata returned by gh is not valid JSON" {
         $fakeGhDir = Join-Path $TestDrive "fake-gh-issue-bad-json"
         if (-not (Test-Path $fakeGhDir)) {
@@ -1296,6 +1383,97 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($description -notmatch "Gate: \*\*OLD\*\*") | Should Be $true
         ($description -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
         ($description -match [regex]::Escape("<!-- ai-testpilot-release-readiness:end -->")) | Should Be $false
+    }
+
+    It "syncs filtered milestone handoff snippet when IncludeFailedOnly and NoIncludeRecommendedCommands are used" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh-milestone-failedonly-noinclude"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        $capturePath = Join-Path $fakeGhDir "last-milestone-description.json"
+        $statePath = Join-Path $fakeGhDir "gh-state.json"
+        $existingDescription = @"
+Milestone description with setup notes.
+"@
+        @{
+            Repository = "owner/repo"
+            ExistingMilestoneDescription = $existingDescription
+            LastMilestoneDescriptionPath = $capturePath
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $statePath -Encoding UTF8
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$statePath = Join-Path `$scriptRoot "gh-state.json"
+`$state = @{}
+if (Test-Path `$statePath) {
+    try {
+        `$state = Get-Content -Path `$statePath -Encoding UTF8 -Raw | ConvertFrom-Json
+    }
+    catch {
+        `$state = @{}
+    }
+}
+
+if (`$Args.Count -lt 1) { exit 1 }
+
+if (`$Args[0] -eq "repo" -and `$Args[1] -eq "view") {
+    Write-Output (`$state.Repository)
+    return
+}
+
+if (`$Args[0] -eq "api") {
+    if (`$Args.Contains("-X") -and `$Args.Contains("PATCH")) {
+        `$bodyFileIndex = [Array]::IndexOf(`$Args, "--input")
+        if (`$bodyFileIndex -ge 0 -and (`$bodyFileIndex + 1) -lt `$Args.Count) {
+            `$bodyFile = `$Args[`$bodyFileIndex + 1]
+            if (Test-Path `$bodyFile) {
+                Copy-Item -Path `$bodyFile -Destination `$state.LastMilestoneDescriptionPath -Force
+                return
+            }
+        }
+        exit 1
+    }
+
+    @{ description = `$state.ExistingMilestoneDescription } | ConvertTo-Json -Depth 5
+    return
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -MilestoneNumber 7 -IncludeFailedOnly -NoIncludeRecommendedCommands
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        if (-not (Test-Path $capturePath)) {
+            throw "Expected milestone update payload capture file to be created."
+        }
+        $payload = Get-Content -Path $capturePath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($null -eq $payload.description) {
+            throw "Expected description field in milestone PATCH payload."
+        }
+
+        $description = [string]$payload.description
+        ($description -match "Milestone description with setup notes.") | Should Be $true
+        ($description -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        $match = [regex]::Match($description, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
+        if (-not $match.Success) {
+            throw "Expected snippet block not found."
+        }
+        $snippetText = $match.Groups["snippet"].Value
+        ($snippetText -match "- \[x\]") | Should Be $false
     }
 
     It "throws readable error when milestone metadata returned by gh is not valid JSON" {
