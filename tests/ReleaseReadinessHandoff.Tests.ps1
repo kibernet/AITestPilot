@@ -241,6 +241,44 @@ Describe "Release readiness handoff scripts" {
         ($snippetText -match "- \[x\]") | Should Be $false
     }
 
+    It "combines IncludeFailedOnly and NoIncludeRecommendedCommands in PR DryRun" {
+        $threw = $false
+        $output = $null
+        $reportPathRelative = Join-Path "Temp" "no-gh-pr-report-failedonly-noinclude.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-pr-failedonly-noinclude"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -PullRequestNumber 77 -DryRun -IncludeFailedOnly -NoIncludeRecommendedCommands -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        (Test-Path $reportPath) | Should Be $true
+
+        $report = Get-Content -Path $reportPath -Raw
+        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+
+        $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
+        if (-not $match.Success) {
+            throw "Expected snippet block not found."
+        }
+        $snippetText = $match.Groups["snippet"].Value
+        ($snippetText -match "- \[x\]") | Should Be $false
+    }
+
     It "does not require gh CLI when Issue sync is run in DryRun mode" {
         $threw = $false
         $output = $null
@@ -333,6 +371,44 @@ Describe "Release readiness handoff scripts" {
         ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
     }
 
+    It "combines IncludeFailedOnly and NoIncludeRecommendedCommands in Issue DryRun" {
+        $threw = $false
+        $output = $null
+        $reportPathRelative = Join-Path "Temp" "no-gh-issue-report-failedonly-noinclude.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-issue-failedonly-noinclude"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -IssueNumber 456 -DryRun -IncludeFailedOnly -NoIncludeRecommendedCommands -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        (Test-Path $reportPath) | Should Be $true
+
+        $report = Get-Content -Path $reportPath -Raw
+        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+
+        $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
+        if (-not $match.Success) {
+            throw "Expected snippet block not found."
+        }
+        $snippetText = $match.Groups["snippet"].Value
+        ($snippetText -match "- \[x\]") | Should Be $false
+    }
+
     It "does not require gh CLI when Milestone sync is run in DryRun mode" {
         $threw = $false
         $output = $null
@@ -423,6 +499,44 @@ Describe "Release readiness handoff scripts" {
         (Test-Path $reportPath) | Should Be $true
         $reportText = Get-Content -Path $reportPath -Raw
         ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+
+    It "combines IncludeFailedOnly and NoIncludeRecommendedCommands in Milestone DryRun" {
+        $threw = $false
+        $output = $null
+        $reportPathRelative = Join-Path "Temp" "no-gh-milestone-report-failedonly-noinclude.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-milestone-failedonly-noinclude"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -MilestoneNumber 7 -DryRun -IncludeFailedOnly -NoIncludeRecommendedCommands -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        (Test-Path $reportPath) | Should Be $true
+
+        $report = Get-Content -Path $reportPath -Raw
+        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+
+        $match = [regex]::Match($outputText, '(?s)```text\r?\n(?<snippet>.*?)\r?\n```')
+        if (-not $match.Success) {
+            throw "Expected snippet block not found."
+        }
+        $snippetText = $match.Groups["snippet"].Value
+        ($snippetText -match "- \[x\]") | Should Be $false
     }
 
     It "replaces an existing PR handoff marker block during sync instead of appending duplicates" {
@@ -1373,6 +1487,33 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($resultText -match "Wrote handoff block to:") | Should Be $true
         (Test-Path $out) | Should Be $true
         (Test-Path $snippetOut) | Should Be $true
+        $snippetText = Get-Content -Path $snippetOut -Raw
+        ($snippetText -match "### Checks") | Should Be $true
+        ($snippetText -match "- \[x\]") | Should Be $false
+    }
+
+    It "combines IncludeFailedOnly and NoIncludeRecommendedCommands in export" {
+        $out = Join-Path $TestDrive "handoff-block-failedonly-noinclude.md"
+        $reportOut = Join-Path "Temp" "release-readiness-report-failedonly-noinclude.md"
+        $snippetOut = Join-Path "Temp" "release-readiness-snippet-failedonly-noinclude.md"
+
+        $result = & $exportScript `
+            -OutputPath $out `
+            -IncludeFailedOnly `
+            -FailOnWarning `
+            -NoIncludeRecommendedCommands `
+            -ReportOutputPath $reportOut `
+            -SnippetOutputPath $snippetOut
+        $resultText = $result | Out-String
+
+        ($resultText -match "Wrote handoff block to:") | Should Be $true
+        (Test-Path $out) | Should Be $true
+        (Test-Path $reportOut) | Should Be $true
+        (Test-Path $snippetOut) | Should Be $true
+
+        $report = Get-Content -Path $reportOut -Raw
+        ($report -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+
         $snippetText = Get-Content -Path $snippetOut -Raw
         ($snippetText -match "### Checks") | Should Be $true
         ($snippetText -match "- \[x\]") | Should Be $false
