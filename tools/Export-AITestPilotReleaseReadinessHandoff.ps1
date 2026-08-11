@@ -69,6 +69,10 @@ if (-not [System.IO.Path]::IsPathRooted($OutputPath)) {
     $OutputPath = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $OutputPath))
 }
 
+if ($IncludeRecommendedCommands -and $NoIncludeRecommendedCommands) {
+    throw "Specify only one of -IncludeRecommendedCommands or -NoIncludeRecommendedCommands."
+}
+
 if ($NoOverwrite -and (Test-Path $OutputPath)) {
     throw "Output file already exists. Re-run without -NoOverwrite to replace: $OutputPath"
 }

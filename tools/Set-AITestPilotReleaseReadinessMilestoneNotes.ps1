@@ -119,6 +119,10 @@ $summaryPath = Resolve-PathUnderRepo $SummaryJsonPath
 $reportPath = Resolve-PathUnderRepo $ReportOutputPath
 $snippetPath = Resolve-PathUnderRepo $SnippetOutputPath
 
+if ($IncludeRecommendedCommands -and $NoIncludeRecommendedCommands) {
+    throw "Specify only one of -IncludeRecommendedCommands or -NoIncludeRecommendedCommands."
+}
+
 $bundle = $null
 $bundleError = ""
 
