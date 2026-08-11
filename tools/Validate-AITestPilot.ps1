@@ -76,6 +76,8 @@ function Resolve-OutputPath {
     return Join-Path $repoRoot $Path
 }
 
+. (Join-Path $PSScriptRoot "PathGuards.ps1")
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Push-Location $repoRoot
 
@@ -271,6 +273,7 @@ try {
             $ReplayProfileJsonPath = "Temp\release-evidence\latest\sample-business-replay-profile.json"
         }
         $resolvedReplayProfilePath = Resolve-OutputPath -Path $ReplayProfileJsonPath
+        $resolvedReplayProfilePath = Assert-PathUnderRoot -Path $resolvedReplayProfilePath -Label "ReplayProfileJsonPath" -RepoRoot $repoRoot
         if (-not (Test-Path $resolvedReplayProfilePath)) {
             throw "Replay profile JSON not found for schema check: $resolvedReplayProfilePath"
         }
@@ -281,6 +284,9 @@ try {
             -ReplayProfileJsonPath $resolvedReplayProfilePath `
             -EvidenceBundleDir $replayProfileEvidenceDir `
             -ManifestPath (Join-Path $replayProfileEvidenceDir "replay-profile-schema-check-manifest.json")
+        if ($LASTEXITCODE -ne 0) {
+            throw "Replay profile schema check failed with exit code $LASTEXITCODE for $resolvedReplayProfilePath"
+        }
     }
 
     if ($RunCiGatePathRegressionStrict.IsPresent) {

@@ -15,6 +15,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+. (Join-Path $PSScriptRoot "PathGuards.ps1")
 
 if ([string]::IsNullOrWhiteSpace($ProjectPath)) {
     $ProjectPath = Join-Path $repoRoot "Temp\UnityImportProject"
@@ -23,33 +24,7 @@ if ([string]::IsNullOrWhiteSpace($ProjectPath)) {
 if ([string]::IsNullOrWhiteSpace($ReplayProfileJsonPath)) {
     $ReplayProfileJsonPath = Join-Path $repoRoot "Temp\release-evidence\latest\sample-business-replay-profile.json"
 }
-function Assert-PathUnderRoot {
-    param(
-        [string]$Path,
-        [string]$Label
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        throw "$Label cannot be empty."
-    }
-
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    $fullRoot = [System.IO.Path]::GetFullPath($repoRoot)
-    if ($fullPath.Equals($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        return $fullPath
-    }
-
-    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
-        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
-    }
-
-    if (-not $fullPath.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "$Label must stay under repo root: $fullPath"
-    }
-
-    return $fullPath
-}
-$ReplayProfileJsonPath = Assert-PathUnderRoot -Path $ReplayProfileJsonPath -Label "ReplayProfileJsonPath"
+$ReplayProfileJsonPath = Assert-PathUnderRoot -Path $ReplayProfileJsonPath -Label "ReplayProfileJsonPath" -RepoRoot $repoRoot
 
 if ([string]::IsNullOrWhiteSpace($ImportEvidencePath)) {
     $ImportEvidencePath = Join-Path $repoRoot "Temp\ai-testpilot-replay-profile-import.json"

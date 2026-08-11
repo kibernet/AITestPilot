@@ -9,29 +9,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-
-function Assert-PathUnderRoot {
-    param(
-        [string]$Path,
-        [string]$Label
-    )
-
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    $fullRoot = [System.IO.Path]::GetFullPath($repoRoot)
-    if ($fullPath.Equals($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        return $fullPath
-    }
-
-    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
-        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
-    }
-
-    if (-not $fullPath.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "$Label must stay under repo root: $fullPath"
-    }
-
-    return $fullPath
-}
+. (Join-Path $PSScriptRoot "PathGuards.ps1")
 
 function Resolve-OutputPath {
     param(
@@ -136,10 +114,10 @@ $evidenceBundleDir = Resolve-OutputPath -Path $EvidenceBundleDir
 $replayProfilePath = Resolve-OutputPath -Path $ReplayProfileJsonPath
 $manifestPath = Resolve-OutputPath -Path $ManifestPath
 
-$EvidenceBundleDir = Assert-PathUnderRoot -Path $evidenceBundleDir -Label "EvidenceBundleDir"
+$EvidenceBundleDir = Assert-PathUnderRoot -Path $evidenceBundleDir -Label "EvidenceBundleDir" -RepoRoot $repoRoot
 New-Item -ItemType Directory -Force $EvidenceBundleDir | Out-Null
-$ReplayProfileJsonPath = Assert-PathUnderRoot -Path $replayProfilePath -Label "ReplayProfileJsonPath"
-$ManifestPath = Assert-PathUnderRoot -Path $manifestPath -Label "ManifestPath"
+$ReplayProfileJsonPath = Assert-PathUnderRoot -Path $replayProfilePath -Label "ReplayProfileJsonPath" -RepoRoot $repoRoot
+$ManifestPath = Assert-PathUnderRoot -Path $manifestPath -Label "ManifestPath" -RepoRoot $repoRoot
 
 if (-not (Test-Path $ReplayProfileJsonPath)) {
     throw "Replay profile JSON not found: $ReplayProfileJsonPath"

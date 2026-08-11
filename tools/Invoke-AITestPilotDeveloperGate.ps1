@@ -21,6 +21,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. (Join-Path $PSScriptRoot "PathGuards.ps1")
 
 function Resolve-RelativePath {
     param([string]$Path)
@@ -45,33 +46,6 @@ function Resolve-PathToRepoRoot {
     }
 
     return Join-Path $repoRoot $Path
-}
-
-function Assert-PathUnderRoot {
-    param(
-        [string]$Path,
-        [string]$Label
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        throw "$Label cannot be empty."
-    }
-
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    $fullRoot = [System.IO.Path]::GetFullPath($repoRoot)
-    if ($fullPath.Equals($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        return $fullPath
-    }
-
-    if (-not $fullRoot.EndsWith(([System.IO.Path]::DirectorySeparatorChar).ToString())) {
-        $fullRoot = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
-    }
-
-    if (-not $fullPath.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "$Label must stay under repo root: $fullPath"
-    }
-
-    return $fullPath
 }
 
 $quickStartOutput = if ([string]::IsNullOrWhiteSpace($QuickStartOutputDir)) { Join-Path $repoRoot "Temp\quick-start" } else { Resolve-RelativePath -Path $QuickStartOutputDir }
@@ -181,7 +155,7 @@ if ($RunReplayProfileSchemaCheck.IsPresent) {
             Resolve-PathToRepoRoot -Path $ReplayProfileJsonPath
         }
 
-        $replayProfilePath = Assert-PathUnderRoot -Path $replayProfilePath -Label "ReplayProfileJsonPath"
+        $replayProfilePath = Assert-PathUnderRoot -Path $replayProfilePath -Label "ReplayProfileJsonPath" -RepoRoot $repoRoot
         if (-not (Test-Path $replayProfilePath)) {
             throw "Replay profile JSON not found: $replayProfilePath"
         }
