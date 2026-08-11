@@ -45,18 +45,6 @@ function Assert-Passed([string]$SummaryPath) {
     }
 }
 
-function Invoke-CiGateWithAliasConflictCheck {
-    param(
-        [hashtable]$InvokeArgs
-    )
-
-    if ($StrictOutputPathAlias.IsPresent -and
-        $InvokeArgs.ContainsKey("OutputPath") -and
-        $InvokeArgs.ContainsKey("SummaryPath")) {
-        throw "Strict alias check failed: passing both OutputPath and SummaryPath is not allowed."
-    }
-}
-
 function Assert-SummaryManifest([string]$SummaryPath, [string]$ExpectedManifestPath) {
     $summary = Get-Content -Raw $SummaryPath | ConvertFrom-Json
     if ($summary.developer_gate_manifest -ne $ExpectedManifestPath) {
@@ -74,7 +62,7 @@ function Assert-CiGateFailure {
         & $Command
     }
     catch {
-        if ($_.Exception.Message -notmatch [regex]::Escape($ExpectedMessageContains)) {
+        if ($_.Exception.Message -notmatch $ExpectedMessageContains) {
             throw "Expected error containing '$ExpectedMessageContains', got: $($_.Exception.Message)"
         }
         Write-Host "PASS negative case: $ExpectedMessageContains"
@@ -125,11 +113,9 @@ function Run-CiGateCase {
     }
 
     if ($ForceConflict.IsPresent -and $StrictOutputPathAlias.IsPresent) {
-        Assert-CiGateFailure -Command { Invoke-CiGateWithAliasConflictCheck -InvokeArgs $invokeArgs } -ExpectedMessageContains "Strict alias check failed: passing both OutputPath and SummaryPath is not allowed."
+        Assert-CiGateFailure -Command { & $ciGateScript @invokeArgs } -ExpectedMessageContains "specified more than once|already bound|ParameterBindingException"
         return
     }
-
-    Invoke-CiGateWithAliasConflictCheck -InvokeArgs $invokeArgs
 
     & $ciGateScript @invokeArgs
     if ($LASTEXITCODE -ne 0) {

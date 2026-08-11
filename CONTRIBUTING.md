@@ -56,6 +56,8 @@ For stricter alias checks (including conflict validation between `OutputPath` an
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
 ```
 
+This strict mode exercises a real parameter-binding conflict and verifies it is rejected by PowerShell.
+
 For stricter path-alias regression checks:
 
 ```powershell

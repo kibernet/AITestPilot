@@ -90,6 +90,8 @@ For strict alias-conflict assertions (including `OutputPath` + `SummaryPath` con
 .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
 ```
 
+This strict mode validates the regression in a stricter way, including native command binding conflict failures.
+
 For day-one onboarding and a one-command smoke path, run:
 
 ```powershell
