@@ -26,6 +26,18 @@ $manifestPath = if ([System.IO.Path]::IsPathRooted($DeveloperGateManifestPath)) 
 $devGateScript = Join-Path $PSScriptRoot "Run-DevGate.ps1"
 $summaryOutputPath = if ([System.IO.Path]::IsPathRooted($OutputPath)) { $OutputPath } else { Join-Path $repoRoot $OutputPath }
 
+function Resolve-OutputPath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return Join-Path $repoRoot $Path
+}
+
 function Build-RunDevGateArgs {
     param([hashtable]$BoundParameters)
 
@@ -38,9 +50,9 @@ function Build-RunDevGateArgs {
     if ($BoundParameters.ContainsKey("RepairLoopSkipUnityCoreValidation") -and $BoundParameters["RepairLoopSkipUnityCoreValidation"]) { $args.RepairLoopSkipUnityCoreValidation = $true }
     if ($BoundParameters.ContainsKey("RepairLoopSkipPatchApplyRetest") -and $BoundParameters["RepairLoopSkipPatchApplyRetest"]) { $args.RepairLoopSkipPatchApplyRetest = $true }
     if ($BoundParameters.ContainsKey("RepairLoopSkipRepairRetest") -and $BoundParameters["RepairLoopSkipRepairRetest"]) { $args.RepairLoopSkipRepairRetest = $true }
-    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["QuickStartOutputDir"])) { $args.QuickStartOutputDir = $BoundParameters["QuickStartOutputDir"] }
-    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["RepairLoopOutputDir"])) { $args.RepairLoopOutputDir = $BoundParameters["RepairLoopOutputDir"] }
-    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["RepairLoopEvidenceBundleDir"])) { $args.RepairLoopEvidenceBundleDir = $BoundParameters["RepairLoopEvidenceBundleDir"] }
+    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["QuickStartOutputDir"])) { $args.QuickStartOutputDir = Resolve-OutputPath -Path $BoundParameters["QuickStartOutputDir"] }
+    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["RepairLoopOutputDir"])) { $args.RepairLoopOutputDir = Resolve-OutputPath -Path $BoundParameters["RepairLoopOutputDir"] }
+    if (-not [string]::IsNullOrWhiteSpace($BoundParameters["RepairLoopEvidenceBundleDir"])) { $args.RepairLoopEvidenceBundleDir = Resolve-OutputPath -Path $BoundParameters["RepairLoopEvidenceBundleDir"] }
     if (-not [string]::IsNullOrWhiteSpace($BoundParameters["UnityPath"])) { $args.UnityPath = $BoundParameters["UnityPath"] }
     if (-not [string]::IsNullOrWhiteSpace($BoundParameters["ManifestPath"])) { $args.ManifestPath = $BoundParameters["ManifestPath"] }
     if (-not [string]::IsNullOrWhiteSpace($BoundParameters["DeveloperGateManifestPath"])) { $args.DeveloperGateManifestPath = $BoundParameters["DeveloperGateManifestPath"] }
