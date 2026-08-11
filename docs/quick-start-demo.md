@@ -48,6 +48,12 @@ CI-friendly single command (writes summary JSON to `Temp\ci-gate-summary.json`):
 .\tools\Invoke-AITestPilotCiGate.ps1
 ```
 
+If you need a custom output path:
+
+```powershell
+.\tools\Invoke-AITestPilotCiGate.ps1 -SummaryPath Temp\ci-gate-summary.json
+```
+
 Default output:
 - `Temp\quick-start\quick-start-manifest.json`
 - `Temp\quick-start\model-endpoint-trace-manifest.json` (if model endpoint trace step is run)

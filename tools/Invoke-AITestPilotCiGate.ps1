@@ -11,6 +11,7 @@ param(
     [string]$RepairLoopOutputDir,
     [string]$RepairLoopEvidenceBundleDir,
     [string]$UnityPath,
+    [Alias("SummaryPath")]
     [string]$OutputPath = "Temp\ci-gate-summary.json",
     [switch]$AllowPartialFail
 )

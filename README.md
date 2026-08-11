@@ -120,6 +120,12 @@ CI-friendly mode (optional, writes `Temp\ci-gate-summary.json` and exits non-zer
 .\tools\Invoke-AITestPilotCiGate.ps1
 ```
 
+To write to a custom summary path:
+
+```powershell
+.\tools\Invoke-AITestPilotCiGate.ps1 -SummaryPath Temp\ci-gate-summary.json
+```
+
 The command writes a quick-start manifest to:
 
 ```text
