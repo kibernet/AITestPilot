@@ -22,9 +22,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$manifestPath = if ([System.IO.Path]::IsPathRooted($DeveloperGateManifestPath)) { $DeveloperGateManifestPath } else { Join-Path $repoRoot $DeveloperGateManifestPath }
 $devGateScript = Join-Path $PSScriptRoot "Run-DevGate.ps1"
-$summaryOutputPath = if ([System.IO.Path]::IsPathRooted($OutputPath)) { $OutputPath } else { Join-Path $repoRoot $OutputPath }
 
 function Resolve-OutputPath {
     param([string]$Path)
@@ -37,6 +35,9 @@ function Resolve-OutputPath {
     }
     return Join-Path $repoRoot $Path
 }
+
+$manifestPath = Resolve-OutputPath -Path $DeveloperGateManifestPath
+$summaryOutputPath = Resolve-OutputPath -Path $OutputPath
 
 function Build-RunDevGateArgs {
     param([hashtable]$BoundParameters)
