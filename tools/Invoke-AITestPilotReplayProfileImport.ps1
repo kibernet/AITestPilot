@@ -57,6 +57,13 @@ if (-not (Test-Path $packagePath)) {
     throw "Package path not found: $packagePath"
 }
 
+$schemaCheckResultPath = Join-Path $EvidenceBundleDir "replay-profile-schema-check-manifest.json"
+Write-Output "==> replay profile schema check"
+& (Join-Path $repoRoot "tools\Invoke-AITestPilotReplayProfileSchemaCheck.ps1") `
+    -ReplayProfileJsonPath $ReplayProfileJsonPath `
+    -EvidenceBundleDir $EvidenceBundleDir `
+    -ManifestPath $schemaCheckResultPath
+
 $tempRoot = Split-Path $ProjectPath -Parent
 New-Item -ItemType Directory -Force $tempRoot | Out-Null
 
