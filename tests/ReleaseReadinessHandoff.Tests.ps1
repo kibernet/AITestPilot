@@ -182,6 +182,66 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($updatedBody -match "Bundle status: \*\*") | Should Be $true
     }
 
+    It "fails with clear error when PR handoff body update via gh fails" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh-pr-fail-edit"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        $statePath = Join-Path $fakeGhDir "gh-state.json"
+        @{
+            ExistingPrBody = "initial body"
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $statePath -Encoding UTF8
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$statePath = Join-Path `$scriptRoot "gh-state.json"
+`$state = @{}
+if (Test-Path `$statePath) {
+    try { `$state = Get-Content -Path `$statePath -Encoding UTF8 -Raw | ConvertFrom-Json } catch { `$state = @{} }
+}
+
+if (`$Args.Count -lt 2) { exit 1 }
+
+if (`$Args[0] -eq "pr" -and `$Args[1] -eq "view") {
+    `$body = [string](`$state.ExistingPrBody)
+    @{ body = `$body } | ConvertTo-Json -Depth 5
+    return
+}
+
+if (`$Args[0] -eq "pr" -and `$Args[1] -eq "edit") {
+    if (`$Args.Count -gt 2) { exit 1 }
+    return
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $threw = $false
+        $message = ""
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -PullRequestNumber 88 -NoIncludeRecommendedCommands
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $true
+        ($message -match "Unable to update PR body for #88") | Should Be $true
+    }
+
     It "appends a handoff block to issue body when no existing marker is present" {
         $fakeGhDir = Join-Path $TestDrive "fake-gh-issue"
         if (-not (Test-Path $fakeGhDir)) {
@@ -267,6 +327,65 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         (([regex]::Matches($updatedBody, [regex]::Escape($startMarker)).Count) -eq 1) | Should Be $true
     }
 
+    It "fails with clear error when issue handoff body update via gh fails" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh-issue-fail-edit"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        $statePath = Join-Path $fakeGhDir "gh-state.json"
+        @{
+            ExistingIssueBody = "init issue body"
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $statePath -Encoding UTF8
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$statePath = Join-Path `$scriptRoot "gh-state.json"
+`$state = @{}
+if (Test-Path `$statePath) {
+    try { `$state = Get-Content -Path `$statePath -Encoding UTF8 -Raw | ConvertFrom-Json } catch { `$state = @{} }
+}
+
+if (`$Args.Count -lt 2) { exit 1 }
+
+if (`$Args[0] -eq "issue" -and `$Args[1] -eq "view") {
+    `$body = [string](`$state.ExistingIssueBody)
+    @{ body = `$body } | ConvertTo-Json -Depth 5
+    return
+}
+
+if (`$Args[0] -eq "issue" -and `$Args[1] -eq "edit") {
+    exit 1
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $threw = $false
+        $message = ""
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -IssueNumber 456 -NoIncludeRecommendedCommands
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $true
+        ($message -match "Unable to update issue body for #456") | Should Be $true
+    }
+
     It "syncs handoff block into milestone description with repo path and milestone API shape" {
         $fakeGhDir = Join-Path $TestDrive "fake-gh-milestone"
         if (-not (Test-Path $fakeGhDir)) {
@@ -349,6 +468,70 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($description -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
         ($description -match "<!-- ai-testpilot-release-readiness:end -->") | Should Be $true
         ($description -match "## Release readiness handoff") | Should Be $true
+    }
+
+    It "fails with clear error when milestone patch via gh api fails" {
+        $fakeGhDir = Join-Path $TestDrive "fake-gh-milestone-fail-patch"
+        if (-not (Test-Path $fakeGhDir)) {
+            New-Item -ItemType Directory -Path $fakeGhDir | Out-Null
+        }
+
+        $statePath = Join-Path $fakeGhDir "gh-state.json"
+        @{
+            Repository = "owner/repo"
+            ExistingMilestoneDescription = "initial description"
+        } | ConvertTo-Json -Depth 5 | Set-Content -Path $statePath -Encoding UTF8
+
+        Set-Content -Path (Join-Path $fakeGhDir "gh-fake.ps1") -Encoding UTF8 -Value @"
+param([Parameter(ValueFromRemainingArguments)] [string[]]`$Args)
+
+`$scriptRoot = Split-Path -Parent `$MyInvocation.MyCommand.Path
+`$statePath = Join-Path `$scriptRoot "gh-state.json"
+`$state = @{}
+if (Test-Path `$statePath) {
+    try { `$state = Get-Content -Path `$statePath -Encoding UTF8 -Raw | ConvertFrom-Json } catch { `$state = @{} }
+}
+
+if (`$Args.Count -lt 1) { exit 1 }
+
+if (`$Args[0] -eq "repo" -and `$Args[1] -eq "view") {
+    Write-Output (`$state.Repository)
+    return
+}
+
+if (`$Args[0] -eq "api" -and `$Args.Contains("-X") -and `$Args.Contains("PATCH")) {
+    exit 1
+}
+
+if (`$Args[0] -eq "api") {
+    @{ description = `$state.ExistingMilestoneDescription } | ConvertTo-Json -Depth 5
+    return
+}
+
+exit 1
+"@
+        Set-Content -Path (Join-Path $fakeGhDir "gh.cmd") -Encoding UTF8 -Value @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
+"@
+
+        $threw = $false
+        $message = ""
+        $originalPath = $env:Path
+        $env:Path = "$fakeGhDir;$originalPath"
+        try {
+            & $setScript -MilestoneNumber 19 -NoIncludeRecommendedCommands
+        }
+        catch {
+            $threw = $true
+            $message = $_.Exception.Message
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $true
+        ($message -match "Unable to update milestone #19") | Should Be $true
     }
 
     It "exports a handoff block with marker wrappers" {

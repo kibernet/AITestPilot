@@ -249,6 +249,7 @@ if ($PullRequestNumber -gt 0) {
     $tmp = Join-Path $env:TEMP "ai-testpilot-readiness-pr-$PullRequestNumber-body.md"
     Set-Content -Path $tmp -Encoding UTF8 -Value $updatedBody
     gh pr edit $PullRequestNumber --body-file $tmp | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Unable to update PR body for #$PullRequestNumber. Check gh auth and PR write permissions." }
     Write-Output "Updated PR body: #$PullRequestNumber"
     return
 }
@@ -262,12 +263,14 @@ if ($IssueNumber -gt 0) {
     $tmp = Join-Path $env:TEMP "ai-testpilot-readiness-issue-$IssueNumber-body.md"
     Set-Content -Path $tmp -Encoding UTF8 -Value $updatedBody
     gh issue edit $IssueNumber --body-file $tmp | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Unable to update issue body for #$IssueNumber. Check gh auth and issue write permissions." }
     Write-Output "Updated issue body: #$IssueNumber"
     return
 }
 
 if ($MilestoneNumber -gt 0) {
     $repo = (gh repo view --json nameWithOwner -q ".nameWithOwner").Trim()
+    if ($LASTEXITCODE -ne 0) { throw "Unable to resolve current repository context via 'gh repo view'. Check gh auth." }
     if ([string]::IsNullOrWhiteSpace($repo)) {
         throw "Unable to resolve current repository context via 'gh repo view'."
     }
@@ -285,5 +288,6 @@ if ($MilestoneNumber -gt 0) {
     $tmp = Join-Path $env:TEMP "ai-testpilot-readiness-milestone-$MilestoneNumber.json"
     Set-Content -Path $tmp -Encoding UTF8 -Value $payload
     gh api -X PATCH -H "Accept: application/vnd.github+json" "repos/$repo/milestones/$MilestoneNumber" --input $tmp | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Unable to update milestone #$MilestoneNumber for repo $repo. Check gh auth and milestone write permissions." }
     Write-Output "Updated milestone description: #$MilestoneNumber"
 }
