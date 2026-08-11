@@ -135,7 +135,14 @@ Use this minimal checklist before opening or updating a pull request:
 .\tools\Validate-AITestPilot.ps1
 ```
 
-- PR artifacts to include in description:
+- For release / milestone PRs, also run:
+
+```powershell
+.\tools\Invoke-AITestPilotReleasePipeline.ps1
+.\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias
+```
+
+- PR artifacts to include in description (and required by template):
 
 ```text
 Temp\quick-start\quick-start-manifest.json
@@ -143,6 +150,8 @@ Temp\repair-loop\repair-loop-manifest.json
 Temp\developer-gate-manifest.json
 Temp\dev-gate-summary.json
 Temp\ci-gate-summary.json
+Temp\release-evidence\latest\...
+artifacts\ai-testpilot-release\latest\...
 ```
 
 Copy/paste this into PR description:
@@ -154,6 +163,7 @@ Copy/paste this into PR description:
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict *(if CI gate path logic changed)*
 - [ ] .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+- [ ] .\tools\Invoke-AITestPilotReleasePipeline.ps1 *(release scope)*
 
 Artifacts produced:
 - [ ] Temp\quick-start\quick-start-manifest.json (if available)
@@ -161,4 +171,12 @@ Artifacts produced:
 - [ ] Temp\developer-gate-manifest.json
 - [ ] Temp\dev-gate-summary.json
 - [ ] Temp\ci-gate-summary.json (if CI gate run)
+- [ ] Temp\release-evidence\latest\...
+- [ ] artifacts\ai-testpilot-release\latest\...
+```
+
+PR template location:
+
+```text
+.github/PULL_REQUEST_TEMPLATE/default.md
 ```
