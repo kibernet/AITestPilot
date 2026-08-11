@@ -87,3 +87,37 @@ Get-Help .\tools\Test-AITestPilotCiGatePathResolution.ps1 -Full
 .\docs\quick-start-demo.md
 .\docs\model-endpoint.md
 ```
+
+## 5) PR / release preflight checklist
+
+Use this minimal checklist before opening or updating a pull request:
+
+- Run local validation and CI-path regression checks:
+
+```powershell
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict
+```
+
+- Run CI-style gate with an archived summary:
+
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
+```
+
+- If CI gates are touched in your change set, also run:
+
+```powershell
+.\tools\Run-DevGate.ps1
+.\tools\Validate-AITestPilot.ps1
+```
+
+- PR artifacts to include in description:
+
+```text
+Temp\quick-start\quick-start-manifest.json
+Temp\repair-loop\repair-loop-manifest.json
+Temp\developer-gate-manifest.json
+Temp\dev-gate-summary.json
+Temp\ci-gate-summary.json
+```

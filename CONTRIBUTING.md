@@ -94,7 +94,7 @@ Use these in this order when you need deeper checks:
 3. `Validate-AITestPilot -RunCiGatePathRegression` (path regression)
 4. `Validate-AITestPilot -RunCiGatePathRegressionStrict` (strict alias-binding path regression)
 
-For a ready-made checklist across onboarding, daily work, and pre-merge confidence checks, see:
+For a ready-made checklist across onboarding, daily work, and pre-merge confidence checks (including PR release preflight), see:
 
 `.\docs\local-workflow-cheat-sheet.md`
 
