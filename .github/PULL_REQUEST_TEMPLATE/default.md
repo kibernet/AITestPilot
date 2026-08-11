@@ -80,20 +80,23 @@ Notes:
 
 -
 
-Paste the `Run-DevGate` summary output here (recommended):
+If you run `Run-DevGate`, this command generates a paste-ready block for this section:
 
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json -GeneratePrChecklist
 ```
-# paste this block directly from console output
-{
-  "developer_gate_status": "PASS",
-  "quick_start_status": "PASS",
-  "repair_loop_status": "PASS",
-  "quick_start_skipped": false,
-  "repair_loop_skipped": false,
-  "skip_reasons": [],
-  "failed_steps": [],
-  "summary_manifest": "C:\\path\\to\\repo\\Temp\\developer-gate-manifest.json"
-}
+
+Paste the resulting checklist block here:
+
+```text
+# paste contents of Temp\pr-validation-checklist.md (or your custom `-PrChecklistPath`)
+## Validation summary
+- [ ] Quick start: SKIPPED
+- [ ] Repair loop: SKIPPED
+- [ ] Replay profile schema check: PASS
+
+### Failed steps
+No failed steps detected.
 ```
 
 ## Checklist

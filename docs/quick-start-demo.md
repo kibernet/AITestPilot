@@ -140,21 +140,13 @@ Expected output:
 - `Temp\quick-start\quick-start-manifest.json`
 - Console summary with `Quick start status: PASS` or `PARTIAL_FAIL`
 
-When using `Run-DevGate.ps1`, copy the printed JSON summary (for example `developer_gate_status`, `quick_start_status`, `repair_loop_status`, and skip reasons) directly into the PR template.
+If you use the PR checklist mode:
 
-Expected `Run-DevGate` copy/paste block:
-
-```json
-{
-  "developer_gate_status": "PASS",
-  "quick_start_status": "PASS",
-  "repair_loop_status": "PASS",
-  "quick_start_skipped": false,
-  "repair_loop_skipped": false,
-  "skip_reasons": [],
-  "failed_steps": []
-}
+```powershell
+.\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json -GeneratePrChecklist
 ```
+
+Paste the generated `Temp\pr-validation-checklist.md` block into the PR template section.
 
 ## Step-by-step
 
