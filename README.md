@@ -78,6 +78,12 @@ cd AITestPilot
 .\tools\Validate-AITestPilot.ps1
 ```
 
+To include the CI gate path-resolution regression checks in the local validation run:
+
+```powershell
+.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
+```
+
 For day-one onboarding and a one-command smoke path, run:
 
 ```powershell

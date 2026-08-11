@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$RunCiGatePathRegression
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -201,6 +203,14 @@ try {
     foreach ($verb in @("click", "wait", "prepare_account", "login", "enter_scene", "close_popup", "claim_reward", "play_fishing", "finish")) {
         if ($actionFile -notmatch [regex]::Escape($verb)) {
             throw "Missing action verb in AIAction.cs: $verb"
+        }
+    }
+
+    if ($RunCiGatePathRegression.IsPresent) {
+        Write-Host "==> CI gate path regression"
+        & (Join-Path $PSScriptRoot "Test-AITestPilotCiGatePathResolution.ps1")
+        if ($LASTEXITCODE -ne 0) {
+            throw "CI gate path regression check failed"
         }
     }
 
