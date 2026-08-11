@@ -114,6 +114,8 @@ For release gate final review before milestone publish, see:
 
 ## What to include in PR description
 
+This project uses a standardized pull request template in `.github/PULL_REQUEST_TEMPLATE/default.md`.
+
 Please include:
 
 - Gate status (`PASS` / `PARTIAL_FAIL`)
