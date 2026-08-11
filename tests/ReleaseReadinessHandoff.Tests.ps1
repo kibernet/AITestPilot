@@ -19,6 +19,14 @@ if (-not (Test-Path $reportScript)) {
     throw "Invoke-AITestPilotReleaseReadinessReport.ps1 not found at $reportScript"
 }
 
+$reportScriptContent = Get-Content -Path $reportScript -Raw
+$recommendedCommandSectionMatch = [regex]::Match($reportScriptContent, '\$recommendedCommandsSectionTitle\s*=\s*"(?<title>[^"]+)"')
+if (-not $recommendedCommandSectionMatch.Success) {
+    throw "Unable to read recommended command section title from report script at $reportScript"
+}
+$recommendedCommandSectionTitle = $recommendedCommandSectionMatch.Groups["title"].Value
+$recommendedCommandSectionPattern = [regex]::Escape($recommendedCommandSectionTitle)
+
 function Assert-ReportContainsRecommendedCommandSection {
     param(
         [string]$ReportPath,
@@ -35,10 +43,10 @@ function Assert-ReportContainsRecommendedCommandSection {
     }
 
     if ($ShouldNotContain) {
-        ($targetText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
+        ($targetText -match $recommendedCommandSectionPattern) | Should Be $false
     }
     else {
-        ($targetText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+        ($targetText -match $recommendedCommandSectionPattern) | Should Be $true
     }
 }
 

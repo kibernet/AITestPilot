@@ -59,6 +59,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$recommendedCommandsSectionTitle = "## 2) Recommended command sequence (mainline)"
+$recommendedCommands = @(
+    ".\tools\Invoke-AITestPilotReleasePreflight.ps1"
+    ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline"
+    ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipStrictPathRegression"
+    ".\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipDocsFreshnessRegression"
+)
 
 function Resolve-PathUnderRepo {
     param([string]$Path)
@@ -150,6 +157,10 @@ function Check-JsonField {
         return @{ label = $Label; status = "PASS"; value = $value; path = $fullPath; detail = "$JsonPath=$value"; raw = $obj }
     }
     return @{ label = "$Label (`"$JsonPath=$value`")"; status = "FAIL"; value = $value; path = $fullPath; detail = "$JsonPath=$value"; raw = $obj }
+}
+
+function Get-RecommendedCommandSection {
+    return $recommendedCommandsSectionTitle
 }
 
 $summaryPathFull = Resolve-PathUnderRepo $SummaryPath
@@ -281,13 +292,10 @@ foreach ($row in $rows) {
 
 if ($IncludeRecommendedCommands) {
     $lines += ""
-    $lines += "## 2) Recommended command sequence (mainline)"
+    $lines += Get-RecommendedCommandSection
     $lines += ""
     $lines += '```powershell'
-    $lines += '.\tools\Invoke-AITestPilotReleasePreflight.ps1'
-    $lines += '.\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline'
-    $lines += '.\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipStrictPathRegression'
-    $lines += '.\tools\Invoke-AITestPilotReleasePreflight.ps1 -SkipReleasePipeline -SkipDocsFreshnessRegression'
+    foreach ($command in $recommendedCommands) { $lines += $command }
     $lines += '```'
 }
 
