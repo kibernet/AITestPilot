@@ -8,9 +8,16 @@ Kibernet AI TestPilot turns gameplay testing into a controlled engineering loop:
 ![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-000000.svg)
 ![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4.svg)
 ![Status: Early Access](https://img.shields.io/badge/Status-Early%20Access-f59e0b.svg)
+![Local Gate](https://img.shields.io/badge/PR%20Gate-Run--DevGate-0ea5e9.svg)
 
 > [!IMPORTANT]
 > AI TestPilot is an early-access engineering project. Its core, Unity package, smoke tests, evidence contracts, and package-release gates are implemented. Production use still requires a game-specific replay driver, real endpoint credentials and live-smoke evidence when a model is enabled, and host-project evidence for production Lua or repair workflows.
+
+> [!NOTE]
+> Required PR gate:
+> 1. run `.\tools\Run-DevGate.ps1`
+> 2. paste/attach `Temp\developer-gate-manifest.json` in PR notes
+> 3. explain any skipped steps with reasons in PR description
 
 ## Why AI TestPilot
 
@@ -71,7 +78,57 @@ cd AITestPilot
 .\tools\Validate-AITestPilot.ps1
 ```
 
+For day-one onboarding and a one-command smoke path, run:
+
+```powershell
+.\tools\Invoke-AITestPilotQuickStart.ps1
+```
+
+Then run:
+
+```powershell
+.\tools\Invoke-AITestPilotQuickStartChecklist.ps1
+```
+
+For a post-change revalidation loop (core validation + optional patch apply + repair retest), run:
+
+```powershell
+.\tools\Invoke-AITestPilotRepairLoop.ps1
+```
+
+For a one-command local developer gate before PR/push, run:
+
+```powershell
+.\tools\Invoke-AITestPilotDeveloperGate.ps1
+```
+
+Or use the shorter command:
+
+```powershell
+.\tools\Run-DevGate.ps1
+```
+
+CI-friendly mode (optional, writes `Temp\ci-gate-summary.json` and exits non-zero on non-pass unless `-AllowPartialFail` is set):
+
+```powershell
+.\tools\Invoke-AITestPilotCiGate.ps1
+```
+
+The command writes a quick-start manifest to:
+
+```text
+Temp\quick-start\quick-start-manifest.json
+```
+
+The developer gate writes:
+
+```text
+Temp\developer-gate-manifest.json
+```
+
 This command builds the .NET solution, builds the model-endpoint and Lua-analysis probes, runs the dependency-free smoke suite, and validates the Unity package structure.
+
+`Run-DevGate.ps1` also prints a machine-readable summary block that can be copied directly into the PR template, including quick start and repair-loop statuses.
 
 ### Install the Unity package
 
@@ -202,6 +259,8 @@ The current release is `0.1.0` and should be treated as early access.
 
 See the [Roadmap](docs/roadmap.md) for the implementation boundary and next milestones.
 
+For contribution expectations and PR checklist, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Contributing
 
 Issues and pull requests are welcome. Contributions should preserve the project's core invariants:
@@ -225,6 +284,7 @@ Unity-facing changes should also pass `Validate-UnityPackageImport.ps1` on Unity
 - [Architecture](docs/architecture.md)
 - [Model Endpoint Bridge](docs/model-endpoint.md)
 - [Production Replay Driver Integration](docs/integration/production-driver.md)
+- [Quick Start Demo](docs/quick-start-demo.md)
 - [CI Release Pipeline](docs/ci-release-pipeline.md)
 - [Roadmap](docs/roadmap.md)
 - [Original Product Specification](Kibernet_AI_TestPilot_FULL_SPEC.md)
