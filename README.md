@@ -122,6 +122,7 @@ If you need the manifest written to a custom location, use:
 
 `-ManifestPath` and `-SummaryPath` both accept absolute paths; otherwise paths are resolved relative to repository root.
 `-OutputPath` is now accepted as an alias for `-SummaryPath` (for CI-style parity).
+`-QuickStartOutputDir`, `-RepairLoopOutputDir`, and `-RepairLoopEvidenceBundleDir` are also resolved against repository root when relative (absolute values are preserved).
 
 CI-friendly mode (optional, writes `Temp\ci-gate-summary.json` and exits non-zero on non-pass unless `-AllowPartialFail` is set):
 

@@ -19,8 +19,6 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$quickStartOutput = if ([string]::IsNullOrWhiteSpace($QuickStartOutputDir)) { Join-Path $repoRoot "Temp\quick-start" } else { $QuickStartOutputDir }
-$repairLoopOutput = if ([string]::IsNullOrWhiteSpace($RepairLoopOutputDir)) { Join-Path $repoRoot "Temp\repair-loop" } else { $RepairLoopOutputDir }
 
 function Resolve-RelativePath {
     param([string]$Path)
@@ -33,6 +31,9 @@ function Resolve-RelativePath {
     }
     return Join-Path $repoRoot $Path
 }
+
+$quickStartOutput = if ([string]::IsNullOrWhiteSpace($QuickStartOutputDir)) { Join-Path $repoRoot "Temp\quick-start" } else { Resolve-RelativePath -Path $QuickStartOutputDir }
+$repairLoopOutput = if ([string]::IsNullOrWhiteSpace($RepairLoopOutputDir)) { Join-Path $repoRoot "Temp\repair-loop" } else { Resolve-RelativePath -Path $RepairLoopOutputDir }
 
 $developerGate = [ordered]@{
     startTime = (Get-Date).ToString("o")
@@ -126,7 +127,7 @@ if (-not $SkipRepairLoop) {
     try {
         $repairLoopArgs = @{ OutputDir = $repairLoopOutput }
         if (-not [string]::IsNullOrWhiteSpace($RepairLoopEvidenceBundleDir)) {
-            $repairLoopArgs.EvidenceBundleDir = $RepairLoopEvidenceBundleDir
+            $repairLoopArgs.EvidenceBundleDir = Resolve-RelativePath -Path $RepairLoopEvidenceBundleDir
         }
         if ($RepairLoopSkipUnityCoreValidation) { $repairLoopArgs.SkipUnityCoreValidation = $true }
         if ($RepairLoopSkipPatchApplyRetest) { $repairLoopArgs.SkipPatchApplyRetest = $true }

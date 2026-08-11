@@ -47,15 +47,39 @@ function Resolve-SummaryPath {
     return Join-Path $repoRoot $Path
 }
 
+function Resolve-OutputDir {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+    return Join-Path $repoRoot $Path
+}
+
 $developerManifest = Resolve-ManifestPath -Path $DeveloperGateManifestPath
 $defaultManifest = Join-Path $repoRoot "Temp\developer-gate-manifest.json"
 $manifestParsePath = if (Test-Path $developerManifest) { $developerManifest } else { $defaultManifest }
 
 $devGateParameters = @{}
 foreach ($entry in $PSBoundParameters.GetEnumerator()) {
-    if ($entry.Key -ne "SummaryPath") {
+    if ($entry.Key -ne "SummaryPath" -and $entry.Key -ne "OutputPath") {
         $devGateParameters[$entry.Key] = $entry.Value
     }
+}
+
+if ($devGateParameters.ContainsKey("QuickStartOutputDir")) {
+    $devGateParameters["QuickStartOutputDir"] = Resolve-OutputDir -Path $devGateParameters["QuickStartOutputDir"]
+}
+
+if ($devGateParameters.ContainsKey("RepairLoopOutputDir")) {
+    $devGateParameters["RepairLoopOutputDir"] = Resolve-OutputDir -Path $devGateParameters["RepairLoopOutputDir"]
+}
+
+if ($devGateParameters.ContainsKey("RepairLoopEvidenceBundleDir")) {
+    $devGateParameters["RepairLoopEvidenceBundleDir"] = Resolve-OutputDir -Path $devGateParameters["RepairLoopEvidenceBundleDir"]
 }
 
 & $devGateScript @devGateParameters

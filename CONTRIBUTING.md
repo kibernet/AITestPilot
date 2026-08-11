@@ -29,6 +29,8 @@ To write the developer gate manifest to a custom location:
 
 `-ManifestPath` and `-SummaryPath` support absolute paths; relative paths are resolved against repository root.
 
+Relative values for `-QuickStartOutputDir`, `-RepairLoopOutputDir`, and `-RepairLoopEvidenceBundleDir` are also resolved against the repository root.
+
 For automation/CI style checks, use:
 
 ```powershell

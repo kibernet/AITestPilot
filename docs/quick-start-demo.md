@@ -51,6 +51,8 @@ If you need the developer gate manifest in a custom path:
 `-ManifestPath`/`-SummaryPath` both accept absolute paths; if omitted or relative, they resolve to the repository root.
 `-OutputPath` is now accepted as an alias for `-SummaryPath`.
 
+`Run-DevGate` also resolves `-QuickStartOutputDir`, `-RepairLoopOutputDir`, and `-RepairLoopEvidenceBundleDir` the same way.
+
 CI-friendly single command (writes summary JSON to `Temp\ci-gate-summary.json`):
 
 ```powershell
