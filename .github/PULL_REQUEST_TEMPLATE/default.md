@@ -49,7 +49,8 @@ Paste the `Run-DevGate` summary output here (recommended):
   "quick_start_skipped": false,
   "repair_loop_skipped": false,
   "skip_reasons": [],
-  "failed_steps": []
+  "failed_steps": [],
+  "summary_manifest": "Temp\\developer-gate-manifest.json"
 }
 ```
 
