@@ -15,6 +15,7 @@ Please run and report before merge:
 - [ ] `.\tools\Run-DevGate.ps1`
 - [ ] `.\tools\Validate-AITestPilot.ps1`
 - [ ] `.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression`
+- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands`
 
 ### Optional checks by scope
 
@@ -22,6 +23,7 @@ Please run and report before merge:
 - [ ] `.\tools\Invoke-AITestPilotCiGate.ps1` (if running CI-style aggregate validation)
 - [ ] `.\tools\Invoke-AITestPilotLocalPreflight.ps1` (if local baseline is preferred)
 - [ ] `.\tools\Test-AITestPilotCiGatePathResolution.ps1 -StrictOutputPathAlias` (if path alias regression is targeted)
+- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning` (strict mode, if this PR is milestone/release-facing)
 
 If you used skips, list them:
 
@@ -42,6 +44,7 @@ If you used skips, list them:
 - Local run summary (optional): `Temp\dev-gate-summary.json`
 - Release evidence: `Temp\release-evidence\latest\...` (if release candidate scope)
 - Release artifacts: `artifacts\ai-testpilot-release\latest\...` (if release pipeline run)
+- Release readiness report: `Temp\release-readiness-report.md`
 
 ## Copy/Paste release gate block (for milestone PR / pre-release PR)
 
@@ -59,6 +62,7 @@ If you used skips, list them:
 - CI gate summary: Temp\ci-gate-summary.json
 - Release evidence: Temp\release-evidence\latest\
 - Release artifacts: artifacts\ai-testpilot-release\latest\
+- Release readiness report: Temp\release-readiness-report.md
 ```
 
 Status:
@@ -92,3 +96,9 @@ Paste the `Run-DevGate` summary output here (recommended):
 - [ ] New behavior covered by scripts/evidence or tests where applicable
 - [ ] No unexpected `FAIL` steps in passed manifests
 - [ ] Required evidence paths are included in PR description
+
+Paste the readiness report here if generated:
+
+```
+# paste contents of Temp\\release-readiness-report.md
+```
