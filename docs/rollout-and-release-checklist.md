@@ -1,92 +1,96 @@
-# AITestPilot 落地与发布验收模板
+﻿# AITestPilot 落地与发布执行清单
 
-本文档提供可直接复用的上线推进与 PR 发布校验模板，目标是把项目中的门禁命令转化为可追责的团队流程。
+面向宿主项目的落地与发布验收清单。目标是把 AI TestPilot 从“可用”推进到“可交付”。
 
-## 适用范围
+## 适用场景
 
-- 新项目接入 AITestPilot 时的试点推进（第一周）
-- 按既有产品线持续集成后重构后的回归验收
-- 发布前里程碑（里程碑冻结、候选包冻结）前质量复核
+- 新接入项目的首轮试运行
+- PR 与里程碑发布前的统一门禁
+- 需要固定合规证据链的团队交付流程
 
-> [!TIP]
-> 该模板补充 `local-workflow-cheat-sheet.md` 的命令级清单；你可按团队节奏缩放执行频率。
+## 第 1-3 天：接入与基础验证
 
-## 一、7 天试点推进清单
-
-### 第 1-3 天：验证闭环打底
-
-- [ ] 新项目代码检出后，执行：
+- [ ] 本地执行核心门禁之一
   - `.\tools\Validate-AITestPilot.ps1`
-  - `.\tools\Invoke-AITestPilotLocalPreflight.ps1`
-- [ ] 约束 Unity 内置标注规范：
-  - `AutomationId` 最低覆盖主入口、关键状态切换点、核心结果界面
-- [ ] 形成项目级证据目录策略（如：统一归档到 `Temp\` 下并保留版本标签）
-- [ ] 产物确认：
-  - `Temp\quick-start\quick-start-manifest.json`
+  - 或 `.\tools\Invoke-AITestPilotLocalPreflight.ps1`
+- [ ] 确认输出路径与产物归档策略
+  - 约定 `Temp\` 目录下的标准产物落盘约定（可写入项目文档）
+- [ ] 完成 Unity 接入基础线
+  - 补齐关键 `AutomationId`
+  - 确认决策与日志可复现
+
+推荐产物（基础）：
+
+- `Temp\quick-start\quick-start-manifest.json`
+- `Temp\developer-gate-manifest.json` 或 `Temp\dev-gate-summary.json`（按本地策略）
+
+## 第 4-7 天：PR 与流程对齐
+
+- [ ] 使用统一 PR 产物提交
+  - `.\tools\Run-DevGate.ps1`
+  - `.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression`
+  - `.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict`（如有路径约束变更）
+- [ ] 记录失败/跳过说明
+  - 在 PR 描述中列出跳过原因、影响范围、责任人
+- [ ] 对齐核心业务交互
+  - 完成至少一个业务流程 replay 验证（登录、场景进入、结算/领奖）
+- [ ] 输出 PR 证据链
   - `Temp\developer-gate-manifest.json`
-
-### 第 4-7 天：PR 门禁与协作规范化
-
-- [ ] PR 模板中加入门禁结果复核项（至少包含：
-  - `Run-DevGate.ps1`
-  - `Run-CiGatePathRegression`
-  - `Run-CiGatePathRegressionStrict` 的执行记录）
-- [ ] 提交说明约束：
-  - 失败步骤/跳过步骤必须写明原因
-  - 失败修复必须附重现路径和证据位置
-- [ ] 生产 replay driver 的最小可测实现至少覆盖：登录、场景进入、奖励/核心结果确认
-- [ ] 产物确认：
   - `Temp\dev-gate-summary.json`
-  - `Temp\ci-gate-summary.json`
 
-## 二、30 天持续化验收清单
+## 第 8-30 天：稳定化与发布能力化
 
-- [ ] 关键路径固定加入回归：`Run-CiGatePathRegression`（每周一次）
-- [ ] 关键路径 strict 规则固定加入回归：`Run-CiGatePathRegressionStrict`（每两周一次或触达 CI 门禁变更时）
-- [ ] 所有修复任务必须执行“三段式”：
-  - 补丁前置校验
-  - 回归重测
-  - 回滚证据输出
-- [ ] 里程碑前执行发布前流水线：
+- [ ] 持续回归路径稳健性
+  - 周期执行 `Run-CiGatePathRegression`
+  - 周期执行 `Run-CiGatePathRegressionStrict`
+- [ ] 风险矩阵建立
+  - 记录失败类型、修复时长、复发率、覆盖缺口
+- [ ] 发布流水线联动
   - `.\tools\Invoke-AITestPilotReleasePipeline.ps1`
-- [ ] 产物存档（可追溯）：
-  - `artifacts\ai-testpilot-release\latest\`（发布归档）
-  - `Temp\release-evidence\latest\`（版本级证据）
+- [ ] 产物归档
+  - `Temp\release-evidence\latest\`
+  - `artifacts\ai-testpilot-release\latest\`
 
-## 三、可直接粘贴到 PR 的最小模板
+### 落地验收清单（建议）
+
+- [ ] `Temp\developer-gate-manifest.json`
+- [ ] `Temp\dev-gate-summary.json`
+- [ ] `Temp\ci-gate-summary.json`
+- [ ] `Temp\release-evidence\latest\`
+- [ ] `artifacts\ai-testpilot-release\latest\`
+
+### 推荐 PR 模板片段
 
 ```text
 ## Validation run
 - [ ] .\tools\Run-DevGate.ps1
-- [ ] .\tools\Validate-AITestPilot.ps1
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression
 - [ ] .\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegressionStrict *(if touched path logic)*
-- [ ] .\tools\Run-DevGate.ps1 -SummaryPath Temp\dev-gate-summary.json
 - [ ] .\tools\Invoke-AITestPilotReleasePipeline.ps1 *(for release milestone only)*
 
 Artifacts produced:
 - [ ] Temp\developer-gate-manifest.json
 - [ ] Temp\dev-gate-summary.json
-- [ ] Temp\ci-gate-summary.json (if CI/paths are run)
+- [ ] Temp\ci-gate-summary.json
 - [ ] Temp\release-evidence\latest\...
-- [ ] artifacts\ai-testpilot-release\latest\... (if release pipeline is run)
+- [ ] artifacts\ai-testpilot-release\latest\...
 
 Skipped / partial steps:
-- [ ] Please list skipped command(s) and reason(s), with owner approval.
+- [ ] Please list skipped command(s) and reason(s), with owner and owner approval.
 ```
 
-## 四、验收阈值（上线标准）
+## 发布后复盘动作
 
-上线（通过）至少满足以下条件：
+- [ ] 确认发布前门禁是否完整（DevGate、PathRegression、Release Pipeline）
+- [ ] 确认回归结果是否覆盖关键动作路径
+- [ ] 确认回归失败是否有治理闭环（修复任务、复测、回滚）
 
-- [ ] 本地门禁和至少一次 CI 路径回归通过
-- [ ] 修复闭环中可追溯：问题包 -> 修复任务 -> 重测 -> 回滚证据
-- [ ] 关键路径 release pipeline 产出可归档
-- [ ] 证据文件可复用、可比对、可追责
+### 关联文档
 
-## 五、与其他文档的映射
+- `docs/local-workflow-cheat-sheet.md`
+- `docs/release-gate-review-checklist.md`
+- `CONTRIBUTING.md`
+- `docs/ci-release-pipeline.md`
+- `docs/integration/production-driver.md`
 
-- 日常命令入口：`docs/local-workflow-cheat-sheet.md`
-- PR 与工作流：`CONTRIBUTING.md`
-- 生产接入点：`docs/integration/production-driver.md`
-- 发布流水线：`docs/ci-release-pipeline.md`
+
