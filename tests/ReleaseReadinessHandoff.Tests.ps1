@@ -171,6 +171,41 @@ Describe "Release readiness handoff scripts" {
         ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $false
     }
 
+    It "allows explicit IncludeRecommendedCommands in PR DryRun and preserves custom markers" {
+        $threw = $false
+        $output = $null
+        $startMarker = "<!-- custom-pr-dryrun-start -->"
+        $endMarker = "<!-- custom-pr-dryrun-end -->"
+        $reportPathRelative = Join-Path "Temp" "no-gh-pr-report-include.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-pr-include"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -PullRequestNumber 77 -DryRun -IncludeRecommendedCommands `
+                -MarkerStart $startMarker -MarkerEnd $endMarker -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match [regex]::Escape($startMarker)) | Should Be $true
+        ($outputText -match [regex]::Escape($endMarker)) | Should Be $true
+        ($outputText -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
+        (Test-Path $reportPath) | Should Be $true
+        $reportText = Get-Content -Path $reportPath -Raw
+        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+
     It "does not require gh CLI when Issue sync is run in DryRun mode" {
         $threw = $false
         $output = $null
@@ -228,6 +263,41 @@ Describe "Release readiness handoff scripts" {
         ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
     }
 
+    It "allows explicit IncludeRecommendedCommands in Issue DryRun and preserves custom markers" {
+        $threw = $false
+        $output = $null
+        $startMarker = "<!-- custom-issue-dryrun-start -->"
+        $endMarker = "<!-- custom-issue-dryrun-end -->"
+        $reportPathRelative = Join-Path "Temp" "no-gh-issue-report-include.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-issue-include"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -IssueNumber 456 -DryRun -IncludeRecommendedCommands `
+                -MarkerStart $startMarker -MarkerEnd $endMarker -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match [regex]::Escape($startMarker)) | Should Be $true
+        ($outputText -match [regex]::Escape($endMarker)) | Should Be $true
+        ($outputText -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
+        (Test-Path $reportPath) | Should Be $true
+        $reportText = Get-Content -Path $reportPath -Raw
+        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+
     It "does not require gh CLI when Milestone sync is run in DryRun mode" {
         $threw = $false
         $output = $null
@@ -280,6 +350,41 @@ Describe "Release readiness handoff scripts" {
         $threw | Should Be $false
         $outputText = $output | Out-String
         ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        (Test-Path $reportPath) | Should Be $true
+        $reportText = Get-Content -Path $reportPath -Raw
+        ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
+    }
+
+    It "allows explicit IncludeRecommendedCommands in Milestone DryRun and preserves custom markers" {
+        $threw = $false
+        $output = $null
+        $startMarker = "<!-- custom-milestone-dryrun-start -->"
+        $endMarker = "<!-- custom-milestone-dryrun-end -->"
+        $reportPathRelative = Join-Path "Temp" "no-gh-milestone-report-include.md"
+        $reportPath = Join-Path $repoRoot $reportPathRelative
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-milestone-include"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -MilestoneNumber 7 -DryRun -IncludeRecommendedCommands `
+                -MarkerStart $startMarker -MarkerEnd $endMarker -ReportOutputPath $reportPathRelative
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match [regex]::Escape($startMarker)) | Should Be $true
+        ($outputText -match [regex]::Escape($endMarker)) | Should Be $true
+        ($outputText -match [regex]::Escape("<!-- ai-testpilot-release-readiness:start -->")) | Should Be $false
         (Test-Path $reportPath) | Should Be $true
         $reportText = Get-Content -Path $reportPath -Raw
         ($reportText -match "## 2\) Recommended command sequence \(mainline\)") | Should Be $true
