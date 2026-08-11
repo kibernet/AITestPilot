@@ -40,7 +40,7 @@ For strict gating, add `-FailOnWarning` so CI/automation fails on unresolved WAR
 For CI/automation parsing, request machine-readable output:
 
 ```powershell
-.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json
+.\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md
 ```
 
 In GitHub Actions (`workflow_dispatch`), you can enable this as a non-default hard gate:

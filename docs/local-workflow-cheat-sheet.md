@@ -60,10 +60,10 @@ For release preflight with strict validation and docs-freshness regression enabl
 .\tools\Invoke-AITestPilotReleasePreflight.ps1 -SummaryPath Temp\release-preflight-summary.json
 ```
 
-For an auto-generated milestone readiness report:
+For an auto-generated milestone readiness bundle:
 
 ```powershell
-.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
+.\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md
 ```
 
 Use strict gate mode in automation:
@@ -72,7 +72,7 @@ Use strict gate mode in automation:
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
 ```
 
-Machine-readable summary:
+Legacy one-step machine-readable pair (compatible with older flow):
 
 ```powershell
 .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json

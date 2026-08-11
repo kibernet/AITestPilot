@@ -41,16 +41,16 @@ Expected key evidence:
 - artifacts\ai-testpilot-release\latest\ (if full release pipeline executed)
 ```
 
-For a quick audit artifact, additionally run:
+For a quick audit artifact, run the one-command bundle:
 
 ```powershell
-.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands
+.\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md
 ```
 
 For strict gate runs:
 
 ```powershell
-.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands -FailOnWarning
+.\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md -FailOnWarning
 ```
 
 For machine-readable validation output:

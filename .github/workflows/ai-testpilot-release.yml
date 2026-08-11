@@ -181,22 +181,23 @@ jobs:
 
       - name: Generate release readiness snapshot
         run: |
-          $args = @(
-            "-OutputPath", "Temp\release-readiness-report.md",
-            "-RequireReleasePipeline",
-            "-IncludeRecommendedCommands",
-            "-SummaryOutputPath", "Temp\release-readiness-summary.json"
-          )
-
           if ($env:AI_TESTPILOT_REQUIRE_READINESS_GATE -ieq "true") {
-            $args += "-FailOnWarning"
+            & .\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 `
+              -ReportOutputPath "Temp\release-readiness-report.md" `
+              -RequireReleasePipeline `
+              -IncludeRecommendedCommands `
+              -SummaryJsonPath "Temp\release-readiness-summary.json" `
+              -SnippetOutputPath "Temp\release-readiness-pr-snippet.md" `
+              -FailOnWarning
           }
-
-          & .\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 @args
-
-          & .\tools\Invoke-AITestPilotReleaseReadinessSummary.ps1 `
-            -SummaryJson "Temp\release-readiness-summary.json" `
-            -OutputPath "Temp\release-readiness-pr-snippet.md"
+          else {
+            & .\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 `
+              -ReportOutputPath "Temp\release-readiness-report.md" `
+              -RequireReleasePipeline `
+              -IncludeRecommendedCommands `
+              -SummaryJsonPath "Temp\release-readiness-summary.json" `
+              -SnippetOutputPath "Temp\release-readiness-pr-snippet.md"
+          }
 
       - name: Upload release evidence
         if: always()

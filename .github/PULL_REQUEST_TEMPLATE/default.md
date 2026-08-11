@@ -15,9 +15,7 @@ Please run and report before merge:
 - [ ] `.\tools\Run-DevGate.ps1`
 - [ ] `.\tools\Validate-AITestPilot.ps1`
 - [ ] `.\tools\Validate-AITestPilot.ps1 -RunCiGatePathRegression`
-- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -IncludeRecommendedCommands`
-- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessReport.ps1 -OutputPath Temp\release-readiness-report.md -SummaryOutputPath Temp\release-readiness-summary.json`
-- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessSummary.ps1 -SummaryJson Temp\release-readiness-summary.json -OutputPath Temp\release-readiness-pr-snippet.md`
+- [ ] `.\tools\Invoke-AITestPilotReleaseReadinessBundle.ps1 -ReportOutputPath Temp\release-readiness-report.md -SummaryJsonPath Temp\release-readiness-summary.json -SnippetOutputPath Temp\release-readiness-pr-snippet.md`
 
 ### Optional checks by scope
 
