@@ -60,6 +60,16 @@ function Assert-SnippetHasNoPassedChecks {
     ($snippetText -match "- \[x\]") | Should Be $false
 }
 
+function Assert-SnippetOutputHasNoPassedChecks {
+    param(
+        [string]$SnippetPath
+    )
+
+    $snippetText = Get-Content -Path $SnippetPath -Raw
+    ($snippetText -match "### Checks") | Should Be $true
+    ($snippetText -match "- \[x\]") | Should Be $false
+}
+
 Describe "Release readiness handoff scripts" {
     It "throws when multiple targets are specified for Set script" {
         $threw = $false
@@ -1983,9 +1993,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
         ($resultText -match "Wrote handoff block to:") | Should Be $true
         (Test-Path $out) | Should Be $true
         (Test-Path $snippetOut) | Should Be $true
-        $snippetText = Get-Content -Path $snippetOut -Raw
-        ($snippetText -match "### Checks") | Should Be $true
-        ($snippetText -match "- \[x\]") | Should Be $false
+        Assert-SnippetOutputHasNoPassedChecks -SnippetPath $snippetOut
     }
 
     It "combines IncludeFailedOnly and NoIncludeRecommendedCommands in export" {
@@ -2009,9 +2017,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0gh-fake.ps1" %*
 
         Assert-ReportContainsRecommendedCommandSection -ReportPath (Join-Path $repoRoot $reportOut) -ShouldNotContain
 
-        $snippetText = Get-Content -Path $snippetOut -Raw
-        ($snippetText -match "### Checks") | Should Be $true
-        ($snippetText -match "- \[x\]") | Should Be $false
+        Assert-SnippetOutputHasNoPassedChecks -SnippetPath $snippetOut
     }
 
     It "writes the dry-run handoff block to console output" {
