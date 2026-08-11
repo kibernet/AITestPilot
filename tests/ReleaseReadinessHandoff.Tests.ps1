@@ -86,6 +86,87 @@ Describe "Release readiness handoff scripts" {
         ($message -match "GitHub CLI \(gh\) is required to sync to PR/issue/milestone targets") | Should Be $true
     }
 
+    It "does not require gh CLI when PR sync is run in DryRun mode" {
+        $threw = $false
+        $output = $null
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-pr"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -PullRequestNumber 77 -DryRun -NoIncludeRecommendedCommands
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        ($outputText -match "## Release readiness handoff") | Should Be $true
+        ($outputText -match "Bundle status: \*\*") | Should Be $true
+    }
+
+    It "does not require gh CLI when Issue sync is run in DryRun mode" {
+        $threw = $false
+        $output = $null
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-issue"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -IssueNumber 456 -DryRun -NoIncludeRecommendedCommands
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        ($outputText -match "## Release readiness handoff") | Should Be $true
+        ($outputText -match "Bundle status: \*\*") | Should Be $true
+    }
+
+    It "does not require gh CLI when Milestone sync is run in DryRun mode" {
+        $threw = $false
+        $output = $null
+
+        $originalPath = $env:Path
+        $isolatedPath = Join-Path $TestDrive "no-gh-dryrun-milestone"
+        if (-not (Test-Path $isolatedPath)) {
+            New-Item -ItemType Directory -Path $isolatedPath | Out-Null
+        }
+        $env:Path = $isolatedPath
+        try {
+            $output = & $setScript -MilestoneNumber 7 -DryRun -NoIncludeRecommendedCommands
+        }
+        catch {
+            $threw = $true
+        }
+        finally {
+            $env:Path = $originalPath
+        }
+
+        $threw | Should Be $false
+        $outputText = $output | Out-String
+        ($outputText -match "<!-- ai-testpilot-release-readiness:start -->") | Should Be $true
+        ($outputText -match "## Release readiness handoff") | Should Be $true
+        ($outputText -match "Bundle status: \*\*") | Should Be $true
+    }
+
     It "replaces an existing PR handoff marker block during sync instead of appending duplicates" {
         $fakeGhDir = Join-Path $TestDrive "fake-gh"
         if (-not (Test-Path $fakeGhDir)) {
