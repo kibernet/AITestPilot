@@ -19,47 +19,80 @@ Kibernet AI TestPilot turns gameplay testing into a controlled engineering loop:
 > 2. paste/attach `Temp\developer-gate-manifest.json` in PR notes
 > 3. explain any skipped steps with reasons in PR description
 
-## 什么是这个项目
+## 项目介绍
 
-AI TestPilot 是一套面向 Unity 项目的“证据驱动游戏测试工程”实践框架，目标是将“模型驱动自动化”变成可审计、可追溯、可回放的工程交付流程。它把一次测试动作从“快照采集 → 决策 → 执行 → 诊断 → 修复协作 → 发布验证”串成一条统一链路，关键环节均产出机器可读证据。
+Kibernet AI TestPilot 是一款面向 Unity 的 AI 游戏测试工程化平台，核心目标是把“模型参与自动化”提升为可审计、可复现、可追责的生产流程。
+它将每个测试动作固化为标准化闭环：**快照采集 → 决策 → 执行 → 诊断 → 修复协作 → 回测与发布验证**，并在每个节点沉淀机器可读证据。
 
-在传统 QA 自动化中，常见问题通常不是“能否运行”，而是“为什么通过了”与“问题是否可复现”。AI TestPilot 的设计核心是“先约束、后执行、再验证、最后放行”：
+在传统 QA 自动化里，问题往往不在“是否能跑通”，而在“是否可信、可解释、可复验”。AI TestPilot 的设计原则是：
+**先约束、再执行、再验证、再放行**。
 
-- 所有动作都通过版本化 Schema 与 Allowlist 校验后才能执行。
-- 每次缺陷都形成结构化证据包（JSON + Markdown + Manifest），可直接用于 PR 审核与追踪。
-- 修复协作不靠人工口头约定，而是通过补丁安全前置、清洁环境回放、重测与回滚证据闭环。
-- 发布由证据状态驱动，不靠主观判断。
+- 所有动作必须通过版本化 Schema 与 Allowlist 校验，避免越权行为。
+- 每次缺陷都会输出结构化证据包（JSON + Markdown + Manifest），用于 PR、Issue 与里程碑追踪。
+- 修复闭环包含补丁前置检查、环境重置回放、重测证明与回滚证据。
+- 发布以证据状态为闸口，而非主观经验判断。
 
-适用场景：
+### 适用场景
 
-- 需要稳定复现 Gameplay 回归问题的 Unity 项目。
-- 需要将自动化测试结果与外部修复 Agent 协作对齐的团队。
-- 需要在 PR 前提供机器可读的交付证据以支撑风险决策的工程组织。
+- Unity 项目中的 Gameplay 回归稳定性验证。
+- 需要将自动化测试与外部修复 Agent 的工作流打通的团队。
+- 在 PR 评审前，需要机器可读证据支撑风险决策与上线授权的工程组织。
 
-核心价值：
+### 核心价值
 
-- **可审计性**：每一步检查都有统一 schema、时间戳与状态语义，支持事后追溯。
-- **可复现性**：回放配置、重测命令与证据清单可跨环境复验。
-- **可协作性**：外部修复任务有明确输入/输出边界，降低误解与返工。
-- **可发布性**：通过 release evidence、补丁验收、回滚凭据形成统一闸口。
+- **可审计性**：统一 schema、时间戳与状态语义，支持事后追溯与合规复核。
+- **可复现性**：回放配置、重测命令、失败证据一体化管理，可在新环境再次验证。
+- **可协作性**：以结构化任务包承接修复动作，减少口头约定导致的理解偏差。
+- **可发布性**：release evidence、补丁验收与回滚凭据形成统一发布闸口。
 
-### 使用说明
+### 使用范围
 
-- 支持 Unity 2021.3+ 的验证链路。
-- 支持 PR / Issue / Milestone 的验收清单自动推送。
-- 可将本地预检、修复验证、发布预检串成统一工作流。
+- 提供 Unity 2021.3+ 兼容的验证链路与脚本化预检。
+- 支持 PR / Issue / Milestone 的验收清单生成与联动。
+- 将本地预检、修复验证、发布预检串联成统一工程流程。
 
 ### 项目里程碑（当前可见）
 
-- **阶段一：** 建立完整的证据驱动闭环，覆盖测试-缺陷-修复-回测。
-- **阶段二：** 增加发布门禁与路径回归的工程化检查。
-- **阶段三：** 持续优化外部协作体验与策略可观察性。
+- **阶段一：** 建立完整的证据驱动闭环，覆盖测试、缺陷、修复、回测。
+- **阶段二：** 建立发布门禁与路径回归的工程化治理。
+- **阶段三：** 持续提升协作体验与策略可观察性，增强外部生态接口。
 
 ### 依赖与要求
 
 - **技术栈：** Windows PowerShell 5.1+ / .NET 8 / Git / Unity 2021.3+
-- **运行环境：** Windows 桌面（支持本地预检、批处理验证）
-- **前置能力：** Replay Driver 与模型接入能力按项目实际配置准备
+- **运行环境：** Windows 桌面（支持本地预检、批处理与证据生成）
+- **前置能力：** 根据项目情况准备 Replay Driver 与模型接入配置
+
+### 交付边界（DoD）
+
+本项目当前版本偏向“平台化能力交付”，不替代游戏逻辑开发或业务功能设计。
+
+- 本项目交付的是：测试证据链路、门禁脚本、模型约束能力、重放与回归能力、发布联动能力。
+- 本项目不替代：游戏的业务 API 设计、账号体系、反作弊策略、第三方服务治理（这些需要接入方按其项目实现并对齐）。
+- 对生产级上线，接入方需提供稳定的玩法状态与 replay 能力，并在 CI/CD 中接入对应证据产物。
+
+### 实施标准
+
+- **可靠性：** 关键证据链路具备失败重试、幂等输出与可回退策略。
+- **可审计：** 关键事件具备 schema 校验、时间戳与状态机语义。
+- **可复验：** 重测路径与回放配置在新环境可重放、可比对。
+- **可交付：** 输出 manifest、summary 与检查清单可直接用于 PR 与里程碑评审。
+
+### 采用该框架的典型成功指标
+
+- 缺陷定位时间缩短：由“先观察再讨论”转为“证据驱动一次决策”。
+- 回归重测可复现率提高：关键缺陷具备标准化重现证明。
+- PR 质量门槛稳定：通过固定验收清单降低人工主观判断偏差。
+- 发布风险透明化：发布前证据完整度和门禁状态可量化查看。
+
+### 30 分钟快速起步（建议）
+
+1. 克隆项目并完成一次本地基础校验：
+   `.\tools\Validate-AITestPilot.ps1`
+2. 按项目接入 `AutomationId`，完成一轮 `Unity` 示例采样。
+3. 运行 `.\tools\Run-DevGate.ps1`，生成开发者门禁摘要。
+4. 将 `Temp\developer-gate-manifest.json` 附在 PR 说明中用于初始评审。
+
 ## Why AI TestPilot
 
 Game QA automation usually breaks at the boundaries between UI state, gameplay APIs, flaky replay steps, bug reports, repair tools, and CI. AI TestPilot provides one auditable contract across those boundaries.
@@ -391,7 +424,7 @@ The command imports the package into a temporary Unity project, compiles Runtime
 给团队提供一条可执行的上线节奏示例：先跑基础验证，再补齐 PR 发布门禁，最后完成正式发布闭环。
 
 - **第 1-3 天（项目接入）**
-  - 运行 `\.\tools\Validate-AITestPilot.ps1` 与 `\.\tools\Invoke-AITestPilotLocalPreflight.ps1`
+  - 运行 `.\tools\Validate-AITestPilot.ps1` 与 `.\tools\Invoke-AITestPilotLocalPreflight.ps1`
   - 确认输出目录（默认 `Temp\`）并固定记录 `Manifest / Summary`
   - 完成 Unity 首次接入：添加 `AutomationId`，验证 sample scene 与关键驱动点
 
@@ -403,7 +436,7 @@ The command imports the package into a temporary Unity project, compiles Runtime
 - **第 8-30 天（发布就绪）**
   - 完成路径回归与严格别名冲突检测：`Run-CiGatePathRegression` / `Run-CiGatePathRegressionStrict`
   - 形成发布决策台账与发布证据矩阵
-  - 运行 `\.\tools\Invoke-AITestPilotReleasePipeline.ps1`，确认可复用发布证据与清单
+  - 运行 `.\tools\Invoke-AITestPilotReleasePipeline.ps1`，确认可复用发布证据与清单
 
 ### 落地与验收清单
 
